@@ -6,6 +6,10 @@ import type { Receipt, Store } from '../src/store.js';
 
 type FetchCall = { url: string; init: RequestInit | undefined };
 
+function timeoutKeepalive(): NodeJS.Timeout {
+  return setTimeout(() => {}, 1000);
+}
+
 class MemoryStore implements Store {
   readonly receipts: Receipt[] = [];
   readonly reservations: number[] = [];
@@ -231,9 +235,15 @@ describe('service evaluation and persistence', () => {
     assert.equal(JSON.stringify(malformedStore.receipts[0]).includes('not-json'), false);
 
     const timeoutStore = new MemoryStore();
-    const timeout = await service({store: timeoutStore, timeoutMs: 5, fetchFn: async (_input, init) => new Promise<Response>((_resolve, reject) => {
-      (init?.signal as AbortSignal).addEventListener('abort', () => reject(new Error('timed out')), {once: true});
-    })}).classifyFailure(failure());
+    const timeoutKeepaliveHandle = timeoutKeepalive();
+    let timeout: Awaited<ReturnType<ReturnType<typeof service>['classifyFailure']>>;
+    try {
+      timeout = await service({store: timeoutStore, timeoutMs: 5, fetchFn: async (_input, init) => new Promise<Response>((_resolve, reject) => {
+        (init?.signal as AbortSignal).addEventListener('abort', () => reject(new Error('timed out')), {once: true});
+      })}).classifyFailure(failure());
+    } finally {
+      clearTimeout(timeoutKeepaliveHandle);
+    }
     assert.equal(timeout.reasonCode, 'timeout');
     assert.equal(timeout.transport?.fetchInvoked, true);
     assert.equal(timeout.transport?.responseStatus, null);

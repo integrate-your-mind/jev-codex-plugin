@@ -7,9 +7,17 @@ description: Classify a reported command failure with bounded, provenance-preser
 
 Use this skill when a command, test, build, service connection, or other task action failed and the proximate cause is not already established. It is for a concrete failed command, not a successful command or a general request to guess what might go wrong. The workflow is advisory: Codex remains responsible for investigating the evidence, changing files, and deciding whether a proposed next step is appropriate.
 
+## Runtime selection
+
+Prefer the `classify_failure` MCP tool when it is available. If it is absent, use this skill's bundled `scripts/jev.mjs` with Node.js 22 or later and the `classify-failure` command. Resolve the script relative to this `SKILL.md`, not the working directory. Read [standalone usage and JSON examples](references/standalone.md) before the first CLI invocation. The CLI uses the same schemas, provider, redaction, evaluation reservations and receipts, and result meanings as MCP; CLI status is a smaller readiness summary.
+
+Standalone skills do not register MCP tools, install lifecycle hooks, switch models, or configure automation. They need no npm install. Evaluation requires Node.js 22+, local process execution, an inherited provider key, outbound HTTPS, and writable private state. Local script execution is unavailable on some cloud surfaces; report that limitation and continue ordinary work there. Installing the full plugin remains the route to MCP and automatic hooks.
+
+For the CLI, first use local `status` if credential readiness matters. Pass one JSON object on stdin; preview is the default. When existing user authorization covers the selected evidence, add `--evaluate`. Never place credentials in arguments or JSON. Read the returned `status` and `reasonCode`: process exit 0 alone does not mean Jev assessed the request. No missing key or inconclusive answer should stop the underlying task.
+
 ## Gather the input
 
-Call `jev_status` first when you need to know whether evaluation is enabled or a provider credential is configured. `jev_status` is local and does not contact TypeSafe. Then call the local `classify_failure` MCP tool with the smallest authorized evidence set that can distinguish the failure. Its input fields are:
+When readiness matters, use `jev_status` if MCP is available, otherwise the bundled CLI `status`. Both are local and do not contact TypeSafe. Then call `classify_failure` or the CLI `classify-failure` command with the smallest authorized evidence set that can distinguish the failure. Its input fields are:
 
 - `task`: the goal and expected behavior;
 - `command`: the command or action that failed;

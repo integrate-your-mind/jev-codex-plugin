@@ -1,0 +1,78 @@
+{
+  "verificationDate": "2026-09-18",
+  "release": "0.3.0",
+  "status": "rc1_verified",
+  "scope": "canonical and staged public 0.3.0-rc.1 evidence",
+  "cliSha256": "f0920d0fc9b6f45f82a01755c7cc4813a7cdafa7e4edd01960717a67f0efcb90",
+  "capabilities": {
+    "standaloneCommands": [
+      "status",
+      "classify-decision",
+      "classify-failure",
+      "check-completion"
+    ],
+    "skillFallbacks": 3,
+    "mcpRequiredForFallbacks": false,
+    "existingMcpTools": 5,
+    "existingLifecycleAdapters": 12
+  },
+  "checks": {
+    "tests": {
+      "passed": 106,
+      "failed": 0,
+      "skipped": 0
+    },
+    "node22CliAndExtractedPackageTests": {
+      "passed": 15,
+      "failed": 0
+    },
+    "typecheck": "passed",
+    "build": "passed",
+    "manifestValidation": "passed",
+    "standaloneCliAndSkillPackaging": "passed",
+    "distributionVerifier": "passed",
+    "distributionDriftTests": {
+      "passed": 2,
+      "failed": 0
+    },
+    "gitleaks": "clean (12.57 MB)",
+    "independentQa": {
+      "originalLiveEvaluations": {
+        "total": 4,
+        "assessed": 3,
+        "abstained": 1
+      },
+      "uniqueHttp200ProviderIds": 4,
+      "finalBundleCompletionEvaluation": "partially_supported",
+      "finalBundleCompletionConfidence": 0.88,
+      "attributedCliRequests": 5
+    },
+    "fullSuiteRuntimes": [
+      "Node26.3.0",
+      "Node22.23.2"
+    ],
+    "node22FullSuite": {
+      "passed": 106,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "timeoutFixtureCorrection": "Mock-only referenced keepalive handles allow AbortSignal.timeout to fire without real network I/O; cleaned in finally; production unchanged."
+  },
+  "limits": {
+    "defaultDailyCallCap": null,
+    "defaultDailyByteCap": null,
+    "defaultSessionHookCap": null
+  },
+  "unresolved": [
+    "hosted CI execution",
+    "historical provider dashboard omission cause and billing reconciliation",
+    "official directory approval and partner review of local execution and persistent credentials"
+  ],
+  "claimsExcluded": [
+    "hosted CI pass",
+    "provider billing completion",
+    "directory approval",
+    "model accuracy or performance benchmark"
+  ]
+}

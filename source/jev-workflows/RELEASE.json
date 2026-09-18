@@ -1,7 +1,7 @@
 {
   "name": "jev-workflows",
-  "version": "0.2.2",
-  "runtimeVersion": "0.2.2",
-  "createdAt": "2026-09-18T18:46:45.517Z",
+  "version": "0.3.0",
+  "runtimeVersion": "0.3.0",
+  "createdAt": "2026-09-18T20:14:49.112Z",
   "source": "Source and prebuilt runtime included. No credentials, state, or node_modules are packaged."
 }

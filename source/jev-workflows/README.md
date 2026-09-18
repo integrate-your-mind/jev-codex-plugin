@@ -1,6 +1,6 @@
 # Jev Workflows
 
-A portable Codex plugin that consults Jev for tool, model, task, skill, context, strategy, outcome, and custom classification decisions. It includes five MCP tools, three skills, bundled JavaScript entrypoints, and scoped lifecycle hooks.
+A portable Codex plugin that consults Jev for tool, model, task, skill, context, strategy, outcome, and custom classification decisions. It includes five MCP tools, three independently usable skills, bundled JavaScript entrypoints, and scoped lifecycle hooks.
 
 ## Capabilities
 
@@ -55,6 +55,22 @@ node scripts/package-host.mjs /absolute/release-directory/jev-workflows
 ```
 
 The generated variant retains `.codex-plugin/plugin.json`, `.mcp.json`, skills, hooks and runtime, and omits the two portable root manifests. Install the prebuilt Codex variant from the public repository marketplace and review its hooks. The default generated package aligns MCP and hook state using `JEV_STATE_MODE=user`, without machine-specific absolute paths. Both packages use the same code. The Codex overlay forwards approved environment names only, with no credential values. See [compatibility](docs/compatibility.md).
+
+## Standalone skills and CLI
+
+Each skill includes a prebuilt `scripts/jev.mjs`. When its MCP tool is available, the skill uses it; otherwise it can invoke that local CLI with Node.js 22 or later. No npm install or MCP server is needed. The standalone path supports decision classification, failure diagnosis, and completion assessment. It does not install automatic hooks or expose `configure_automation`.
+
+```sh
+node dist/cli.mjs status
+node dist/cli.mjs classify-decision < request.json
+node dist/cli.mjs classify-decision --evaluate < request.json
+```
+
+The CLI accepts a single JSON object on stdin. Without `--evaluate`, it produces a local preview. Evaluation requires the flag and `TYPESAFE_API_KEY` in the process environment; never put the key in arguments or request JSON. `classify-failure` and `check-completion` accept the same inputs as their MCP counterparts. Parse the JSON result's `status`: exit code 0 includes valid `unavailable`, `skipped`, and `abstained` outcomes. The runtime, provider schema, redaction, receipts, and optional user settings are shared with MCP. Separate CLI processes do not share the server's in-memory cache.
+
+Build standalone ZIPs with `node scripts/package-skills.mjs /absolute/fresh/output-directory`. Install each extracted skill directory in a skill location supported by the host (for example `$CODEX_HOME/skills`, normally `~/.codex/skills`); keep `SKILL.md`, `references/`, and `scripts/` together. Avoid installing duplicate skill copies when using the full plugin. Local scripts require a host that supports process execution; the companion is not a hosted service.
+
+The public repository and Git marketplace are available distribution routes. OpenAI Directory approval is separate: current submission guidance may require partner review for core local execution or persistent credentials. These ZIPs do not establish Directory eligibility or supply a remote MCP endpoint.
 
 ## Limits and evidence
 

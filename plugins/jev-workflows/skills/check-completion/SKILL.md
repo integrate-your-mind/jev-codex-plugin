@@ -5,11 +5,19 @@ description: Assess a user-requested substantive completion claim against bounde
 
 # Check completion evidence
 
-Use this skill when the user asks for an evidence assessment of a substantive implementation, investigation, test, release, backup, deployment, or similar outcome. It is not needed for every trivial answer or routine progress update. The `check_completion` MCP tool reviews one claim; it does not perform the underlying verification and it cannot approve the claim.
+Use this skill when the user asks for an evidence assessment of a substantive implementation, investigation, test, release, backup, deployment, or similar outcome. It is not needed for every trivial answer or routine progress update. The completion assessment reviews one claim; it does not perform the underlying verification and it cannot approve the claim.
+
+## Runtime selection
+
+Prefer the `check_completion` MCP tool when it is available. If it is absent, use this skill's bundled `scripts/jev.mjs` with Node.js 22 or later and the `check-completion` command. Resolve the script relative to this `SKILL.md`, not the working directory. Read [standalone usage and JSON examples](references/standalone.md) before the first CLI invocation. The CLI uses the same schemas, provider, redaction, evaluation reservations and receipts, and result meanings as MCP; CLI status is a smaller readiness summary.
+
+Standalone skills do not register MCP tools, install lifecycle hooks, switch models, or configure automation. They need no npm install. Evaluation requires Node.js 22+, local process execution, an inherited provider key, outbound HTTPS, and writable private state. Local script execution is unavailable on some cloud surfaces; report that limitation and continue ordinary work there. Installing the full plugin remains the route to MCP and automatic hooks.
+
+For the CLI, first use local `status` if credential readiness matters. Pass one JSON object on stdin; preview is the default. When existing user authorization covers the selected evidence, add `--evaluate`. Never place credentials in arguments or JSON. Read the returned `status` and `reasonCode`: process exit 0 alone does not mean Jev assessed the request. No missing key or inconclusive answer should stop the underlying task.
 
 ## Supply bounded evidence
 
-Call `jev_status` when local readiness matters; it does not contact TypeSafe. Then send one concrete claim at a time to `check_completion` with these exact fields:
+When local readiness matters, use `jev_status` if MCP is available, otherwise the bundled CLI `status`; neither contacts TypeSafe. Then send one concrete claim at a time to `check_completion` or CLI `check-completion` with these exact fields:
 
 - `claim`: the substantive outcome being assessed;
 - `acceptanceCriteria`: one or more explicit criteria for that claim;

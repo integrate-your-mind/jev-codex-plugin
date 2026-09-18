@@ -35,6 +35,13 @@ const observedTransport: ProviderTransport = {
   credentialFingerprint: 'f'.repeat(64),
 };
 
+// Node 22 can terminate a pending mock promise before AbortSignal.timeout's
+// timer is serviced when no referenced handle remains in the test. Keep the
+// loop alive only for the timeout assertion and always clean it up.
+function timeoutKeepalive(): NodeJS.Timeout {
+  return setTimeout(() => {}, 1000);
+}
+
 function assertValidationFailure(raw: unknown, failure: ResponseValidationFailure, questions = failureQuestions): void {
   assert.throws(() => validateEvaluation(raw, questions, observedTransport), error => {
     assertProviderError(error, 'invalid_response');
@@ -254,27 +261,37 @@ describe('provider transport', () => {
         pull() { return new Promise<void>(() => {}); },
       }), {status: 200, headers: {'x-typesafe-request-id': 'req_timeout_after_response'}}),
     });
-    await assert.rejects(timeoutAfterResponse, error => {
-      assertProviderError(error, 'timeout');
-      assert.equal(error.transport?.fetchInvoked, true);
-      assert.equal(error.transport?.responseStatus, 200);
-      assert.match(error.transport?.responseReceivedAt ?? '', /^\d{4}-\d{2}-\d{2}T/);
-      assert.equal(error.transport?.providerRequestId, 'req_timeout_after_response');
-      assert.equal(error.transport?.validatedResponse, false);
-      return true;
-    });
+    const afterResponseKeepalive = timeoutKeepalive();
+    try {
+      await assert.rejects(timeoutAfterResponse, error => {
+        assertProviderError(error, 'timeout');
+        assert.equal(error.transport?.fetchInvoked, true);
+        assert.equal(error.transport?.responseStatus, 200);
+        assert.match(error.transport?.responseReceivedAt ?? '', /^\d{4}-\d{2}-\d{2}T/);
+        assert.equal(error.transport?.providerRequestId, 'req_timeout_after_response');
+        assert.equal(error.transport?.validatedResponse, false);
+        return true;
+      });
+    } finally {
+      clearTimeout(afterResponseKeepalive);
+    }
 
-    await assert.rejects(() => evaluateProvider({
-      state: {}, questions: failureQuestions, apiKey: 'key', timeoutMs: 5,
-      fetchFn: async (_input, init) => new Promise<Response>((_resolve, reject) => {
-        (init?.signal as AbortSignal).addEventListener('abort', () => reject(new Error('timed out')), {once: true});
-      }),
-    }), error => {
-      assertProviderError(error, 'timeout');
-      assert.equal(error.transport?.responseStatus, null);
-      assert.equal(error.transport?.responseReceivedAt, null);
-      return true;
-    });
+    const preResponseKeepalive = timeoutKeepalive();
+    try {
+      await assert.rejects(() => evaluateProvider({
+        state: {}, questions: failureQuestions, apiKey: 'key', timeoutMs: 5,
+        fetchFn: async (_input, init) => new Promise<Response>((_resolve, reject) => {
+          (init?.signal as AbortSignal).addEventListener('abort', () => reject(new Error('timed out')), {once: true});
+        }),
+      }), error => {
+        assertProviderError(error, 'timeout');
+        assert.equal(error.transport?.responseStatus, null);
+        assert.equal(error.transport?.responseReceivedAt, null);
+        return true;
+      });
+    } finally {
+      clearTimeout(preResponseKeepalive);
+    }
 
     const preCancelled = new AbortController();
     preCancelled.abort();

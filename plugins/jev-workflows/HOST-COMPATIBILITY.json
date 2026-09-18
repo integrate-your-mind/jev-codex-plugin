@@ -1,7 +1,7 @@
 {
   "name": "jev-workflows",
   "packageKind": "codex-legacy-host-compatibility",
-  "generatedAt": "2026-09-18T18:46:45.632Z",
+  "generatedAt": "2026-09-18T20:10:14.130Z",
   "source": "Generated from the portable source package; root plugin.json and mcp.json are intentionally omitted.",
   "loaderReason": "Codex hosts that select the legacy .codex-plugin/plugin.json shape can discover hooks/hooks.json.",
   "retained": [

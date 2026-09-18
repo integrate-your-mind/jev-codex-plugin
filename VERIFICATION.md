@@ -5,6 +5,40 @@ Verification date: 2026-09-18
 This report covers the public source and packaged runtime. It records the checks
 below; it does not establish directory approval, provider billing, or model quality.
 
+## Additive 0.3.0-rc.1
+
+The 0.3.0-rc.1 source and staged public package are synchronized. The additive
+design keeps the Git marketplace installation, five MCP tools, and twelve
+lifecycle adapters while adding a bundled standalone CLI to each of the three skills.
+The CLI commands are `status`, `classify-decision`, `classify-failure`, and
+`check-completion`; these fallbacks do not require MCP.
+
+- Canonical and staged public test suites: **106 passed, 0 failed, 0 skipped**.
+- Actual Node 22.23.2 CLI, entrypoint, and extracted-package checks: **15 passed**.
+- The full **106-test suite also passed on Node 22.23.2**, with no failures, cancellations, or skips. Mock transport timeout tests retain a temporary event-loop handle so the real abort timer can fire on Node 22; all timeout and receipt assertions remain intact.
+- Canonical typecheck: **passed**.
+- Canonical build: **passed**.
+- Canonical manifest validation: **passed**.
+- Distribution verifier and two drift regression tests: **passed**.
+- Frozen standalone CLI SHA-256: `f0920d0fc9b6f45f82a01755c7cc4813a7cdafa7e4edd01960717a67f0efcb90`.
+- Gitleaks scan: **clean** over 12.57 MB.
+- Fresh native 0.3.0 personal discovery: **passed**, with twelve trusted hooks,
+  unchanged global policy hash, and unlimited default caps (`null`).
+- Independent QA: **completed**. Four original live evaluations comprised three
+  assessed and one abstained result with four unique HTTP 200 provider IDs;
+  the fixture’s subtraction operator was changed to addition, and both tests then passed. QA covered tool
+  advice, assertion diagnosis, completion support, and abstention on unsupported
+  deployment claims.
+- A separate final-bundle completion evaluation returned
+  `partially_supported` with confidence 0.88 and retained provider evidence.
+  It is one additional CLI request, for five attributed CLI requests total;
+  it is not an overall Jev approval or a model-accuracy result.
+
+See the sanitized [0.3.0 standalone evidence record](verification/standalone-0.3.0.json).
+The evidence does not claim hosted CI, provider billing reconciliation, or
+official directory approval. A low documentation error-envelope mismatch was
+corrected in the docs; runtime behavior was unchanged.
+
 ## Verified in 0.2.2
 
 - Fresh isolated native metadata and MCP checks passed for the 0.2.2 packaged

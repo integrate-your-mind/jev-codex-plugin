@@ -30723,7 +30723,7 @@ function createService(options = {}) {
   const digestOf = (value) => createHash2("sha256").update(JSON.stringify(value)).digest("hex");
   function status(policy = DEFAULT_POLICY) {
     return {
-      version: "0.2.2",
+      version: "0.3.0",
       provider: "TypeSafe",
       endpoint: ENDPOINT,
       model: MODEL,
@@ -30975,7 +30975,7 @@ async function readEvaluationUsage(directory, credentialFingerprint, now = /* @_
 
 // src/server.ts
 var service = createService();
-var server = new Server({ name: "jev-workflows", version: "0.2.2" }, { capabilities: { tools: {} } });
+var server = new Server({ name: "jev-workflows", version: "0.3.0" }, { capabilities: { tools: {} } });
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [
   { name: "jev_status", description: "Read local Jev plugin readiness and limits. Does not contact TypeSafe or expose credentials.", inputSchema: { type: "object", properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } },
   { name: "classify_failure", description: "Preview selected redacted command evidence locally, or evaluate an authorized payload with TypeSafe Jev. Evaluate sends data externally in a billable provider API request. Advisory failure classification; never edits files, approves permissions, or certifies a fix.", inputSchema: external_exports.toJSONSchema(failureSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
