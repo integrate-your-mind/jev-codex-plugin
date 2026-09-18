@@ -174,6 +174,7 @@ describe('service evaluation and persistence', () => {
     assert.equal(result.transport?.validatedResponse, true);
     assert.equal(result.transport?.providerRequestId, 'req_service_123');
     assert.equal(result.transport?.providerRequestIdHeader, 'x-typesafe-request-id');
+    assert.equal(Object.hasOwn(result.transport ?? {}, 'responseValidationFailure'), false);
     assert.equal(result.transport?.credentialFingerprint, createHash('sha256').update('configured-test-key').digest('hex'));
     assert.deepEqual(store.receipts[0]?.transport, result.transport);
     assert.equal(JSON.stringify(store.receipts[0]).includes('configured-test-key'), false);
@@ -211,6 +212,7 @@ describe('service evaluation and persistence', () => {
       assert.equal(result.transport?.responseStatus, status);
       assert.equal(result.transport?.providerRequestId, `req_error_${status}`);
       assert.equal(result.transport?.validatedResponse, false);
+      assert.equal(Object.hasOwn(result.transport ?? {}, 'responseValidationFailure'), false);
       assert.deepEqual(store.receipts[0]?.transport, result.transport);
       assert.equal(JSON.stringify(store.receipts[0]).includes('sensitive body'), false);
     }
@@ -223,7 +225,10 @@ describe('service evaluation and persistence', () => {
     assert.equal(malformed.transport?.responseStatus, 200);
     assert.equal(malformed.transport?.providerRequestId, 'req_malformed_200');
     assert.equal(malformed.transport?.validatedResponse, false);
+    assert.equal(malformed.transport?.responseValidationFailure, 'invalid_json');
     assert.deepEqual(malformedStore.receipts[0]?.transport, malformed.transport);
+    assert.equal(malformedStore.receipts[0]?.transport?.responseValidationFailure, 'invalid_json');
+    assert.equal(JSON.stringify(malformedStore.receipts[0]).includes('not-json'), false);
 
     const timeoutStore = new MemoryStore();
     const timeout = await service({store: timeoutStore, timeoutMs: 5, fetchFn: async (_input, init) => new Promise<Response>((_resolve, reject) => {

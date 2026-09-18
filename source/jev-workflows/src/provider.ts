@@ -3,6 +3,17 @@ import { z } from 'zod';
 import { ENDPOINT, MODEL, type Question } from './contracts.js';
 
 export type ProviderRequestIdHeader = 'x-typesafe-request-id' | 'x-request-id' | 'request-id';
+export type ResponseValidationFailure =
+  | 'missing_body'
+  | 'invalid_json'
+  | 'response_schema'
+  | 'model_mismatch'
+  | 'answer_keys_mismatch'
+  | 'answer_schema'
+  | 'probability_keys_mismatch'
+  | 'choice_unknown'
+  | 'probability_sum_invalid'
+  | 'choice_not_argmax';
 export type ProviderTransport = {
   requestStartedAt: string;
   fetchInvoked: boolean;
@@ -12,6 +23,7 @@ export type ProviderTransport = {
   providerRequestId: string | null;
   providerRequestIdHeader: ProviderRequestIdHeader | null;
   credentialFingerprint: string;
+  responseValidationFailure?: ResponseValidationFailure;
 };
 
 export class ProviderError extends Error {
@@ -19,10 +31,12 @@ export class ProviderError extends Error {
 }
 const number01 = z.number().finite().min(0).max(1);
 const responseSchema = z.object({
-  model: z.literal(MODEL),
+  model: z.string(),
   answers: z.record(z.string(), z.unknown()),
   usage: z.object({input_tokens: z.number().int().nonnegative(), output_tokens: z.number().int().nonnegative()})
 });
+const noulAnswerSchema = z.object({type: z.literal('noul'), noul: number01});
+const choiceAnswerSchema = z.object({type: z.literal('choice'), choice: z.string(), probabilities: z.record(z.string(), number01), confidence: number01});
 export type Answer = {type: 'choice'; choice: string; probabilities: Record<string, number>; confidence: number} | {type: 'noul'; noul: number};
 export type Evaluation = {
   model: string;
@@ -52,25 +66,39 @@ function requestIdentifier(response: Response, apiKey: string): {
   return {providerRequestId: null, providerRequestIdHeader: null};
 }
 
+function exactKeys(left: Record<string, unknown>, right: Record<string, unknown>): boolean {
+  const keys = Object.keys(left);
+  return keys.length === Object.keys(right).length && keys.every(key => Object.hasOwn(right, key));
+}
+
+function invalidResponse(transport: ProviderTransport | null, failure: ResponseValidationFailure): never {
+  throw new ProviderError('invalid_response', transport ? {...transport, responseValidationFailure: failure} : null);
+}
+
 export function validateEvaluation(raw: unknown, questions: Record<string, Question>, transport: ProviderTransport | null = null): Evaluation {
-  try {
-    const parsed = responseSchema.parse(raw);
-    if (Object.keys(parsed.answers).sort().join() !== Object.keys(questions).sort().join()) throw new Error();
-    const answers: Record<string, Answer> = {};
-    for (const [key, q] of Object.entries(questions)) {
-      if (q.type === 'noul') {
-        answers[key] = z.object({type: z.literal('noul'), noul: number01}).parse(parsed.answers[key]);
-      } else {
-        const answer = z.object({type: z.literal('choice'), choice: z.string(), probabilities: z.record(z.string(), number01), confidence: number01}).parse(parsed.answers[key]);
-        if (Object.keys(answer.probabilities).sort().join() !== Object.keys(q.criteria).sort().join()) throw new Error();
-        if (!Object.hasOwn(q.criteria, answer.choice)) throw new Error();
-        if (Math.abs(Object.values(answer.probabilities).reduce((a,b) => a+b, 0) - 1) > 0.001) throw new Error();
-        if (answer.probabilities[answer.choice]! + 0.000001 < Math.max(...Object.values(answer.probabilities))) throw new Error();
-        answers[key] = answer;
-      }
+  const parsedResult = responseSchema.safeParse(raw);
+  if (!parsedResult.success) invalidResponse(transport, 'response_schema');
+  const parsed = parsedResult.data;
+  if (parsed.model !== MODEL) invalidResponse(transport, 'model_mismatch');
+  if (!exactKeys(parsed.answers, questions)) invalidResponse(transport, 'answer_keys_mismatch');
+  const answers: Record<string, Answer> = {};
+  for (const [key, q] of Object.entries(questions)) {
+    if (q.type === 'noul') {
+      const result = noulAnswerSchema.safeParse(parsed.answers[key]);
+      if (!result.success) invalidResponse(transport, 'answer_schema');
+      answers[key] = result.data;
+    } else {
+      const result = choiceAnswerSchema.safeParse(parsed.answers[key]);
+      if (!result.success) invalidResponse(transport, 'answer_schema');
+      const answer = result.data;
+      if (!exactKeys(answer.probabilities, q.criteria)) invalidResponse(transport, 'probability_keys_mismatch');
+      if (!Object.hasOwn(q.criteria, answer.choice)) invalidResponse(transport, 'choice_unknown');
+      if (Math.abs(Object.values(answer.probabilities).reduce((a,b) => a+b, 0) - 1) > 0.001) invalidResponse(transport, 'probability_sum_invalid');
+      if (answer.probabilities[answer.choice]! + 0.000001 < Math.max(...Object.values(answer.probabilities))) invalidResponse(transport, 'choice_not_argmax');
+      answers[key] = answer;
     }
-    return {model: parsed.model, answers, usage: parsed.usage, ...(transport ? {transport} : {})};
-  } catch { throw new ProviderError('invalid_response', transport); }
+  }
+  return {model: parsed.model, answers, usage: parsed.usage, ...(transport ? {transport} : {})};
 }
 
 export async function evaluateProvider(args: {
@@ -116,7 +144,7 @@ export async function evaluateProvider(args: {
       throw new ProviderError(code, transport);
     }
     // Bound the response even when content-length is missing or dishonest.
-    if (!response.body) throw new ProviderError('invalid_response', transport);
+    if (!response.body) invalidResponse(transport, 'missing_body');
     const reader = response.body.getReader();
     const chunks: Uint8Array[] = []; let size = 0;
     try {
@@ -132,7 +160,7 @@ export async function evaluateProvider(args: {
     try {
       payload = JSON.parse(Buffer.concat(chunks).toString('utf8'));
     } catch {
-      throw new ProviderError('invalid_response', transport);
+      invalidResponse(transport, 'invalid_json');
     }
     const evaluation = validateEvaluation(payload, args.questions, transport);
     return {...evaluation, transport: {...transport, validatedResponse: true}};

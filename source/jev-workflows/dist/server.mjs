@@ -30320,10 +30320,12 @@ var ProviderError = class extends Error {
 };
 var number01 = external_exports.number().finite().min(0).max(1);
 var responseSchema = external_exports.object({
-  model: external_exports.literal(MODEL),
+  model: external_exports.string(),
   answers: external_exports.record(external_exports.string(), external_exports.unknown()),
   usage: external_exports.object({ input_tokens: external_exports.number().int().nonnegative(), output_tokens: external_exports.number().int().nonnegative() })
 });
+var noulAnswerSchema = external_exports.object({ type: external_exports.literal("noul"), noul: number01 });
+var choiceAnswerSchema = external_exports.object({ type: external_exports.literal("choice"), choice: external_exports.string(), probabilities: external_exports.record(external_exports.string(), number01), confidence: number01 });
 function fingerprintCredential(apiKey) {
   return createHash("sha256").update(apiKey).digest("hex");
 }
@@ -30337,27 +30339,37 @@ function requestIdentifier(response, apiKey) {
   }
   return { providerRequestId: null, providerRequestIdHeader: null };
 }
+function exactKeys(left, right) {
+  const keys = Object.keys(left);
+  return keys.length === Object.keys(right).length && keys.every((key) => Object.hasOwn(right, key));
+}
+function invalidResponse(transport, failure2) {
+  throw new ProviderError("invalid_response", transport ? { ...transport, responseValidationFailure: failure2 } : null);
+}
 function validateEvaluation(raw, questions, transport = null) {
-  try {
-    const parsed = responseSchema.parse(raw);
-    if (Object.keys(parsed.answers).sort().join() !== Object.keys(questions).sort().join()) throw new Error();
-    const answers = {};
-    for (const [key, q] of Object.entries(questions)) {
-      if (q.type === "noul") {
-        answers[key] = external_exports.object({ type: external_exports.literal("noul"), noul: number01 }).parse(parsed.answers[key]);
-      } else {
-        const answer = external_exports.object({ type: external_exports.literal("choice"), choice: external_exports.string(), probabilities: external_exports.record(external_exports.string(), number01), confidence: number01 }).parse(parsed.answers[key]);
-        if (Object.keys(answer.probabilities).sort().join() !== Object.keys(q.criteria).sort().join()) throw new Error();
-        if (!Object.hasOwn(q.criteria, answer.choice)) throw new Error();
-        if (Math.abs(Object.values(answer.probabilities).reduce((a, b) => a + b, 0) - 1) > 1e-3) throw new Error();
-        if (answer.probabilities[answer.choice] + 1e-6 < Math.max(...Object.values(answer.probabilities))) throw new Error();
-        answers[key] = answer;
-      }
+  const parsedResult = responseSchema.safeParse(raw);
+  if (!parsedResult.success) invalidResponse(transport, "response_schema");
+  const parsed = parsedResult.data;
+  if (parsed.model !== MODEL) invalidResponse(transport, "model_mismatch");
+  if (!exactKeys(parsed.answers, questions)) invalidResponse(transport, "answer_keys_mismatch");
+  const answers = {};
+  for (const [key, q] of Object.entries(questions)) {
+    if (q.type === "noul") {
+      const result = noulAnswerSchema.safeParse(parsed.answers[key]);
+      if (!result.success) invalidResponse(transport, "answer_schema");
+      answers[key] = result.data;
+    } else {
+      const result = choiceAnswerSchema.safeParse(parsed.answers[key]);
+      if (!result.success) invalidResponse(transport, "answer_schema");
+      const answer = result.data;
+      if (!exactKeys(answer.probabilities, q.criteria)) invalidResponse(transport, "probability_keys_mismatch");
+      if (!Object.hasOwn(q.criteria, answer.choice)) invalidResponse(transport, "choice_unknown");
+      if (Math.abs(Object.values(answer.probabilities).reduce((a, b) => a + b, 0) - 1) > 1e-3) invalidResponse(transport, "probability_sum_invalid");
+      if (answer.probabilities[answer.choice] + 1e-6 < Math.max(...Object.values(answer.probabilities))) invalidResponse(transport, "choice_not_argmax");
+      answers[key] = answer;
     }
-    return { model: parsed.model, answers, usage: parsed.usage, ...transport ? { transport } : {} };
-  } catch {
-    throw new ProviderError("invalid_response", transport);
   }
+  return { model: parsed.model, answers, usage: parsed.usage, ...transport ? { transport } : {} };
 }
 async function evaluateProvider(args) {
   const timeout = AbortSignal.timeout(args.timeoutMs);
@@ -30394,7 +30406,7 @@ async function evaluateProvider(args) {
       const code = response.status === 401 || response.status === 403 ? "authentication_failed" : response.status === 422 ? "invalid_request" : response.status === 429 ? "rate_limited" : response.status === 529 ? "provider_overloaded" : "provider_error";
       throw new ProviderError(code, transport);
     }
-    if (!response.body) throw new ProviderError("invalid_response", transport);
+    if (!response.body) invalidResponse(transport, "missing_body");
     const reader = response.body.getReader();
     const chunks = [];
     let size = 0;
@@ -30416,7 +30428,7 @@ async function evaluateProvider(args) {
     try {
       payload = JSON.parse(Buffer.concat(chunks).toString("utf8"));
     } catch {
-      throw new ProviderError("invalid_response", transport);
+      invalidResponse(transport, "invalid_json");
     }
     const evaluation = validateEvaluation(payload, args.questions, transport);
     return { ...evaluation, transport: { ...transport, validatedResponse: true } };
@@ -30711,7 +30723,7 @@ function createService(options = {}) {
   const digestOf = (value) => createHash2("sha256").update(JSON.stringify(value)).digest("hex");
   function status(policy = DEFAULT_POLICY) {
     return {
-      version: "0.2.0",
+      version: "0.2.1",
       provider: "TypeSafe",
       endpoint: ENDPOINT,
       model: MODEL,
@@ -30963,7 +30975,7 @@ async function readEvaluationUsage(directory, credentialFingerprint, now = /* @_
 
 // src/server.ts
 var service = createService();
-var server = new Server({ name: "jev-workflows", version: "0.2.0" }, { capabilities: { tools: {} } });
+var server = new Server({ name: "jev-workflows", version: "0.2.1" }, { capabilities: { tools: {} } });
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [
   { name: "jev_status", description: "Read local Jev plugin readiness and limits. Does not contact TypeSafe or expose credentials.", inputSchema: { type: "object", properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } },
   { name: "classify_failure", description: "Preview selected redacted command evidence locally, or evaluate an authorized payload with TypeSafe Jev. Evaluate sends data externally in a billable provider API request. Advisory failure classification; never edits files, approves permissions, or certifies a fix.", inputSchema: external_exports.toJSONSchema(failureSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },

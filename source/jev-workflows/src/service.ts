@@ -40,7 +40,7 @@ export function createService(options: ServiceOptions = {}) {
   const inFlight = new Map<string, Promise<Assessment>>();
   const digestOf = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
   function status(policy: HookPolicy = DEFAULT_POLICY) {
-    return {version: '0.2.0', provider: 'TypeSafe', endpoint: ENDPOINT, model: MODEL,
+    return {version: '0.2.1', provider: 'TypeSafe', endpoint: ENDPOINT, model: MODEL,
       credentialConfigured: Boolean(apiKey), credentialFingerprint, enabled,
       stateDirectory: dataDirectory(env), defaultMode: 'preview', rubricVersion: RUBRIC_VERSION, decisionRubricVersion: DECISION_RUBRIC_VERSION, maxPayloadBytes,
       maxCallsPerDay: positiveLimit(env.JEV_MAX_CALLS_PER_DAY, policy.maxCallsPerDay),

@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "jev-workflows",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Jev classification for tools, models, tasks and arbitrary decisions, with evidence review and automatic Codex lifecycle consultation.",
   "author": {
     "name": "Romy Mondello"

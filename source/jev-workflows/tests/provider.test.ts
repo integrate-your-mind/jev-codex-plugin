@@ -1,8 +1,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { ENDPOINT, failureQuestions } from '../src/contracts.js';
-import { evaluateProvider, ProviderError, validateEvaluation } from '../src/provider.js';
+import { ENDPOINT, failureQuestions, type Question } from '../src/contracts.js';
+import { evaluateProvider, ProviderError, validateEvaluation, type ProviderTransport, type ResponseValidationFailure } from '../src/provider.js';
 
 function validEvaluation(): Record<string, unknown> {
   return {
@@ -24,6 +24,25 @@ function assertProviderError(error: unknown, code: string): asserts error is Pro
   assert.equal((error as ProviderError).code, code);
 }
 
+const observedTransport: ProviderTransport = {
+  requestStartedAt: '2026-09-18T00:00:00.000Z',
+  fetchInvoked: true,
+  responseReceivedAt: '2026-09-18T00:00:00.100Z',
+  responseStatus: 200,
+  validatedResponse: false,
+  providerRequestId: 'req_validation_test',
+  providerRequestIdHeader: 'x-typesafe-request-id',
+  credentialFingerprint: 'f'.repeat(64),
+};
+
+function assertValidationFailure(raw: unknown, failure: ResponseValidationFailure, questions = failureQuestions): void {
+  assert.throws(() => validateEvaluation(raw, questions, observedTransport), error => {
+    assertProviderError(error, 'invalid_response');
+    assert.equal(error.transport?.responseValidationFailure, failure);
+    return true;
+  });
+}
+
 describe('provider response validation', () => {
   it('rejects malformed probabilities, wrong choices, malformed noul, and schema-invalid responses', () => {
     const malformed = validEvaluation();
@@ -31,37 +50,60 @@ describe('provider response validation', () => {
       compile_error: 0.01, assertion_failure: 0.01, missing_dependency: 0.01,
       unavailable_service: 0.01, permission_failure: 0.01, insufficient_evidence: 0.01,
     };
-    assert.throws(() => validateEvaluation(malformed, failureQuestions), error => {
-      assertProviderError(error, 'invalid_response'); return true;
-    });
+    assertValidationFailure(malformed, 'probability_sum_invalid');
 
     const wrongChoice = validEvaluation();
     ((wrongChoice.answers as Record<string, unknown>).category as Record<string, unknown>).choice = 'not-a-category';
-    assert.throws(() => validateEvaluation(wrongChoice, failureQuestions), error => {
-      assertProviderError(error, 'invalid_response'); return true;
-    });
+    assertValidationFailure(wrongChoice, 'choice_unknown');
 
     const badNoul = validEvaluation();
     ((badNoul.answers as Record<string, unknown>).reached_assertion as Record<string, unknown>).noul = Number.NaN;
-    assert.throws(() => validateEvaluation(badNoul, failureQuestions), error => {
-      assertProviderError(error, 'invalid_response'); return true;
-    });
+    assertValidationFailure(badNoul, 'answer_schema');
 
     const invalidModel = {...validEvaluation(), model: 'provider-model-is-not-jev'};
-    assert.throws(() => validateEvaluation(invalidModel, failureQuestions), error => {
-      assertProviderError(error, 'invalid_response'); return true;
-    });
+    assertValidationFailure(invalidModel, 'model_mismatch');
   });
 
   it('requires exact answer IDs and exact probability keys', () => {
     const missingAnswer = validEvaluation();
     delete (missingAnswer.answers as Record<string, unknown>).missing_context;
-    assert.throws(() => validateEvaluation(missingAnswer, failureQuestions));
+    assertValidationFailure(missingAnswer, 'answer_keys_mismatch');
 
     const extraProbability = validEvaluation();
     const probabilities = ((extraProbability.answers as Record<string, unknown>).category as Record<string, unknown>).probabilities as Record<string, number>;
     probabilities.extra = 0;
-    assert.throws(() => validateEvaluation(extraProbability, failureQuestions));
+    assertValidationFailure(extraProbability, 'probability_keys_mismatch');
+  });
+
+  it('compares probability keys without delimiter collisions and exposes no response-controlled detail', () => {
+    const secretKey = 'b,c';
+    const questions: Record<string, Question> = {
+      decision: {type: 'choice', instructions: 'Choose one', criteria: {'a,b': 'first', c: 'second'}},
+    };
+    const raw = {
+      model: 'jev-1.13.0',
+      answers: {decision: {type: 'choice', choice: 'c', probabilities: {a: 0.5, [secretKey]: 0.5}, confidence: 0.5}},
+      usage: {input_tokens: 1, output_tokens: 1},
+    };
+    assert.throws(() => validateEvaluation(raw, questions, observedTransport), error => {
+      assertProviderError(error, 'invalid_response');
+      assert.equal(error.transport?.responseValidationFailure, 'probability_keys_mismatch');
+      assert.equal(JSON.stringify(error).includes(secretKey), false);
+      assert.equal(String(error).includes(secretKey), false);
+      return true;
+    });
+  });
+
+  it('distinguishes response shape and choice consistency failures with fixed stages', () => {
+    assertValidationFailure({model: 'jev-1.13.0'}, 'response_schema');
+    const notArgmax = validEvaluation();
+    const choice = (notArgmax.answers as Record<string, any>).category;
+    choice.choice = 'compile_error';
+    choice.probabilities = {
+      compile_error: 0.1, assertion_failure: 0.85, missing_dependency: 0.01,
+      unavailable_service: 0.01, permission_failure: 0.01, insufficient_evidence: 0.02,
+    };
+    assertValidationFailure(notArgmax, 'choice_not_argmax');
   });
 });
 
@@ -85,6 +127,7 @@ describe('provider transport', () => {
     assert.equal(result.transport.validatedResponse, true);
     assert.equal(result.transport.providerRequestId, 'req_typesafe_123');
     assert.equal(result.transport.providerRequestIdHeader, 'x-typesafe-request-id');
+    assert.equal(Object.hasOwn(result.transport, 'responseValidationFailure'), false);
     assert.equal(result.transport.credentialFingerprint, createHash('sha256').update('provider-key').digest('hex'));
     assert.match(result.transport.requestStartedAt, /^\d{4}-\d{2}-\d{2}T/);
     assert.match(result.transport.responseReceivedAt!, /^\d{4}-\d{2}-\d{2}T/);
@@ -139,8 +182,9 @@ describe('provider transport', () => {
     }
   });
 
-  it('maps malformed and empty successful response bodies to invalid_response', async () => {
-    for (const body of ['not-json', '']) {
+  it('maps missing, malformed, and empty successful response bodies to fixed validation stages', async () => {
+    const rawSecret = 'raw-provider-secret-must-not-escape';
+    for (const [body, failure] of [[null, 'missing_body'], [rawSecret, 'invalid_json'], ['', 'invalid_json']] as const) {
       await assert.rejects(() => evaluateProvider({
         state: {}, questions: failureQuestions, apiKey: 'key', timeoutMs: 1000,
         fetchFn: async () => new Response(body, {status: 200}),
@@ -148,6 +192,9 @@ describe('provider transport', () => {
         assertProviderError(error, 'invalid_response');
         assert.equal(error.transport?.responseStatus, 200);
         assert.equal(error.transport?.validatedResponse, false);
+        assert.equal(error.transport?.responseValidationFailure, failure);
+        assert.equal(JSON.stringify(error).includes(rawSecret), false);
+        assert.equal(String(error).includes(rawSecret), false);
         return true;
       });
     }

@@ -5,14 +5,25 @@ Verification date: 2026-09-18
 This report covers the public source and packaged runtime. It records the checks
 below; it does not establish directory approval, provider billing, or model quality.
 
-## Verified
+## Verified in 0.2.1
 
-- Integrated test suite: **89 passed, 0 failed, 0 skipped** in the current
-  accounting-inclusive run.
-- The public source also passed a clean dependency install, typecheck, build, all 89 tests and manifest validation.
+- Integrated test suite: **91 passed, 0 failed, 0 skipped** in the current
+  accounting and response-diagnostic run.
+- Canonical source passed a clean locked dependency install, typecheck, build, all 91 tests and manifest validation. The packaged public source also passed typecheck, all 91 tests and manifest validation using that same locked dependency tree.
 - TypeScript typecheck: **passed**.
 - Build: **passed**.
 - Manifest validation: **passed**; the packaged entrypoints and manifests agree.
+- Fresh installed native MCP status: **passed** for runtime 0.2.1. It loaded all
+  12 lifecycle adapters and verified reservation semantics, credential partitions,
+  unknown billing and unlimited default call/byte/session settings.
+- Response diagnostics: fixed validation-stage codes are retained without provider
+  bodies, arbitrary field names, exception messages or credentials. Regression
+  tests cover malformed bodies, schema/model/key/probability failures, the
+  delimiter-collision bug, and receipt persistence.
+- Distribution verifier and its two regression tests: **passed**.
+
+## Earlier native integration evidence (0.2.0)
+
 - Installed-accounting probe: **passed**. The controlled probe observed one
   successful HTTP 200 response with a provider request identifier; the immediate
   cached repeat reused the retained result and made no second request.
@@ -30,8 +41,6 @@ below; it does not establish directory approval, provider billing, or model qual
   validated evaluations, including two additional validated abstentions outside
   the correlated hook subset. These are retained local counts, not billing.
   See the [sanitized remote-install report](verification/native-remote-install.json).
-- Distribution verifier and its two regression tests: **passed**. The verifier
-  checks complete generated-package parity and version/marketplace consistency.
 
 - Fresh native MCP status checks passed for both the installed personal package and neutral public package. They asserted reservation semantics, current/other/unknown credential partitions, and unknown provider billing.
 

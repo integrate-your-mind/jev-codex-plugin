@@ -389,7 +389,7 @@ let threadId;
 try {
   if (nativeTurn && !enableAutomation) throw new Error('JEV_NATIVE_TURN=1 requires JEV_ENABLE_AUTOMATION=1');
   await rpc('initialize', {
-    clientInfo: { name: 'jev_native_smoke', title: 'Jev native plugin smoke test', version: '0.2.0' },
+    clientInfo: { name: 'jev_native_smoke', title: 'Jev native plugin smoke test', version: '0.2.1' },
     capabilities: {
       experimentalApi: true,
       requestAttestation: false,
