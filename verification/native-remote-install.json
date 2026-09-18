@@ -47,5 +47,15 @@
     "One HTTP 200 response did not satisfy response validation and was retained as unavailable/invalid_response; no success was inferred from HTTP status alone.",
     "No provider billing or classification-quality claim.",
     "A separate chat QA remains waiting on approval."
-  ]
+  ],
+  "responseCountScope": "Four hook invocations correlated to this native command run, not the entire isolated state inventory.",
+  "isolatedStateInventory": {
+    "reservedAttempts": 6,
+    "httpResponses": 6,
+    "httpSuccessResponses": 6,
+    "validatedEvaluations": 5,
+    "uniqueProviderRequestIds": 6,
+    "additionalValidatedAbstentionsOutsideCorrelatedSubset": 2,
+    "basis": "Read-only receipt and reservation-file inspection after the native run; statusCall in the private harness report was captured before the run."
+  }
 }

@@ -24,8 +24,11 @@ below; it does not establish directory approval, provider billing, or model qual
   commit and all 19 installed package files matched the public source. A real
   Codex turn loaded all 12 adapters, exercised five lifecycle events, executed
   a command, and correlated its output with the retained Jev receipt. The four
-  HTTP 200 responses yielded three validated evaluations and one
+  hook-correlated HTTP 200 responses yielded three validated evaluations and one
   `unavailable/invalid_response`; all four retained provider request identifiers.
+  The full isolated receipt inventory held six HTTP 200 responses and five
+  validated evaluations, including two additional validated abstentions outside
+  the correlated hook subset. These are retained local counts, not billing.
   See the [sanitized remote-install report](verification/native-remote-install.json).
 - Distribution verifier and its two regression tests: **passed**. The verifier
   checks complete generated-package parity and version/marketplace consistency.
