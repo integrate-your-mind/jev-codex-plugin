@@ -9,8 +9,7 @@ or model quality benchmark.
 ## Verified
 
 - Integrated test suite: **89 passed, 0 failed, 0 skipped** in the current
-  accounting-inclusive run; additional accounting tests are pending, so this
-  count is provisional.
+  accounting-inclusive run.
 - The public source also passed a clean dependency install, typecheck, build, all 89 tests and manifest validation.
 - TypeScript typecheck: **passed**.
 - Build: **passed**.
@@ -60,6 +59,7 @@ transcripts, or model accuracy/performance benchmarks are included here.
 
 ## Release status
 
-The source is checkpointed locally for release review. The public repository has
-not been published, and official directory approval has not been obtained. No external publication or live
-provider call is implied by this report.
+This repository is a release candidate for the public Git marketplace. Final
+chat QA, provider dashboard reconciliation, and official directory review remain
+open. A public source repository or prerelease does not establish final acceptance
+or OpenAI Directory approval.
