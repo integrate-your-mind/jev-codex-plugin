@@ -1,0 +1,51 @@
+{
+  "sourceCommit": "b01d07786f3a30da55c9fc6a2ff0538f53ef408e",
+  "downloadedCommit": "b01d07786f3a30da55c9fc6a2ff0538f53ef408e",
+  "finishedAt": "2026-09-18T15:11:50.717Z",
+  "installationSource": "GitHub marketplace integrate-your-mind/jev-codex-plugin",
+  "packageVersion": "0.2.0",
+  "packageFilesMatched": 19,
+  "nativeRuntimeChecksPassed": true,
+  "mcpRuntimeStatus": "connected",
+  "hooksLoaded": 12,
+  "hookEventsObserved": [
+    "postToolUse",
+    "preToolUse",
+    "sessionStart",
+    "stop",
+    "userPromptSubmit"
+  ],
+  "commandExitCode": 0,
+  "commandOutputReceiptMatched": true,
+  "correlatedInvocations": 4,
+  "httpResponses": 4,
+  "httpSuccessResponses": 4,
+  "validatedEvaluations": 3,
+  "providerRequestIdentifiersRetained": 4,
+  "outcomes": [
+    {
+      "event": "UserPromptSubmit",
+      "status": "assessed"
+    },
+    {
+      "event": "PostToolUse",
+      "status": "assessed"
+    },
+    {
+      "event": "Stop",
+      "status": "assessed"
+    },
+    {
+      "event": "PreToolUse",
+      "status": "unavailable",
+      "reason": "invalid_response"
+    }
+  ],
+  "providerBilledRequests": null,
+  "billingReconciled": false,
+  "limitations": [
+    "One HTTP 200 response did not satisfy response validation and was retained as unavailable/invalid_response; no success was inferred from HTTP status alone.",
+    "No provider billing or classification-quality claim.",
+    "A separate chat QA remains waiting on approval."
+  ]
+}

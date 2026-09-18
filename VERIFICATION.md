@@ -2,9 +2,8 @@
 
 Verification date: 2026-09-18
 
-This report covers the public staging tree. It is evidence of the checks listed
-below; it is not a publication, directory approval, provider billing statement,
-or model quality benchmark.
+This report covers the public source and packaged runtime. It records the checks
+below; it does not establish directory approval, provider billing, or model quality.
 
 ## Verified
 
@@ -21,8 +20,23 @@ or model quality benchmark.
   plugin's 12-hook lifecycle and captured real command execution, output, and
   Stop evidence.
 - Native final success, failure, and asynchronous scenarios: **passed**.
+- Installation from the public GitHub marketplace: **passed**. The downloaded
+  commit and all 19 installed package files matched the public source. A real
+  Codex turn loaded all 12 adapters, exercised five lifecycle events, executed
+  a command, and correlated its output with the retained Jev receipt. The four
+  HTTP 200 responses yielded three validated evaluations and one
+  `unavailable/invalid_response`; all four retained provider request identifiers.
+  See the [sanitized remote-install report](verification/native-remote-install.json).
+- Distribution verifier and its two regression tests: **passed**. The verifier
+  checks complete generated-package parity and version/marketplace consistency.
 
 - Fresh native MCP status checks passed for both the installed personal package and neutral public package. They asserted reservation semantics, current/other/unknown credential partitions, and unknown provider billing.
+
+## Hosted CI
+
+The [initial GitHub Actions run](https://github.com/integrate-your-mind/jev-codex-plugin/actions/runs/35360672909)
+was blocked by the hosting account before any test step executed. Hosted CI is
+**not passed**. The local results above are separate evidence.
 
 ## Accounting boundary
 
