@@ -1,0 +1,41 @@
+{
+  "name": "jev-workflows",
+  "packageKind": "codex-legacy-host-compatibility",
+  "generatedAt": "2026-09-18T14:51:18.375Z",
+  "source": "Generated from the portable source package; root plugin.json and mcp.json are intentionally omitted.",
+  "loaderReason": "Codex hosts that select the legacy .codex-plugin/plugin.json shape can discover hooks/hooks.json.",
+  "retained": [
+    ".codex-plugin/plugin.json",
+    ".mcp.json",
+    "hooks/hooks.json",
+    "skills/",
+    "dist/",
+    "LICENSE"
+  ],
+  "omitted": [
+    "plugin.json",
+    "mcp.json",
+    "node_modules/",
+    "work/",
+    "receipts/",
+    "src/",
+    "tests/"
+  ],
+  "credentialHandling": "The .mcp.json env_vars field contains names only; the host must provide values.",
+  "legacyMcpPathSemantics": "Relative cwd is resolved beneath the plugin root; stdio args are passed through unchanged.",
+  "legacyMcpDeclaration": {
+    "args": [
+      "dist/server.mjs"
+    ],
+    "cwd": "."
+  },
+  "legacyMcpSource": "https://github.com/openai/codex/blob/main/codex-rs/codex-mcp/src/plugin_config.rs",
+  "stateDirectory": null,
+  "stateMode": {
+    "mode": "user",
+    "source": "neutral-legacy-host-default",
+    "mcpEnvironment": "JEV_STATE_MODE",
+    "rewrittenHookCommands": 12,
+    "pluginDataReserved": true
+  }
+}

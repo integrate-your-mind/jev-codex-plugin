@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "jev-workflows": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PLUGIN_ROOT}/dist/server.mjs"
+      ],
+      "cwd": "${PLUGIN_ROOT}",
+      "env_vars": [
+        "TYPESAFE_API_KEY",
+        "JEV_ENABLED",
+        "JEV_HOOKS_ENABLED",
+        "JEV_MAX_CALLS_PER_DAY",
+        "JEV_MAX_BYTES_PER_DAY",
+        "JEV_ALLOWED_WORKSPACES"
+      ]
+    }
+  }
+}

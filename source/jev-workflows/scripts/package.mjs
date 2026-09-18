@@ -1,0 +1,11 @@
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { resolve, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const source = fileURLToPath(new URL('..', import.meta.url));
+const target = resolve(process.argv[2] ?? '../jev-workflows-release/jev-workflows');
+if (source === target || target.includes('node_modules')) throw new Error('Invalid release target');
+await mkdir(target, {recursive: true});
+const files = ['plugin.json','mcp.json','.codex-plugin','.mcp.json','skills','hooks','dist','src','scripts','tests','fixtures','schemas','docs','package.json','package-lock.json','tsconfig.json','README.md','LICENSE','.gitignore'];
+for (const name of files) await cp(join(source, name), join(target, name), {recursive: true});
+await writeFile(join(target, 'RELEASE.json'), JSON.stringify({name:'jev-workflows',version:JSON.parse(await readFile(join(source,'plugin.json'),'utf8')).version,runtimeVersion:JSON.parse(await readFile(join(source,'package.json'),'utf8')).version,createdAt:new Date().toISOString(),source:'Source and prebuilt runtime included. No credentials, state, or node_modules are packaged.'},null,2)+'\n');
+console.log(`Release staged: ${target}`);

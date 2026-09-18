@@ -1,0 +1,344 @@
+[
+  {
+    "id": "decision-tool-01",
+    "input": {
+      "domain": "tool",
+      "question": "Which tool should locate every occurrence of the literal token `timeoutMs` across the local source tree?",
+      "context": "The task requires a recursive text search with file names and line numbers. The source tree is local and already available to the task.",
+      "candidates": [
+        {
+          "id": "rg",
+          "description": "Recursive literal or regex text search that reports matching file paths and line numbers.",
+          "metadata": {"scope": "local-source", "supportsLineNumbers": true}
+        },
+        {
+          "id": "view_image",
+          "description": "Opens a local image file for visual inspection; it does not search source text.",
+          "metadata": {"scope": "local-image", "supportsLineNumbers": false}
+        }
+      ],
+      "evidence": [
+        {"id": "ev-tool-01-a", "text": "The requested artifact is source text and the desired result includes all matching paths and lines.", "source": "task-brief"},
+        {"id": "ev-tool-01-b", "text": "No image inspection or browser navigation is required.", "source": "task-brief"}
+      ],
+      "mode": "evaluate"
+    },
+    "expectedChoice": "rg"
+  },
+  {
+    "id": "decision-tool-02",
+    "input": {
+      "domain": "tool",
+      "question": "Which tool should inspect the rendered pixels of the supplied PNG artifact for layout comparison?",
+      "context": "The artifact is a local PNG. The question concerns visual alignment and spacing, so text search alone cannot answer it.",
+      "candidates": [
+        {
+          "id": "view_image",
+          "description": "Loads a local image and exposes its rendered pixels for visual inspection.",
+          "metadata": {"inputType": "png", "inspection": "visual"}
+        },
+        {
+          "id": "rg",
+          "description": "Searches text files for matching strings and reports textual locations.",
+          "metadata": {"inputType": "text", "inspection": "lexical"}
+        }
+      ],
+      "evidence": [
+        {"id": "ev-tool-02-a", "text": "The supplied artifact has image/png content and the acceptance criterion refers to visible alignment.", "source": "artifact-manifest"},
+        {"id": "ev-tool-02-b", "text": "No textual token or source line is the object of this check.", "source": "task-brief"}
+      ],
+      "mode": "evaluate"
+    },
+    "expectedChoice": "view_image"
+  },
+  {
+    "id": "decision-model-01",
+    "input": {
+      "domain": "model",
+      "question": "Which generic model profile fits a short formatting explanation with no code changes?",
+      "context": "The response is a bounded explanation of three formatting rules. It does not require repository-wide reasoning or a large context window.",
+      "candidates": [
+        {
+          "id": "fast",
+          "description": "Measured local profile: 0.8 second median response, 64k context capacity, and 0.4 relative request cost; handles short explanations.",
+          "metadata": {"medianSeconds": 0.8, "contextTokens": 64000, "relativeCost": 0.4}
+        },
+        {
+          "id": "capable",
+          "description": "Measured local profile: 2.4 second median response, 200k context capacity, and 1.0 relative request cost; supports deeper multi-file reasoning.",
+          "metadata": {"medianSeconds": 2.4, "contextTokens": 200000, "relativeCost": 1}
+        }
+      ],
+      "evidence": [
+        {"id": "ev-model-01-a", "text": "The requested output is short and self-contained; no repository files need to be compared.", "source": "task-brief"},
+        {"id": "ev-model-01-b", "text": "The supplied local measurements show fast has lower median time and lower relative cost for this bounded workload.", "source": "benchmark-note"}
+      ],
+      "mode": "evaluate"
+    },
+    "expectedChoice": "fast"
+  },
+  {
+    "id": "decision-model-02",
+    "input": {
+      "domain": "model",
+      "question": "Which generic model profile fits reconciling six conflicting design documents and their code references?",
+      "context": "The task requires comparing a large supplied context, tracing references across files, and explaining contradictions. The output must cite the supplied evidence.",
+      "candidates": [
+        {
+          "id": "fast",
+          "description": "Measured local profile: 0.8 second median response, 64k context capacity, and 0.4 relative request cost; optimized for short bounded requests.",
+          "metadata": {"medianSeconds": 0.8, "contextTokens": 64000, "relativeCost": 0.4}
+        },
+        {
+          "id": "capable",
+          "description": "Measured local profile: 2.4 second median response, 200k context capacity, and 1.0 relative request cost; supports deeper multi-file reasoning.",
+          "metadata": {"medianSeconds": 2.4, "contextTokens": 200000, "relativeCost": 1}
+        }
+      ],
+      "evidence": [
+        {"id": "ev-model-02-a", "text": "The six documents and referenced snippets exceed the short-request profile's stated 64k context capacity.", "source": "context-estimate"},
+        {"id": "ev-model-02-b", "text": "The task explicitly requires contradiction analysis and evidence-linked reasoning across files.", "source": "task-brief"}
+      ],
+      "mode": "evaluate"
+    },
+    "expectedChoice": "capable"
+  },
+  {
+    "id": "decision-task-01",
+    "input": {
+      "domain": "task",
+      "question": "What should happen next after the command failed before the test runner started?",
+      "context": "A local command exited 127 with `fixture-check: command not found`. The requested behavior is to diagnose the failure before editing application source.",
+      "candidates": [
+        {
+          "id": "inspect-dependency",
+          "description": "Check whether the executable is installed, declared, and available on the current PATH.",
+          "metadata": {"requiresSourceEdit": false, "stage": "prerequisite"}
+        },
+        {
+          "id": "edit-source",
+          "description": "Modify application source as though runtime behavior had failed.",
+          "metadata": {"requiresSourceEdit": true, "stage": "implementation"}
+        }
+      ],
+      "evidence": [
+        {"id": "ev-task-01-a", "text": "Exit code 127 and the command-not-found message show that the requested executable did not start.", "source": "command-result"},
+        {"id": "ev-task-01-b", "text": "No application test or source assertion was reached.", "source": "command-result"}
+      ],
+      "mode": "evaluate"
+    },
+    "expectedChoice": "inspect-dependency"
+  },
+  {
+    "id": "decision-task-02",
+    "input": {
+      "domain": "task",
+      "question": "Which diagnosis should be adopted from this failed job summary?",
+      "context": "The only supplied result says `job failed` with exit code 1. It does not identify the child command, stage, output, assertion, dependency, service, or permission state.",
+      "candidates": [
+        {
+          "id": "assume-config-failure",
+          "description": "Conclude that configuration or environment prerequisites caused the failed job.",
+          "metadata": {"scope": "environment", "requiresEvidence": true}
+        },
+        {
+          "id": "assume-source-failure",
+          "description": "Conclude that application source caused the failed job.",
+          "metadata": {"scope": "source", "requiresEvidence": true}
+        }
+      ],
+      "evidence": [
+        {"id": "ev-task-02-a", "text": "The job summary contains only a nonzero exit and no diagnostic stage.", "source": "job-summary"},
+        {"id": "ev-task-02-b", "text": "There is no evidence that the job reached either configuration validation or application behavior.", "source": "job-summary"}
+      ],
+      "mode": "evaluate"
+    },
+    "expectedChoice": "insufficient_evidence"
+  },
+  {
+    "id": "decision-general-01",
+    "input": {
+      "domain": "general",
+      "question": "Which release disposition is supported by the supplied acceptance evidence?",
+      "context": "The release candidate passed the required local checks, the artifact digest matches the recorded digest, and the documented acceptance criteria contain no unresolved item.",
+      "candidates": [
+        {
+          "id": "keep-current",
+          "description": "Keep the current candidate unchanged while recording the completed local acceptance evidence.",
+          "metadata": {"requiresNewEvidence": false, "changesArtifact": false}
+        },
+        {
+          "id": "replace-candidate",
+          "description": "Replace the candidate with a different artifact despite the supplied checks and matching digest.",
+          "metadata": {"requiresNewEvidence": true, "changesArtifact": true}
+        }
+      ],
+      "evidence": [
+        {"id": "ev-general-01-a", "text": "All listed local acceptance checks are recorded as passed.", "source": "acceptance-record"},
+        {"id": "ev-general-01-b", "text": "The candidate digest equals the digest in the release record.", "source": "release-record"}
+      ],
+      "mode": "evaluate"
+    },
+    "expectedChoice": "keep-current"
+  },
+  {
+    "id": "decision-strategy-01",
+    "input": {
+      "domain": "strategy",
+      "question": "Which reported conclusion should be accepted to resolve the disagreement?",
+      "context": "Report A says the service is unavailable and Report B says an assertion failed. The reports provide no command output, timestamps, or evidence IDs, so their scopes cannot be compared.",
+      "candidates": [
+        {
+          "id": "assume-service-unavailable",
+          "description": "Accept Report A's service-unavailable conclusion without corroborating command evidence.",
+          "metadata": {"requiresNewEvidence": true, "risk": "unbounded"}
+        },
+        {
+          "id": "assume-assertion-failure",
+          "description": "Accept Report B's assertion-failure conclusion without corroborating command evidence.",
+          "metadata": {"requiresNewEvidence": true, "risk": "unbounded"}
+        }
+      ],
+      "evidence": [
+        {"id": "ev-strategy-01-a", "text": "The reports disagree on the proximate failure category.", "source": "report-index"},
+        {"id": "ev-strategy-01-b", "text": "Neither report supplies output, timestamps, or stable evidence identifiers.", "source": "report-index"}
+      ],
+      "mode": "evaluate"
+    },
+    "expectedChoice": "insufficient_evidence"
+  }
+,
+  {
+    "id": "decision-skill-01",
+    "input": {
+      "domain": "skill",
+      "question": "Which skill should verify a local plugin manifest against its schema before packaging?",
+      "context": "The artifact is an Agent Plugin manifest and the goal is schema validation before creating a release package. The available choices must be selected from the listed skills.",
+      "candidates": [
+        {
+          "id": "plugin-creator",
+          "description": "Use the plugin-creator workflow and its manifest validator to check plugin structure and packaging requirements.",
+          "available": true,
+          "metadata": {
+            "artifact": "agent-plugin",
+            "stage": "pre-package",
+            "checksSchema": true
+          }
+        },
+        {
+          "id": "imagegen",
+          "description": "Generate or edit images from a visual prompt; it does not validate plugin manifests or package metadata.",
+          "available": true,
+          "metadata": {
+            "artifact": "image",
+            "stage": "visual-production",
+            "checksSchema": false
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "id": "ev-skill-01-a",
+          "text": "The requested artifact is a plugin manifest and the acceptance step is schema validation before packaging.",
+          "source": "task-brief"
+        },
+        {
+          "id": "ev-skill-01-b",
+          "text": "The plugin-creator workflow provides manifest validation; the imagegen workflow does not inspect plugin metadata.",
+          "source": "skill-catalog"
+        }
+      ],
+      "mode": "evaluate"
+    },
+    "expectedChoice": "plugin-creator"
+  },
+  {
+    "id": "decision-context-01",
+    "input": {
+      "domain": "context",
+      "question": "Which context should be supplied when assessing the next step after a completed tool call?",
+      "context": "The tool call has a matching current turn ID and a bounded result summary captured by the adapter. No stable transcript interface is available, so the assessment should use only same-turn evidence.",
+      "candidates": [
+        {
+          "id": "current-turn-summary",
+          "description": "Use the bounded result summaries recorded for the matching current turn and identify missing evidence explicitly.",
+          "available": true,
+          "metadata": {
+            "scope": "same-turn",
+            "bounded": true,
+            "transcriptRequired": false
+          }
+        },
+        {
+          "id": "full-transcript",
+          "description": "Read an assumed complete transcript and infer context beyond the captured tool result.",
+          "available": true,
+          "metadata": {
+            "scope": "cross-turn",
+            "bounded": false,
+            "transcriptRequired": true
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "id": "ev-context-01-a",
+          "text": "A matching turn ID and bounded tool-result summary are present for the current turn.",
+          "source": "hook-receipt"
+        },
+        {
+          "id": "ev-context-01-b",
+          "text": "The transcript path is not a stable hook interface and no full transcript evidence was supplied.",
+          "source": "host-contract"
+        }
+      ],
+      "mode": "evaluate"
+    },
+    "expectedChoice": "current-turn-summary"
+  },
+  {
+    "id": "decision-result-01",
+    "input": {
+      "domain": "result",
+      "question": "Which result interpretation is supported by the captured command evidence?",
+      "context": "The command exited with code 0 and its captured output states `12 tests passed`. The receipt identifies the same command invocation and contains no error or pending marker.",
+      "candidates": [
+        {
+          "id": "completed-success",
+          "description": "Treat the command result as a successful completed run, while limiting the claim to the captured command and tests.",
+          "available": true,
+          "metadata": {
+            "exitCode": 0,
+            "testsPassed": 12,
+            "pending": false
+          }
+        },
+        {
+          "id": "incomplete-evidence",
+          "description": "Treat the result as too incomplete to establish whether the command completed successfully.",
+          "available": true,
+          "metadata": {
+            "exitCode": "unknown",
+            "testsPassed": "unknown",
+            "pending": "unknown"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "id": "ev-result-01-a",
+          "text": "The recorded process exit code is 0 for the matching invocation.",
+          "source": "command-receipt"
+        },
+        {
+          "id": "ev-result-01-b",
+          "text": "The captured output explicitly says `12 tests passed`, with no error or pending marker.",
+          "source": "command-output"
+        }
+      ],
+      "mode": "evaluate"
+    },
+    "expectedChoice": "completed-success"
+  }
+
+]

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "jev-workflows",
+  "version": "0.2.0",
+  "description": "Jev classification for tools, models, tasks and arbitrary decisions, with evidence review and automatic Codex lifecycle consultation.",
+  "author": {
+    "name": "Romy Mondello"
+  },
+  "keywords": [
+    "codex",
+    "debugging",
+    "evidence",
+    "jev"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Jev Workflows",
+        "shortDescription": "Consult Jev for tools, models, tasks, and evidence-based decisions.",
+        "longDescription": "Jev Workflows supplies a general closed-choice classifier, failure diagnosis, completion review, and scoped automatic lifecycle consultation. Decisions remain advisory, preserve evidence references, and never grant permissions or invent tool or model availability.",
+        "developerName": "Romy Mondello",
+        "category": "Developer tools",
+        "capabilities": [
+          "Read"
+        ],
+        "defaultPrompt": [
+          "Use Jev to choose the next tool, model, or task from the available options.",
+          "Classify this using my categories and evidence.",
+          "Enable automatic Jev consultation for my Codex work."
+        ]
+      }
+    }
+  }
+}

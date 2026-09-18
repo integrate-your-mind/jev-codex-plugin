@@ -1,0 +1,35 @@
+{
+  "name": "jev-workflows",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test --test-concurrency=2 tests/*.test.ts",
+    "validate": "node scripts/validate-manifests.mjs",
+    "eval": "node --import tsx scripts/evaluate.ts",
+    "eval:decision": "node --import tsx scripts/decision-evaluate.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.1",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "esbuild": "0.28.2",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/integrate-your-mind/jev-codex-plugin.git"
+  },
+  "homepage": "https://github.com/integrate-your-mind/jev-codex-plugin"
+}

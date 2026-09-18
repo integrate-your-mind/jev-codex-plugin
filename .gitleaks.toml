@@ -1,0 +1,12 @@
+ [extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+  [[rules.allowlists]]
+  description = "Intentional redaction fixture in the decision-hook test"
+  condition = "AND"
+  regexTarget = "match"
+  paths = ['^source/jev-workflows/tests/decision-hook\.test\.ts$']
+  regexes = ['sk-123456789012345']

@@ -1,0 +1,154 @@
+{
+  "description": "Advisory Jev consultation across documented lifecycle events. Permission decisions remain with the host. Enable and scope through policy.json.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 1000
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 1000
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 1000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 1000
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 1000
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 1000
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 1000
+          }
+        ]
+      }
+    ],
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 1000
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 1000
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 1000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 1000
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 1000
+          }
+        ]
+      }
+    ]
+  }
+}
