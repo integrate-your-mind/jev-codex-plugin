@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Jev Workflows</title>
+  <desc id="desc">One decision branches into two possible paths; the upper path is highlighted.</desc>
+  <rect width="512" height="512" rx="112" fill="#101A25"/>
+  <path d="M176 256h48c24 0 32-16 32-40v-16c0-28 16-40 40-40h28" fill="none" stroke="#B9F5D0" stroke-width="24" stroke-linecap="round"/>
+  <path d="M176 256h48c24 0 32 16 32 40v16c0 28 16 40 40 40h28" fill="none" stroke="#70879A" stroke-width="24" stroke-linecap="round"/>
+  <circle cx="148" cy="256" r="42" fill="#F7F7F2"/>
+  <circle cx="354" cy="160" r="38" fill="#B9F5D0"/>
+  <circle cx="354" cy="352" r="30" fill="#101A25" stroke="#70879A" stroke-width="16"/>
+</svg>

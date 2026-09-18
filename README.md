@@ -1,8 +1,10 @@
+<img src="assets/jev-workflows-mark.svg" width="80" height="80" alt="Jev Workflows branching decision icon">
+
 # Jev Workflows for Codex
 
 An open-source Codex plugin for consulting [TypeSafe Jev](https://docs.typesafe.ai/) about tools, models, tasks, skills, context, strategies, and custom decisions. It also diagnoses failed commands and checks completion claims against evidence.
 
-**Release candidate:** the source, packaged runtime and native integration have passed the checks in [VERIFICATION.md](VERIFICATION.md). Separate chat QA and provider dashboard reconciliation remain open. This is an independently maintained Git marketplace, not an approved OpenAI Directory listing.
+**Release candidate:** the source, packaged runtime, native integration and independent agent-chat QA have passed the checks in [VERIFICATION.md](VERIFICATION.md). Provider dashboard reconciliation remains open. This is an independently maintained Git marketplace, not an approved OpenAI Directory listing.
 
 ## Install
 
