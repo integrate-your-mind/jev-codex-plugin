@@ -45,7 +45,7 @@ const rpc=(method,params)=>new Promise((resolvePromise,reject)=>{
 });
 const report={startedAt:new Date().toISOString(),ephemeral:true,generativeTurns:0};
 try {
-  report.initialize=await rpc('initialize',{clientInfo:{name:'jev_plugin_probe',title:'Jev plugin integration test',version:'0.2.1'},capabilities:{experimentalApi:true,requestAttestation:false}});
+  report.initialize=await rpc('initialize',{clientInfo:{name:'jev_plugin_probe',title:'Jev plugin integration test',version:'0.2.2'},capabilities:{experimentalApi:true,requestAttestation:false}});
   child.stdin.write(JSON.stringify({method:'initialized',params:{}})+'\n');
   if(process.env.JEV_INSTALL_PLUGIN==='1') report.install=await rpc('plugin/install',{marketplacePath:join(homedir(),'.agents/plugins/marketplace.json'),pluginName:'jev-workflows'});
   const plugin=await rpc('plugin/read',{marketplacePath:join(homedir(),'.agents/plugins/marketplace.json'),pluginName:'jev-workflows'});

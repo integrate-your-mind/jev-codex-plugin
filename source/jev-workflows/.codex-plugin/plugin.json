@@ -1,6 +1,6 @@
 {
   "name": "jev-workflows",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Jev classification for tools, models, tasks and arbitrary decisions, with evidence review and automatic Codex lifecycle consultation.",
   "author": {
     "name": "Romy Mondello"

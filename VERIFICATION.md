@@ -5,6 +5,20 @@ Verification date: 2026-09-18
 This report covers the public source and packaged runtime. It records the checks
 below; it does not establish directory approval, provider billing, or model quality.
 
+## Verified in 0.2.2
+
+- Fresh isolated native metadata and MCP checks passed for the 0.2.2 packaged
+  runtime. The server identified as version **0.2.2**, exposed all five tools,
+  loaded all 12 lifecycle hooks, and completed the native command with exit
+  code 0 and zero generative turns.
+- The check made no provider call. The default daily call, daily byte, and
+  session hook limits remained `null`.
+- `configure_automation` reports `destructiveHint: true` and explicitly states
+  that a newly written policy replaces the prior policy without retaining it.
+  See the [sanitized 0.2.2 native metadata report](verification/native-metadata-0.2.2.json).
+- This is local metadata and integration evidence. The 0.2.1 live-provider
+  QA below remains a separate release record and is not attributed to 0.2.2.
+
 ## Verified in 0.2.1
 
 - Integrated test suite: **91 passed, 0 failed, 0 skipped** in the current

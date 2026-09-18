@@ -38,6 +38,9 @@ describe('bundled MCP server', () => {
       const listed = await client.listTools();
       const names = listed.tools.map(tool => tool.name);
       assert.deepEqual(names, ['jev_status', 'classify_failure', 'check_completion', 'classify_decision', 'configure_automation']);
+      const configureTool = listed.tools.find(tool => tool.name === 'configure_automation');
+      assert.deepEqual(configureTool?.annotations, {readOnlyHint: false, destructiveHint: true, openWorldHint: false});
+      assert.match(configureTool?.description ?? '', /prior policy is not retained/);
 
       const status = await client.callTool({name: 'jev_status', arguments: {}});
       const statusText = textOf(status);

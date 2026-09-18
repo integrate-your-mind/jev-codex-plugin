@@ -20159,7 +20159,7 @@ function createService(options = {}) {
   const digestOf = (value) => createHash2("sha256").update(JSON.stringify(value)).digest("hex");
   function status(policy = DEFAULT_POLICY) {
     return {
-      version: "0.2.1",
+      version: "0.2.2",
       provider: "TypeSafe",
       endpoint: ENDPOINT,
       model: MODEL,

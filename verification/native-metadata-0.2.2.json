@@ -1,0 +1,32 @@
+{
+  "verificationDate": "2026-09-18",
+  "packageVersion": "0.2.2",
+  "scope": "Fresh isolated native metadata and MCP integration checks; no generative turn and no provider call.",
+  "nativeRuntimeChecksPassed": true,
+  "mcpServerVersion": "0.2.2",
+  "mcpTools": [
+    "jev_status",
+    "classify_failure",
+    "check_completion",
+    "classify_decision",
+    "configure_automation"
+  ],
+  "hooksLoaded": 12,
+  "nativeCommandExitCode": 0,
+  "generativeTurns": 0,
+  "providerCall": false,
+  "defaultLimits": {
+    "dailyCalls": null,
+    "dailyBytes": null,
+    "sessionHookCalls": null
+  },
+  "configureAutomationMetadata": {
+    "destructiveHint": true,
+    "priorPolicyRetained": false
+  },
+  "limitations": [
+    "This report verifies local metadata, MCP tool exposure, hook discovery, and native startup behavior only.",
+    "It does not establish provider billing, model quality, hosted CI, or official directory approval.",
+    "The earlier 0.2.1 live-provider QA remains reported separately and is not reattributed to this metadata-only check."
+  ]
+}

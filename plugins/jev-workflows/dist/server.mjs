@@ -30723,7 +30723,7 @@ function createService(options = {}) {
   const digestOf = (value) => createHash2("sha256").update(JSON.stringify(value)).digest("hex");
   function status(policy = DEFAULT_POLICY) {
     return {
-      version: "0.2.1",
+      version: "0.2.2",
       provider: "TypeSafe",
       endpoint: ENDPOINT,
       model: MODEL,
@@ -30975,13 +30975,13 @@ async function readEvaluationUsage(directory, credentialFingerprint, now = /* @_
 
 // src/server.ts
 var service = createService();
-var server = new Server({ name: "jev-workflows", version: "0.2.1" }, { capabilities: { tools: {} } });
+var server = new Server({ name: "jev-workflows", version: "0.2.2" }, { capabilities: { tools: {} } });
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [
   { name: "jev_status", description: "Read local Jev plugin readiness and limits. Does not contact TypeSafe or expose credentials.", inputSchema: { type: "object", properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } },
   { name: "classify_failure", description: "Preview selected redacted command evidence locally, or evaluate an authorized payload with TypeSafe Jev. Evaluate sends data externally in a billable provider API request. Advisory failure classification; never edits files, approves permissions, or certifies a fix.", inputSchema: external_exports.toJSONSchema(failureSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
   { name: "check_completion", description: "Preview a completion claim and selected evidence locally, or evaluate an authorized payload with TypeSafe Jev. Returns support, partial support, contradiction, or insufficient evidence. Advisory assessment, not a substitute for independent tests or user acceptance.", inputSchema: external_exports.toJSONSchema(completionSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
   { name: "classify_decision", description: "Consult Jev for any classification or choice: tools, models and effort, tasks/delegation, skills, context, strategy, outcomes, or a caller-defined taxonomy. Supply the actual available candidates, question, evidence, and context containing the objective and constraints. Preview is local; evaluate sends a bounded redacted payload to TypeSafe. Returns a validated candidate ID or abstention, never permission or proof of execution. Use before consequential choices when the user has enabled Jev consultation.", inputSchema: external_exports.toJSONSchema(decisionSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
-  { name: "configure_automation", description: "Configure optional local evaluation caps and enable, scope, or disable automatic Jev lifecycle consultation for this local installation when the user requests it. There are no plugin-imposed daily call, byte-volume, or per-session caps by default; null leaves each optional cap unlimited, and only explicit user settings add caps. Stores only local policy, never credentials. Enabled hooks send bounded redacted event context through the TypeSafe provider API. Hook trust remains a separate host control.", inputSchema: external_exports.toJSONSchema(automationPolicySchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false } }
+  { name: "configure_automation", description: "Configure optional local evaluation caps and enable, scope, or disable automatic Jev lifecycle consultation for this local installation when the user requests it. There are no plugin-imposed daily call, byte-volume, or per-session caps by default; null leaves each optional cap unlimited, and only explicit user settings add caps. Replaces the previously saved local policy; the prior policy is not retained. Stores only local policy, never credentials. Enabled hooks send bounded redacted event context through the TypeSafe provider API. Hook trust remains a separate host control.", inputSchema: external_exports.toJSONSchema(automationPolicySchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false } }
 ] }));
 server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
   let result;
