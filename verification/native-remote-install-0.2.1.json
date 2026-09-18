@@ -1,0 +1,62 @@
+{
+  "sourceCommit": "5cff2ee98d926fe5e6a63d894537106a15431d6c",
+  "downloadedCommit": "5cff2ee98d926fe5e6a63d894537106a15431d6c",
+  "finishedAt": "2026-09-18T15:40:12.731Z",
+  "packageVersion": "0.2.1",
+  "runtimeVersion": "0.2.1",
+  "modelUsedForNativeCommand": "gpt-5.6-luna",
+  "packageFilesMatched": 19,
+  "nativeRuntimeChecksPassed": true,
+  "hooksLoaded": 12,
+  "hookEventsObserved": [
+    "postToolUse",
+    "preToolUse",
+    "sessionStart",
+    "stop",
+    "userPromptSubmit"
+  ],
+  "commandExitCode": 0,
+  "commandOutputReceiptMatched": true,
+  "correlatedHookCalls": {
+    "httpResponses": 4,
+    "validatedEvaluations": 4,
+    "providerRequestIdentifiersRetained": 4,
+    "outcomes": [
+      {
+        "event": "PostToolUse",
+        "status": "assessed",
+        "reason": null,
+        "responseValidationFailure": null
+      },
+      {
+        "event": "Stop",
+        "status": "assessed",
+        "reason": null,
+        "responseValidationFailure": null
+      },
+      {
+        "event": "UserPromptSubmit",
+        "status": "abstained",
+        "reason": "low_confidence",
+        "responseValidationFailure": null
+      },
+      {
+        "event": "PreToolUse",
+        "status": "assessed",
+        "reason": null,
+        "responseValidationFailure": null
+      }
+    ]
+  },
+  "fullIsolatedReceiptInventory": {
+    "receipts": 6,
+    "httpResponses": 6,
+    "validatedEvaluations": 6
+  },
+  "providerBilledRequests": null,
+  "billingReconciled": false,
+  "limitations": [
+    "A native pass proves integration behavior for the tested command, not general model quality or provider billing.",
+    "Separate chat QA and official-directory acceptance remain open."
+  ]
+}

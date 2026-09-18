@@ -22,6 +22,12 @@ below; it does not establish directory approval, provider billing, or model qual
   delimiter-collision bug, and receipt persistence.
 - Distribution verifier and its two regression tests: **passed**.
 
+- Public GitHub installation and native command run: **passed** for 0.2.1.
+  All 19 installed package files matched the downloaded revision. Four correlated
+  hook calls produced four validated evaluations (including an abstention) with
+  retained provider IDs. The full isolated inventory held six validated responses.
+  See the [0.2.1 remote-install report](verification/native-remote-install-0.2.1.json).
+
 ## Earlier native integration evidence (0.2.0)
 
 - Installed-accounting probe: **passed**. The controlled probe observed one
