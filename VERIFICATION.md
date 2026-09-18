@@ -75,8 +75,28 @@ native host did not expose an intermediate asynchronous hook event in the
 observed run. These are reporting/host-observation limitations, not a claim that
 those signals are universally absent.
 
-A separate chat QA run remains **waiting on approval** and is not counted as
-completed verification.
+A separate agent chat exercised the installed 0.2.1 runtime through successful,
+intentionally failing, and asynchronous commands. It reproduced two failing
+batch-rounding tests, applied a one-line fixture fix, and then passed all five
+tests. Jev classified the assertion failure, supported the bounded local fix,
+contradicted an unsupported deployment claim, and abstained on contradictory
+reports. It also evaluated tool, model/effort, task, skill, context, strategy and
+caller-defined decisions. These synthetic cases establish the observed behavior,
+not general classification accuracy. Automatic hook feedback was observed; exact
+per-command event attribution during parallel calls is not asserted.
+
+The run made 15 explicit provider evaluations: 11 assessed and four abstained.
+These are observations from these cases, not accuracy measurements. The JSON and
+Markdown reports were saved and read-back verified, including 22 unique provider
+request references across explicit calls and representative automatic feedback.
+An automatic response later failed probability-sum validation and was reported
+unavailable without blocking completion.
+
+The earlier QA chat retained a stale approval status after its command completed.
+The replacement chat ran under ordinary host policy and the user's existing QA
+authorization. Transient filesystem errors affected report creation, but the
+final reports were retained before disposable fixtures were removed.
+See the [sanitized chat QA report](verification/chat-qa-0.2.1.json).
 
 ## Secret scan
 
@@ -91,7 +111,7 @@ transcripts, or model accuracy/performance benchmarks are included here.
 
 ## Release status
 
-This repository is a release candidate for the public Git marketplace. Final
-chat QA, provider dashboard reconciliation, and official directory review remain
-open. A public source repository or prerelease does not establish final acceptance
+This repository is a release candidate for the public Git marketplace. Provider
+dashboard reconciliation and official directory review remain open. A public
+source repository or prerelease does not establish final acceptance
 or OpenAI Directory approval.

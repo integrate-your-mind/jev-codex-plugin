@@ -1,0 +1,74 @@
+{
+  "verificationDate": "2026-09-18",
+  "runtimeVersion": "0.2.1",
+  "releaseCodeRevision": "ae7f69a73e8c272f1971d85ed5821161e8f11a52",
+  "scope": "Independent agent-chat QA with synthetic local fixtures; no plugin source changes.",
+  "quotas": {
+    "dailyCalls": null,
+    "dailyBytes": null,
+    "sessionHookCalls": null
+  },
+  "commands": {
+    "harmlessSuccessExitCode": 0,
+    "intentionalFailureExitCode": 7,
+    "asynchronousCommand": {
+      "initialSessionObserved": true,
+      "polledOriginalSession": true,
+      "finalExitCode": 0
+    },
+    "regression": {
+      "tests": 5,
+      "before": {
+        "exitCode": 1,
+        "failures": 2
+      },
+      "after": {
+        "exitCode": 0,
+        "failures": 0
+      },
+      "fix": "Integer ceiling division replaces floor division for partial batch counting."
+    }
+  },
+  "decisionDomains": [
+    "tool",
+    "model",
+    "task",
+    "skill",
+    "context",
+    "strategy",
+    "general"
+  ],
+  "observedJevOutcomes": {
+    "actualFixtureFailure": "assertion_failure",
+    "verifiedLocalFix": "supported",
+    "unsupportedDeploymentClaim": "contradicted",
+    "contradictoryReports": "abstained: insufficient_evidence",
+    "twoFeasibleReportTools": "exec_command selected; corroborated the agent's plan"
+  },
+  "automaticHooks": {
+    "feedbackObserved": true,
+    "declaredAdapters": 12,
+    "allEventsIndependentlyExercised": false,
+    "exactParallelPerCommandAttribution": false,
+    "observedInvalidResponse": "probability_sum_invalid; reported unavailable; work continued"
+  },
+  "limits": [
+    "Synthetic cases are not a model accuracy benchmark.",
+    "Jev advice is not authorization or independent execution proof.",
+    "Provider request IDs and local receipts do not reconcile provider billing.",
+    "Transient report-write errors occurred; final JSON and Markdown reports were saved and read-back verified.",
+    "Hosted CI and official Directory acceptance are separate."
+  ],
+  "privacy": "Provider IDs, credential fingerprints, account details, home paths and private inventory totals omitted.",
+  "explicitProviderEvaluations": {
+    "total": 15,
+    "assessed": 11,
+    "abstained": 4
+  },
+  "privateReports": {
+    "saved": true,
+    "readBackVerified": true,
+    "uniqueProviderRequestReferences": 22,
+    "disposableFixturesRemovedAfterEvidenceRetention": true
+  }
+}
