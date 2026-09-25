@@ -20369,13 +20369,17 @@ var SUPPORTED_EVENTS = /* @__PURE__ */ new Set([
 ]);
 var EVENTS_WITHOUT_STABLE_NATIVE_ID = /* @__PURE__ */ new Set(["SessionStart", "SessionEnd", "PermissionRequest", "PreCompact", "PostCompact", "Interrupt"]);
 var INTERNAL_TOOL_NAMES = /* @__PURE__ */ new Set(["classify_decision", "classify_failure", "check_completion", "jev_status", "configure_automation"]);
+var credentialSnapshot = /* @__PURE__ */ Symbol("credentialSnapshot");
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function boundedWithEnv(value, maxBytes, env) {
   if (typeof value !== "string") return void 0;
-  const fileKey = env.JEV_API_KEY_FILE ? readCredentialFile(env.JEV_API_KEY_FILE) : null;
-  const redacted = redactText(value, [env.TYPESAFE_API_KEY ?? "", fileKey ?? ""].filter(Boolean));
+  const fileKey = env[credentialSnapshot];
+  const redacted = redactText(value, [env.TYPESAFE_API_KEY ?? "", fileKey ?? ""].filter(Boolean)).replace(
+    /(?<![A-Za-z0-9._-])[A-Za-z0-9._-]{80,}(?![A-Za-z0-9._-])/g,
+    (token) => new Set(token).size >= 12 ? "[REDACTED OPAQUE TOKEN]" : token
+  );
   if (Buffer.byteLength(redacted) <= maxBytes) return redacted;
   return Buffer.from(redacted).subarray(0, maxBytes).toString("utf8");
 }
@@ -20911,12 +20915,17 @@ async function writeInvocationReceipt(event, env, input2, response, result) {
   } catch {
   }
 }
-function defaultService(env, timeoutMs = PROVIDER_TIMEOUT_MS) {
-  return createService({ timeoutMs, env });
+function defaultService(env, timeoutMs = PROVIDER_TIMEOUT_MS, fetchFn) {
+  const snapshot = env[credentialSnapshot];
+  return createService({ timeoutMs, env, fetchFn, ...env.JEV_API_KEY_FILE === void 0 ? {} : { apiKey: snapshot ?? "" } });
 }
 async function runDecisionHook(raw, options = {}) {
   try {
-    const env = options.env ?? process.env;
+    const env = { ...options.env ?? process.env };
+    if (env.JEV_API_KEY_FILE !== void 0) {
+      env[credentialSnapshot] = readCredentialFile(env.JEV_API_KEY_FILE);
+      if (!env[credentialSnapshot]) return {};
+    }
     const policy = await readPolicy(env);
     if (!policy.enabled || env.JEV_ENABLED === "0") return {};
     let parsed = raw;
@@ -20938,7 +20947,7 @@ async function runDecisionHook(raw, options = {}) {
     if (event.name === "PostToolUse") await updateTurnResultCache(event, response, env);
     const turnResults = event.name === "Stop" || event.name === "SubagentStop" || event.name === "Interrupt" ? await readTurnResultCache(event, env) : void 0;
     const shortEvent = event.name === "SessionEnd" || event.name === "Interrupt";
-    const service = options.service ?? defaultService(env, shortEvent ? SHORT_EVENT_PROVIDER_TIMEOUT_MS : PROVIDER_TIMEOUT_MS);
+    const service = options.service ?? defaultService(env, shortEvent ? SHORT_EVENT_PROVIDER_TIMEOUT_MS : PROVIDER_TIMEOUT_MS, options.fetchFn);
     const controller = new AbortController();
     const eventTimeoutMs = shortEvent ? SHORT_EVENT_HOOK_TIMEOUT_MS : HOOK_TIMEOUT_MS;
     const timeoutMs = options.hookTimeoutMs === void 0 ? eventTimeoutMs : Math.min(Math.max(options.hookTimeoutMs, 1), eventTimeoutMs);
