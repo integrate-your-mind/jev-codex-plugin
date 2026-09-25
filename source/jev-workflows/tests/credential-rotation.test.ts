@@ -8,6 +8,10 @@ import {createService} from '../src/service.js';
 import {readCredentialFile} from '../src/credential.js';
 import type {Receipt, Store} from '../src/store.js';
 
+const FILE_KEY_ONE = 'one.' + 'aB7_cD8-eF9.'.repeat(9);
+const FILE_KEY_TWO = 'two.' + 'gH2_iJ3-kL4.'.repeat(9);
+const FILE_KEY_SECRET = 'secret.' + 'mN5_oP6-qR7.'.repeat(9);
+
 function fixture(t: {after(fn: () => void): void}) {
   const root = mkdtempSync(join(tmpdir(), 'jev-credential-test-'));
   t.after(() => rmSync(root, {recursive: true, force: true}));
@@ -37,16 +41,22 @@ function validResponse(): Response {
 
 test('credential file accepts one private literal assignment and rejects unsafe sources', t => {
   const {root, path, write} = fixture(t);
-  write('synthetic-key-one');
-  assert.equal(readCredentialFile(path), 'synthetic-key-one');
+  write(FILE_KEY_ONE);
+  assert.equal(readCredentialFile(path), FILE_KEY_ONE);
   chmodSync(path, 0o644);
   assert.equal(readCredentialFile(path), null);
   chmodSync(path, 0o600);
-  writeFileSync(path, "export TYPESAFE_API_KEY='synthetic-key-one'\nexport OTHER='x'\n");
+  writeFileSync(path, `export TYPESAFE_API_KEY='${FILE_KEY_ONE}'\nexport OTHER='x'\n`);
   assert.equal(readCredentialFile(path), null);
   writeFileSync(path, "export TYPESAFE_API_KEY='$(unsafe)'\n");
   assert.equal(readCredentialFile(path), null);
-  write('synthetic-key-two');
+  write('aB7_cD8-eF9.'.repeat(6).slice(0, 79));
+  assert.equal(readCredentialFile(path), null);
+  write('aB7_cD8-eF9.'.repeat(7).slice(0, 80));
+  assert.notEqual(readCredentialFile(path), null);
+  write('a'.repeat(80));
+  assert.equal(readCredentialFile(path), null);
+  write(FILE_KEY_TWO);
   const link = join(root, 'link.env');
   symlinkSync(path, link);
   assert.equal(readCredentialFile(link), null);
@@ -56,14 +66,14 @@ test('credential file accepts one private literal assignment and rejects unsafe 
 
 test('invalid configured source fails closed without the captured environment key or secret leakage', async t => {
   const {path, write} = fixture(t);
-  write('synthetic-file-secret');
+  write(FILE_KEY_SECRET);
   let calls = 0;
   const env = {TYPESAFE_API_KEY: 'synthetic-stale-secret', JEV_API_KEY_FILE: path, JEV_ENABLED: '1'};
   const service = createService({env, fetchFn: async () => {calls++; throw new Error('unexpected egress');}});
   assert.equal(service.status().credentialConfigured, true);
-  const preview = await service.classifyFailure({...failure('preview'), output: 'synthetic-file-secret and synthetic-stale-secret'});
+  const preview = await service.classifyFailure({...failure('preview'), output: `${FILE_KEY_SECRET} and synthetic-stale-secret`});
   assert.equal(preview.status, 'preview');
-  assert.equal(JSON.stringify(preview).includes('synthetic-file-secret'), false);
+  assert.equal(JSON.stringify(preview).includes(FILE_KEY_SECRET), false);
   assert.equal(JSON.stringify(preview).includes('synthetic-stale-secret'), false);
   writeFileSync(path, 'malformed', {mode: 0o600});
   assert.equal(service.status().credentialConfigured, false);
@@ -88,7 +98,7 @@ test('invalid configured source fails closed without the captured environment ke
 
 test('rotation gives concurrent requests separate credential snapshots, receipts and cache entries', async t => {
   const {path, write} = fixture(t);
-  write('synthetic-key-one');
+  write(FILE_KEY_ONE);
   const receipts: Receipt[] = [];
   const store: Store = {reserve: async () => true, save: async receipt => {receipts.push(receipt);}};
   let releaseFirst!: () => void;
@@ -101,13 +111,13 @@ test('rotation gives concurrent requests separate credential snapshots, receipts
       const authorization = (init?.headers as Record<string, string>).authorization;
       assert.ok(authorization);
       headers.push(authorization);
-      if (authorization === 'Bearer synthetic-key-one') {firstStarted(); await firstGate;}
+      if (authorization === `Bearer ${FILE_KEY_ONE}`) {firstStarted(); await firstGate;}
       return validResponse();
     }});
   const first = service.classifyFailure(failure());
   await firstStartedPromise;
-  write('synthetic-key-two');
-  assert.equal(service.status().credentialFingerprint, createHash('sha256').update('synthetic-key-two').digest('hex'));
+  write(FILE_KEY_TWO);
+  assert.equal(service.status().credentialFingerprint, createHash('sha256').update(FILE_KEY_TWO).digest('hex'));
   const second = await service.classifyFailure(failure());
   assert.equal(second.status, 'assessed');
   assert.equal(second.cached, undefined);
@@ -120,8 +130,8 @@ test('rotation gives concurrent requests separate credential snapshots, receipts
   assert.equal(third.cached, true);
   assert.equal(third.receiptId, second.receiptId);
   assert.equal(headers.length, 2);
-  assert.deepEqual(headers, ['Bearer synthetic-key-one', 'Bearer synthetic-key-two']);
+  assert.deepEqual(headers, [`Bearer ${FILE_KEY_ONE}`, `Bearer ${FILE_KEY_TWO}`]);
   assert.equal(receipts.length, 2);
-  assert.equal(JSON.stringify(receipts).includes('synthetic-key-one'), false);
-  assert.equal(JSON.stringify(receipts).includes('synthetic-key-two'), false);
+  assert.equal(JSON.stringify(receipts).includes(FILE_KEY_ONE), false);
+  assert.equal(JSON.stringify(receipts).includes(FILE_KEY_TWO), false);
 });

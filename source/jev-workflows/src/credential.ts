@@ -2,7 +2,9 @@ import { closeSync, constants, fstatSync, openSync, readSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
 
 const MAX_FILE_BYTES = 4096;
-const KEY_LINE = /^(?:export )?TYPESAFE_API_KEY=(?:'([A-Za-z0-9._-]{1,512})'|"([A-Za-z0-9._-]{1,512})"|([A-Za-z0-9._-]{1,512}))\n?$/;
+// File-sourced keys must fit the automatic hook's unknown-retired-key
+// redaction grammar. This is a local safety rule, not a provider key spec.
+const KEY_LINE = /^(?:export )?TYPESAFE_API_KEY=(?:'([A-Za-z0-9._-]{80,512})'|"([A-Za-z0-9._-]{80,512})"|([A-Za-z0-9._-]{80,512}))\n?$/;
 
 /** Read one protected, literal key assignment. Never evaluate shell syntax. */
 export function readCredentialFile(path: string): string | null {
@@ -18,7 +20,8 @@ export function readCredentialFile(path: string): string | null {
     const bytes = readSync(fd, buffer, 0, buffer.length, 0);
     if (bytes !== stat.size) return null;
     const match = KEY_LINE.exec(buffer.toString('utf8', 0, bytes));
-    return match ? (match[1] ?? match[2] ?? match[3] ?? null) : null;
+    const key = match ? (match[1] ?? match[2] ?? match[3] ?? null) : null;
+    return key && new Set(key).size >= 12 ? key : null;
   } catch {
     return null;
   } finally {

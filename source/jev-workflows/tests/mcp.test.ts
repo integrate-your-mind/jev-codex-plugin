@@ -97,6 +97,8 @@ describe('bundled MCP server', () => {
   });
 
   it('observes protected key rotation in one long-running MCP process', async () => {
+    const firstKey = 'one.' + 'aB7_cD8-eF9.'.repeat(9);
+    const secondKey = 'two.' + 'gH2_iJ3-kL4.'.repeat(9);
     await mkdir(buildRoot, {recursive: true});
     const dataRoot = await mkdtemp(join(buildRoot, 'rotation-'));
     const keyPath = join(dataRoot, 'credential.env');
@@ -105,7 +107,7 @@ describe('bundled MCP server', () => {
       await writeFile(next, `export TYPESAFE_API_KEY='${key}'\n`, {mode: 0o600});
       await rename(next, keyPath);
     };
-    await replaceKey('synthetic-key-one');
+    await replaceKey(firstKey);
     const {TYPESAFE_API_KEY: _old, JEV_API_KEY_FILE: _priorFile, ...inheritedEnv} = process.env;
     const transport = new StdioClientTransport({
       command: process.execPath, args: [serverPath], cwd: root,
@@ -116,10 +118,10 @@ describe('bundled MCP server', () => {
     try {
       await client.connect(transport);
       const first = await status();
-      assert.equal(first.credentialFingerprint, createHash('sha256').update('synthetic-key-one').digest('hex'));
-      await replaceKey('synthetic-key-two');
+      assert.equal(first.credentialFingerprint, createHash('sha256').update(firstKey).digest('hex'));
+      await replaceKey(secondKey);
       const second = await status();
-      assert.equal(second.credentialFingerprint, createHash('sha256').update('synthetic-key-two').digest('hex'));
+      assert.equal(second.credentialFingerprint, createHash('sha256').update(secondKey).digest('hex'));
       assert.notEqual(first.credentialFingerprint, second.credentialFingerprint);
       await writeFile(keyPath, 'malformed assignment');
       const malformed = await status();
@@ -130,7 +132,8 @@ describe('bundled MCP server', () => {
         evidence: [{id: 'log:1', text: 'assertion failed'}], mode: 'evaluate',
       }}));
       assert.equal(JSON.parse(result).reasonCode, 'credential_source_unavailable');
-      assert.equal(JSON.stringify({first, second, malformed, result}).includes('synthetic-key-'), false);
+      assert.equal(JSON.stringify({first, second, malformed, result}).includes(firstKey), false);
+      assert.equal(JSON.stringify({first, second, malformed, result}).includes(secondKey), false);
     } finally {
       await client.close().catch(() => {});
       await rm(dataRoot, {recursive: true, force: true});

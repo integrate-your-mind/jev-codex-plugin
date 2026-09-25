@@ -20120,7 +20120,7 @@ Follow the stated objective and constraints supplied in context, using the evide
 import { closeSync, constants as constants3, fstatSync, openSync, readSync } from "node:fs";
 import { isAbsolute as isAbsolute3 } from "node:path";
 var MAX_FILE_BYTES = 4096;
-var KEY_LINE = /^(?:export )?TYPESAFE_API_KEY=(?:'([A-Za-z0-9._-]{1,512})'|"([A-Za-z0-9._-]{1,512})"|([A-Za-z0-9._-]{1,512}))\n?$/;
+var KEY_LINE = /^(?:export )?TYPESAFE_API_KEY=(?:'([A-Za-z0-9._-]{80,512})'|"([A-Za-z0-9._-]{80,512})"|([A-Za-z0-9._-]{80,512}))\n?$/;
 function readCredentialFile(path) {
   if (!isAbsolute3(path) || path.length > 4096 || /[\r\n\0]/.test(path)) return null;
   let fd;
@@ -20133,7 +20133,8 @@ function readCredentialFile(path) {
     const bytes = readSync(fd, buffer, 0, buffer.length, 0);
     if (bytes !== stat.size) return null;
     const match = KEY_LINE.exec(buffer.toString("utf8", 0, bytes));
-    return match ? match[1] ?? match[2] ?? match[3] ?? null : null;
+    const key = match ? match[1] ?? match[2] ?? match[3] ?? null : null;
+    return key && new Set(key).size >= 12 ? key : null;
   } catch {
     return null;
   } finally {
