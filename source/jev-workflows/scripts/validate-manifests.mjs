@@ -114,7 +114,7 @@ assert(legacy?.hooks === undefined, ".codex-plugin/plugin.json: direct hooks fie
 assert(equal(metadata(plugin), metadata(legacy)),
   "plugin.json and .codex-plugin/plugin.json: identity and interface metadata must match");
 const portableLegacy = structuredClone(legacyMcp?.mcpServers ?? {});
-const allowedEnv = ["TYPESAFE_API_KEY","JEV_ENABLED","JEV_HOOKS_ENABLED","JEV_MAX_CALLS_PER_DAY","JEV_MAX_BYTES_PER_DAY","JEV_ALLOWED_WORKSPACES"];
+const allowedEnv = ["TYPESAFE_API_KEY","JEV_API_KEY_FILE","JEV_ENABLED","JEV_HOOKS_ENABLED","JEV_MAX_CALLS_PER_DAY","JEV_MAX_BYTES_PER_DAY","JEV_ALLOWED_WORKSPACES"];
 assert(equal(portableLegacy["jev-workflows"]?.env_vars, allowedEnv), "legacy MCP must forward only the named runtime settings");
 if (portableLegacy["jev-workflows"]) delete portableLegacy["jev-workflows"].env_vars;
 assert(equal(mcp?.mcpServers, portableLegacy),

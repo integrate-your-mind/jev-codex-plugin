@@ -9,6 +9,7 @@
       "cwd": "${PLUGIN_ROOT}",
       "env_vars": [
         "TYPESAFE_API_KEY",
+        "JEV_API_KEY_FILE",
         "JEV_ENABLED",
         "JEV_HOOKS_ENABLED",
         "JEV_MAX_CALLS_PER_DAY",

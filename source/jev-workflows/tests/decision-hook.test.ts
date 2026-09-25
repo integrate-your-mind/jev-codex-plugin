@@ -1,5 +1,6 @@
-import { mkdir, mkdtemp, rm, readFile, writeFile, readdir } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, readFile, writeFile, readdir, rename } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
+import { renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -396,6 +397,65 @@ describe('decision hook', () => {
     assert.equal(receipt.referenceReceiptId, '11111111-1111-1111-1111-111111111111');
     assert.equal(typeof receipt.inputDigest, 'string');
     assert.doesNotMatch(JSON.stringify(receipt), /TOKEN|sk-123/);
+  });
+
+  it('does not send a retired credential from a queued hook event after file rotation', async () => {
+    const environment = env(join(root, 'rotated-event'));
+    const credentialPath = join(root, 'rotated-event-key.env');
+    const oldKey = 'old.' + 'aB7_cD8-eF9.'.repeat(9);
+    const newKey = 'new.' + 'gH2_iJ3-kL4.'.repeat(9);
+    await writeFile(credentialPath, `TYPESAFE_API_KEY='${oldKey}'\n`, {mode: 0o600});
+    environment.JEV_API_KEY_FILE = credentialPath;
+    await enabledPolicy(environment);
+    const queuedEvent = JSON.stringify(toolEvent({
+      hook_event_name: 'PostToolUse',
+      tool_use_id: 'queued-before-rotation',
+      tool_response: `command output contained ${oldKey} before rotation`,
+    }));
+    const replacement = `${credentialPath}.next`;
+    await writeFile(replacement, `TYPESAFE_API_KEY='${newKey}'\n`, {mode: 0o600});
+    await rename(replacement, credentialPath);
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    await runDecisionHook(queuedEvent, {env: environment, service: fakeService(calls)});
+    assert.equal(calls.count, 1);
+    const outbound = JSON.stringify(calls.inputs[0]);
+    assert.ok(outbound.includes('[REDACTED OPAQUE TOKEN]'));
+    assert.equal(outbound.includes(oldKey), false);
+    assert.equal(outbound.includes(newKey), false);
+
+    await rm(credentialPath);
+    await runDecisionHook(JSON.stringify(toolEvent({tool_use_id: 'missing-credential'})), {env: environment, service: fakeService(calls)});
+    assert.equal(calls.count, 1);
+  });
+
+  it('uses the hook-entry credential for redaction and provider authentication across rotation', async () => {
+    const environment = env(join(root, 'rotation-during-hook'));
+    const credentialPath = join(root, 'rotation-during-hook-key.env');
+    const firstKey = 'first.' + 'aB7_cD8-eF9.'.repeat(9);
+    const secondKey = 'second.' + 'gH2_iJ3-kL4.'.repeat(9);
+    const replacement = `${credentialPath}.next`;
+    await writeFile(credentialPath, `TYPESAFE_API_KEY='${firstKey}'\n`, {mode: 0o600});
+    await writeFile(replacement, `TYPESAFE_API_KEY='${secondKey}'\n`, {mode: 0o600});
+    environment.JEV_API_KEY_FILE = credentialPath;
+    await enabledPolicy(environment);
+    let authorization: string | null = null;
+    let outbound = '';
+    const fetchFn: typeof fetch = async (_url, init) => {
+      authorization = new Headers(init?.headers).get('authorization');
+      outbound = String(init?.body ?? '');
+      return new Response('', {status: 403});
+    };
+    const pending = runDecisionHook(JSON.stringify(toolEvent({
+      tool_use_id: 'rotation-after-entry',
+      tool_input: {command: `process ${firstKey}`},
+    })), {env: environment, fetchFn});
+    // runDecisionHook snapshots synchronously before its first await.
+    renameSync(replacement, credentialPath);
+    const result = await pending;
+    assert.equal(authorization, `Bearer ${firstKey}`);
+    assert.equal(outbound.includes(firstKey), false);
+    assert.match(outbound, /\[REDACTED\]/);
+    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /status=unavailable; reason=authentication_failed/);
   });
 
   it('deduplicates each SubagentStop agent independently within a shared turn', async () => {

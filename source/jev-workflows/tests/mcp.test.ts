@@ -1,4 +1,5 @@
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,6 +21,7 @@ describe('bundled MCP server', () => {
     const dataRoot = await mkdtemp(join(buildRoot, 'test-'));
     const {
       TYPESAFE_API_KEY: _removed,
+      JEV_API_KEY_FILE: _credentialFile,
       JEV_STATE_DIRECTORY: _stateDirectory,
       JEV_STATE_MODE: _stateMode,
       XDG_STATE_HOME: _stateHome,
@@ -88,6 +90,50 @@ describe('bundled MCP server', () => {
       const afterPreview = JSON.parse(textOf(await client.callTool({name: 'jev_status', arguments: {}})));
       assert.equal(afterPreview.budget.reservedAttempts, 0);
       assert.equal(afterPreview.evaluations.totals.receipts, 0);
+    } finally {
+      await client.close().catch(() => {});
+      await rm(dataRoot, {recursive: true, force: true});
+    }
+  });
+
+  it('observes protected key rotation in one long-running MCP process', async () => {
+    const firstKey = 'one.' + 'aB7_cD8-eF9.'.repeat(9);
+    const secondKey = 'two.' + 'gH2_iJ3-kL4.'.repeat(9);
+    await mkdir(buildRoot, {recursive: true});
+    const dataRoot = await mkdtemp(join(buildRoot, 'rotation-'));
+    const keyPath = join(dataRoot, 'credential.env');
+    const replaceKey = async (key: string) => {
+      const next = join(dataRoot, 'next.env');
+      await writeFile(next, `export TYPESAFE_API_KEY='${key}'\n`, {mode: 0o600});
+      await rename(next, keyPath);
+    };
+    await replaceKey(firstKey);
+    const {TYPESAFE_API_KEY: _old, JEV_API_KEY_FILE: _priorFile, ...inheritedEnv} = process.env;
+    const transport = new StdioClientTransport({
+      command: process.execPath, args: [serverPath], cwd: root,
+      env: {...inheritedEnv, JEV_API_KEY_FILE: keyPath, PLUGIN_DATA: dataRoot}, stderr: 'pipe',
+    });
+    const client = new Client({name: 'jev-rotation-test', version: '0.3.0'}, {capabilities: {}});
+    const status = async () => JSON.parse(textOf(await client.callTool({name: 'jev_status', arguments: {}})));
+    try {
+      await client.connect(transport);
+      const first = await status();
+      assert.equal(first.credentialFingerprint, createHash('sha256').update(firstKey).digest('hex'));
+      await replaceKey(secondKey);
+      const second = await status();
+      assert.equal(second.credentialFingerprint, createHash('sha256').update(secondKey).digest('hex'));
+      assert.notEqual(first.credentialFingerprint, second.credentialFingerprint);
+      await writeFile(keyPath, 'malformed assignment');
+      const malformed = await status();
+      assert.equal(malformed.credentialConfigured, false);
+      assert.equal(malformed.credentialFingerprint, null);
+      const result = textOf(await client.callTool({name: 'classify_failure', arguments: {
+        task: 'test', command: 'node test.js', exitCode: 1, output: 'assertion failed',
+        evidence: [{id: 'log:1', text: 'assertion failed'}], mode: 'evaluate',
+      }}));
+      assert.equal(JSON.parse(result).reasonCode, 'credential_source_unavailable');
+      assert.equal(JSON.stringify({first, second, malformed, result}).includes(firstKey), false);
+      assert.equal(JSON.stringify({first, second, malformed, result}).includes(secondKey), false);
     } finally {
       await client.close().catch(() => {});
       await rm(dataRoot, {recursive: true, force: true});

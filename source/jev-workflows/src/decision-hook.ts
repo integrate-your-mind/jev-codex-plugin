@@ -6,6 +6,7 @@ import { isAbsolute, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createService } from './service.js';
 import { redactText } from './redact.js';
+import { readCredentialFile } from './credential.js';
 import { dataDirectory } from './store.js';
 import { readPolicy, workspaceAllowed, type HookPolicy } from './policy.js';
 
@@ -41,6 +42,8 @@ const SUPPORTED_EVENTS = new Set([
 ]);
 const EVENTS_WITHOUT_STABLE_NATIVE_ID = new Set(['SessionStart', 'SessionEnd', 'PermissionRequest', 'PreCompact', 'PostCompact', 'Interrupt']);
 const INTERNAL_TOOL_NAMES = new Set(['classify_decision', 'classify_failure', 'check_completion', 'jev_status', 'configure_automation']);
+const credentialSnapshot = Symbol('credentialSnapshot');
+type HookEnv = NodeJS.ProcessEnv & {[credentialSnapshot]?: string | null};
 
 type RecordValue = Record<string, unknown>;
 export type DecisionInput = {
@@ -85,7 +88,13 @@ function isRecord(value: unknown): value is RecordValue {
 
 function boundedWithEnv(value: unknown, maxBytes: number, env: NodeJS.ProcessEnv): string | undefined {
   if (typeof value !== 'string') return undefined;
-  const redacted = redactText(value, env.TYPESAFE_API_KEY ? [env.TYPESAFE_API_KEY] : []);
+  const fileKey = (env as HookEnv)[credentialSnapshot];
+  const redacted = redactText(value, [env.TYPESAFE_API_KEY ?? '', fileKey ?? ''].filter(Boolean))
+    // A queued tool event can contain a retired credential after rotation. The
+    // previous value is no longer in the file, so suppress long opaque tokens
+    // before storing or sending hook context even when exact redaction misses.
+    .replace(/(?<![A-Za-z0-9._-])[A-Za-z0-9._-]{80,}(?![A-Za-z0-9._-])/g,
+      token => new Set(token).size >= 12 ? '[REDACTED OPAQUE TOKEN]' : token);
   if (Buffer.byteLength(redacted) <= maxBytes) return redacted;
   return Buffer.from(redacted).subarray(0, maxBytes).toString('utf8');
 }
@@ -630,13 +639,20 @@ async function writeInvocationReceipt(event: NormalizedEvent, env: NodeJS.Proces
   } catch { /* receipts are private proof and never affect hook behavior */ }
 }
 
-function defaultService(env: NodeJS.ProcessEnv, timeoutMs = PROVIDER_TIMEOUT_MS): DecisionService {
-  return createService({timeoutMs, env}) as unknown as DecisionService;
+function defaultService(env: NodeJS.ProcessEnv, timeoutMs = PROVIDER_TIMEOUT_MS, fetchFn?: typeof fetch): DecisionService {
+  const snapshot = (env as HookEnv)[credentialSnapshot];
+  return createService({timeoutMs, env, fetchFn, ...(env.JEV_API_KEY_FILE === undefined ? {} : {apiKey: snapshot ?? ''})}) as unknown as DecisionService;
 }
 
-export async function runDecisionHook(raw: string | Uint8Array | unknown, options: {env?: NodeJS.ProcessEnv; service?: DecisionService; hookTimeoutMs?: number} = {}): Promise<HookResult> {
+export async function runDecisionHook(raw: string | Uint8Array | unknown, options: {env?: NodeJS.ProcessEnv; service?: DecisionService; hookTimeoutMs?: number; fetchFn?: typeof fetch} = {}): Promise<HookResult> {
   try {
-    const env = options.env ?? process.env;
+    const env = {...(options.env ?? process.env)} as HookEnv;
+    // Snapshot before the first await. Redaction, cache writes and provider
+    // authentication must all use the same credential for this invocation.
+    if (env.JEV_API_KEY_FILE !== undefined) {
+      env[credentialSnapshot] = readCredentialFile(env.JEV_API_KEY_FILE);
+      if (!env[credentialSnapshot]) return {};
+    }
     const policy = await readPolicy(env);
     if (!policy.enabled || env.JEV_ENABLED === '0') return {};
     let parsed: unknown = raw;
@@ -661,7 +677,7 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
     const turnResults = event.name === 'Stop' || event.name === 'SubagentStop' || event.name === 'Interrupt'
       ? await readTurnResultCache(event, env) : undefined;
     const shortEvent = event.name === 'SessionEnd' || event.name === 'Interrupt';
-    const service = options.service ?? defaultService(env, shortEvent ? SHORT_EVENT_PROVIDER_TIMEOUT_MS : PROVIDER_TIMEOUT_MS);
+    const service = options.service ?? defaultService(env, shortEvent ? SHORT_EVENT_PROVIDER_TIMEOUT_MS : PROVIDER_TIMEOUT_MS, options.fetchFn);
     const controller = new AbortController();
     const eventTimeoutMs = shortEvent ? SHORT_EVENT_HOOK_TIMEOUT_MS : HOOK_TIMEOUT_MS;
     const timeoutMs = options.hookTimeoutMs === undefined ? eventTimeoutMs : Math.min(Math.max(options.hookTimeoutMs, 1), eventTimeoutMs);
