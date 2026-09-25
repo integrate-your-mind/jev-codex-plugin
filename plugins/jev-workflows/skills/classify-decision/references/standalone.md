@@ -8,7 +8,7 @@ node /absolute/path/to/classify-decision/scripts/jev.mjs classify-decision < req
 node /absolute/path/to/classify-decision/scripts/jev.mjs classify-decision --evaluate < request.json
 ```
 
-The paths above are placeholders: use the actual skill path. `request.json` is a local file containing only the selected request; preserve any user file and clean up an owned temporary request when no longer needed. Piping an equivalent JSON object to stdin also works. Do not paste secrets in chat or shell arguments. `TYPESAFE_API_KEY` must already be configured in the process environment for evaluation. A running host may need a restart after its environment changes. Do not restart unrelated work automatically.
+The paths above are placeholders: use the actual skill path. `request.json` is a local file containing only the selected request; preserve any user file and clean up an owned temporary request when no longer needed. Piping an equivalent JSON object to stdin also works. Do not paste secrets in chat or shell arguments. Evaluation needs either `TYPESAFE_API_KEY` in the process environment or `JEV_API_KEY_FILE` pointing to an absolute, current-user-owned `0600` file with one literal `TYPESAFE_API_KEY` assignment. A running host must receive the path setting once; later file rotations do not require restarting the MCP process. Do not restart unrelated work automatically.
 
 Use this shape, replacing the example with observed task evidence:
 

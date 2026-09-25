@@ -6,6 +6,7 @@ import { isAbsolute, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createService } from './service.js';
 import { redactText } from './redact.js';
+import { readCredentialFile } from './credential.js';
 import { dataDirectory } from './store.js';
 import { readPolicy, workspaceAllowed, type HookPolicy } from './policy.js';
 
@@ -85,7 +86,8 @@ function isRecord(value: unknown): value is RecordValue {
 
 function boundedWithEnv(value: unknown, maxBytes: number, env: NodeJS.ProcessEnv): string | undefined {
   if (typeof value !== 'string') return undefined;
-  const redacted = redactText(value, env.TYPESAFE_API_KEY ? [env.TYPESAFE_API_KEY] : []);
+  const fileKey = env.JEV_API_KEY_FILE ? readCredentialFile(env.JEV_API_KEY_FILE) : null;
+  const redacted = redactText(value, [env.TYPESAFE_API_KEY ?? '', fileKey ?? ''].filter(Boolean));
   if (Buffer.byteLength(redacted) <= maxBytes) return redacted;
   return Buffer.from(redacted).subarray(0, maxBytes).toString('utf8');
 }

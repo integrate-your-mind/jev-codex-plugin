@@ -48,6 +48,8 @@ The MCP `classify_decision` tool accepts the domains `tool`, `model`, `task`, `s
 
 Requires Node.js 22 or later on the runtime PATH. Prebuilt `dist/` files need no npm install. Provide `TYPESAFE_API_KEY` through the host environment; `jev_status` reports only whether it is configured. Keys never belong in manifests, source, command arguments, or release archives. An export in an unrelated terminal does not update an already-running app's environment.
 
+For a long-running MCP process whose key may rotate, opt in with `JEV_API_KEY_FILE` set to the absolute path of a private file owned by the current user with mode `0600`. It must contain exactly one literal assignment such as `export TYPESAFE_API_KEY='your-key'` and an optional final newline; the key itself stays in that protected file. The reader never executes shell syntax. Each request uses one snapshot of the current file, and cache entries are isolated by credential. An unreadable, malformed, or missing configured file stops evaluation without falling back to a previously captured environment key. Existing `TYPESAFE_API_KEY` behavior remains unchanged when the file option is absent. A running host must receive the new path setting through its supported environment configuration once; rotating file contents afterward needs no MCP restart.
+
 The portable package has root `plugin.json` and `mcp.json`. The initial Codex CLI 0.153.4 audit found that loader recognized this format but skipped its bundled hooks. The generated compatibility package has since passed native installation and hook checks on CLI 0.155.0. Generate it with:
 
 ```sh
@@ -66,7 +68,7 @@ node dist/cli.mjs classify-decision < request.json
 node dist/cli.mjs classify-decision --evaluate < request.json
 ```
 
-The CLI accepts a single JSON object on stdin. Without `--evaluate`, it produces a local preview. Evaluation requires the flag and `TYPESAFE_API_KEY` in the process environment; never put the key in arguments or request JSON. `classify-failure` and `check-completion` accept the same inputs as their MCP counterparts. Parse the JSON result's `status`: exit code 0 includes valid `unavailable`, `skipped`, and `abstained` outcomes. The runtime, provider schema, redaction, receipts, and optional user settings are shared with MCP. Separate CLI processes do not share the server's in-memory cache.
+The CLI accepts a single JSON object on stdin. Without `--evaluate`, it produces a local preview. Evaluation requires the flag and either `TYPESAFE_API_KEY` in the process environment or `JEV_API_KEY_FILE` pointing to the protected file described above; never put the key in arguments or request JSON. `classify-failure` and `check-completion` accept the same inputs as their MCP counterparts. Parse the JSON result's `status`: exit code 0 includes valid `unavailable`, `skipped`, and `abstained` outcomes. The runtime, provider schema, redaction, receipts, and optional user settings are shared with MCP. Separate CLI processes do not share the server's in-memory cache.
 
 Build standalone ZIPs with `node scripts/package-skills.mjs /absolute/fresh/output-directory`. Install each extracted skill directory in a skill location supported by the host (for example `$CODEX_HOME/skills`, normally `~/.codex/skills`); keep `SKILL.md`, `references/`, and `scripts/` together. Avoid installing duplicate skill copies when using the full plugin. Local scripts require a host that supports process execution; the companion is not a hosted service.
 

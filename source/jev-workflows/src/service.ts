@@ -5,6 +5,7 @@ import { evaluateProvider, fingerprintCredential, ProviderError, type ProviderTr
 import { FileStore, dataDirectory, readBudgetUsage, type Store } from './store.js';
 import { readPolicy, DEFAULT_POLICY, type HookPolicy } from './policy.js';
 import { decisionSchema, decisionQuestions, DECISION_RUBRIC_VERSION } from './decision.js';
+import { readCredentialFile } from './credential.js';
 
 export type Assessment = {
   status: 'preview' | 'assessed' | 'abstained' | 'unavailable' | 'skipped';
@@ -31,17 +32,22 @@ function positiveLimit(value: string | undefined, fallback: number | null): numb
 
 export function createService(options: ServiceOptions = {}) {
   const env = options.env ?? process.env;
-  const apiKey = options.apiKey ?? env.TYPESAFE_API_KEY ?? '';
+  const staticApiKey = options.apiKey ?? env.TYPESAFE_API_KEY ?? '';
+  const credentialFile = options.apiKey === undefined ? env.JEV_API_KEY_FILE : undefined;
+  const credential = () => {
+    const apiKey = credentialFile === undefined ? staticApiKey : readCredentialFile(credentialFile);
+    return {apiKey, fingerprint: apiKey ? fingerprintCredential(apiKey) : null};
+  };
   const enabled = options.enabled ?? env.JEV_ENABLED !== '0';
   const timeoutMs = Math.min(Math.max(options.timeoutMs ?? 10000, 1), 10000);
   const confidenceFloor = options.confidenceFloor ?? 0.6;
-  const credentialFingerprint = apiKey ? fingerprintCredential(apiKey) : null;
   const cache = new Map<string, Assessment>();
   const inFlight = new Map<string, Promise<Assessment>>();
   const digestOf = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
   function status(policy: HookPolicy = DEFAULT_POLICY) {
+    const current = credential();
     return {version: '0.3.0', provider: 'TypeSafe', endpoint: ENDPOINT, model: MODEL,
-      credentialConfigured: Boolean(apiKey), credentialFingerprint, enabled,
+      credentialConfigured: Boolean(current.apiKey), credentialFingerprint: current.fingerprint, enabled,
       stateDirectory: dataDirectory(env), defaultMode: 'preview', rubricVersion: RUBRIC_VERSION, decisionRubricVersion: DECISION_RUBRIC_VERSION, maxPayloadBytes,
       maxCallsPerDay: positiveLimit(env.JEV_MAX_CALLS_PER_DAY, policy.maxCallsPerDay),
       maxBytesPerDay: positiveLimit(env.JEV_MAX_BYTES_PER_DAY, policy.maxBytesPerDay),
@@ -53,11 +59,18 @@ export function createService(options: ServiceOptions = {}) {
     const parsed = schema.safeParse(raw);
     if (!parsed.success) return {status: 'skipped', reasonCode: 'invalid_input'};
     const input = parsed.data;
+    const current = credential();
+    // A configured file that cannot be read must never fall back to a captured,
+    // possibly revoked environment key. Preview also fails closed because the
+    // current credential would be unavailable for exact-match redaction.
+    if (credentialFile !== undefined && !current.apiKey) return {status: 'unavailable', reasonCode: 'credential_source_unavailable'};
+    const apiKey = current.apiKey ?? '';
+    const secrets = [apiKey, staticApiKey].filter(Boolean);
     if (new Set(input.evidence.map(e => e.id)).size !== input.evidence.length) return {status: 'skipped', reasonCode: 'duplicate_evidence_ids'};
-    if (input.evidence.some(e => redactText(e.id, [apiKey]) !== e.id)) return {status: 'skipped', reasonCode: 'unsafe_evidence_id'};
+    if (input.evidence.some(e => redactText(e.id, secrets) !== e.id)) return {status: 'skipped', reasonCode: 'unsafe_evidence_id'};
     if ('candidates' in input) {
       if (new Set(input.candidates.map(c => c.id)).size !== input.candidates.length) return {status: 'skipped', reasonCode: 'duplicate_candidate_ids'};
-      if (input.candidates.some(c => ['insufficient_evidence', '__proto__', 'constructor', 'prototype'].includes(c.id) || redactText(c.id, [apiKey]) !== c.id)) return {status: 'skipped', reasonCode: 'unsafe_candidate_id'};
+      if (input.candidates.some(c => ['insufficient_evidence', '__proto__', 'constructor', 'prototype'].includes(c.id) || redactText(c.id, secrets) !== c.id)) return {status: 'skipped', reasonCode: 'unsafe_candidate_id'};
       if (!input.candidates.some(c => c.available)) return {status: 'abstained', reasonCode: 'no_available_candidates', domain: input.domain};
     }
     if ('exitCode' in input) {
@@ -65,9 +78,9 @@ export function createService(options: ServiceOptions = {}) {
       if (input.exitCode === null) return {status: 'abstained', reasonCode: 'command_not_completed'};
     }
     const {mode, ...selected} = input;
-    const state = sanitize(selected, [apiKey]);
+    const state = sanitize(selected, secrets);
     // Sanitize caller-defined questions and criteria as well as state before any egress.
-    const questions = sanitize('candidates' in input ? decisionQuestions(input) : tool === 'classify_failure' ? failureQuestions : completionQuestions, [apiKey]) as Record<string, Question>;
+    const questions = sanitize('candidates' in input ? decisionQuestions(input) : tool === 'classify_failure' ? failureQuestions : completionQuestions, secrets) as Record<string, Question>;
     const rubricVersion = tool === 'classify_decision' ? DECISION_RUBRIC_VERSION : RUBRIC_VERSION;
     const payload = {state, questions, model: MODEL};
     const bytes = Buffer.byteLength(JSON.stringify(payload));
@@ -81,14 +94,17 @@ export function createService(options: ServiceOptions = {}) {
     if (tool === 'check_completion' && input.evidence.length === 0) {
       return {status: 'abstained', support: 'insufficient_evidence', reasonCode: 'no_evidence', evidenceIds};
     }
-    const cached = cache.get(inputDigest);
+    // Credential identity is part of cache/coalescing identity so a rotated
+    // key never receives a previous key's assessment or in-flight response.
+    const cacheKey = digestOf({inputDigest, credentialFingerprint: current.fingerprint});
+    const cached = cache.get(cacheKey);
     if (cached) return {...cached, cached: true};
     // Do not coalesce independently cancellable calls, so one client cannot cancel another.
-    if (!signal && inFlight.has(inputDigest)) return {...await inFlight.get(inputDigest)!, cached: true};
+    if (!signal && inFlight.has(cacheKey)) return {...await inFlight.get(cacheKey)!, cached: true};
     const work = run();
-    if (!signal) inFlight.set(inputDigest, work);
+    if (!signal) inFlight.set(cacheKey, work);
     try { return await work; }
-    finally { if (!signal) inFlight.delete(inputDigest); }
+    finally { if (!signal) inFlight.delete(cacheKey); }
 
     async function run(): Promise<Assessment> {
       const start = Date.now();
@@ -125,7 +141,7 @@ export function createService(options: ServiceOptions = {}) {
       catch { result.receiptPersisted = false; }
       if (result.status === 'assessed' || result.status === 'abstained') {
         if (cache.size >= 128) cache.delete(cache.keys().next().value!);
-        cache.set(inputDigest, result);
+        cache.set(cacheKey, result);
       }
       return result;
     }

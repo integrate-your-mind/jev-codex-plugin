@@ -7,10 +7,10 @@ var __export = (target, all) => {
 
 // src/decision-hook.ts
 import { createHash as createHash3 } from "node:crypto";
-import { constants as constants3 } from "node:fs";
+import { constants as constants4 } from "node:fs";
 import { mkdir as mkdir3, open as open4, realpath as realpath2, readdir, unlink as unlink3, lstat as lstat2, rename as rename3 } from "node:fs/promises";
 import { randomUUID as randomUUID3 } from "node:crypto";
-import { isAbsolute as isAbsolute3, join as join3 } from "node:path";
+import { isAbsolute as isAbsolute4, join as join3 } from "node:path";
 import { pathToFileURL } from "node:url";
 
 // src/service.ts
@@ -20138,6 +20138,36 @@ Follow the stated objective and constraints supplied in context, using the evide
   };
 }
 
+// src/credential.ts
+import { closeSync, constants as constants3, fstatSync, openSync, readSync } from "node:fs";
+import { isAbsolute as isAbsolute3 } from "node:path";
+var MAX_FILE_BYTES = 4096;
+var KEY_LINE = /^(?:export )?TYPESAFE_API_KEY=(?:'([A-Za-z0-9._-]{1,512})'|"([A-Za-z0-9._-]{1,512})"|([A-Za-z0-9._-]{1,512}))\n?$/;
+function readCredentialFile(path) {
+  if (!isAbsolute3(path) || path.length > 4096 || /[\r\n\0]/.test(path)) return null;
+  let fd;
+  try {
+    fd = openSync(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
+    const stat = fstatSync(fd);
+    const uid = process.getuid?.();
+    if (!stat.isFile() || uid === void 0 || stat.uid !== uid || (stat.mode & 63) !== 0 || stat.size < 1 || stat.size > MAX_FILE_BYTES) return null;
+    const buffer = Buffer.alloc(stat.size + 1);
+    const bytes = readSync(fd, buffer, 0, buffer.length, 0);
+    if (bytes !== stat.size) return null;
+    const match = KEY_LINE.exec(buffer.toString("utf8", 0, bytes));
+    return match ? match[1] ?? match[2] ?? match[3] ?? null : null;
+  } catch {
+    return null;
+  } finally {
+    if (fd !== void 0) {
+      try {
+        closeSync(fd);
+      } catch {
+      }
+    }
+  }
+}
+
 // src/service.ts
 var maxPayloadBytes = 48e3;
 function positiveLimit(value, fallback) {
@@ -20149,22 +20179,27 @@ function positiveLimit(value, fallback) {
 }
 function createService(options = {}) {
   const env = options.env ?? process.env;
-  const apiKey = options.apiKey ?? env.TYPESAFE_API_KEY ?? "";
+  const staticApiKey = options.apiKey ?? env.TYPESAFE_API_KEY ?? "";
+  const credentialFile = options.apiKey === void 0 ? env.JEV_API_KEY_FILE : void 0;
+  const credential = () => {
+    const apiKey = credentialFile === void 0 ? staticApiKey : readCredentialFile(credentialFile);
+    return { apiKey, fingerprint: apiKey ? fingerprintCredential(apiKey) : null };
+  };
   const enabled = options.enabled ?? env.JEV_ENABLED !== "0";
   const timeoutMs = Math.min(Math.max(options.timeoutMs ?? 1e4, 1), 1e4);
   const confidenceFloor = options.confidenceFloor ?? 0.6;
-  const credentialFingerprint = apiKey ? fingerprintCredential(apiKey) : null;
   const cache = /* @__PURE__ */ new Map();
   const inFlight = /* @__PURE__ */ new Map();
   const digestOf = (value) => createHash2("sha256").update(JSON.stringify(value)).digest("hex");
   function status(policy = DEFAULT_POLICY) {
+    const current = credential();
     return {
       version: "0.3.0",
       provider: "TypeSafe",
       endpoint: ENDPOINT,
       model: MODEL,
-      credentialConfigured: Boolean(apiKey),
-      credentialFingerprint,
+      credentialConfigured: Boolean(current.apiKey),
+      credentialFingerprint: current.fingerprint,
       enabled,
       stateDirectory: dataDirectory(env),
       defaultMode: "preview",
@@ -20182,11 +20217,15 @@ function createService(options = {}) {
     const parsed = schema.safeParse(raw);
     if (!parsed.success) return { status: "skipped", reasonCode: "invalid_input" };
     const input2 = parsed.data;
+    const current = credential();
+    if (credentialFile !== void 0 && !current.apiKey) return { status: "unavailable", reasonCode: "credential_source_unavailable" };
+    const apiKey = current.apiKey ?? "";
+    const secrets = [apiKey, staticApiKey].filter(Boolean);
     if (new Set(input2.evidence.map((e) => e.id)).size !== input2.evidence.length) return { status: "skipped", reasonCode: "duplicate_evidence_ids" };
-    if (input2.evidence.some((e) => redactText(e.id, [apiKey]) !== e.id)) return { status: "skipped", reasonCode: "unsafe_evidence_id" };
+    if (input2.evidence.some((e) => redactText(e.id, secrets) !== e.id)) return { status: "skipped", reasonCode: "unsafe_evidence_id" };
     if ("candidates" in input2) {
       if (new Set(input2.candidates.map((c) => c.id)).size !== input2.candidates.length) return { status: "skipped", reasonCode: "duplicate_candidate_ids" };
-      if (input2.candidates.some((c) => ["insufficient_evidence", "__proto__", "constructor", "prototype"].includes(c.id) || redactText(c.id, [apiKey]) !== c.id)) return { status: "skipped", reasonCode: "unsafe_candidate_id" };
+      if (input2.candidates.some((c) => ["insufficient_evidence", "__proto__", "constructor", "prototype"].includes(c.id) || redactText(c.id, secrets) !== c.id)) return { status: "skipped", reasonCode: "unsafe_candidate_id" };
       if (!input2.candidates.some((c) => c.available)) return { status: "abstained", reasonCode: "no_available_candidates", domain: input2.domain };
     }
     if ("exitCode" in input2) {
@@ -20194,8 +20233,8 @@ function createService(options = {}) {
       if (input2.exitCode === null) return { status: "abstained", reasonCode: "command_not_completed" };
     }
     const { mode, ...selected } = input2;
-    const state = sanitize(selected, [apiKey]);
-    const questions = sanitize("candidates" in input2 ? decisionQuestions(input2) : tool === "classify_failure" ? failureQuestions : completionQuestions, [apiKey]);
+    const state = sanitize(selected, secrets);
+    const questions = sanitize("candidates" in input2 ? decisionQuestions(input2) : tool === "classify_failure" ? failureQuestions : completionQuestions, secrets);
     const rubricVersion = tool === "classify_decision" ? DECISION_RUBRIC_VERSION : RUBRIC_VERSION;
     const payload = { state, questions, model: MODEL };
     const bytes = Buffer.byteLength(JSON.stringify(payload));
@@ -20209,15 +20248,16 @@ function createService(options = {}) {
     if (tool === "check_completion" && input2.evidence.length === 0) {
       return { status: "abstained", support: "insufficient_evidence", reasonCode: "no_evidence", evidenceIds };
     }
-    const cached2 = cache.get(inputDigest);
+    const cacheKey = digestOf({ inputDigest, credentialFingerprint: current.fingerprint });
+    const cached2 = cache.get(cacheKey);
     if (cached2) return { ...cached2, cached: true };
-    if (!signal && inFlight.has(inputDigest)) return { ...await inFlight.get(inputDigest), cached: true };
+    if (!signal && inFlight.has(cacheKey)) return { ...await inFlight.get(cacheKey), cached: true };
     const work = run();
-    if (!signal) inFlight.set(inputDigest, work);
+    if (!signal) inFlight.set(cacheKey, work);
     try {
       return await work;
     } finally {
-      if (!signal) inFlight.delete(inputDigest);
+      if (!signal) inFlight.delete(cacheKey);
     }
     async function run() {
       const start = Date.now();
@@ -20273,7 +20313,7 @@ function createService(options = {}) {
       }
       if (result.status === "assessed" || result.status === "abstained") {
         if (cache.size >= 128) cache.delete(cache.keys().next().value);
-        cache.set(inputDigest, result);
+        cache.set(cacheKey, result);
       }
       return result;
     }
@@ -20334,7 +20374,8 @@ function isRecord(value) {
 }
 function boundedWithEnv(value, maxBytes, env) {
   if (typeof value !== "string") return void 0;
-  const redacted = redactText(value, env.TYPESAFE_API_KEY ? [env.TYPESAFE_API_KEY] : []);
+  const fileKey = env.JEV_API_KEY_FILE ? readCredentialFile(env.JEV_API_KEY_FILE) : null;
+  const redacted = redactText(value, [env.TYPESAFE_API_KEY ?? "", fileKey ?? ""].filter(Boolean));
   if (Buffer.byteLength(redacted) <= maxBytes) return redacted;
   return Buffer.from(redacted).subarray(0, maxBytes).toString("utf8");
 }
@@ -20476,7 +20517,7 @@ function cachedToolResult(event, response, env) {
 function privateSessionDirectory(event, env, create = false) {
   return (async () => {
     const directory = dataDirectory(env);
-    if (!isAbsolute3(directory) || directory.includes("\0")) return void 0;
+    if (!isAbsolute4(directory) || directory.includes("\0")) return void 0;
     try {
       const workspace = await realpath2(event.cwd);
       const sessionDirectory = join3(directory, EVENT_DIRECTORY, hash2(workspace), hash2(event.sessionId));
@@ -20492,7 +20533,7 @@ async function readPromptCache(event, env) {
   if (!directory) return void 0;
   const path = join3(directory, "prompt.json");
   try {
-    const handle = await open4(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
+    const handle = await open4(path, constants4.O_RDONLY | constants4.O_NOFOLLOW);
     try {
       const info = await handle.stat();
       if (!info.isFile() || info.size > 4 * 1024) return void 0;
@@ -20518,7 +20559,7 @@ async function updatePromptCache(event, env) {
   const lockPath = join3(directory, ".prompt.lock");
   let lock;
   try {
-    lock = await open4(lockPath, constants3.O_CREAT | constants3.O_EXCL | constants3.O_WRONLY | constants3.O_NOFOLLOW, 384);
+    lock = await open4(lockPath, constants4.O_CREAT | constants4.O_EXCL | constants4.O_WRONLY | constants4.O_NOFOLLOW, 384);
   } catch {
     return readPromptCache(event, env);
   }
@@ -20535,7 +20576,7 @@ async function updatePromptCache(event, env) {
     }
     const temporary = join3(directory, `.prompt-${randomUUID3()}.tmp`);
     const contents = JSON.stringify({ prompt, updatedAt: Date.now() }) + "\n";
-    const handle = await open4(temporary, constants3.O_WRONLY | constants3.O_CREAT | constants3.O_EXCL | constants3.O_NOFOLLOW, 384);
+    const handle = await open4(temporary, constants4.O_WRONLY | constants4.O_CREAT | constants4.O_EXCL | constants4.O_NOFOLLOW, 384);
     try {
       await handle.writeFile(contents, "utf8");
     } finally {
@@ -20575,14 +20616,14 @@ async function updateTurnResultCache(event, response, env) {
   const lockPath = join3(directory, `.${turnHash}.lock`);
   let lock;
   try {
-    lock = await open4(lockPath, constants3.O_CREAT | constants3.O_EXCL | constants3.O_WRONLY | constants3.O_NOFOLLOW, 384);
+    lock = await open4(lockPath, constants4.O_CREAT | constants4.O_EXCL | constants4.O_WRONLY | constants4.O_NOFOLLOW, 384);
   } catch {
     return;
   }
   try {
     let results = [];
     try {
-      const handle2 = await open4(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
+      const handle2 = await open4(path, constants4.O_RDONLY | constants4.O_NOFOLLOW);
       try {
         const info = await handle2.stat();
         if (info.isFile() && info.size <= MAX_TURN_RESULT_FILE_BYTES) {
@@ -20600,7 +20641,7 @@ async function updateTurnResultCache(event, response, env) {
     results = results.slice(-MAX_TURN_RESULTS);
     const temporary = join3(directory, `.${turnHash}-${randomUUID3()}.tmp`);
     const contents = JSON.stringify({ turnHash, updatedAt: Date.now(), results }) + "\n";
-    const handle = await open4(temporary, constants3.O_WRONLY | constants3.O_CREAT | constants3.O_EXCL | constants3.O_NOFOLLOW, 384);
+    const handle = await open4(temporary, constants4.O_WRONLY | constants4.O_CREAT | constants4.O_EXCL | constants4.O_NOFOLLOW, 384);
     try {
       await handle.writeFile(contents, "utf8");
     } finally {
@@ -20629,7 +20670,7 @@ async function readTurnResultCache(event, env) {
   const turnHash = hash2(event.turnId);
   const path = join3(directory, `${turnHash}.json`);
   try {
-    const handle = await open4(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
+    const handle = await open4(path, constants4.O_RDONLY | constants4.O_NOFOLLOW);
     try {
       const info = await handle.stat();
       if (!info.isFile() || info.size > MAX_TURN_RESULT_FILE_BYTES) return { status: "stale", results: [] };
@@ -20760,7 +20801,7 @@ function eventKey(event) {
 async function claimEvent(event, policy, env) {
   if (policy.maxHookCallsPerSession !== null && policy.maxHookCallsPerSession <= 0) return false;
   const directory = dataDirectory(env);
-  if (!isAbsolute3(directory) || directory.includes("\0")) return false;
+  if (!isAbsolute4(directory) || directory.includes("\0")) return false;
   let workspace;
   try {
     await mkdir3(directory, { recursive: true, mode: 448 });
@@ -20774,7 +20815,7 @@ async function claimEvent(event, policy, env) {
   const eventName = eventKey(event);
   if (policy.maxHookCallsPerSession === null) {
     try {
-      const marker = await open4(join3(sessionDirectory, eventName), constants3.O_CREAT | constants3.O_EXCL | constants3.O_WRONLY | constants3.O_NOFOLLOW, 384);
+      const marker = await open4(join3(sessionDirectory, eventName), constants4.O_CREAT | constants4.O_EXCL | constants4.O_WRONLY | constants4.O_NOFOLLOW, 384);
       await marker.close();
       return true;
     } catch {
@@ -20784,7 +20825,7 @@ async function claimEvent(event, policy, env) {
   const lockPath = join3(sessionDirectory, ".lock");
   let lock;
   try {
-    lock = await open4(lockPath, constants3.O_CREAT | constants3.O_EXCL | constants3.O_WRONLY | constants3.O_NOFOLLOW, 384);
+    lock = await open4(lockPath, constants4.O_CREAT | constants4.O_EXCL | constants4.O_WRONLY | constants4.O_NOFOLLOW, 384);
   } catch {
     return false;
   }
@@ -20793,7 +20834,7 @@ async function claimEvent(event, policy, env) {
     if (entries.some((entry) => entry.isFile() && entry.name === eventName)) return false;
     const count = entries.filter((entry) => entry.isFile() && /^[a-f0-9]{64}$/.test(entry.name)).length;
     if (policy.maxHookCallsPerSession !== null && count >= policy.maxHookCallsPerSession) return false;
-    const marker = await open4(join3(sessionDirectory, eventName), constants3.O_CREAT | constants3.O_EXCL | constants3.O_WRONLY | constants3.O_NOFOLLOW, 384);
+    const marker = await open4(join3(sessionDirectory, eventName), constants4.O_CREAT | constants4.O_EXCL | constants4.O_WRONLY | constants4.O_NOFOLLOW, 384);
     await marker.close();
     return true;
   } catch {
@@ -20861,7 +20902,7 @@ async function writeInvocationReceipt(event, env, input2, response, result) {
       reasonCode: result?.reasonCode && /^[a-z_]{1,80}$/.test(result.reasonCode) ? result.reasonCode : void 0
     };
     const contents = JSON.stringify(receipt) + "\n";
-    const handle = await open4(path, constants3.O_WRONLY | constants3.O_CREAT | constants3.O_EXCL | constants3.O_NOFOLLOW, 384);
+    const handle = await open4(path, constants4.O_WRONLY | constants4.O_CREAT | constants4.O_EXCL | constants4.O_NOFOLLOW, 384);
     try {
       await handle.writeFile(contents, "utf8");
     } finally {

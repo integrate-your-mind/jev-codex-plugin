@@ -121,7 +121,7 @@ References:
 
 ## Verified Codex environment compatibility
 
-The portable root MCP schema intentionally contains no `env_vars`. The generated Codex `.mcp.json` compatibility overlay forwards the named `TYPESAFE_API_KEY`, documented `JEV_*` runtime settings and `XDG_STATE_HOME`. It contains no secret value. Current official Codex source explicitly merges local overlay `env_vars` into portable stdio declarations: https://github.com/openai/codex/blob/main/codex-rs/core-plugins/src/agent_plugin_mcp_overlay.rs . Actual installed-runtime results are recorded in the accompanying verification report. Other hosts must supply the credential using their supported environment configuration.
+The portable root MCP schema intentionally contains no `env_vars`. The generated Codex `.mcp.json` compatibility overlay forwards the named `TYPESAFE_API_KEY`, optional `JEV_API_KEY_FILE` path, documented `JEV_*` runtime settings and `XDG_STATE_HOME`. It contains no secret value. Current official Codex source explicitly merges local overlay `env_vars` into portable stdio declarations: https://github.com/openai/codex/blob/main/codex-rs/core-plugins/src/agent_plugin_mcp_overlay.rs . Actual installed-runtime results are recorded in the accompanying verification report. Other hosts must supply the credential or protected file path using their supported environment configuration.
 
 The host process itself must have the credential in its environment; an unrelated terminal export does not update an already-running desktop app. `jev_status` reports readiness without exposing the value. Normal hook trust and workspace allowlisting still apply; no global hook trust is changed by installation.
 

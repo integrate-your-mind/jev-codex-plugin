@@ -9,7 +9,7 @@ var __export = (target, all) => {
 import { createHash as createHash3 } from "node:crypto";
 import { constants as fsConstants } from "node:fs";
 import { mkdir as mkdir3, open as open4, realpath as realpath2 } from "node:fs/promises";
-import { isAbsolute as isAbsolute3, join as join3, sep as sep2 } from "node:path";
+import { isAbsolute as isAbsolute4, join as join3, sep as sep2 } from "node:path";
 import { pathToFileURL } from "node:url";
 
 // src/service.ts
@@ -20116,6 +20116,36 @@ Follow the stated objective and constraints supplied in context, using the evide
   };
 }
 
+// src/credential.ts
+import { closeSync, constants as constants3, fstatSync, openSync, readSync } from "node:fs";
+import { isAbsolute as isAbsolute3 } from "node:path";
+var MAX_FILE_BYTES = 4096;
+var KEY_LINE = /^(?:export )?TYPESAFE_API_KEY=(?:'([A-Za-z0-9._-]{1,512})'|"([A-Za-z0-9._-]{1,512})"|([A-Za-z0-9._-]{1,512}))\n?$/;
+function readCredentialFile(path) {
+  if (!isAbsolute3(path) || path.length > 4096 || /[\r\n\0]/.test(path)) return null;
+  let fd;
+  try {
+    fd = openSync(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
+    const stat = fstatSync(fd);
+    const uid = process.getuid?.();
+    if (!stat.isFile() || uid === void 0 || stat.uid !== uid || (stat.mode & 63) !== 0 || stat.size < 1 || stat.size > MAX_FILE_BYTES) return null;
+    const buffer = Buffer.alloc(stat.size + 1);
+    const bytes = readSync(fd, buffer, 0, buffer.length, 0);
+    if (bytes !== stat.size) return null;
+    const match = KEY_LINE.exec(buffer.toString("utf8", 0, bytes));
+    return match ? match[1] ?? match[2] ?? match[3] ?? null : null;
+  } catch {
+    return null;
+  } finally {
+    if (fd !== void 0) {
+      try {
+        closeSync(fd);
+      } catch {
+      }
+    }
+  }
+}
+
 // src/service.ts
 var maxPayloadBytes = 48e3;
 function positiveLimit(value, fallback) {
@@ -20127,22 +20157,27 @@ function positiveLimit(value, fallback) {
 }
 function createService(options = {}) {
   const env = options.env ?? process.env;
-  const apiKey = options.apiKey ?? env.TYPESAFE_API_KEY ?? "";
+  const staticApiKey = options.apiKey ?? env.TYPESAFE_API_KEY ?? "";
+  const credentialFile = options.apiKey === void 0 ? env.JEV_API_KEY_FILE : void 0;
+  const credential = () => {
+    const apiKey = credentialFile === void 0 ? staticApiKey : readCredentialFile(credentialFile);
+    return { apiKey, fingerprint: apiKey ? fingerprintCredential(apiKey) : null };
+  };
   const enabled = options.enabled ?? env.JEV_ENABLED !== "0";
   const timeoutMs = Math.min(Math.max(options.timeoutMs ?? 1e4, 1), 1e4);
   const confidenceFloor = options.confidenceFloor ?? 0.6;
-  const credentialFingerprint = apiKey ? fingerprintCredential(apiKey) : null;
   const cache = /* @__PURE__ */ new Map();
   const inFlight = /* @__PURE__ */ new Map();
   const digestOf = (value) => createHash2("sha256").update(JSON.stringify(value)).digest("hex");
   function status(policy = DEFAULT_POLICY) {
+    const current = credential();
     return {
       version: "0.3.0",
       provider: "TypeSafe",
       endpoint: ENDPOINT,
       model: MODEL,
-      credentialConfigured: Boolean(apiKey),
-      credentialFingerprint,
+      credentialConfigured: Boolean(current.apiKey),
+      credentialFingerprint: current.fingerprint,
       enabled,
       stateDirectory: dataDirectory(env),
       defaultMode: "preview",
@@ -20160,11 +20195,15 @@ function createService(options = {}) {
     const parsed = schema.safeParse(raw);
     if (!parsed.success) return { status: "skipped", reasonCode: "invalid_input" };
     const input2 = parsed.data;
+    const current = credential();
+    if (credentialFile !== void 0 && !current.apiKey) return { status: "unavailable", reasonCode: "credential_source_unavailable" };
+    const apiKey = current.apiKey ?? "";
+    const secrets = [apiKey, staticApiKey].filter(Boolean);
     if (new Set(input2.evidence.map((e) => e.id)).size !== input2.evidence.length) return { status: "skipped", reasonCode: "duplicate_evidence_ids" };
-    if (input2.evidence.some((e) => redactText(e.id, [apiKey]) !== e.id)) return { status: "skipped", reasonCode: "unsafe_evidence_id" };
+    if (input2.evidence.some((e) => redactText(e.id, secrets) !== e.id)) return { status: "skipped", reasonCode: "unsafe_evidence_id" };
     if ("candidates" in input2) {
       if (new Set(input2.candidates.map((c) => c.id)).size !== input2.candidates.length) return { status: "skipped", reasonCode: "duplicate_candidate_ids" };
-      if (input2.candidates.some((c) => ["insufficient_evidence", "__proto__", "constructor", "prototype"].includes(c.id) || redactText(c.id, [apiKey]) !== c.id)) return { status: "skipped", reasonCode: "unsafe_candidate_id" };
+      if (input2.candidates.some((c) => ["insufficient_evidence", "__proto__", "constructor", "prototype"].includes(c.id) || redactText(c.id, secrets) !== c.id)) return { status: "skipped", reasonCode: "unsafe_candidate_id" };
       if (!input2.candidates.some((c) => c.available)) return { status: "abstained", reasonCode: "no_available_candidates", domain: input2.domain };
     }
     if ("exitCode" in input2) {
@@ -20172,8 +20211,8 @@ function createService(options = {}) {
       if (input2.exitCode === null) return { status: "abstained", reasonCode: "command_not_completed" };
     }
     const { mode, ...selected } = input2;
-    const state = sanitize(selected, [apiKey]);
-    const questions = sanitize("candidates" in input2 ? decisionQuestions(input2) : tool === "classify_failure" ? failureQuestions : completionQuestions, [apiKey]);
+    const state = sanitize(selected, secrets);
+    const questions = sanitize("candidates" in input2 ? decisionQuestions(input2) : tool === "classify_failure" ? failureQuestions : completionQuestions, secrets);
     const rubricVersion = tool === "classify_decision" ? DECISION_RUBRIC_VERSION : RUBRIC_VERSION;
     const payload = { state, questions, model: MODEL };
     const bytes = Buffer.byteLength(JSON.stringify(payload));
@@ -20187,15 +20226,16 @@ function createService(options = {}) {
     if (tool === "check_completion" && input2.evidence.length === 0) {
       return { status: "abstained", support: "insufficient_evidence", reasonCode: "no_evidence", evidenceIds };
     }
-    const cached2 = cache.get(inputDigest);
+    const cacheKey = digestOf({ inputDigest, credentialFingerprint: current.fingerprint });
+    const cached2 = cache.get(cacheKey);
     if (cached2) return { ...cached2, cached: true };
-    if (!signal && inFlight.has(inputDigest)) return { ...await inFlight.get(inputDigest), cached: true };
+    if (!signal && inFlight.has(cacheKey)) return { ...await inFlight.get(cacheKey), cached: true };
     const work = run();
-    if (!signal) inFlight.set(inputDigest, work);
+    if (!signal) inFlight.set(cacheKey, work);
     try {
       return await work;
     } finally {
-      if (!signal) inFlight.delete(inputDigest);
+      if (!signal) inFlight.delete(cacheKey);
     }
     async function run() {
       const start = Date.now();
@@ -20251,7 +20291,7 @@ function createService(options = {}) {
       }
       if (result.status === "assessed" || result.status === "abstained") {
         if (cache.size >= 128) cache.delete(cache.keys().next().value);
-        cache.set(inputDigest, result);
+        cache.set(cacheKey, result);
       }
       return result;
     }
@@ -20384,7 +20424,7 @@ function digest(value) {
 }
 async function claimEvent(event, env) {
   const pluginData = env.PLUGIN_DATA;
-  if (!pluginData || !isAbsolute3(pluginData)) return false;
+  if (!pluginData || !isAbsolute4(pluginData)) return false;
   let dataRoot;
   let workspace;
   try {
