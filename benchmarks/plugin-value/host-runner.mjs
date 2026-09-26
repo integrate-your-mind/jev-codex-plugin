@@ -8,14 +8,14 @@ import {
   cp,
   lstat,
   mkdir,
-  mkdtemp,
   readFile,
+  readdir,
   realpath,
   rm,
   symlink,
   writeFile,
 } from 'node:fs/promises';
-import {homedir, tmpdir} from 'node:os';
+import {homedir} from 'node:os';
 import {basename, dirname, isAbsolute, join, relative, resolve, sep} from 'node:path';
 import {createInterface} from 'node:readline';
 import {pathToFileURL} from 'node:url';
@@ -54,10 +54,35 @@ const ALLOWED_RPC_METHODS = new Set([
 ]);
 const PINNED_SOURCE_HASHES = Object.freeze({
   '.codex-plugin/plugin.json': '0c09fb93dd0115a6fbb4aa14c80daabf5671033a2aac31619a9769dd90b37263',
+  '.gitignore': '14a52462f9c1e71e25845771a0782a0de2a72b7d3798a5d60c865eeb9893679b',
   '.mcp.json': '4aa483173c3f385e529d3d3592f4ec37c29d54049401fa58bb9184753282f108',
+  'HOST-COMPATIBILITY.json': '9fa57855d3420a9b2be3bb704949924252477c2065f89a22086fa0df599bc8a2',
+  'LICENSE': '90f9b49ccfa673a6952b0b9cfb6a88a0131c2b93d0c4cbfa03f7d5ba35873b26',
+  'README.md': '8290228fd74ae48fef4f35619457cfca8362c8c738753d5ba586b2a3eeaa02b4',
+  'assets/jev-workflows-mark.png': '639eae33a18a096aa844eea13c038eae05b1a324c151632c9ca9e2050ff74087',
+  'assets/jev-workflows-mark.svg': 'e0d12092e7456b037793b2f8de8d5a5248ce7825ffd290eee5e527d816096e71',
+  'dist/cli.mjs': '9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db',
   'hooks/hooks.json': 'ae764c24df9f35917f5a8b0728f66d19e333399963e66faf738733167e2b8592',
   'dist/decision-hook.mjs': 'cbbe3150a0996b18737526a284c3d979430315ce4e459e89edcc17618439c10f',
+  'dist/hook.mjs': '205d545ff8437d6d4595e787e04c24d5136db2626e7ad0d3a0b6cbea2720d6bd',
   'dist/server.mjs': '88913f614e6bbf0da4637877fb1aef6f5d6cb9bbbbdecaed1f3566a280438064',
+  'docs/accounting.md': '7e8abc9e25d5b5842581ca873b4d85e9b50cf222679bf54502a566f5365da35e',
+  'docs/compatibility.md': '51ee43f12595180cd0cc7b9fbb5484e14414e28352d8877f24b5ef207638fd06',
+  'docs/distribution.md': 'ad5154e7343a334ac25dfdc73406368b7494ab08cc0792f9d5ffd8f3a769b8c2',
+  'docs/fixture-rationale.md': '5992a01f2a5f67ed198e01bc682fa43c5960fd05cf642994d1a3ced5836b6acf',
+  'docs/privacy.md': 'a0a97d77f733997435517be59cf751a8c7d936555836e05e7616388558938887',
+  'docs/publication.md': 'b08012ebd39d164ce141836759eb121afa002da6d5a97f99c63c341ff02c096a',
+  'docs/reviewer-cases.md': '03a302151dec2d5aed75fc839bcbcd2fff50452eddbe79227d19dd4cd7489154',
+  'docs/terms.md': '7c4bc559d94a81b69eb6c6e4b7706398b5300a227c98a59948aba27287fbb4ff',
+  'skills/check-completion/SKILL.md': '7a9bc3ac4ed186857a5a5b704398e53a775a37c6b715c8e4856e6af1d9d4caa3',
+  'skills/check-completion/references/standalone.md': '046a2dca022b61d2ad8c17b5d803c018fcfeeb19d9d2d33d9b968606446501f8',
+  'skills/check-completion/scripts/jev.mjs': '9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db',
+  'skills/classify-decision/SKILL.md': 'eefa7df798b393173b961e1abc3ff81db85fa5a58d3161d9029620177d86ddd1',
+  'skills/classify-decision/references/standalone.md': 'ade260df533c67bfdf8632d338b3805de438433d5fe57c708a034596f761f119',
+  'skills/classify-decision/scripts/jev.mjs': '9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db',
+  'skills/diagnose-failure/SKILL.md': '14b0670514691b6c6922cfdfeadb2eefe8817f6d8cb7b12d9da0fb7de637211e',
+  'skills/diagnose-failure/references/standalone.md': '72c597efa3b0b2ee68e4de4832e09af4510cc2dfc845952f949b4559ef1af099',
+  'skills/diagnose-failure/scripts/jev.mjs': '9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db',
 });
 
 function sha256(value) {
@@ -78,15 +103,18 @@ export function validateRequest(value) {
   if (!['baseline', 'treatment'].includes(value.arm)) throw new Error('arm must be baseline or treatment');
   if (!/^[0-9a-f]{12,64}$/.test(value.containerId ?? '')) throw new Error('invalid container id');
   if (value.containerUser !== null && value.containerUser !== undefined && !/^[A-Za-z0-9_.:-]{1,128}$/.test(value.containerUser)) throw new Error('invalid container user');
-  for (const key of ['dockerPath', 'codexPath', 'logsDir']) {
+  for (const key of ['dockerPath', 'nodePath', 'codexPath', 'logsDir', 'runtimeHome']) {
     if (typeof value[key] !== 'string' || !value[key].startsWith('/')) throw new Error(`${key} must be absolute`);
+  }
+  for (const key of ['dockerSha256', 'nodeSha256', 'codexSha256']) {
+    if (!/^[0-9a-f]{64}$/.test(value[key] ?? '')) throw new Error(`${key} must be a SHA-256 digest`);
   }
   if (typeof value.instruction !== 'string' || value.instruction.length === 0 || Buffer.byteLength(value.instruction) > 2_000_000) throw new Error('instruction must be a bounded non-empty string');
   if (value.model !== 'gpt-6-astra') throw new Error('model must be gpt-6-astra');
   if (value.effort !== 'medium') throw new Error('effort must be medium');
   if (value.remoteCwd !== '/app') throw new Error('remoteCwd must be /app');
-  if (!/^\/tmp\/deepswe-runs\/[0-9a-f]{12}\/workspace$/.test(value.hostCwd ?? '')) throw new Error('hostCwd must be the per-container host shadow path');
-  if (!value.hostCwd.includes(value.containerId.slice(0, 12))) throw new Error('hostCwd must match the container id');
+  if (value.hostCwd !== join(resolve(value.logsDir), 'workspace')) throw new Error('hostCwd must be the host-control workspace path');
+  if (value.runtimeHome !== join(resolve(value.logsDir), 'runtime-home')) throw new Error('runtimeHome must be the host-control runtime path');
   if (!Number.isSafeInteger(value.turnTimeoutMs) || value.turnTimeoutMs < 1_000 || value.turnTimeoutMs > 10_790_000) throw new Error('invalid turn timeout');
   if (typeof value.preflightOnly !== 'boolean') throw new Error('preflightOnly must be boolean');
   return {...value};
@@ -105,9 +133,58 @@ async function fileSha256(path) {
   return sha256(await readFile(path));
 }
 
-async function verifyPinnedPlugin(source) {
+export async function verifyHostRuntimeIdentity(request, environment = process.env) {
+  assert.equal(process.version, 'v22.23.2', 'host Node version drifted');
+  assert.equal(await realpath(process.execPath), await realpath(request.nodePath), 'host Node executable path drifted');
+  const nodeSha256 = await fileSha256(request.nodePath);
+  assert.equal(nodeSha256, request.nodeSha256, 'host Node executable hash drifted');
+  const codexSha256 = await fileSha256(request.codexPath);
+  assert.equal(codexSha256, request.codexSha256, 'host Codex executable hash drifted');
+  const codexVersion = (await execFilePromise(request.codexPath, ['--version'])).stdout.trim();
+  assert.equal(codexVersion, 'codex-cli 0.155.0', 'host Codex version drifted');
+  const dockerSha256 = await fileSha256(request.dockerPath);
+  assert.equal(dockerSha256, request.dockerSha256, 'host Docker executable hash drifted');
+  const dockerVersion = (await execFilePromise(request.dockerPath, ['--version'])).stdout.trim();
+  assert.match(dockerVersion, /^Docker version 29\.7\.1,/, 'host Docker version drifted');
+  const [controlledBin] = String(environment.PATH ?? '').split(':');
+  assert.equal(await realpath(join(controlledBin, 'node')), await realpath(request.nodePath), 'plugin PATH does not resolve node to the pinned executable');
+  const pluginNodeVersion = (await execFilePromise('/usr/bin/env', ['node', '--version'], {
+    env: {PATH: environment.PATH},
+  })).stdout.trim();
+  assert.equal(pluginNodeVersion, 'v22.23.2', 'plugin PATH Node version drifted');
+  return {
+    nodeVersion: process.version,
+    nodeSha256,
+    codexVersion,
+    codexSha256,
+    dockerVersion,
+    dockerSha256,
+    pluginNodeVersion,
+  };
+}
+
+async function pluginFileInventory(source, relativeDirectory = '') {
+  const directory = join(source, relativeDirectory);
+  const entries = await readdir(directory, {withFileTypes: true});
+  const files = [];
+  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+    const relativePath = relativeDirectory ? `${relativeDirectory}/${entry.name}` : entry.name;
+    const metadata = await lstat(join(source, relativePath));
+    if (metadata.isSymbolicLink()) throw new Error(`installed Jev 0.4.0 contains a symlink: ${relativePath}`);
+    if (metadata.isDirectory()) files.push(...await pluginFileInventory(source, relativePath));
+    else if (metadata.isFile()) files.push(relativePath);
+    else throw new Error(`installed Jev 0.4.0 contains an unsupported entry: ${relativePath}`);
+  }
+  return files;
+}
+
+export async function verifyPinnedPlugin(source, expectedHashes = PINNED_SOURCE_HASHES) {
+  const actualFiles = (await pluginFileInventory(source))
+    .filter(path => path !== '.DS_Store')
+    .sort();
+  assert.deepEqual(actualFiles, Object.keys(expectedHashes).sort(), 'installed Jev 0.4.0 file inventory drifted');
   const observed = {};
-  for (const [path, expected] of Object.entries(PINNED_SOURCE_HASHES)) {
+  for (const [path, expected] of Object.entries(expectedHashes)) {
     const digest = await fileSha256(join(source, path));
     if (digest !== expected) throw new Error(`installed Jev 0.4.0 hash mismatch: ${path}`);
     observed[path] = digest;
@@ -144,8 +221,8 @@ export function buildEnvironmentsToml(request) {
     '/usr/bin/env',
     '-i',
     'PATH=/usr/local/bin:/usr/bin:/bin',
-    'HOME=/tmp/codex-exec-launcher',
-    'CODEX_HOME=/tmp/codex-exec-home',
+    'HOME=/installed-agent/codex-exec-launcher',
+    'CODEX_HOME=/installed-agent/codex-exec-home',
     '/usr/local/bin/codex',
     'exec-server',
     '--listen',
@@ -434,7 +511,8 @@ async function runtimeProtectedPaths() {
 async function createRuntimeHome(request) {
   const sourceHome = resolve(process.env.PLUGIN_VALUE_SOURCE_CODEX_HOME ?? process.env.CODEX_HOME ?? join(homedir(), '.codex'));
   const authSource = await realpath(join(sourceHome, 'auth.json'));
-  const home = await mkdtemp(join(tmpdir(), 'plugin-value-codex-'));
+  const home = request.runtimeHome;
+  await mkdir(home, {recursive: false, mode: 0o700});
   await chmod(home, 0o700);
   await symlink(authSource, join(home, 'auth.json'));
   const stateDirectory = join(home, 'jev-state');
@@ -447,6 +525,8 @@ async function createRuntimeHome(request) {
     const target = join(home, 'plugins', 'cache', 'personal', 'jev-workflows', PLUGIN_DIRECTORY);
     await mkdir(dirname(target), {recursive: true, mode: 0o700});
     await cp(sourcePlugin, target, {recursive: true, dereference: true, preserveTimestamps: true});
+    await rm(join(target, '.DS_Store'), {force: true});
+    assert.deepEqual(await verifyPinnedPlugin(target), sourceHashes, 'copied Jev plugin tree drifted');
     await replaceStateDirectory(target, stateDirectory);
     await writeFile(join(stateDirectory, 'policy.json'), `${JSON.stringify({
       enabled: true,
@@ -579,27 +659,39 @@ async function verifyTreatmentProviderCall(server, threadId, serverName) {
 }
 
 async function copyEvidence(runtime, logsDir) {
+  const copied = {sessions: false, jevState: false};
   const sessions = join(runtime.home, 'sessions');
   try {
-    if ((await lstat(sessions)).isDirectory()) await cp(sessions, join(logsDir, 'sessions'), {recursive: true, dereference: true});
+    if ((await lstat(sessions)).isDirectory()) {
+      await cp(sessions, join(logsDir, 'sessions'), {recursive: true, dereference: true});
+      copied.sessions = true;
+    }
   } catch (error) {
     if (error?.code !== 'ENOENT') throw error;
   }
   if (runtime.stateDirectory) {
     try {
-      if ((await lstat(runtime.stateDirectory)).isDirectory()) await cp(runtime.stateDirectory, join(logsDir, 'jev-state'), {recursive: true, dereference: true});
+      if ((await lstat(runtime.stateDirectory)).isDirectory()) {
+        await cp(runtime.stateDirectory, join(logsDir, 'jev-state'), {recursive: true, dereference: true});
+        copied.jevState = true;
+      }
     } catch (error) {
       if (error?.code !== 'ENOENT') throw error;
     }
   }
+  return copied;
 }
 
 async function run(request) {
   const logsDir = resolve(request.logsDir);
   await mkdir(logsDir, {recursive: true, mode: 0o700});
-  const hostRunRoot = dirname(request.hostCwd);
   const hostShadow = request.hostCwd;
-  await mkdir(hostShadow, {recursive: true, mode: 0o700});
+  const logsMetadata = await lstat(logsDir);
+  assert.equal(logsMetadata.isDirectory(), true, 'host-control logs path must be a directory');
+  assert.equal(logsMetadata.uid, process.getuid(), 'host-control logs path must be owned by the benchmark user');
+  assert.equal(logsMetadata.mode & 0o077, 0, 'host-control logs path must be owner-only');
+  assert.equal(await realpath(dirname(hostShadow)), await realpath(logsDir), 'host workspace parent must be host-control logs');
+  await mkdir(hostShadow, {recursive: false, mode: 0o700});
   assert.equal((await lstat(hostShadow)).isDirectory(), true, 'host workspace shadow must be a directory');
   const receipt = {
     schemaVersion: RUNTIME_SCHEMA,
@@ -614,8 +706,7 @@ async function run(request) {
   let server;
   let threadId;
   try {
-    const hostVersion = await execFilePromise(request.codexPath, ['--version']);
-    assert.equal(hostVersion.stdout.trim(), 'codex-cli 0.155.0', 'host Codex version drifted');
+    receipt.hostRuntime = await verifyHostRuntimeIdentity(request);
     receipt.container = await inspectContainer(request, await runtimeProtectedPaths());
     runtime = await createRuntimeHome(request);
     receipt.pluginSourceHashes = runtime.sourceHashes;
@@ -711,7 +802,10 @@ async function run(request) {
     }
     if (runtime) {
       try {
-        await copyEvidence(runtime, logsDir);
+        const evidence = await copyEvidence(runtime, logsDir);
+        receipt.evidence = evidence;
+        if (!request.preflightOnly && !evidence.sessions) cleanupErrors.push('evidence copy: scored run produced no Codex session evidence');
+        if (request.arm === 'treatment' && !evidence.jevState) cleanupErrors.push('evidence copy: treatment produced no Jev state evidence');
       } catch (error) {
         cleanupErrors.push(`evidence copy: ${String(error?.message ?? error).slice(0, 500)}`);
       } finally {
@@ -723,11 +817,15 @@ async function run(request) {
       }
     }
     try {
-      await rm(hostRunRoot, {recursive: true, force: true});
+      await rm(hostShadow, {recursive: true, force: true});
     } catch (error) {
       cleanupErrors.push(`host shadow removal: ${String(error?.message ?? error).slice(0, 500)}`);
     }
-    if (cleanupErrors.length) receipt.cleanupErrors = cleanupErrors;
+    if (cleanupErrors.length) {
+      receipt.cleanupErrors = cleanupErrors;
+      receipt.status = 'failed';
+      receipt.failure ??= {name: 'CleanupError', message: cleanupErrors.join('; ').slice(0, 2_000)};
+    }
     receipt.completedAt = new Date().toISOString();
     await writeFile(join(logsDir, 'runtime-evidence.json'), `${JSON.stringify(receipt, null, 2)}\n`, {encoding: 'utf8', mode: 0o600});
   }

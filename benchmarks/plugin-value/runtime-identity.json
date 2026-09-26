@@ -1,16 +1,52 @@
 {
   "schemaVersion": "plugin-value-runtime-identity-v1",
+  "status": "pending-native-controls",
+  "executionReady": false,
   "agent": {
     "cli": "codex-cli 0.155.0",
+    "node": "v22.23.2",
     "model": "gpt-6-astra",
     "reasoningEffort": "medium"
   },
   "dataset": {
     "deepSweCommit": "0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
-    "firstTask": "ipython-session-bundle-replay",
-    "firstImage": "public.ecr.aws/d3j8x8q7/swe-bench-202605@sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
-    "firstImageCompressedBytes": 852416609,
-    "firstImagePlatform": "linux/amd64"
+    "scheduleSha256": "58a1cc48ce1fa705b593edeeee9a3c307f88ffbe4833d0a356734e76d43608dd",
+    "taskRuntimeMetadataSha256": "91e48b4c5eca1156d5128111f16536d2bea7b4bf75ea8b8cb8ffa562b8c24708",
+    "taskCount": 20,
+    "imageIdentityLedger": "image-identities.json",
+    "imageIdentityLedgerSha256": "3ec2e7b2a732720f43c76f03735057b44968afc4e2f7089862a7ab88694ea819",
+    "imagePolicy": "Agent and separate-verifier task images must equal the ledger tag and are replaced with repository@sha256 before Pier starts them; no mutable-tag fallback is allowed.",
+    "imagePlatform": "linux/amd64"
+  },
+  "sharedRuntime": {
+    "schemaVersion": "plugin-value-shared-runtime-v1",
+    "platform": "linux/amd64",
+    "mountTarget": "/opt/jev-codex-runtime",
+    "mountPolicy": "agent-only read-only bind; Pier default log, agent, and artifact mounts retained; never mounted in the separate verifier",
+    "codexVersion": "0.155.0",
+    "nodeVersion": "22.23.2",
+    "manifestSha256": "a3a4b16d095d901fd0bbcfc6153c1fa9bd6777a077edb361e57cba16187cab36",
+    "treeSha256": "32225cab4ec5d69ec0e54ef484b73357398ea23238cfb65f8860d5900bbaf175",
+    "status": "sandbox-capable-artifact-offline-bootstrap-passed-native-workspace-control-pending"
+  },
+  "hostRuntime": {
+    "platform": "darwin/arm64",
+    "node": {
+      "version": "v22.23.2",
+      "sha256": "18e387c90ab8a8400183e8bdd396376e1e875b91b4c874b894dcade7b35bf572"
+    },
+    "codex": {
+      "version": "codex-cli 0.155.0",
+      "sha256": "b0b14f9c1901c1ec44671094b2dc18b39e4bd8d36a6dc2302cc9d961a7e2a197"
+    },
+    "docker": {
+      "version": "Docker version 29.7.1",
+      "sha256": "49d98ab806e8678cd6341b09dad6389e5bcd8a46513de7651053bee3d8366e8d"
+    },
+    "runner": {
+      "sha256": "fd9e4648f19540f517def93ab54cf6be4d9ed6cac0985aadc0d82a3c67e4879e"
+    },
+    "pathPolicy": "Operators supply absolute executable paths; content hashes and versions above are enforced before use. App-server hook and MCP PATH resolves node only through a host-control symlink to the pinned Node executable."
   },
   "plugin": {
     "id": "jev-workflows@personal",
@@ -18,21 +54,73 @@
     "sourceRevision": "7dfe432d7463bab7186a8dacf50924af282f9a20",
     "sourceHashes": {
       ".codex-plugin/plugin.json": "0c09fb93dd0115a6fbb4aa14c80daabf5671033a2aac31619a9769dd90b37263",
+      ".gitignore": "14a52462f9c1e71e25845771a0782a0de2a72b7d3798a5d60c865eeb9893679b",
       ".mcp.json": "4aa483173c3f385e529d3d3592f4ec37c29d54049401fa58bb9184753282f108",
+      "HOST-COMPATIBILITY.json": "9fa57855d3420a9b2be3bb704949924252477c2065f89a22086fa0df599bc8a2",
+      "LICENSE": "90f9b49ccfa673a6952b0b9cfb6a88a0131c2b93d0c4cbfa03f7d5ba35873b26",
+      "README.md": "8290228fd74ae48fef4f35619457cfca8362c8c738753d5ba586b2a3eeaa02b4",
+      "assets/jev-workflows-mark.png": "639eae33a18a096aa844eea13c038eae05b1a324c151632c9ca9e2050ff74087",
+      "assets/jev-workflows-mark.svg": "e0d12092e7456b037793b2f8de8d5a5248ce7825ffd290eee5e527d816096e71",
+      "dist/cli.mjs": "9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db",
       "hooks/hooks.json": "ae764c24df9f35917f5a8b0728f66d19e333399963e66faf738733167e2b8592",
       "dist/decision-hook.mjs": "cbbe3150a0996b18737526a284c3d979430315ce4e459e89edcc17618439c10f",
-      "dist/server.mjs": "88913f614e6bbf0da4637877fb1aef6f5d6cb9bbbbdecaed1f3566a280438064"
-    }
+      "dist/hook.mjs": "205d545ff8437d6d4595e787e04c24d5136db2626e7ad0d3a0b6cbea2720d6bd",
+      "dist/server.mjs": "88913f614e6bbf0da4637877fb1aef6f5d6cb9bbbbdecaed1f3566a280438064",
+      "docs/accounting.md": "7e8abc9e25d5b5842581ca873b4d85e9b50cf222679bf54502a566f5365da35e",
+      "docs/compatibility.md": "51ee43f12595180cd0cc7b9fbb5484e14414e28352d8877f24b5ef207638fd06",
+      "docs/distribution.md": "ad5154e7343a334ac25dfdc73406368b7494ab08cc0792f9d5ffd8f3a769b8c2",
+      "docs/fixture-rationale.md": "5992a01f2a5f67ed198e01bc682fa43c5960fd05cf642994d1a3ced5836b6acf",
+      "docs/privacy.md": "a0a97d77f733997435517be59cf751a8c7d936555836e05e7616388558938887",
+      "docs/publication.md": "b08012ebd39d164ce141836759eb121afa002da6d5a97f99c63c341ff02c096a",
+      "docs/reviewer-cases.md": "03a302151dec2d5aed75fc839bcbcd2fff50452eddbe79227d19dd4cd7489154",
+      "docs/terms.md": "7c4bc559d94a81b69eb6c6e4b7706398b5300a227c98a59948aba27287fbb4ff",
+      "skills/check-completion/SKILL.md": "7a9bc3ac4ed186857a5a5b704398e53a775a37c6b715c8e4856e6af1d9d4caa3",
+      "skills/check-completion/references/standalone.md": "046a2dca022b61d2ad8c17b5d803c018fcfeeb19d9d2d33d9b968606446501f8",
+      "skills/check-completion/scripts/jev.mjs": "9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db",
+      "skills/classify-decision/SKILL.md": "eefa7df798b393173b961e1abc3ff81db85fa5a58d3161d9029620177d86ddd1",
+      "skills/classify-decision/references/standalone.md": "ade260df533c67bfdf8632d338b3805de438433d5fe57c708a034596f761f119",
+      "skills/classify-decision/scripts/jev.mjs": "9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db",
+      "skills/diagnose-failure/SKILL.md": "14b0670514691b6c6922cfdfeadb2eefe8817f6d8cb7b12d9da0fb7de637211e",
+      "skills/diagnose-failure/references/standalone.md": "72c597efa3b0b2ee68e4de4832e09af4510cc2dfc845952f949b4559ef1af099",
+      "skills/diagnose-failure/scripts/jev.mjs": "9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db"
+    },
+    "sourceInventoryPolicy": "The copied treatment tree contains exactly these 30 authenticated regular files; unknown files and symlinks are rejected and Finder metadata is removed before a second full verification."
   },
   "runner": {
     "pierVersion": "0.3.1",
     "pierRevision": "4f3441fb3e7c21ce8a4ed0b6155a8d9a176a645a",
     "harborVersion": "0.20.0",
+    "python": {
+      "version": "3.12.13",
+      "sha256": "fe46716a94d8efa4514feb3c39ba3e270deee2187556986f6ddcff54aba7bb9a"
+    },
+    "adapterSha256": "c68b1c82354108f92a40081935bb0fa514f81a2aaf33e38f771898fd8721eeae",
+    "launcherSha256": "e3de3a23c0989ae21fe582b94b5b6c35a132ac105097064f3084fb25e158bdda",
+    "pierDistribution": {
+      "version": "0.3.1",
+      "recordSha256": "45818d9724e3733ca8e2a08f9b2f8661eac9f31c5ab2869faacd41be6627bbd4",
+      "directUrl": {
+        "commit": "4f3441fb3e7c21ce8a4ed0b6155a8d9a176a645a",
+        "sha256": "3b17c72eeba2613ea4d6cbda08978c3f73030f7c9b093704d7a65e1c60cfb818"
+      }
+    },
+    "harborDistribution": {
+      "version": "0.20.0",
+      "recordSha256": "88e01b4007ca519f1781d1fac6a12ba6bb3a9b0c04311899bef836a7270f0a6b"
+    },
     "containerNetwork": "none",
     "transport": "host app-server to container exec-server over env -i docker exec -i stdio",
     "taskCredentials": "none",
+    "agentInstallSpec": null,
+    "taskImageExecution": "digest-pinned prebuilt task image with no per-task Codex derivative build",
+    "verifierRuntimeBundle": "absent",
     "hostArchitecture": "darwin/arm64",
-    "taskArchitecture": "linux/amd64 (emulated)"
+    "taskArchitecture": "linux/amd64 (emulated)",
+    "temporaryStorage": {
+      "classification": "operational temporary location excluded from measured study conditions",
+      "policy": "owner-only directory disjoint from jobs, frozen task inputs, the Pier runtime, and the shared task runtime"
+    },
+    "runOneSha256": "7c16d49aadfb5b8d2f335cbc6aa357cb984e444e20a68b005fdca70ed1911584",
+    "pythonCachePolicy": "The authenticated adapter is compiled from source bytes; Pier runs with -B and an exclusive empty pycache prefix."
   }
 }
-

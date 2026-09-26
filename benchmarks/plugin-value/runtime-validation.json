@@ -1,7 +1,7 @@
 {
   "schemaVersion": "plugin-value-runtime-validation-v1",
-  "generatedAt": "2026-09-26T18:54:01Z",
-  "status": "blocked-runtime-setup",
+  "generatedAt": "2026-09-26T20:19:55Z",
+  "status": "source-validated-native-controls-pending",
   "controlsPassed": false,
   "readyForScored": false,
   "calls": {
@@ -19,22 +19,63 @@
     "deepSweCommit": "0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
     "firstTask": "ipython-session-bundle-replay",
     "firstImageDigest": "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
+    "runtimeFilesScope": "retained v4 failed-attempt identity; preserved for failure provenance",
     "runtimeFiles": {
       "host-runner.mjs": "d2e74c1d0b048ac343f30c087168cb4ae824b491aa20ae942e5c31bfe56939ff",
       "runtime.py": "87be38d31de05aa4c23c6bc9c891fd811a829988306701fa9fbadffaf8f37106",
       "run-one.sh": "397c12a29f7aed8ce845aa0810ae0d0d435c385396616e034dd99fccc0c22554",
       "pier-main.py": "49634bc47391198c8e5c45a94d1eb72185ffc10668c27dfdde6ac682707de20a"
+    },
+    "pendingSharedRuntimeFiles": {
+      "runtime.py": "c68b1c82354108f92a40081935bb0fa514f81a2aaf33e38f771898fd8721eeae",
+      "run-one.sh": "7c16d49aadfb5b8d2f335cbc6aa357cb984e444e20a68b005fdca70ed1911584",
+      "runtime-identity.json": "bad5c10d310b9b050b93aacaa57e2b6ba7a8a57ee33875a612379c060a3ae455",
+      "tests/runtime_test.py": "b889369e4ff41f5b31149e3d2c3bf7999886411bfa1b039e8f917a75f9ded19c",
+      "host-runner.mjs": "fd9e4648f19540f517def93ab54cf6be4d9ed6cac0985aadc0d82a3c67e4879e",
+      "pier-main.py": "e3de3a23c0989ae21fe582b94b5b6c35a132ac105097064f3084fb25e158bdda",
+      "image-identities.json": "3ec2e7b2a732720f43c76f03735057b44968afc4e2f7089862a7ab88694ea819",
+      "tests/host-runner.test.mjs": "d4bd56900e0014dbf896651f22369b50d31f14774ad5921559ae51248c328c16"
+    },
+    "sharedRuntime": {
+      "manifestSha256": "a3a4b16d095d901fd0bbcfc6153c1fa9bd6777a077edb361e57cba16187cab36",
+      "treeSha256": "32225cab4ec5d69ec0e54ef484b73357398ea23238cfb65f8860d5900bbaf175",
+      "nodeVersion": "22.23.2",
+      "codexVersion": "0.155.0",
+      "sandboxResource": "bundled bwrap"
     }
   },
   "staticChecks": {
     "status": "passed",
-    "nodeTests": "4/4",
-    "pythonTests": "3/3",
+    "nodeTests": "6/6 passed",
+    "pythonTests": "29/29 passed",
     "nodeSyntax": "passed",
-    "pythonSyntax": "passed"
+    "pythonSyntax": "passed",
+    "shellSyntax": "passed",
+    "realPinnedBootstrap": "passed",
+    "installedPluginInventory": "30/30 hash-verified files",
+    "sharedRuntimeOfflineBootstrap": "passed with non-temporary CODEX_HOME; native workspace-write sandbox remains unpassed"
+  },
+  "pendingSharedRuntimeRevision": {
+    "validatedAt": "2026-09-26T20:19:55Z",
+    "status": "independently-reviewed-source-and-bootstrap; native controls pending",
+    "sourceOnly": true,
+    "pythonTests": "29/29 passed",
+    "nodeTests": "6/6 passed",
+    "realPinnedBootstrap": "passed",
+    "pluginTreeVerification": "30/30 files passed",
+    "pythonSyntax": "passed",
+    "nodeSyntax": "passed",
+    "shellSyntax": "passed",
+    "jsonSyntax": "passed",
+    "dockerCallsByThisSourceValidationPass": 0,
+    "networkCalls": 0,
+    "modelCalls": 0,
+    "jevProviderCalls": 0,
+    "nativeControlsPassed": false,
+    "readyForScored": false
   },
   "docker": {
-    "daemonStatus": "stopped",
+    "daemonStatus": "running after bounded recovery",
     "daemonVersion": "29.8.0",
     "storageDriver": "overlayfs",
     "firstImagePresent": true,
@@ -43,8 +84,11 @@
     "firstImageSizeBytes": 3856016466
   },
   "controls": {
-    "baselinePreflight": "failed-before-app-server",
+    "baselinePreflight": "failed-before-app-server in retained v4 attempt",
     "treatmentPreflight": "not-run",
+    "sharedRuntimeOfflineBootstrap": "passed",
+    "nativeWorkspaceSandbox": "unproven; default sandbox launch failed before child",
+    "nativeCommandPatch": "not-run",
     "noopVerifier": "not-run",
     "oracleVerifier": "not-run"
   },
@@ -76,7 +120,8 @@
           "size": "1.16GB",
           "shared": false,
           "inUse": false,
-          "removal": "pending because Docker Desktop could not create its host log under ENOSPC"
+          "removal": "completed later by exact cache id after Docker recovery; shared parents preserved",
+          "removalAtAttempt": "pending because Docker Desktop could not create its host log under ENOSPC"
         }
       },
       "appServerStarted": false,
@@ -86,9 +131,55 @@
     }
   ],
   "blocker": {
-    "kind": "host-storage",
-    "observedFailure": "Docker Desktop could not create its host log and the daemon never became reachable.",
-    "daemonStopped": true
+    "kind": "native-workspace-sandbox",
+    "observedFailure": "The initial default-sandbox probe used obsolete CLI subcommand syntax and failed in bubblewrap before any child command. A separate named workspace-profile probe with explicit legacy Landlock was rejected before its child. Neither establishes a passing workspace-write command or patch control.",
+    "daemonRecovered": true,
+    "scoredRunsStarted": false
   },
-  "nextRequiredControl": "Remove only the proven private unused cache record after Docker can start, install the shared pinned runtime mount, then run fresh baseline, treatment, noop-verifier, and oracle-verifier controls on the recorded runtime bytes."
+  "nextRequiredControl": "Resolve the pinned container sandbox namespace failure without weakening the frozen security boundary, then pass real command and patch, baseline, treatment, noop-verifier, and oracle-verifier controls before setting executionReady true.",
+  "independentReview": {
+    "status": "accepted-as-pending-source-checkpoint",
+    "pythonTestsPassed": 29,
+    "nodeTestsPassed": 6,
+    "modelCalls": 0,
+    "providerCalls": 0,
+    "dockerCalls": 0,
+    "threatModel": "Host operator and Python environment trusted; task container untrusted and isolated.",
+    "provenanceLimitation": "Pier archive has42 unlisted __pycache__ .pyc files; Harbor has0 extras. RECORD entries are checked, but this is not complete transitive Python filesystem attestation. Adapter source bytes and a fresh private pycache prefix avoid relying on the adapter's pre-existing bytecode."
+  },
+  "nativeDiagnosticAttempts": [
+    {
+      "id": "default-sandbox-launch",
+      "argv": [
+        "codex",
+        "sandbox",
+        "linux",
+        "--help"
+      ],
+      "exitCode": 1,
+      "result": "bwrap could not create a namespace before child execution",
+      "limitation": "CLI0.155 has no linux subcommand; this did not exercise the intended workspace profile or any file operation.",
+      "privateReceiptSha256": "cfdabcf0bdfa64dbde4d2856d79eac02f56d3e85b0a444eb6b01d04e3188e0b1"
+    },
+    {
+      "id": "named-workspace-legacy-landlock",
+      "argv": [
+        "codex",
+        "-c",
+        "features.use_legacy_landlock=true",
+        "sandbox",
+        "--permission-profile",
+        ":workspace",
+        "--cd",
+        "/app",
+        "--",
+        "SYNTHETIC_CONTROL_COMMAND"
+      ],
+      "exitCode": 101,
+      "result": "permission profiles requiring direct runtime enforcement are incompatible with --use-legacy-landlock",
+      "positiveFileControl": "not-executed",
+      "negativeFileControl": "skipped because positive prerequisite failed",
+      "privateReceiptSha256": "0c496fec17434422fd459e7e37d00c5eee5d2c88b129a09e771930d8b048781b"
+    }
+  ]
 }
