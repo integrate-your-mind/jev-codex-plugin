@@ -1,0 +1,310 @@
+diff --git a/source/jev-workflows/src/accounting.ts b/source/jev-workflows/src/accounting.ts
+index 5a4e835..e0ef0e5 100644
+--- a/source/jev-workflows/src/accounting.ts
++++ b/source/jev-workflows/src/accounting.ts
+@@ -37,7 +37,12 @@ function add(target: Counts, receipt: Record<string, any>) {
+   // Billing is intentionally unknown. A caller field or provider token count
+   // cannot turn this local inventory into an independently verified ledger.
+   // These are provider-reported fields retained locally, not billing totals.
+-  if (evaluated && Number.isSafeInteger(receipt.usage?.input_tokens) && receipt.usage.input_tokens >= 0 &&
++  // A semantically rejected HTTP response can still report valid token usage.
++  // Keep that observation separate from validated-evaluation/success counts.
++  const rejectedResponse = receipt.status === 'unavailable' && receipt.reasonCode === 'invalid_response' &&
++    transport?.fetchInvoked === true && Number.isInteger(transport.responseStatus) &&
++    transport.responseStatus >= 200 && transport.responseStatus < 300;
++  if ((evaluated || rejectedResponse) && Number.isSafeInteger(receipt.usage?.input_tokens) && receipt.usage.input_tokens >= 0 &&
+       Number.isSafeInteger(receipt.usage?.output_tokens) && receipt.usage.output_tokens >= 0) {
+     target.reportedInputTokens += receipt.usage.input_tokens;
+     target.reportedOutputTokens += receipt.usage.output_tokens;
+diff --git a/source/jev-workflows/src/provider.ts b/source/jev-workflows/src/provider.ts
+index c7f049c..dbf92ad 100644
+--- a/source/jev-workflows/src/provider.ts
++++ b/source/jev-workflows/src/provider.ts
+@@ -47,8 +47,13 @@ export type ProviderTransport = {
+   responseValidationDiagnostic?: ResponseValidationDiagnostic;
+ };
+ 
++export type ProviderUsage = {input_tokens: number; output_tokens: number};
+ export class ProviderError extends Error {
+-  constructor(public readonly code: string, public readonly transport: ProviderTransport | null = null) { super(code); }
++  constructor(
++    public readonly code: string,
++    public readonly transport: ProviderTransport | null = null,
++    public readonly usage: ProviderUsage | null = null,
++  ) { super(code); }
+ }
+ const number01 = z.number().finite().min(0).max(1);
+ const responseSchema = z.strictObject({
+@@ -69,7 +74,7 @@ export type Answer =
+ export type Evaluation = {
+   model: string;
+   answers: Record<string, Answer>;
+-  usage: {input_tokens: number; output_tokens: number};
++  usage: ProviderUsage;
+   transport?: ProviderTransport;
+ };
+ export type ProviderEvaluation = Evaluation & {transport: ProviderTransport};
+@@ -119,11 +124,12 @@ function invalidResponse(
+   transport: ProviderTransport | null,
+   failure: ResponseValidationFailure,
+   diagnostic?: ResponseValidationDiagnostic,
++  usage: ProviderUsage | null = null,
+ ): never {
+   const bounded = diagnostic && Object.keys(diagnostic).length ? diagnostic : undefined;
+   throw new ProviderError('invalid_response', transport ? {
+     ...transport, responseValidationFailure: failure, ...(bounded ? {responseValidationDiagnostic: bounded} : {}),
+-  } : null);
++  } : null, usage);
+ }
+ 
+ export function validateEvaluation(raw: unknown, questions: Record<string, Question>, transport: ProviderTransport | null = null): Evaluation {
+@@ -131,44 +137,49 @@ export function validateEvaluation(raw: unknown, questions: Record<string, Quest
+   const parsedResult = responseSchema.safeParse(raw);
+   if (!parsedResult.success) invalidResponse(transport, 'response_schema');
+   const parsed = parsedResult.data;
+-  if (parsed.model !== MODEL) invalidResponse(transport, 'model_mismatch');
+-  if (!exactKeys(parsed.answers, questions)) invalidResponse(transport, 'answer_keys_mismatch');
++  // Usage is structurally validated independently of whether the answers
++  // satisfy their semantics. Retain that observation without accepting advice.
++  function reject(failure: ResponseValidationFailure, diagnostic?: ResponseValidationDiagnostic): never {
++    return invalidResponse(transport, failure, diagnostic, parsed.usage);
++  }
++  if (parsed.model !== MODEL) reject('model_mismatch');
++  if (!exactKeys(parsed.answers, questions)) reject('answer_keys_mismatch');
+   const answers: Record<string, Answer> = {};
+   for (const [key, q] of Object.entries(questions)) {
+     if (q.type === 'noul') {
+       const result = noulAnswerSchema.safeParse(parsed.answers[key]);
+-      if (!result.success) invalidResponse(transport, 'answer_schema', {questionId: safeQuestionId(key)});
++      if (!result.success) reject('answer_schema', {questionId: safeQuestionId(key)});
+       answers[key] = result.data;
+     } else if (q.type === 'choice') {
+       const result = choiceAnswerSchema.safeParse(parsed.answers[key]);
+-      if (!result.success) invalidResponse(transport, 'answer_schema', {questionId: safeQuestionId(key)});
++      if (!result.success) reject('answer_schema', {questionId: safeQuestionId(key)});
+       const answer = result.data;
+-      if (!exactKeys(answer.probabilities, q.criteria)) invalidResponse(transport, 'probability_keys_mismatch', {questionId: safeQuestionId(key)});
+-      if (!Object.hasOwn(q.criteria, answer.choice)) invalidResponse(transport, 'choice_unknown', {questionId: safeQuestionId(key)});
++      if (!exactKeys(answer.probabilities, q.criteria)) reject('probability_keys_mismatch', {questionId: safeQuestionId(key)});
++      if (!Object.hasOwn(q.criteria, answer.choice)) reject('choice_unknown', {questionId: safeQuestionId(key)});
+       const probabilities = Object.values(answer.probabilities);
+       const sum = probabilities.reduce((a,b) => a+b, 0);
+       const deviation = Math.abs(sum - 1);
+-      if (deviation > 0.001) invalidResponse(transport, 'probability_sum_invalid', {questionId: safeQuestionId(key), sum, deviation});
++      if (deviation > 0.001) reject('probability_sum_invalid', {questionId: safeQuestionId(key), sum, deviation});
+       const selected = answer.probabilities[answer.choice]!;
+       const max = Math.max(...probabilities);
+-      if (selected + 0.000001 < max) invalidResponse(transport, 'choice_not_argmax', {questionId: safeQuestionId(key), selected, max});
++      if (selected + 0.000001 < max) reject('choice_not_argmax', {questionId: safeQuestionId(key), selected, max});
+       answers[key] = answer;
+     } else {
+       const result = scoreAnswerSchema.safeParse(parsed.answers[key]);
+-      if (!result.success) invalidResponse(transport, 'answer_schema', {questionId: safeQuestionId(key)});
++      if (!result.success) reject('answer_schema', {questionId: safeQuestionId(key)});
+       const answer = result.data;
+       const levels = Object.fromEntries(q.criteria.map((_, index) => [String(index), true]));
+-      if (!exactKeys(answer.probabilities, levels)) invalidResponse(transport, 'probability_keys_mismatch', {questionId: safeQuestionId(key)});
++      if (!exactKeys(answer.probabilities, levels)) reject('probability_keys_mismatch', {questionId: safeQuestionId(key)});
+       if (!exactKeys(answer.legend, levels) || q.criteria.some((criterion, index) => !isDeepStrictEqual(answer.legend[String(index)], criterion))) {
+-        invalidResponse(transport, 'score_legend_mismatch', {questionId: safeQuestionId(key)});
++        reject('score_legend_mismatch', {questionId: safeQuestionId(key)});
+       }
+       const probabilities = Object.values(answer.probabilities);
+       const sum = probabilities.reduce((a,b) => a+b, 0);
+       const deviation = Math.abs(sum - 1);
+-      if (deviation > 0.001) invalidResponse(transport, 'probability_sum_invalid', {questionId: safeQuestionId(key), sum, deviation});
++      if (deviation > 0.001) reject('probability_sum_invalid', {questionId: safeQuestionId(key), sum, deviation});
+       const weighted = Object.entries(answer.probabilities).reduce((total, [level, probability]) => total + Number(level) * probability, 0);
+       if (answer.score < 0 || answer.score > q.criteria.length - 1 || Math.abs(answer.score - weighted) > 0.001) {
+-        invalidResponse(transport, 'score_value_invalid', {questionId: safeQuestionId(key)});
++        reject('score_value_invalid', {questionId: safeQuestionId(key)});
+       }
+       answers[key] = answer;
+     }
+diff --git a/source/jev-workflows/src/service.ts b/source/jev-workflows/src/service.ts
+index c33002b..f94e8f4 100644
+--- a/source/jev-workflows/src/service.ts
++++ b/source/jev-workflows/src/service.ts
+@@ -163,7 +163,7 @@ export function createService(options: ServiceOptions = {}) {
+       try {
+         const evaluation = await evaluateProvider({state, questions: questions as Record<string, Question>, apiKey, timeoutMs, signal, fetchFn: options.fetchFn});
+         const answer = evaluation.answers[tool === 'classify_failure' ? 'category' : tool === 'check_completion' ? 'support' : 'decision'];
+-        if (!answer || answer.type !== 'choice') throw new ProviderError('invalid_response', evaluation.transport);
++        if (!answer || answer.type !== 'choice') throw new ProviderError('invalid_response', evaluation.transport, evaluation.usage);
+         // Confidence and selected probability are separate signals; neither alone is a correctness guarantee.
+         const minConfidence = decisionPolicy?.minConfidence ?? confidenceFloor;
+         const minProbability = decisionPolicy?.minProbability ?? confidenceFloor;
+@@ -190,7 +190,8 @@ export function createService(options: ServiceOptions = {}) {
+         if (uncertain) result.reasonCode = providerAbstained ? 'insufficient_evidence' : 'low_confidence';
+       } catch (err) {
+         result = {status: 'unavailable', reasonCode: err instanceof ProviderError ? err.code : 'internal_error', ...meta,
+-          ...(err instanceof ProviderError && err.transport ? {transport: err.transport} : {})};
++          ...(err instanceof ProviderError && err.transport ? {transport: err.transport} : {}),
++          ...(err instanceof ProviderError && err.usage ? {usage: err.usage} : {})};
+       }
+       result.latencyMs = Date.now() - start;
+       try { await store.save({timestamp: new Date().toISOString(), tool, ...result}); result.receiptPersisted = true; }
+@@ -280,7 +281,8 @@ export function createService(options: ServiceOptions = {}) {
+         };
+       } catch (err) {
+         result = {status: 'unavailable', reasonCode: err instanceof ProviderError ? err.code : 'internal_error', ...meta,
+-          ...(err instanceof ProviderError && err.transport ? {transport: err.transport} : {})};
++          ...(err instanceof ProviderError && err.transport ? {transport: err.transport} : {}),
++          ...(err instanceof ProviderError && err.usage ? {usage: err.usage} : {})};
+       }
+       result.latencyMs = Date.now() - start;
+       const retained = result.answers ? {
+diff --git a/source/jev-workflows/tests/usage-retention.test.ts b/source/jev-workflows/tests/usage-retention.test.ts
+new file mode 100644
+index 0000000..82df2e6
+--- /dev/null
++++ b/source/jev-workflows/tests/usage-retention.test.ts
+@@ -0,0 +1,148 @@
++import {test} from 'node:test';
++import assert from 'node:assert/strict';
++import {mkdtemp, rm} from 'node:fs/promises';
++import {tmpdir} from 'node:os';
++import {join} from 'node:path';
++import {evaluateProvider, fingerprintCredential, ProviderError} from '../src/provider.js';
++import {createService} from '../src/service.js';
++import {readEvaluationUsage} from '../src/accounting.js';
++import type {Question} from '../src/contracts.js';
++import type {Receipt, Store} from '../src/store.js';
++
++const apiKey = 'usage-test-key';
++const usage = {input_tokens: 449, output_tokens: 19};
++const questions: Record<string, Question> = {
++  severity: {type: 'score', instructions: 'Rate severity', criteria: [{label: 'low'}, {label: 'high'}]},
++};
++const batch = {state: {task: 'synthetic usage retention'}, questions, mode: 'evaluate'};
++function invalidScore(reportedUsage: unknown = usage) {
++  return {model: 'jev-1.13.0', answers: {severity: {
++    type: 'score', score: 0.01, legend: {'0': {label: 'low'}, '1': {label: 'high'}},
++    probabilities: {'0': 1, '1': 0}, confidence: 0.9,
++  }}, usage: reportedUsage};
++}
++function response(body: unknown, headers: HeadersInit = {'x-typesafe-request-id': 'req_invalid_score'}) {
++  return new Response(JSON.stringify(body), {status: 200, headers});
++}
++class MemoryStore implements Store {
++  receipts: Receipt[] = [];
++  reservations = 0;
++  async reserve() { this.reservations++; return true; }
++  async save(receipt: Receipt) { this.receipts.push(receipt); }
++}
++
++test('semantic Score rejection retains valid usage and safe request identity without accepting the answer', async () => {
++  await assert.rejects(evaluateProvider({state: {}, questions, apiKey, timeoutMs: 1000,
++    fetchFn: async () => response(invalidScore()),
++  }), error => {
++    assert.ok(error instanceof ProviderError);
++    assert.equal(error.code, 'invalid_response');
++    assert.equal(error.transport?.responseValidationFailure, 'score_value_invalid');
++    assert.equal(error.transport?.responseStatus, 200);
++    assert.equal(error.transport?.validatedResponse, false);
++    assert.equal(error.transport?.providerRequestId, 'req_invalid_score');
++    assert.equal(error.transport?.providerRequestIdHeader, 'x-typesafe-request-id');
++    assert.deepEqual(error.usage, usage);
++    assert.equal(Object.hasOwn(error, 'answers'), false);
++    assert.equal(JSON.stringify(error).includes('probabilities'), false);
++    return true;
++  });
++});
++
++test('batch service returns and saves rejected-response usage without caching or promoting it', async () => {
++  const store = new MemoryStore();
++  let calls = 0;
++  const service = createService({apiKey, store, env: {}, fetchFn: async () => { calls++; return response(invalidScore()); }});
++  for (let attempt = 0; attempt < 2; attempt++) {
++    const result = await service.evaluateDecisions(batch);
++    assert.equal(result.status, 'unavailable');
++    assert.equal(result.reasonCode, 'invalid_response');
++    assert.equal(result.answers, undefined);
++    assert.equal(result.recommendation, undefined);
++    assert.equal(result.cached, undefined);
++    assert.deepEqual(result.usage, usage);
++    assert.equal(result.transport?.validatedResponse, false);
++    assert.equal(result.transport?.providerRequestId, 'req_invalid_score');
++    assert.equal(result.receiptPersisted, true);
++    assert.deepEqual(store.receipts[attempt]?.usage, usage);
++    assert.equal(store.receipts[attempt]?.status, 'unavailable');
++    assert.equal(store.receipts[attempt]?.answers, undefined);
++  }
++  assert.equal(calls, 2);
++  assert.equal(store.reservations, 2);
++});
++
++test('single-decision service also retains usage when choice semantics reject the response', async () => {
++  const store = new MemoryStore();
++  const service = createService({apiKey, store, env: {}, fetchFn: async (_url, init) => {
++    const payload = JSON.parse(String(init?.body)) as {questions: Record<string, {criteria: Record<string, unknown>}>};
++    const probabilities = Object.fromEntries(Object.keys(payload.questions.decision!.criteria).map(id => [id, 0]));
++    return response({model: 'jev-1.13.0', answers: {decision: {type: 'choice', choice: 'proceed', confidence: 0.9, probabilities}}, usage});
++  }});
++  const result = await service.classifyDecision({domain: 'tool', question: 'Proceed?', context: 'synthetic',
++    candidates: [{id: 'proceed', description: 'Proceed'}], evidence: [], mode: 'evaluate'});
++  assert.equal(result.status, 'unavailable');
++  assert.equal(result.transport?.responseValidationFailure, 'probability_sum_invalid');
++  assert.equal(result.transport?.validatedResponse, false);
++  assert.equal(result.choice, undefined);
++  assert.equal(result.recommendation, undefined);
++  assert.deepEqual(result.usage, usage);
++  assert.deepEqual(store.receipts[0]?.usage, usage);
++});
++
++test('invalid or absent usage is never retained even when HTTP status and request identity are known', async () => {
++  for (const invalid of [undefined, null, {input_tokens: -1, output_tokens: 19},
++    {input_tokens: 449.5, output_tokens: 19}, {input_tokens: '449', output_tokens: 19},
++    {input_tokens: Number.MAX_SAFE_INTEGER + 1, output_tokens: 19}, {input_tokens: 449},
++    {...usage, secret: 'must-not-retain'}]) {
++    const store = new MemoryStore();
++    const body = invalidScore();
++    body.usage = invalid;
++    const result = await createService({apiKey, store, env: {}, fetchFn: async () => response(body)}).evaluateDecisions(batch);
++    assert.equal(result.status, 'unavailable');
++    assert.equal(result.transport?.responseValidationFailure, 'response_schema');
++    assert.equal(result.transport?.providerRequestId, 'req_invalid_score');
++    assert.equal(result.usage, undefined);
++    assert.equal(store.receipts[0]?.usage, undefined);
++    assert.equal(JSON.stringify(result).includes('must-not-retain'), false);
++  }
++});
++
++test('invalid-response request IDs still use allowlisted, bounded, credential-safe header selection', async () => {
++  const variants: Array<{headers: Record<string, string>; id: string | null; header: string | null}> = [
++    {headers: {'x-typesafe-request-id': apiKey, 'x-request-id': 'req_safe_fallback'}, id: 'req_safe_fallback', header: 'x-request-id'},
++    {headers: {'x-typesafe-request-id': 'https://unsafe.example/request', 'x-request-id': 'x'.repeat(257)}, id: null, header: null},
++    {headers: {'request-id': 'req_last_header'}, id: 'req_last_header', header: 'request-id'},
++  ];
++  for (const variant of variants) {
++    const result = await createService({apiKey, store: new MemoryStore(), env: {},
++      fetchFn: async () => response(invalidScore(), variant.headers),
++    }).evaluateDecisions(batch);
++    assert.deepEqual(result.usage, usage);
++    assert.equal(result.transport?.providerRequestId, variant.id);
++    assert.equal(result.transport?.providerRequestIdHeader, variant.header);
++    assert.equal(result.transport?.validatedResponse, false);
++    assert.equal(JSON.stringify(result).includes(apiKey), false);
++  }
++});
++
++test('retained rejected-response usage does not increment validated evaluations or establish billing', async () => {
++  const root = await mkdtemp(join(tmpdir(), 'jev-usage-retention-'));
++  try {
++    const result = await createService({apiKey, env: {PLUGIN_DATA: root}, fetchFn: async () => response(invalidScore())}).evaluateDecisions(batch);
++    assert.equal(result.receiptPersisted, true);
++    const observed = await readEvaluationUsage(root, fingerprintCredential(apiKey), new Date());
++    assert.equal(observed.totals.receipts, 1);
++    assert.equal(observed.totals.unavailable, 1);
++    assert.equal(observed.totals.assessed, 0);
++    assert.equal(observed.totals.abstained, 0);
++    assert.equal(observed.totals.validatedEvaluations, 0);
++    assert.equal(observed.totals.httpSuccessResponses, 1);
++    assert.equal(observed.totals.reportedInputTokens, 449);
++    assert.equal(observed.totals.reportedOutputTokens, 19);
++    assert.equal(observed.uniqueProviderRequestIds, 1);
++    assert.equal(observed.providerBilledRequests, null);
++    assert.equal(observed.providerBilledTokens, null);
++    assert.equal(observed.billingReconciled, false);
++  } finally { await rm(root, {recursive: true, force: true}); }
++});
