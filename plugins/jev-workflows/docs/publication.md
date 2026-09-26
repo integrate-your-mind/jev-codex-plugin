@@ -28,6 +28,13 @@ depends on local execution and persistent credentials, local support requires
 OpenAI partner review. No submitted, review, approved, or published Directory
 status is claimed from this portal state.
 
+All three 0.4.0 standalone skill archives were uploaded. After one rescan,
+the portal reported `Error` for each with the message "An error occurred while
+scanning. Rescan to try again." It exposed no actionable validation code or
+policy-rejection reason. This is an additional unresolved portal dependency;
+the completed local, native, and independent QA checks do not establish portal
+scan acceptance.
+
 ## Proposed Codex official catalog contribution
 
 The OpenAI Git-backed Codex catalog contribution is prepared as a proposed
