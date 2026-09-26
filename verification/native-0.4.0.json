@@ -1,0 +1,77 @@
+{
+  "verificationDate": "2026-09-26",
+  "packageVersion": "0.4.0",
+  "scope": "Fresh native host smoke and MCP integration evidence for the 0.4.0 runtime.",
+  "probe": "codex-native-smoke-v0.4.0",
+  "scenario": "success",
+  "nativeTurnRequested": true,
+  "nativeCommandExitCode": 0,
+  "generativeTurns": 1,
+  "plugin": {
+    "installed": true,
+    "enabled": true,
+    "hooksLoaded": 12,
+    "mcpServerConnected": true,
+    "mcpTools": [
+      "jev_status",
+      "classify_failure",
+      "check_completion",
+      "classify_decision",
+      "configure_automation",
+      "evaluate_decisions",
+      "update_task_context",
+      "record_decision_outcome"
+    ]
+  },
+  "providerEvidence": {
+    "validatedHttpStatus": 200,
+    "validatedResponses": 4,
+    "distinctProviderRequestIds": 4,
+    "providerRequestIdsOmitted": true,
+    "note": "The IDs were checked for correlation and are intentionally omitted from this public record."
+  },
+  "rubrics": {
+    "decision": "decision-2026-09-26.2",
+    "batch": "batch-2026-09-26.2",
+    "policy": "decision-policy-2026-09-26.1"
+  },
+  "limits": {
+    "requestPayloadBytes": 48000,
+    "responseBytes": 65536,
+    "serviceDefaultProviderTimeoutSeconds": 10,
+    "decisionHookHostTimeoutSecondsByEvent": {
+      "default": 5,
+      "interrupt": 3,
+      "sessionEnd": 3
+    },
+    "decisionHookInternalTimeoutSeconds": 4,
+    "decisionHookProviderTimeoutSeconds": 3,
+    "decisionHookShortEventProviderTimeoutSeconds": 1.8,
+    "failureHookProviderTimeoutSeconds": 2,
+    "defaultDailyCallCap": null,
+    "defaultDailyByteCap": null,
+    "defaultSessionHookCap": null
+  },
+  "networkAccess": {
+    "originalHarness": {
+      "networkAccess": false,
+      "httpStatus": 403,
+      "providerEvaluationSucceeded": false
+    },
+    "revisedScopedLiveHarness": {
+      "networkAccess": true,
+      "httpStatus": 200,
+      "validatedResponses": 4
+    },
+    "diagnosticRegression": {
+      "http403HandlingTestedSeparately": true,
+      "diagnosticFixInstalledInThisNativeRun": true,
+      "note": "The final native report is from the installed diagnostic bundle. The earlier networkAccess:false HTTP 403 remains recorded as the original harness diagnostic."
+    }
+  },
+  "status": "final installed native diagnostic bundle passed",
+  "limitations": [
+    "This record verifies the fresh native scenario, tool exposure, hook discovery, and correlated provider transport evidence.",
+    "It does not establish hosted CI, provider billing, model quality, calibration, exhaustive reliability, or official directory approval."
+  ]
+}

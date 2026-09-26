@@ -58,8 +58,7 @@
           {
             "type": "command",
             "command": "JEV_STATE_MODE='user' node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
-            "timeout": 5,
-            "additionalContextLimit": 1000
+            "timeout": 5
           }
         ]
       }
@@ -70,8 +69,7 @@
           {
             "type": "command",
             "command": "JEV_STATE_MODE='user' node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
-            "timeout": 5,
-            "additionalContextLimit": 1000
+            "timeout": 5
           }
         ]
       }
@@ -82,8 +80,7 @@
           {
             "type": "command",
             "command": "JEV_STATE_MODE='user' node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
-            "timeout": 5,
-            "additionalContextLimit": 1000
+            "timeout": 5
           }
         ]
       }
@@ -94,8 +91,7 @@
           {
             "type": "command",
             "command": "JEV_STATE_MODE='user' node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
-            "timeout": 5,
-            "additionalContextLimit": 1000
+            "timeout": 3
           }
         ]
       }
@@ -120,8 +116,7 @@
           {
             "type": "command",
             "command": "JEV_STATE_MODE='user' node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
-            "timeout": 5,
-            "additionalContextLimit": 1000
+            "timeout": 5
           }
         ]
       }
@@ -132,8 +127,7 @@
           {
             "type": "command",
             "command": "JEV_STATE_MODE='user' node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
-            "timeout": 5,
-            "additionalContextLimit": 1000
+            "timeout": 5
           }
         ]
       }
@@ -144,8 +138,7 @@
           {
             "type": "command",
             "command": "JEV_STATE_MODE='user' node \"${PLUGIN_ROOT}/dist/decision-hook.mjs\"",
-            "timeout": 5,
-            "additionalContextLimit": 1000
+            "timeout": 3
           }
         ]
       }

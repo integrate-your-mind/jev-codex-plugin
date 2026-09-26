@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp, mkdir, writeFile, rm, symlink} from 'node:fs/promises';
+import {mkdtemp, mkdir, writeFile, readFile, rm, symlink} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {readEvaluationUsage} from '../src/accounting.js';
@@ -66,6 +66,9 @@ test('separates reservations, validated and legacy evaluations, HTTP errors, and
     assert.equal(result.providerBilledTokens,null);
     assert.equal(result.billingReconciled,false);
     assert.equal(result.inventoryReadable,true);
+    assert.equal(result.inventoryComplete,true);
+    assert.equal(result.countsIncomplete,false);
+    assert.equal(result.countsIncompleteReason,null);
   } finally { await rm(root,{recursive:true,force:true}); }
 });
 
@@ -82,6 +85,9 @@ test('counts duplicate provider IDs separately and flags malformed receipts with
     assert.equal(result.duplicateProviderRequestIds,1);
     assert.equal(result.malformedOrUnreadable,1);
     assert.equal(result.inventoryReadable,false);
+    assert.equal(result.inventoryComplete,false);
+    assert.equal(result.countsIncomplete,true);
+    assert.equal(result.countsIncompleteReason,'malformed_or_unreadable_receipts');
   } finally { await rm(root,{recursive:true,force:true}); }
 });
 
@@ -106,6 +112,8 @@ test('an absent receipt directory is a readable empty inventory without claiming
     assert.equal(result.inventoryFiles,0);
     assert.equal(result.malformedOrUnreadable,0);
     assert.equal(result.inventoryReadable,true);
+    assert.equal(result.inventoryComplete,true);
+    assert.equal(result.countsIncomplete,false);
     assertCredentialPartition(result);
     assert.equal(result.providerBilledRequests,null);
     assert.equal(result.billingReconciled,false);
@@ -121,8 +129,51 @@ test('an unreadable receipt inventory reports unreadable evidence without claimi
     assert.equal(result.inventoryFiles,0);
     assert.equal(result.malformedOrUnreadable,1);
     assert.equal(result.inventoryReadable,false);
+    assert.equal(result.inventoryComplete,false);
+    assert.equal(result.countsIncomplete,true);
     assertCredentialPartition(result);
     assert.equal(result.providerBilledRequests,null);
     assert.equal(result.billingReconciled,false);
   } finally { await rm(root,{recursive:true,force:true}); }
+});
+
+test('uses a valid daily index and reports gaps without rewriting receipts', async () => {
+  const root = await fixture();
+  try {
+    await receipt(root, 1, {status: 'assessed', transport: transport(200, true)});
+    await receipt(root, 2, {status: 'abstained', transport: transport(200, true)});
+    await receipt(root, 3, {status: 'assessed', timestamp: '2026-09-17T23:59:59Z', transport: transport(200, true)});
+    await writeFile(join(root, 'receipt-index-2026-09-18.json'), JSON.stringify({version: 1, date: '2026-09-18', receiptIds: [id(1), id(99)]}));
+    const result = await readEvaluationUsage(root, key, now);
+    assert.equal(result.indexStatus, 'used');
+    assert.equal(result.indexFallbackUsed, true);
+    assert.equal(result.indexFallbackReason, 'index_gap');
+    assert.equal(result.totals.receipts, 2);
+    assert.equal(result.unindexedReceiptFiles, 1);
+    assert.equal(result.missingIndexedReceiptFiles, 1);
+    assert.equal(result.inventoryReadable, true);
+    assert.equal(result.inventoryComplete, true);
+    assert.equal(result.countsIncomplete, false);
+    assert.equal(result.countsIncompleteReason, null);
+    assert.equal(JSON.parse(await readFile(join(root, 'receipts', `${id(2)}.json`), 'utf8')).receiptId, id(2));
+  } finally { await rm(root, {recursive: true, force: true}); }
+});
+
+test('falls back to the legacy inventory and reports a corrupt index', async () => {
+  const root = await fixture();
+  try {
+    await receipt(root, 1, {status: 'assessed', transport: transport(200, true)});
+    await writeFile(join(root, 'receipts', `${id(2)}.json`), '{corrupt');
+    await writeFile(join(root, 'receipt-index-2026-09-18.json'), '{corrupt');
+    const result = await readEvaluationUsage(root, key, now);
+    assert.equal(result.indexStatus, 'corrupt');
+    assert.equal(result.indexFallbackUsed, true);
+    assert.equal(result.indexFallbackReason, 'corrupt_index');
+    assert.equal(result.totals.receipts, 1);
+    assert.equal(result.malformedOrUnreadable, 1);
+    assert.equal(result.inventoryReadable, false);
+    assert.equal(result.inventoryComplete, false);
+    assert.equal(result.countsIncomplete, true);
+    assert.equal(result.countsIncompleteReason, 'malformed_or_unreadable_receipts');
+  } finally { await rm(root, {recursive: true, force: true}); }
 });

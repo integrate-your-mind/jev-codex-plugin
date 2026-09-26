@@ -373,7 +373,7 @@ async function readDecisionReceipts(threadSessionId, stateDirectory) {
 
 const report = {
   startedAt: new Date().toISOString(),
-  cliProbe: 'codex-native-smoke-v0.2',
+  cliProbe: 'codex-native-smoke-v0.4.0',
   ephemeral: true,
   isolatedCodexHome: process.env.CODEX_HOME ?? null,
   mutationGates: { installPlugin, trustReviewedHooks, enableAutomation },
@@ -513,7 +513,10 @@ try {
       model: selectedModel,
       effort: 'low',
       approvalPolicy: 'never',
-      sandboxPolicy: { type: 'workspaceWrite', writableRoots: [fixtureDir], networkAccess: false, excludeTmpdirEnvVar: false, excludeSlashTmp: false },
+      // Native live-provider QA is explicitly gated by JEV_NATIVE_TURN plus
+      // automation/trusted-hook flags. Keep the turn network-enabled so a
+      // sandbox denial cannot masquerade as provider authentication failure.
+      sandboxPolicy: { type: 'workspaceWrite', writableRoots: [fixtureDir], networkAccess: true, excludeTmpdirEnvVar: false, excludeSlashTmp: false },
     }, 30_000);
     report.generativeTurns = 1;
     report.turn = { id: turnStart?.turn?.id, requestedModel: selectedModel };
@@ -551,6 +554,20 @@ try {
       stdoutDigestMatched: true,
       hookExitCodeExposed: terminalReceipt.output.exitCode !== undefined,
       commandItemExitCode: nativeCommand.exitCode,
+    };
+    const validatedProviderReceipt = report.receipts.matchedReceipts.find(receipt => {
+      const transport = receipt.providerReceipt?.transport;
+      return transport?.responseStatus === 200
+        && transport.validatedResponse === true
+        && typeof transport.providerRequestId === 'string'
+        && transport.providerRequestId.length > 0;
+    });
+    assert.ok(validatedProviderReceipt, 'Native smoke requires a correlated validated provider HTTP 200 receipt with a provider request ID');
+    report.liveProvider = {
+      correlated: true,
+      validatedResponseStatus: 200,
+      providerRequestIdPresent: true,
+      event: validatedProviderReceipt.event,
     };
     if (terminalReceipt.output.exitCode !== undefined) assert.equal(terminalReceipt.output.exitCode, expectedExitCode);
     assert.ok(report.receipts.matchedReceipts.some(receipt => receipt.event === 'Stop'

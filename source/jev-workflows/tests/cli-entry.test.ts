@@ -1,5 +1,5 @@
 import {execFile} from 'node:child_process';
-import {mkdtemp, rm, symlink} from 'node:fs/promises';
+import {mkdtemp, readFile, rm, symlink} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {promisify} from 'node:util';
@@ -15,7 +15,7 @@ test('bundled CLI launches directly through a symlink and imports without execut
     const env = {PATH: process.env.PATH, TYPESAFE_API_KEY: '', JEV_STATE_DIRECTORY: join(root, 'state')};
     const result = await exec(process.execPath, [entry, 'status'], {env, timeout: 5000});
     assert.equal(result.stderr, '');
-    assert.equal(JSON.parse(result.stdout).version, '0.3.0');
+    assert.equal(JSON.parse(result.stdout).version, JSON.parse(await readFile('package.json', 'utf8')).version);
     const imported = await exec(process.execPath, ['--input-type=module', '--eval', `await import(${JSON.stringify(entry)});`], {env, timeout: 5000});
     assert.equal(imported.stdout, '');
     assert.equal(imported.stderr, '');

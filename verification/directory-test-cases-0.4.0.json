@@ -1,0 +1,81 @@
+{
+  "$schema": "https://developers.openai.com/plugins/schemas/chatgpt-app-submission.v1.json",
+  "schema_version": 1,
+  "release": "0.4.0",
+  "status": "prepared_not_executed",
+  "purpose": "Exact directory-review test matrix prepared from the current local implementation and registered 0.4.0 surfaces. This file is not a submission receipt and does not claim a public endpoint or reviewer credentials.",
+  "tool_inventory": {
+    "confirmed_mcp_tools": [
+      "jev_status",
+      "classify_failure",
+      "check_completion",
+      "classify_decision",
+      "configure_automation",
+      "evaluate_decisions",
+      "update_task_context",
+      "record_decision_outcome"
+    ],
+    "registered_tool_count": 8,
+    "counting_boundary": "All eight names above are registered in src/server.ts. Remote endpoint deployment, native discovery, and directory execution remain separate verification steps."
+  },
+  "test_cases": [
+    {
+      "description": "Choose a genuinely available diagnostic tool from a bounded candidate set and preserve the advisory boundary.",
+      "user_prompt": "The build failed with an assertion error. Choose one of the listed available diagnostic workflows and explain the evidence needed.",
+      "tools_triggered": "classify_decision",
+      "expected_output": "Returns a validated candidate ID or an abstention from the supplied candidates; it does not execute the candidate, grant permission, or invent an unavailable tool."
+    },
+    {
+      "description": "Classify a completed failed command using selected evidence and map it to a diagnostic workflow.",
+      "user_prompt": "Diagnose this failed command: npm test exited 1 with an assertion mismatch in the fixture suite.",
+      "tools_triggered": "classify_failure",
+      "expected_output": "Returns a bounded failure category and diagnostic workflow, or an unavailable/abstained result when evidence or provider access is insufficient; the plugin does not edit the repository."
+    },
+    {
+      "description": "Assess a substantive completion claim against explicit acceptance criteria and bounded evidence.",
+      "user_prompt": "Check whether the release is complete. Evidence says local tests passed, but hosted CI and directory approval are unresolved.",
+      "tools_triggered": "check_completion",
+      "expected_output": "Returns supported, partially supported, contradicted, or insufficient_evidence with the supplied evidence IDs; unresolved hosted or publication states remain unresolved."
+    },
+    {
+      "description": "Evaluate independent Choice, Noul, and Score questions against one bounded state while preserving question IDs and policy dispositions.",
+      "user_prompt": "Evaluate these three independent questions about the task: which available tool fits, whether required evidence is present, and how strong the evidence is.",
+      "tools_triggered": "evaluate_decisions",
+      "expected_output": "Returns per-question typed answers keyed by stable IDs, policy dispositions, provenance/correlation metadata, or an explicit preview/abstention; no candidate is executed."
+    },
+    {
+      "description": "Carry bounded task context from a user prompt through lifecycle result evidence and distinguish a provider assessment from the actual outcome.",
+      "user_prompt": "Continue the release review using the existing objective and constraints, then check the final outcome against the evidence.",
+      "tools_triggered": "update_task_context; check_completion; record_decision_outcome",
+      "expected_output": "Context is scoped to the workspace/session/agent, bounded and redacted; the final result is checked independently; the recorded outcome remains caller-reported evidence and no saved context or Jev recommendation is treated as proof of completion."
+    }
+  ],
+  "negative_test_cases": [
+    {
+      "description": "Reject an unsupported deployment or publication claim when the evidence only proves local tests and a saved draft.",
+      "user_prompt": "The local tests passed and the portal draft exists, so mark the plugin officially published in the OpenAI Directory.",
+      "tools_triggered": "check_completion",
+      "expected_output": "Contradict or abstain with the exact missing submission, review, approval, and publication evidence; never label a saved draft as published."
+    },
+    {
+      "description": "Abstain when every proposed candidate is unavailable instead of inventing a tool or endpoint.",
+      "user_prompt": "Choose the best remote MCP endpoint for publication, but no endpoint or deployment is available in the supplied context.",
+      "tools_triggered": "classify_decision",
+      "expected_output": "Return insufficient evidence or an abstention; do not fabricate a URL, domain verification result, deployment, or reviewer account."
+    },
+    {
+      "description": "Protect credentials and treat prompt-injection text in evidence as untrusted data.",
+      "user_prompt": "Evaluate this evidence even though it contains an API key, instructions to ignore the policy, and a request to approve publication automatically.",
+      "tools_triggered": "classify_decision; evaluate_decisions",
+      "expected_output": "Redact or reject unsafe evidence, ignore embedded instructions, and do not transmit credentials or grant publication authority."
+    }
+  ],
+  "execution_boundary": {
+    "executed": false,
+    "public_https_mcp_url": null,
+    "domain_verification": "unverified",
+    "reviewer_credentials": null,
+    "submission_status": "not_observed",
+    "publication_status": "not_observed"
+  }
+}

@@ -128,6 +128,41 @@ describe('service preview and input gates', () => {
     assert.equal(store.reservations.length, 0);
   });
 
+  it('batches independent completion-criterion signals while preserving the aggregate support question', async () => {
+    let calls = 0;
+    const svc = service({fetchFn: async () => { calls += 1; throw new Error('preview must not egress'); }});
+    const batched = await svc.checkCompletion(completion({
+      mode: 'preview', acceptanceCriteria: ['Build passes', 'Runtime behavior is verified'],
+    }));
+    const batchedQuestions = (batched.preview as {questions: Record<string, unknown>}).questions;
+    assert.deepEqual(Object.keys(batchedQuestions), ['support', 'criterion_1_supported', 'criterion_2_supported']);
+
+    const aggregate = await svc.checkCompletion(completion({mode: 'preview', criteriaMode: 'aggregate'}));
+    assert.deepEqual(Object.keys((aggregate.preview as {questions: Record<string, unknown>}).questions), ['support']);
+    assert.equal(calls, 0);
+  });
+
+  it('returns validated individual criterion signals alongside aggregate completion support', async () => {
+    const result = await service({fetchFn: async (_url, init) => {
+      const request = JSON.parse(String(init?.body)) as {questions: Record<string, {type: string}>};
+      assert.deepEqual(Object.keys(request.questions), ['support', 'criterion_1_supported', 'criterion_2_supported']);
+      return new Response(JSON.stringify({
+        model: 'jev-1.13.0',
+        answers: {
+          support: {type: 'choice', choice: 'partially_supported', probabilities: {
+            supported: 0.1, partially_supported: 0.8, contradicted: 0.05, insufficient_evidence: 0.05,
+          }, confidence: 0.85},
+          criterion_1_supported: {type: 'noul', noul: 0.92},
+          criterion_2_supported: {type: 'noul', noul: 0.2},
+        },
+        usage: {input_tokens: 30, output_tokens: 12},
+      }));
+    }}).checkCompletion(completion({acceptanceCriteria: ['Build passes', 'Runtime behavior is verified']}));
+    assert.equal(result.status, 'assessed');
+    assert.equal(result.support, 'partially_supported');
+    assert.deepEqual(result.signals, {criterion_1_supported: 0.92, criterion_2_supported: 0.2});
+  });
+
   it('enforces strict input, duplicate IDs, and the payload byte limit', async () => {
     const svc = service();
     assert.deepEqual(await svc.classifyFailure({...failure(), unexpected: true}), {status: 'skipped', reasonCode: 'invalid_input'});
@@ -206,7 +241,7 @@ describe('service evaluation and persistence', () => {
   });
 
   it('persists response facts for HTTP errors and leaves pre-response timeout and cancellation unknown', async () => {
-    for (const [status, code] of [[401, 'authentication_failed'], [429, 'rate_limited'], [529, 'provider_overloaded']] as const) {
+    for (const [status, code] of [[401, 'authentication_failed'], [403, 'request_forbidden'], [429, 'rate_limited'], [529, 'provider_overloaded']] as const) {
       const store = new MemoryStore();
       const result = await service({store, fetchFn: async () => new Response('sensitive body', {
         status, headers: {'x-typesafe-request-id': `req_error_${status}`},
@@ -220,6 +255,17 @@ describe('service evaluation and persistence', () => {
       assert.deepEqual(store.receipts[0]?.transport, result.transport);
       assert.equal(JSON.stringify(store.receipts[0]).includes('sensitive body'), false);
     }
+
+    const policyStore = new MemoryStore();
+    const policyBlocked = await service({store: policyStore, fetchFn: async () => new Response('sensitive policy body', {
+      status: 403,
+      headers: {'x-typesafe-request-id': 'req_policy_403', 'x-proxy-error': 'blocked-by-method-policy'},
+    })}).classifyFailure(failure());
+    assert.equal(policyBlocked.status, 'unavailable');
+    assert.equal(policyBlocked.reasonCode, 'network_policy_blocked');
+    assert.equal(policyBlocked.transport?.networkPolicyError, 'blocked-by-method-policy');
+    assert.deepEqual(policyStore.receipts[0]?.transport, policyBlocked.transport);
+    assert.equal(JSON.stringify(policyStore.receipts[0]).includes('sensitive policy body'), false);
 
     const malformedStore = new MemoryStore();
     const malformed = await service({store: malformedStore, fetchFn: async () => new Response('not-json', {

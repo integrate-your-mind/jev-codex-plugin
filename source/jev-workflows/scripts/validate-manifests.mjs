@@ -82,6 +82,7 @@ assert(release?.version === plugin?.version, 'RELEASE.json: version must match p
 assert(release?.runtimeVersion === packageMetadata?.version, 'RELEASE.json: runtimeVersion must match package.json');
 const hooks = await loadJson('hooks/hooks.json');
 const documentedEvents = ['SessionStart','UserPromptSubmit','PreToolUse','PostToolUse','PermissionRequest','PreCompact','PostCompact','Interrupt','SubagentStart','SubagentStop','Stop','SessionEnd'];
+const additionalContextEvents = new Set(['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'SubagentStart']);
 assert(equal(Object.keys(hooks?.hooks ?? {}).sort(), documentedEvents.sort()), 'hooks/hooks.json: declare every documented lifecycle event');
 for (const [event, groups] of Object.entries(hooks?.hooks ?? {})) {
   assert(Array.isArray(groups) && groups.length === 1, `hooks/hooks.json: ${event} must have one handler group`);
@@ -89,7 +90,9 @@ for (const [event, groups] of Object.entries(hooks?.hooks ?? {})) {
     assert(Array.isArray(group.hooks) && group.hooks.length === 1, `hooks/hooks.json: ${event} must have one command handler`);
     for (const handler of group.hooks ?? []) {
       assert(handler.type === 'command' && handler.command === 'node "${PLUGIN_ROOT}/dist/decision-hook.mjs"', `hooks/hooks.json: ${event} must use the reviewed advisory adapter`);
-      assert(handler.timeout === 5 && handler.additionalContextLimit === 1000, `hooks/hooks.json: ${event} deadline/context contract mismatch`);
+      const timeout = ['SessionEnd', 'Interrupt'].includes(event) ? 3 : 5;
+      assert(handler.timeout === timeout, `hooks/hooks.json: ${event} deadline must be ${timeout} seconds`);
+      assert(handler.additionalContextLimit === (additionalContextEvents.has(event) ? 1000 : undefined), `hooks/hooks.json: ${event} context limit must match its output channel`);
     }
   }
 }
@@ -107,7 +110,7 @@ if (plugin && mcp) {
 }
 
 assert(plugin?.name === "jev-workflows", "plugin.json: name must be jev-workflows");
-assert(/^0\.3\.0(?:\+codex\.[a-z0-9-]+)?$/.test(plugin?.version ?? ""), "plugin.json: version must have base 0.3.0 and optional Codex cachebuster");
+assert(/^\d+\.\d+\.\d+(?:\+codex\.[a-z0-9-]+)?$/.test(plugin?.version ?? "") && plugin.version.split('+')[0] === packageMetadata?.version, "plugin.json: base version must match package.json with an optional Codex cachebuster");
 assert(plugin?.extensions?.["com.openai"]?.hooks === undefined,
   "plugin.json: omit an explicit hooks override so hooks/hooks.json uses conventional discovery");
 assert(legacy?.hooks === undefined, ".codex-plugin/plugin.json: direct hooks field is unsupported by the local validator");

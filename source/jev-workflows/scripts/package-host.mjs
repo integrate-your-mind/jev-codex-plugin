@@ -65,6 +65,7 @@ const included = [
   'dist',
   'hooks',
   'skills',
+  'assets',
   'docs',
   'README.md',
   'LICENSE',
@@ -90,7 +91,9 @@ if (targetExists) {
       throw new Error(`Host target contains excluded path ${name}; choose a clean target: ${target}`);
     }
   }
-  const allowed = new Set([...included, 'HOST-COMPATIBILITY.json']);
+  // Finder metadata is host-owned and may appear after inspecting a package.
+  // Preserve it in an existing local target; never copy it into a release.
+  const allowed = new Set([...included, 'HOST-COMPATIBILITY.json', '.DS_Store']);
   for (const name of entries) {
     if (!allowed.has(name)) {
       throw new Error(`Host target contains an unrecognized path ${name}; choose a clean target: ${target}`);

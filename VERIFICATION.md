@@ -1,9 +1,22 @@
 # Verification
 
-Verification date: 2026-09-18
+Latest verification date: 2026-09-26
 
 This report covers the public source and packaged runtime. It records the checks
 below; it does not establish directory approval, provider billing, or model quality.
+
+## Version 0.4.0
+
+- Node 22.23.2: **152 tests passed**, with no failures, cancellations, or skips.
+- Typecheck, build, manifest validation, generated-distribution parity, and both distribution drift tests passed.
+- The initial 16-case live evaluation exposed two false-confident choices. An explicit non-action abstention option repaired that path; the original failed observations remain recorded.
+- A fresh independently labelled 16-case set matched 14 labels, produced no false-confident decisions, and conservatively abstained on the two remaining cases. All 16 requests returned validated responses with provider request IDs. The known-case regression also matched 14/16 with no false-confident decisions; it is not claimed as untouched held-out evidence.
+- One mixed typed request checked Choice, Noul, Score, and an underdetermined Choice. It returned a validated HTTP 200 response with a provider ID and abstained on the underdetermined choice.
+- Final installed native 0.4.0 diagnostic-bundle smoke and MCP checks **passed**: twelve hooks were loaded, all eight MCP surfaces were connected, and four provider-backed responses returned validated HTTP 200 transport evidence. The earlier `networkAccess:false` HTTP 403 remains a separate original-harness diagnostic. See the [sanitized native report](verification/native-0.4.0.json).
+- Focused independent QA **passed** across three native and three fresh-process live checks. The six focused receipts and the initial fifteen successful QA receipts are reported separately; they are not one combined correctness run. See the [sanitized independent QA report](verification/independent-qa-0.4.0.json).
+- Unlimited call, byte, and session defaults are preserved. Reservations, retained validated responses, and provider billing remain separate measurements.
+
+See the [sanitized evaluation summaries](verification/workflow-quality-0.4.0.json) and the frozen source fixtures. These small synthetic runs do not establish general accuracy or calibrated thresholds. Hosted CI and public listing status remain separate release checks.
 
 ## Additive 0.3.0-rc.1
 
