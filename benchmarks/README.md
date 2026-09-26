@@ -18,6 +18,8 @@ These benchmarks measure whether Jev changes an agent's independently verified r
 - [Native Codex paired runner](../source/jev-workflows/benchmarks/paired-v1/README.md): tests the actual installed plugin and lifecycle hooks with a fixed model, including a two-turn changed-requirements task.
 - [Plugin value protocol](plugin-value/protocol.md) and [40-trial schedule](plugin-value/schedule.json): fixed-model task-quality comparison under development. A schedule is not an executed result.
 - [Development selection rule](plugin-value/development-selection.md) and [held-out reservation](plugin-value/heldout-selection.json): prospective feature-selection criteria and a disjoint 20-task sample. Execution is pending.
+- [Typed batch component benchmark](plugin-development/batch/README.md): frozen serial-versus-batch comparison with separate raw-choice, policy and recommendation grading. Ten offline checks passed; live evaluation remains pending.
+- [DeepSWE image identities](plugin-value/image-identities.json): 20 registry manifests and config digests verified without pulling layers or claiming native execution.
 - [Live decision evaluation](plugin-live-eval/README.md): authored decision episodes comparing original and repaired payloads; separate from independent coding-task verification.
 
 The three portable authored tasks are **wiring smokes**, not a representative coding leaderboard. The DeepSWE lock is a frozen future evaluation input; it is not a completed DeepSWE result. The native Codex pilot has run. No live QQ comparison or new DeepSWE model score is reported here.

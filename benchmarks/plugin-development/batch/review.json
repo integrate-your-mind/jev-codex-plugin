@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "jev-batch-review-v1",
+  "reviewedFreezeSha256": "57c740f60fcf3799d557bd7467e0575c3cccb792327b1cbb42f27188ac4b34d5",
+  "decision": "accepted-for-classifier-component-evaluation",
+  "reviewer": "root integration review",
+  "runtime": "Node v22.23.2",
+  "offlineTests": {
+    "passed": 10,
+    "failed": 0
+  },
+  "liveCalls": 0,
+  "taskQualityEvidence": false,
+  "releaseOrDefaultChange": false,
+  "unresolvedExecutionDependency": "Durable private receipt writes must work before starting live calls; current host writes intermittently return ENOSPC.",
+  "scope": "Only shared-state typed batch versus identical serial questions. Authored numeric ranges are not calibration. Raw choices, local policy, delivered recommendations, transport attempts and action outcomes remain separate."
+}
