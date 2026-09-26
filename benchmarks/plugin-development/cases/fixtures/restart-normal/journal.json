@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "restart-journal-v2",
+  "operationId": "op-restart-normal",
+  "sequence": 1,
+  "phase": "prepared",
+  "context": {"workspaceRevision": "rev-a", "requirementsRevision": "req-a", "catalogRevision": "cat-a"},
+  "request": {"requestId": "req-normal-1", "idempotencyKey": "request-normal-1", "status": "not_sent", "attempts": 0},
+  "response": null,
+  "action": {"actionId": "run-local-smoke", "idempotencyKey": "action-normal-1", "status": "not_started", "attempts": 0},
+  "acknowledgement": {"status": "pending"}
+}

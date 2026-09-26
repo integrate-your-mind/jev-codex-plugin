@@ -1,0 +1,5 @@
+[
+  {"id":"east-fast","region":"us-east","latencyMs":60,"healthy":true},
+  {"id":"east-slow","region":"us-east","latencyMs":100,"healthy":true},
+  {"id":"west-cheap","region":"us-west","latencyMs":20,"healthy":true}
+]

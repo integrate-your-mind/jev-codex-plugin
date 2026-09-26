@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "restart-journal-v2",
+  "operationId": "op-restart-adversarial",
+  "sequence": 4,
+  "phase": "action_applied",
+  "context": {"workspaceRevision": "rev-c", "requirementsRevision": "req-c", "catalogRevision": "cat-c"},
+  "request": {"requestId": "req-adversarial-1", "idempotencyKey": "request-adversarial-1", "status": "response_persisted", "attempts": 1},
+  "response": {"receiptId": "response-adversarial-1", "choiceId": "apply-local-action", "status": "persisted"},
+  "action": {"actionId": "apply-local-action", "idempotencyKey": "action-adversarial-1", "status": "applied", "attempts": 1, "effectReceiptId": "effect-adversarial-1"},
+  "acknowledgement": {"status": "pending"}
+}
