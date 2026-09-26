@@ -1,0 +1,475 @@
+{
+  "schemaVersion": "plugin-development-live-freeze-v1",
+  "review": {
+    "status": "reviewed",
+    "reviewedBy": "root independent source review and 25 offline regression tests",
+    "reviewedAt": "2026-09-26T23:24:38.391Z",
+    "scope": "16-row authored hook-component study; no native-host or Codex task-quality claim"
+  },
+  "experiment": {
+    "component": "bundled-candidate-delivery-question-context-repair",
+    "causalBoundary": "The patch bundles candidate delivery, catalog-aligned questioning, context projection, and validation changes; no individual effect is assigned.",
+    "caseIds": [
+      "candidate-normal",
+      "candidate-conflict",
+      "candidate-stale",
+      "candidate-adversarial"
+    ],
+    "repeats": 2,
+    "arms": [
+      "control-released",
+      "candidate-bundled-repair"
+    ],
+    "scheduledRows": 16,
+    "providerCalls": true,
+    "oraclePassedToProvider": false,
+    "actionSource": "only an assessed candidate actually delivered by runDecisionHook and validated against the authored available catalog",
+    "postconditionSource": "independent authored fixture-engine oracle after the sandboxed action",
+    "componentScope": "All four authored cases are normalized into PreToolUse runDecisionHook events with a supplied catalog. Original native_hook and explicit_mcp labels are retained as provenance; MCP invocation and native catalog discovery are not exercised."
+  },
+  "providerContract": {
+    "endpoint": "https://api.typesafe.ai/v1/systemone",
+    "expectedResponseModelVersion": "jev-1.13.0",
+    "expectedPluginRuntimeVersion": "0.4.0",
+    "driftRule": "Compare the exact response.model string with expectedResponseModelVersion and retain the actual response on mismatch."
+  },
+  "runtime": {
+    "node": "v22.23.2",
+    "typescriptLoader": "source/jev-workflows/node_modules/tsx/dist/loader.mjs",
+    "sourceMaterialization": "git archive of exact base, followed by the exact verified patch for candidate arm; shared dependencies are linked only inside disposable runtime directories"
+  },
+  "sourceIdentity": {
+    "baseCommit": "7dfe432d7463bab7186a8dacf50924af282f9a20",
+    "patchSha256": "f3b3d35a0fec2e62f3b2c2a025fdafe1d4516ee360a21f67e959d24e2fcfd5f2",
+    "verifiedPatch": {
+      "path": "benchmarks/plugin-development/experiment/variants/repair-bundled/repair-source.patch",
+      "sha256": "f3b3d35a0fec2e62f3b2c2a025fdafe1d4516ee360a21f67e959d24e2fcfd5f2",
+      "bytes": 48271
+    },
+    "trees": {
+      "control-released": {
+        "path": "benchmarks/plugin-development/experiment/variants/baseline/source/src",
+        "sha256": "7efd4ddd8fa62694d591cffb5070dc7a2eecda3f0affbb83400a645db0b0aa60",
+        "files": [
+          {
+            "path": "accounting.ts",
+            "mode": "100644",
+            "bytes": 14292,
+            "sha256": "df50cf6370b2d46cbe9e7fc144e0c7eda6b8de36e175e7900614773bce346e90"
+          },
+          {
+            "path": "batch.ts",
+            "mode": "100644",
+            "bytes": 7537,
+            "sha256": "aff6973404e3f5db6b6fd975954b100a74118bd4bf7f9850297aa040c9643609"
+          },
+          {
+            "path": "cli.ts",
+            "mode": "100644",
+            "bytes": 6822,
+            "sha256": "325ad045cb6ade424654e1a77d5117cd129af2996b7cb4320620b135d6b63f68"
+          },
+          {
+            "path": "contracts.ts",
+            "mode": "100644",
+            "bytes": 7102,
+            "sha256": "c6e095f34db25fdfde7becb8acb7d53920ba316085d409dbbe66207b992fdbc8"
+          },
+          {
+            "path": "credential.ts",
+            "mode": "100644",
+            "bytes": 1512,
+            "sha256": "f86ca09cc996854c6c8ffb15ca9ef2d529267d99205bfd94b9613a79abaf29d3"
+          },
+          {
+            "path": "decision-hook.ts",
+            "mode": "100644",
+            "bytes": 56279,
+            "sha256": "c1c42678a526277b8af022dbc279968db29901ff719973fa9db1e746cd5f56dd"
+          },
+          {
+            "path": "decision.ts",
+            "mode": "100644",
+            "bytes": 2393,
+            "sha256": "8e2de3b8f5226a83205d7bb790bef8617fd09c6a0cb38945cd32510395641a98"
+          },
+          {
+            "path": "hook.ts",
+            "mode": "100644",
+            "bytes": 11445,
+            "sha256": "048a1df6a4c4b85e7326a851865f7dd16499fb9d21f29a03791063b8350b4803"
+          },
+          {
+            "path": "outcomes.ts",
+            "mode": "100644",
+            "bytes": 7106,
+            "sha256": "3b13c11650a9e0cfaac34c2c3826fcd0543c8e4c1a0182f65553164bad423475"
+          },
+          {
+            "path": "policy.ts",
+            "mode": "100644",
+            "bytes": 5700,
+            "sha256": "7461651d5d990f6c404ee96d299d3cbf1c0f41f2f03cddc693477ccc978b05e7"
+          },
+          {
+            "path": "provider.ts",
+            "mode": "100644",
+            "bytes": 12399,
+            "sha256": "fede727db8dc3c23fec236a2f77668fb7eabba25e3032e0db109d1ef73792372"
+          },
+          {
+            "path": "redact.ts",
+            "mode": "100644",
+            "bytes": 1950,
+            "sha256": "96c828fe8cc275b1aca002f1b4b3b994753f6cf939c2d2edf6def281cad915e9"
+          },
+          {
+            "path": "server.ts",
+            "mode": "100644",
+            "bytes": 7470,
+            "sha256": "5f3f12f1085aae520d3db3d35507527caf3d33982752b82a8b7624b0a599a06c"
+          },
+          {
+            "path": "service.ts",
+            "mode": "100644",
+            "bytes": 23609,
+            "sha256": "e1e2faf16da1cd0a367491fcc18f7005d90168594c4d128a74d0cc105af5e79b"
+          },
+          {
+            "path": "store.ts",
+            "mode": "100644",
+            "bytes": 15913,
+            "sha256": "2e61c9282d2b25a145b60f0cd293afba641739622075b62ffa598ad6b82bc293"
+          },
+          {
+            "path": "task-context.ts",
+            "mode": "100644",
+            "bytes": 18415,
+            "sha256": "9cd808e817abcabae48303b2099db276dc1a81d99d6b7a1161bffeb86ffffd2d"
+          }
+        ]
+      },
+      "candidate-bundled-repair": {
+        "path": "benchmarks/plugin-development/experiment/variants/repair-bundled/source/jev-workflows/src",
+        "sha256": "b7dbd37edf96e187aa42e3ef949fe9073464fe703ba13456899990affe94782b",
+        "files": [
+          {
+            "path": "accounting.ts",
+            "mode": "100644",
+            "bytes": 14292,
+            "sha256": "df50cf6370b2d46cbe9e7fc144e0c7eda6b8de36e175e7900614773bce346e90"
+          },
+          {
+            "path": "batch.ts",
+            "mode": "100644",
+            "bytes": 7537,
+            "sha256": "aff6973404e3f5db6b6fd975954b100a74118bd4bf7f9850297aa040c9643609"
+          },
+          {
+            "path": "cli.ts",
+            "mode": "100644",
+            "bytes": 6822,
+            "sha256": "325ad045cb6ade424654e1a77d5117cd129af2996b7cb4320620b135d6b63f68"
+          },
+          {
+            "path": "contracts.ts",
+            "mode": "100644",
+            "bytes": 7102,
+            "sha256": "c6e095f34db25fdfde7becb8acb7d53920ba316085d409dbbe66207b992fdbc8"
+          },
+          {
+            "path": "credential.ts",
+            "mode": "100644",
+            "bytes": 1512,
+            "sha256": "f86ca09cc996854c6c8ffb15ca9ef2d529267d99205bfd94b9613a79abaf29d3"
+          },
+          {
+            "path": "decision-hook.ts",
+            "mode": "100644",
+            "bytes": 62536,
+            "sha256": "eee9d69bfa8f36a5523c973ff1ca5b700ba3c4f9c18675abc0427a12573b3c8f"
+          },
+          {
+            "path": "decision.ts",
+            "mode": "100644",
+            "bytes": 2393,
+            "sha256": "8e2de3b8f5226a83205d7bb790bef8617fd09c6a0cb38945cd32510395641a98"
+          },
+          {
+            "path": "hook.ts",
+            "mode": "100644",
+            "bytes": 11445,
+            "sha256": "048a1df6a4c4b85e7326a851865f7dd16499fb9d21f29a03791063b8350b4803"
+          },
+          {
+            "path": "outcomes.ts",
+            "mode": "100644",
+            "bytes": 7106,
+            "sha256": "3b13c11650a9e0cfaac34c2c3826fcd0543c8e4c1a0182f65553164bad423475"
+          },
+          {
+            "path": "policy.ts",
+            "mode": "100644",
+            "bytes": 5700,
+            "sha256": "7461651d5d990f6c404ee96d299d3cbf1c0f41f2f03cddc693477ccc978b05e7"
+          },
+          {
+            "path": "provider.ts",
+            "mode": "100644",
+            "bytes": 12399,
+            "sha256": "fede727db8dc3c23fec236a2f77668fb7eabba25e3032e0db109d1ef73792372"
+          },
+          {
+            "path": "redact.ts",
+            "mode": "100644",
+            "bytes": 1950,
+            "sha256": "96c828fe8cc275b1aca002f1b4b3b994753f6cf939c2d2edf6def281cad915e9"
+          },
+          {
+            "path": "server.ts",
+            "mode": "100644",
+            "bytes": 7470,
+            "sha256": "5f3f12f1085aae520d3db3d35507527caf3d33982752b82a8b7624b0a599a06c"
+          },
+          {
+            "path": "service.ts",
+            "mode": "100644",
+            "bytes": 23609,
+            "sha256": "e1e2faf16da1cd0a367491fcc18f7005d90168594c4d128a74d0cc105af5e79b"
+          },
+          {
+            "path": "store.ts",
+            "mode": "100644",
+            "bytes": 15913,
+            "sha256": "2e61c9282d2b25a145b60f0cd293afba641739622075b62ffa598ad6b82bc293"
+          },
+          {
+            "path": "task-context.ts",
+            "mode": "100644",
+            "bytes": 18415,
+            "sha256": "9cd808e817abcabae48303b2099db276dc1a81d99d6b7a1161bffeb86ffffd2d"
+          }
+        ]
+      }
+    }
+  },
+  "files": {
+    "inputs": [
+      {
+        "path": "benchmarks/plugin-development/cases/inputs.json",
+        "sha256": "c48a992b4977181c2ddfc539db7bae6edfef7785f29de230eb5c098b60297db3",
+        "bytes": 20158
+      },
+      {
+        "path": "benchmarks/plugin-development/cases/oracle.json",
+        "sha256": "20e92696862b6b0dd131bda35deba8da7d4d3799e66dbd0c468684aa552d7368",
+        "bytes": 24820
+      },
+      {
+        "path": "benchmarks/plugin-development/experiment/schedule.json",
+        "sha256": "8d1d6d3ef04e20661663423e17146705289e8c27fbf61426d87b92d471e2729a",
+        "bytes": 2806
+      }
+    ],
+    "runner": [
+      {
+        "path": "benchmarks/plugin-development/experiment/adapter.mjs",
+        "sha256": "e0467db3e1986717c399a4a76ab99272b264a7649f3bc0755f0c8d909efa17a0",
+        "bytes": 1466
+      },
+      {
+        "path": "benchmarks/plugin-development/experiment/freeze.mjs",
+        "sha256": "fcddef7a700c1b95bff91c510773c4db340d9f6a267d8997159b81adb306a23a",
+        "bytes": 7438
+      },
+      {
+        "path": "benchmarks/plugin-development/experiment/live-gate.mjs",
+        "sha256": "6890d4e06cae52964c7bef861d8205aaa980e0fbffde3e7d6bea306a571919d9",
+        "bytes": 2869
+      },
+      {
+        "path": "benchmarks/plugin-development/experiment/live-run.mjs",
+        "sha256": "8a8e95e6941b9e97eec6f17dacc9d2154853aaef4fcc101379b3dc26567feed1",
+        "bytes": 4093
+      },
+      {
+        "path": "benchmarks/plugin-development/experiment/run-attempt.mjs",
+        "sha256": "074774534c2b63b59855c23efc8b31c124941a2823cb583fc34287f88ed9f3a5",
+        "bytes": 28302
+      },
+      {
+        "path": "benchmarks/plugin-development/experiment/source-integrity.mjs",
+        "sha256": "1df3ca12cf22889a80fcf380c13adbb8362adcb054cb6e1db7b5ecf76d052c63",
+        "bytes": 7520
+      }
+    ],
+    "fixtureEngine": [
+      {
+        "path": "benchmarks/plugin-development/cases/action-worker.mjs",
+        "sha256": "c05d169b9fafd81ba3acf258862b070349ba52b2aa7b8098e5a39cabd2c399f2",
+        "bytes": 2174
+      },
+      {
+        "path": "benchmarks/plugin-development/cases/fixture-engine.mjs",
+        "sha256": "e798c7b3bf582d95b8099d26a60a4129f13eaa2f4a9333dbc32ef11c322326a6",
+        "bytes": 14866
+      }
+    ],
+    "dependencies": [
+      {
+        "path": "source/jev-workflows/package.json",
+        "sha256": "4c7a8c1560d9f9661fa02dc6a7218e1ac0ca0c08cf9e6b2be5aca6c0f77f4e66",
+        "bytes": 1014
+      },
+      {
+        "path": "source/jev-workflows/package-lock.json",
+        "sha256": "1eb4abee8b775adb2cea33d3bda6d0d91165cddd986b9cf69a96b4a39c25c06e",
+        "bytes": 70847
+      },
+      {
+        "path": "source/jev-workflows/RELEASE.json",
+        "sha256": "ebefd475103fcd1f90afee04d6a2661d04c58fa5e2884c57727a1d7f863e13b0",
+        "bytes": 230
+      }
+    ]
+  },
+  "fixtureTrees": [
+    {
+      "caseId": "candidate-normal",
+      "path": "benchmarks/plugin-development/cases/fixtures/candidate-normal",
+      "sha256": "2d7394591c5b1587d93eed81a83de91684a5344ef42f3c30cb143c36b6d0d559",
+      "files": [
+        {
+          "path": "source.mjs",
+          "mode": "100644",
+          "bytes": 285,
+          "sha256": "3400e348d9bb523ec683dfaa8df6602d55fd7db16fee9918ac633f8219eeaf80"
+        },
+        {
+          "path": "test.mjs",
+          "mode": "100644",
+          "bytes": 98,
+          "sha256": "ddd6111ed23e231338376706452d47bb03169b1ea0859e07ad3ae20bef9ed3fd"
+        },
+        {
+          "path": "workspace/lib/parser.mjs",
+          "mode": "100644",
+          "bytes": 123,
+          "sha256": "601f5407a9ee66370e7e63a617e38701673737852667e8a2bdea226eb95442cb"
+        },
+        {
+          "path": "workspace/test/parser.test.mjs",
+          "mode": "100644",
+          "bytes": 246,
+          "sha256": "4f20a5f9a26a61202b1fe396ebee2c78dfbcfc02b7ce1f503f1bb8304563d6ff"
+        }
+      ]
+    },
+    {
+      "caseId": "candidate-conflict",
+      "path": "benchmarks/plugin-development/cases/fixtures/candidate-conflict",
+      "sha256": "2986f8f47a9d607958b4636834ffbfcd0df34f7613b350a6876b6479ac9dc701",
+      "files": [
+        {
+          "path": "source.mjs",
+          "mode": "100644",
+          "bytes": 173,
+          "sha256": "22323f1b446437ca7b6e397ddd668b38352a19f23552204be1fd6f3f8656b8d8"
+        },
+        {
+          "path": "test.mjs",
+          "mode": "100644",
+          "bytes": 100,
+          "sha256": "e3975b638f4b0db08da2d7191eb4136478de241f2d4789a6493ec33fe36a3dce"
+        },
+        {
+          "path": "workspace/lib/serializer.mjs",
+          "mode": "100644",
+          "bytes": 86,
+          "sha256": "66747d9b092c8fd28892cbb3b8eb8cfb448096c67681cef0d4c6721056a1d0ca"
+        },
+        {
+          "path": "workspace/test/schema-v1-smoke.test.mjs",
+          "mode": "100644",
+          "bytes": 251,
+          "sha256": "79c939ac5e9cbff664106e72d62ca56abdde507da277e23f5c624e9bfdced614"
+        }
+      ]
+    },
+    {
+      "caseId": "candidate-stale",
+      "path": "benchmarks/plugin-development/cases/fixtures/candidate-stale",
+      "sha256": "a514d102b9fdba718e6039ed419cda06ffaa013e106079778949f279bd644f52",
+      "files": [
+        {
+          "path": "source.mjs",
+          "mode": "100644",
+          "bytes": 268,
+          "sha256": "442b69a2dfbeb5ce578f9eabbeaa5cef8b45727326f85b01afb101d4627595be"
+        },
+        {
+          "path": "test.mjs",
+          "mode": "100644",
+          "bytes": 97,
+          "sha256": "153ea9f3721b4e7c8c4eb64a1faec9d526239900b2ffd6858421ae207e5a0501"
+        },
+        {
+          "path": "workspace/lib/api.mjs",
+          "mode": "100644",
+          "bytes": 65,
+          "sha256": "515a4f22efa1616bbd72f262ab562bf133d1613190c7f9aa2c4489ebd56c4218"
+        },
+        {
+          "path": "workspace/test/new-api.test.mjs",
+          "mode": "100644",
+          "bytes": 214,
+          "sha256": "3433e81818e1fc2491b962f0b18aaa2b90578a4dc8373842155fe8ff17a26347"
+        }
+      ]
+    },
+    {
+      "caseId": "candidate-adversarial",
+      "path": "benchmarks/plugin-development/cases/fixtures/candidate-adversarial",
+      "sha256": "b5c325c82a9a625950d6008bca2f83a22321cb2f9d349d2bcb012a1d8b6697d2",
+      "files": [
+        {
+          "path": "source.mjs",
+          "mode": "100644",
+          "bytes": 160,
+          "sha256": "95159d9996eda5c6947fadd675ab30d4266d9975a8b1e0ce9268a0701f9e8f03"
+        },
+        {
+          "path": "test.mjs",
+          "mode": "100644",
+          "bytes": 103,
+          "sha256": "561d5b8deb85860b6bc73f9c5f13c72775f369aa5ba70059fc3757fa050a9d50"
+        },
+        {
+          "path": "workspace/config/build.json",
+          "mode": "100644",
+          "bytes": 40,
+          "sha256": "08ccf25ff9719b118c85ed876addb7e9aae0765af278690e9a9d5fdb64d3a3cd"
+        },
+        {
+          "path": "workspace/logs/build.log",
+          "mode": "100644",
+          "bytes": 93,
+          "sha256": "56309f9e70b8ae82e3e3bd4e506f8909a76a311c268ecca59dc6a6cd69bf8205"
+        },
+        {
+          "path": "workspace/state/network-spy.json",
+          "mode": "100644",
+          "bytes": 12,
+          "sha256": "025eb5d4c11bdfd9882568bd193bbbbc753d6ef49ae644e6895f5dae47c865a7"
+        },
+        {
+          "path": "workspace/test/local.test.mjs",
+          "mode": "100644",
+          "bytes": 349,
+          "sha256": "082da93c89f88544a0cc10d9d322dec2fd4e57aa80cca45b668a85e32db764f8"
+        }
+      ]
+    }
+  ],
+  "frozenContentSha256": "9a3c66cae32858d6591139a23b0f4bc73278262ef4e3d4f9375d4f71bae53948"
+}
