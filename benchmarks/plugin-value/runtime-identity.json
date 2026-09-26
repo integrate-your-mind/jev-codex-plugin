@@ -45,7 +45,8 @@
       "sha256": "49d98ab806e8678cd6341b09dad6389e5bcd8a46513de7651053bee3d8366e8d"
     },
     "runner": {
-      "sha256": "92d5c832be69a5a98a187c098d67947cfb08d2bbe9b1cc8c81a009c77caf7e82"
+      "sha256": "5660ddfa8abe3b0e4def8bef793dc058fc0deff82e14add73a83d019eeb21ab6",
+      "testSha256": "8ee22807a752c41b0df5e6ba21f445337152e1a957f591b5ef45d74aaa40592a"
     },
     "pathPolicy": "Operators supply absolute executable paths; content hashes and versions above are enforced before use. App-server hook and MCP PATH resolves node only through a host-control symlink to the pinned Node executable."
   },
@@ -95,7 +96,7 @@
       "version": "3.12.13",
       "sha256": "fe46716a94d8efa4514feb3c39ba3e270deee2187556986f6ddcff54aba7bb9a"
     },
-    "adapterSha256": "f33ad3fb4c189610a6edcf037f221d8398668ab8c26b5ae6784a785b1b5250ce",
+    "adapterSha256": "84da9f07f3d5161f006374f30f7598db2e461bb04769a47aa0c739577d9a3291",
     "launcherSha256": "e4a8c929804939b61fb3178d1e1d667aaaed9f6c523c07322028644a11423391",
     "pierDistribution": {
       "version": "0.3.1",
@@ -110,7 +111,7 @@
       "recordSha256": "88e01b4007ca519f1781d1fac6a12ba6bb3a9b0c04311899bef836a7270f0a6b"
     },
     "containerNetwork": "none",
-    "transport": "host app-server to container exec-server over env -i docker exec -i stdio",
+    "transport": "host app-server to container exec-server over env -i docker exec -i -w <per-run selected alias> stdio",
     "taskCredentials": "none",
     "agentInstallSpec": null,
     "taskImageExecution": "digest-pinned prebuilt task image with no per-task Codex derivative build",
@@ -125,7 +126,8 @@
     "pythonCachePolicy": "The authenticated adapter is compiled from source bytes; Pier runs with -B and an exclusive empty pycache prefix.",
     "environmentSelection": {
       "configuration": "include_local=true registers the host MCP environment while default=deep-swe; thread and turn each select only the explicit deep-swe environment",
-      "requiredRemoteIdentity": "ready exec-server reporting file:///app and a target-native absolute shell path"
+      "selectedWorkingDirectory": "fresh per-run host-control workspace path, mirrored only inside the task container as a symlink to /app",
+      "requiredRemoteIdentity": "ready exec-server canonically reporting file:///app and a target-native absolute shell path while thread and turn retain the exact selected alias"
     },
     "turnSandboxPolicy": {
       "type": "externalSandbox",
@@ -152,18 +154,24 @@
       "path": "runtime-amendment-verifier-2026-09-26.md",
       "sha256": "26329e40d96b3615f62b35b8100d241acddb6f373b14f8a1e584a5fb40bef8c4",
       "status": "frozen before repaired no-model verifier controls and before scoring"
+    },
+    "cwdMappingAmendment": {
+      "path": "runtime-amendment-cwd-mapping-2026-09-26.md",
+      "sha256": "c947194e6b77b03d68ac7c9c9b4d8d121e11e6dea1833dc71dc676a1822310b0",
+      "status": "frozen after a model-free offline alias probe and before corrected native model controls or scored inference"
     }
   },
   "syntheticNativeControl": {
     "schemaVersion": "plugin-value-synthetic-native-control-v1",
     "driver": "synthetic-native-control.mjs",
-    "driverSha256": "6a3cc8f99104f1166e0dcd381e2be3a3f3ca093e038cb268ba33c62a96ed764e",
-    "testSha256": "d91d73fc25d774cbf00e4d1ff604944eb61a213260557a174b0bc170d25618e3",
-    "status": "baseline v3 passed under previous registration; treatment v3 failed with preview-only classification and failed native hooks; diagnostics and explicit evaluate prompt source repaired, host/remote cwd incompatibility unresolved",
+    "driverSha256": "e451405587913819d1fcae3a742d97b43ffe25c403414e884294c846c847f1c7",
+    "testSha256": "38981fa7b1701701db1c54aca6612d58a36bb2d097c00f15b67e5c5b1f55db51",
+    "status": "baseline v3 passed under the prior /app selection; treatment v3 failed with preview-only classification and failed native hooks; explicit evaluate prompting and the model-free-proven per-run cwd alias repair are frozen, with fresh baseline and treatment controls still required",
     "scope": "fresh nonce workspace hides task image /app; no DeepSWE source or solution is mounted",
     "baseImageTaskIdentity": "ipython-session-bundle-replay",
     "baseImageDigest": "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
     "agentBoundary": "linux/amd64 digest-pinned image, network none, secretless, runtime bundle read-only",
-    "verifierBoundary": "fresh offline container, submission and hidden oracle read-only, agent runtime absent"
+    "verifierBoundary": "fresh offline container, submission and hidden oracle read-only, agent runtime absent",
+    "workspaceAliasPolicy": "same per-run logical path on host and in the agent container; container-only owned ancestors are mode 0711, task-user traversal is preflighted, the alias canonicalizes to /app, adds no host mount, and every owned alias path is removed after app-server shutdown"
   }
 }

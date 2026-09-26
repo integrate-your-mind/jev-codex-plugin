@@ -25,6 +25,13 @@ const PLUGIN_ID = 'jev-workflows@personal';
 const PLUGIN_DIRECTORY = '0.4.0+codex.20260926072321';
 const RPC_TIMEOUT_MS = 30_000;
 const INITIALIZE_TIMEOUT_MS = 90_000;
+const REMOTE_WORKSPACE_TARGET = '/app';
+const CONTAINER_ALIAS_PROTECTED_PATHS = Object.freeze([
+  REMOTE_WORKSPACE_TARGET,
+  '/installed-agent',
+  '/opt/jev-codex-runtime',
+  '/usr/local/bin',
+]);
 const JEV_FORWARD_ENV_KEYS = ['TYPESAFE_API_KEY', 'JEV_API_KEY_FILE'];
 const FORBIDDEN_CREDENTIAL_ENV_KEYS = [
   ...JEV_FORWARD_ENV_KEYS,
@@ -103,7 +110,7 @@ export function validateRequest(value) {
   if (!['baseline', 'treatment'].includes(value.arm)) throw new Error('arm must be baseline or treatment');
   if (!/^[0-9a-f]{12,64}$/.test(value.containerId ?? '')) throw new Error('invalid container id');
   if (value.containerUser !== null && value.containerUser !== undefined && !/^[A-Za-z0-9_.:-]{1,128}$/.test(value.containerUser)) throw new Error('invalid container user');
-  for (const key of ['dockerPath', 'nodePath', 'codexPath', 'logsDir', 'runtimeHome']) {
+  for (const key of ['dockerPath', 'nodePath', 'codexPath', 'logsDir', 'remoteCwd', 'hostCwd', 'runtimeHome']) {
     if (typeof value[key] !== 'string' || !value[key].startsWith('/')) throw new Error(`${key} must be absolute`);
   }
   for (const key of ['dockerSha256', 'nodeSha256', 'codexSha256']) {
@@ -112,8 +119,11 @@ export function validateRequest(value) {
   if (typeof value.instruction !== 'string' || value.instruction.length === 0 || Buffer.byteLength(value.instruction) > 2_000_000) throw new Error('instruction must be a bounded non-empty string');
   if (value.model !== 'gpt-6-astra') throw new Error('model must be gpt-6-astra');
   if (value.effort !== 'medium') throw new Error('effort must be medium');
-  if (value.remoteCwd !== '/app') throw new Error('remoteCwd must be /app');
   if (value.hostCwd !== join(resolve(value.logsDir), 'workspace')) throw new Error('hostCwd must be the host-control workspace path');
+  if (value.remoteCwd !== value.hostCwd) throw new Error('remoteCwd must equal the host-control workspace alias');
+  if (CONTAINER_ALIAS_PROTECTED_PATHS.some(path => pathContains(path, value.remoteCwd) || pathContains(value.remoteCwd, path))) {
+    throw new Error('remoteCwd overlaps a protected task-container path');
+  }
   if (value.runtimeHome !== join(resolve(value.logsDir), 'runtime-home')) throw new Error('runtimeHome must be the host-control runtime path');
   if (!Number.isSafeInteger(value.turnTimeoutMs) || value.turnTimeoutMs < 1_000 || value.turnTimeoutMs > 10_790_000) throw new Error('invalid turn timeout');
   if (typeof value.preflightOnly !== 'boolean') throw new Error('preflightOnly must be boolean');
@@ -127,6 +137,176 @@ function execFilePromise(command, args, options = {}) {
       else resolvePromise({stdout, stderr});
     });
   });
+}
+
+export const CONTAINER_WORKSPACE_ALIAS_SETUP_SCRIPT = String.raw`
+const fs = require('node:fs');
+const path = require('node:path');
+const alias = process.argv[1];
+const target = process.argv[2];
+const protectedPaths = [target, '/installed-agent', '/opt/jev-codex-runtime', '/usr/local/bin'];
+const normalized = value => path.resolve(value);
+const contains = (ancestor, candidate) => {
+  const value = path.relative(normalized(ancestor), normalized(candidate));
+  return value === '' || (value !== '..' && !value.startsWith('..' + path.sep) && !path.isAbsolute(value));
+};
+if (!path.isAbsolute(alias) || normalized(alias) !== alias) throw new Error('workspace alias must be normalized and absolute');
+if (!path.isAbsolute(target) || normalized(target) !== target) throw new Error('workspace target must be normalized and absolute');
+if (protectedPaths.some(value => contains(value, alias) || contains(alias, value))) throw new Error('workspace alias overlaps a protected path');
+if (fs.realpathSync.native(target) !== target) throw new Error('workspace target is redirected');
+const parent = path.dirname(alias);
+const createdDirectories = [];
+try {
+  let cursor = path.parse(parent).root;
+  for (const component of parent.slice(cursor.length).split(path.sep).filter(Boolean)) {
+    cursor = path.join(cursor, component);
+    try {
+      const metadata = fs.lstatSync(cursor);
+      if (metadata.isSymbolicLink() || !metadata.isDirectory()) throw new Error('workspace alias parent is redirected or not a directory');
+      if ((metadata.mode & 0o001) === 0) throw new Error('workspace alias parent is not traversable by the task user');
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      fs.mkdirSync(cursor, {mode: 0o711});
+      fs.chmodSync(cursor, 0o711);
+      const metadata = fs.lstatSync(cursor);
+      if (metadata.isSymbolicLink() || !metadata.isDirectory()) throw new Error('workspace alias parent creation was redirected');
+      if ((metadata.mode & 0o777) !== 0o711) throw new Error('workspace alias parent permissions drifted');
+      createdDirectories.push(cursor);
+    }
+  }
+  try {
+    fs.lstatSync(alias);
+    throw new Error('workspace alias already exists');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  fs.symlinkSync(target, alias, 'dir');
+  const metadata = fs.lstatSync(alias);
+  if (!metadata.isSymbolicLink() || fs.readlinkSync(alias) !== target || fs.realpathSync.native(alias) !== target) {
+    throw new Error('workspace alias verification failed');
+  }
+} catch (error) {
+  const rollbackErrors = [];
+  try {
+    const current = fs.lstatSync(alias);
+    if (current.isSymbolicLink() && fs.readlinkSync(alias) === target) fs.unlinkSync(alias);
+  } catch (cleanupError) {
+    if (cleanupError.code !== 'ENOENT') rollbackErrors.push(cleanupError);
+  }
+  for (const directory of [...createdDirectories].reverse()) {
+    try { fs.rmdirSync(directory); } catch (cleanupError) { rollbackErrors.push(cleanupError); }
+  }
+  if (rollbackErrors.length > 0) throw new AggregateError([error, ...rollbackErrors], 'workspace alias setup and rollback failed');
+  throw error;
+}
+process.stdout.write(JSON.stringify({selectedCwdAlias: alias, canonicalTarget: target, createdDirectories}));
+`;
+
+export const CONTAINER_WORKSPACE_ALIAS_ACCESS_SCRIPT = String.raw`
+const fs = require('node:fs');
+const alias = process.argv[1];
+const target = process.argv[2];
+fs.accessSync(alias, fs.constants.R_OK | fs.constants.X_OK);
+if (!fs.statSync(alias).isDirectory()) throw new Error('workspace alias target is not a directory');
+process.chdir(alias);
+const canonicalCwd = process.cwd();
+if (canonicalCwd !== target || fs.realpathSync.native(alias) !== target) throw new Error('task user resolved an unexpected workspace target');
+process.stdout.write(JSON.stringify({selectedCwdAlias: alias, canonicalCwd, accessible: true}));
+`;
+
+export const CONTAINER_WORKSPACE_ALIAS_REMOVE_SCRIPT = String.raw`
+const fs = require('node:fs');
+const path = require('node:path');
+const alias = process.argv[1];
+const target = process.argv[2];
+const createdDirectories = JSON.parse(process.argv[3]);
+if (!Array.isArray(createdDirectories)) throw new Error('created directory record is invalid');
+const metadata = fs.lstatSync(alias);
+if (!metadata.isSymbolicLink() || fs.readlinkSync(alias) !== target || fs.realpathSync.native(alias) !== target) {
+  throw new Error('workspace alias changed before cleanup');
+}
+fs.unlinkSync(alias);
+if (fs.existsSync(alias)) throw new Error('workspace alias still exists after cleanup');
+for (const directory of [...createdDirectories].reverse()) {
+  if (!path.isAbsolute(directory) || path.resolve(directory) !== directory) throw new Error('created directory path is invalid');
+  const current = fs.lstatSync(directory);
+  if (current.isSymbolicLink() || !current.isDirectory()) throw new Error('created directory changed before cleanup');
+  fs.rmdirSync(directory);
+}
+process.stdout.write(JSON.stringify({removed: true, removedCreatedDirectories: createdDirectories.length}));
+`;
+
+async function runContainerAliasScript(request, script, args, label, user = '0') {
+  try {
+    const result = await execFilePromise(request.dockerPath, [
+      'exec', ...(user === null ? [] : ['-u', user]), request.containerId,
+      '/usr/local/bin/node', '-e', script, ...args,
+    ], {timeout: RPC_TIMEOUT_MS});
+    assert.equal(result.stderr, '', `${label} wrote stderr`);
+    return JSON.parse(result.stdout);
+  } catch (error) {
+    const diagnostic = compactDiagnostic(`${error?.stderr ?? ''}${error?.stdout ?? ''}`);
+    const detail = diagnostic?.excerpt ? `: ${diagnostic.excerpt}` : '';
+    throw new Error(`${label} failed${detail}`);
+  }
+}
+
+export async function prepareContainerWorkspaceAlias(request) {
+  const result = await runContainerAliasScript(
+    request,
+    CONTAINER_WORKSPACE_ALIAS_SETUP_SCRIPT,
+    [request.remoteCwd, REMOTE_WORKSPACE_TARGET],
+    'container workspace alias setup',
+  );
+  try {
+    assert.equal(result?.selectedCwdAlias, request.remoteCwd, 'container workspace alias identity drifted');
+    assert.equal(result?.canonicalTarget, REMOTE_WORKSPACE_TARGET, 'container workspace alias target drifted');
+    assert.equal(Array.isArray(result?.createdDirectories), true, 'container workspace alias directory record is invalid');
+    assert.equal(result.createdDirectories.every(path => isAbsolute(path)), true, 'container workspace alias directory record is invalid');
+    assert.equal(new Set(result.createdDirectories).size, result.createdDirectories.length, 'container workspace alias directory record has duplicates');
+    for (const [index, path] of result.createdDirectories.entries()) {
+      assert.notEqual(path, request.remoteCwd, 'container workspace alias was recorded as a directory');
+      assert.equal(pathContains(path, request.remoteCwd), true, 'container workspace alias directory is not an ancestor');
+      assert.equal(CONTAINER_ALIAS_PROTECTED_PATHS.some(protectedPath => pathContains(protectedPath, path) || pathContains(path, protectedPath)), false, 'container workspace alias directory overlaps a protected path');
+      if (index > 0) assert.equal(pathContains(result.createdDirectories[index - 1], path), true, 'container workspace alias directory order is invalid');
+    }
+    if (result.createdDirectories.length > 0) {
+      assert.equal(result.createdDirectories.at(-1), dirname(request.remoteCwd), 'container workspace alias parent creation is incomplete');
+    }
+    const access = await runContainerAliasScript(
+      request,
+      CONTAINER_WORKSPACE_ALIAS_ACCESS_SCRIPT,
+      [request.remoteCwd, REMOTE_WORKSPACE_TARGET],
+      'container workspace alias task-user access',
+      request.containerUser ?? null,
+    );
+    assert.deepEqual(access, {
+      selectedCwdAlias: request.remoteCwd,
+      canonicalCwd: REMOTE_WORKSPACE_TARGET,
+      accessible: true,
+    }, 'container workspace alias task-user access drifted');
+    result.taskUserAccess = access;
+    return result;
+  } catch (error) {
+    try {
+      if (Array.isArray(result?.createdDirectories)) await removeContainerWorkspaceAlias(request, result);
+    } catch (cleanupError) {
+      throw new AggregateError([error, cleanupError], 'container workspace alias validation and rollback failed');
+    }
+    throw error;
+  }
+}
+
+export async function removeContainerWorkspaceAlias(request, alias) {
+  const result = await runContainerAliasScript(
+    request,
+    CONTAINER_WORKSPACE_ALIAS_REMOVE_SCRIPT,
+    [request.remoteCwd, REMOTE_WORKSPACE_TARGET, JSON.stringify(alias.createdDirectories)],
+    'container workspace alias cleanup',
+  );
+  assert.equal(result?.removed, true, 'container workspace alias was not removed');
+  assert.equal(result?.removedCreatedDirectories, alias.createdDirectories.length, 'container workspace alias directory cleanup drifted');
+  return result;
 }
 
 async function fileSha256(path) {
@@ -217,6 +397,8 @@ export function buildEnvironmentsToml(request) {
     'exec',
     '-i',
     ...(request.containerUser ? ['-u', request.containerUser] : []),
+    '-w',
+    request.remoteCwd,
     request.containerId,
     '/usr/bin/env',
     '-i',
@@ -289,13 +471,16 @@ export function verifyRemoteEnvironment(status, info, request) {
   const cwd = new URL(info.cwd);
   assert.equal(cwd.protocol, 'file:', 'remote environment cwd is not a file URI');
   assert.equal(cwd.host, '', 'remote environment cwd unexpectedly names a host');
-  assert.equal(decodeURIComponent(cwd.pathname).replace(/\/$/, ''), request.remoteCwd, 'remote environment cwd drifted');
+  const canonicalCwd = decodeURIComponent(cwd.pathname).replace(/\/$/, '');
+  assert.equal(canonicalCwd, REMOTE_WORKSPACE_TARGET, 'remote environment canonical cwd drifted');
   assert.equal(typeof info?.shell?.name, 'string', 'remote environment reported no shell name');
   assert.equal(typeof info?.shell?.path, 'string', 'remote environment reported no shell path');
   assert.equal(info.shell.path.startsWith('/'), true, 'remote environment shell path is not target-native');
   return {
     status: status.status,
     cwd: info.cwd,
+    selectedCwdAlias: request.remoteCwd,
+    canonicalCwd,
     shell: {name: info.shell.name, path: info.shell.path},
   };
 }
@@ -817,9 +1002,17 @@ async function run(request) {
   let runtime;
   let server;
   let threadId;
+  let workspaceAlias;
   try {
     receipt.hostRuntime = await verifyHostRuntimeIdentity(request);
     receipt.container = await inspectContainer(request, await runtimeProtectedPaths());
+    workspaceAlias = await prepareContainerWorkspaceAlias(request);
+    receipt.workspaceAlias = {
+      selectedCwdAlias: workspaceAlias.selectedCwdAlias,
+      canonicalTarget: workspaceAlias.canonicalTarget,
+      createdDirectories: workspaceAlias.createdDirectories,
+      taskUserAccess: workspaceAlias.taskUserAccess,
+    };
     runtime = await createRuntimeHome(request);
     receipt.pluginSourceHashes = runtime.sourceHashes;
     receipt.bootstrapTrustedHooks = await trustTreatmentHooks(request, runtime, hostShadow);
@@ -891,6 +1084,13 @@ async function run(request) {
         receipt.appServerStderr = server.stderrEvidence();
       } catch (error) {
         cleanupErrors.push(`app-server close: ${String(error?.message ?? error).slice(0, 500)}`);
+      }
+    }
+    if (workspaceAlias) {
+      try {
+        receipt.workspaceAlias.cleanup = await removeContainerWorkspaceAlias(request, workspaceAlias);
+      } catch (error) {
+        cleanupErrors.push(`container workspace alias removal: ${String(error?.message ?? error).slice(0, 500)}`);
       }
     }
     if (runtime) {

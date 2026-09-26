@@ -1,6 +1,6 @@
 {
   "schemaVersion": "jev-plugin-value-native-controls-audit-v1",
-  "status": "local-mcp-startup-fixed-hooks-and-evaluate-control-under-investigation",
+  "status": "native-baseline-and-treatment-passed-original-verifier-local-snapshot-corruption",
   "controls": [
     {
       "run": "synthetic-native-baseline-v1",
@@ -127,6 +127,73 @@
         }
       },
       "failure": "MCP startup succeeded, but the only classification was preview-only and all emitted hooks failed. No provider-backed decision was demonstrated. Host-runner passed denotes completion of its turn, not a passing native control; the synthetic control correctly rejected the result."
+    },
+    {
+      "run": "synthetic-native-treatment-v4",
+      "arm": "treatment",
+      "status": "passed",
+      "scored": false,
+      "runtimeIdentitySha256": "169debf30f29baf23484346a419a36139feff75995d4b265055e44fe105a9d82",
+      "hostRunnerSha256": "5660ddfa8abe3b0e4def8bef793dc058fc0deff82e14add73a83d019eeb21ab6",
+      "driverSha256": "e451405587913819d1fcae3a742d97b43ffe25c403414e884294c846c847f1c7",
+      "manifestSha256": "4d8c7a9b5d3b6fc27efa7b95e4090d22fddbaef594456c2b22eb5c989f538881",
+      "supervisorSha256": "b5be30de3fab4ab84e84e4fd15dacb6e01e14ff72f3497dbbf26eeedb3879708",
+      "runtimeEvidenceSha256": "6e7ce9b9ab5c5d34b50ca84da5eef1ac926ad671b83f9c100ac4d8d87ebf2fc0",
+      "completedModelTurns": 1,
+      "successfulRemoteShellEvents": 2,
+      "failedRemoteShellEvents": 1,
+      "completedPatchEvents": 1,
+      "independentVerifierPassed": true,
+      "cleanupVerifiedAfterRecovery": true,
+      "eventSummary": {
+        "commands": 3,
+        "fileChanges": 1,
+        "mcpCalls": 2,
+        "hookRuns": 15
+      },
+      "hookStatuses": {
+        "completed": 15
+      },
+      "elapsedSeconds": 69.70046416699188,
+      "workspaceAliasSetupAndUserAccessVerified": true,
+      "workspaceAliasRemoved": true,
+      "providerReceiptAuditSha256": "ab74ee5fe02b50dd2f24894c1f3f7b3312343b7a7fa3daaadee5325a6d47363f",
+      "providerEvidence": {
+        "persistedReceipts": 12,
+        "attemptsWithFetchEvidence": 12,
+        "http200": 12,
+        "validatedResponses": 12,
+        "actualProviderRequestIds": 12
+      },
+      "billedCost": null
+    },
+    {
+      "run": "synthetic-native-baseline-v4",
+      "arm": "baseline",
+      "status": "passed",
+      "scored": false,
+      "runtimeIdentitySha256": "169debf30f29baf23484346a419a36139feff75995d4b265055e44fe105a9d82",
+      "hostRunnerSha256": "5660ddfa8abe3b0e4def8bef793dc058fc0deff82e14add73a83d019eeb21ab6",
+      "driverSha256": "e451405587913819d1fcae3a742d97b43ffe25c403414e884294c846c847f1c7",
+      "manifestSha256": "bb5c763f6fbb7dac18dbd80119cdacfb9c5f44312dd2141a1ddecd9b0bdaed4a",
+      "supervisorSha256": "a15165e5966980383a9105382fb86da258c12ed3ec065c341d96cb015becdb1d",
+      "runtimeEvidenceSha256": "52de5358759bde4693dd1d458d6d4fd84d4782ac22b2c5681f135b62c16d2306",
+      "completedModelTurns": 1,
+      "successfulRemoteShellEvents": 2,
+      "failedRemoteShellEvents": 0,
+      "completedPatchEvents": 1,
+      "independentVerifierPassed": true,
+      "cleanupVerifiedAfterRecovery": true,
+      "eventSummary": {
+        "commands": 2,
+        "fileChanges": 1,
+        "mcpCalls": 0,
+        "hookRuns": 0
+      },
+      "hookStatuses": {},
+      "elapsedSeconds": 38.52713866699196,
+      "workspaceAliasSetupAndUserAccessVerified": true,
+      "workspaceAliasRemoved": true
     }
   ],
   "scoredDeepSweTrials": 0,
@@ -136,7 +203,8 @@
     "Setup controls are outside the task-quality denominator. Failed controls remain listed.",
     "The exact nonce workspace is independently verified in a new offline container only for a passed control.",
     "A control pass does not measure plugin benefit, original task-verifier validity or billed cost.",
-    "Private runtime receipts and session traces are retained; only selected fields and hashes are public."
+    "Private runtime receipts and session traces are retained; only selected fields and hashes are public.",
+    "Mapped native v4 controls passed; treatment includes one failed shell attempt before two successful commands and final independently verified artifacts. All attempts remain in its trace. This establishes native integration, not task-quality benefit."
   ],
   "taskVerifierControls": [
     {
@@ -177,6 +245,78 @@
       "failure": "The upstream tests image built and a separate verifier container started, but the pinned Pier build template ignores MAIN_IMAGE_NAME and Compose used its per-project default image name. The identity check rejected it before test execution. Repaired source adds an explicit image-only Compose override.",
       "trialResultSha256": "960d39a60572deed82cb6ce191e2fc178d1540e549eea25c9aa2315b85742e3b",
       "sourceSnapshot": "verifier-control-source-v3"
+    },
+    {
+      "run": "verifier-controls-v1-nop-20260926T221403Z-9441-0",
+      "taskId": "ipython-session-bundle-replay",
+      "agent": "nop",
+      "scored": false,
+      "status": "infrastructure-invalid-no-tests-executed",
+      "runtimeStatus": "completed",
+      "expectedReward": 0,
+      "observedRewards": {
+        "reward": 0,
+        "f2p_total": 17,
+        "f2p_passed": 0,
+        "p2p_total": 29,
+        "p2p_passed": 0,
+        "f2p": 0.0,
+        "p2p": 0.0,
+        "partial": 0.0
+      },
+      "modelTurns": 0,
+      "providerCalls": 0,
+      "trialResultSha256": "f62fa9ae0e1625899afab7541488d77c30f7df1ceda089af739fb050b5e554a6",
+      "verifierIdentitySha256": "fd2912575389d50be48050442bbfa227b379775bc338699528449cce7914d8b6",
+      "verifierImageId": "sha256:13f95fd03613da7e6fd433865cef119f9985fb6b0907f4935212cabd508b3136",
+      "originalContextSha256": "10392af6d418d0dcd7f99a685ece07c7fd50604cc8479ba5623bcf048e939e07",
+      "copiedDockerfileSha256": "2befccaf22627390d4c8f948196776570e2a4dea7662977f4f1d57c4f2fd7d15",
+      "baseImageDigest": "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
+      "runtimeMountCount": 0,
+      "verifierContainerAbsent": true,
+      "copiedBuildContextRemoved": true,
+      "sourceSnapshot": "verifier-control-source-v4",
+      "sourceCommit": "8a75f4e8a65a5e413ce2a360f4ae962ce1478737",
+      "note": "Both arms failed during pytest import: cannot import TerminalFormatter from pygments.formatters.terminal. All 46 CTRF entries are missing-test placeholders, not executed test failures. Oracle patch was collected (22076 bytes); no task score is accepted.",
+      "executedTests": 0,
+      "missingReportTests": 46,
+      "diagnosticFailure": "ImportError: cannot import name TerminalFormatter from pygments.formatters.terminal"
+    },
+    {
+      "run": "verifier-controls-v1-oracle-20260926T221403Z-9441-1",
+      "taskId": "ipython-session-bundle-replay",
+      "agent": "oracle",
+      "scored": false,
+      "status": "infrastructure-invalid-no-tests-executed",
+      "runtimeStatus": "completed",
+      "expectedReward": 1,
+      "observedRewards": {
+        "reward": 0,
+        "f2p_total": 17,
+        "f2p_passed": 0,
+        "p2p_total": 29,
+        "p2p_passed": 0,
+        "f2p": 0.0,
+        "p2p": 0.0,
+        "partial": 0.0
+      },
+      "modelTurns": 0,
+      "providerCalls": 0,
+      "trialResultSha256": "e3dfebfb1dd45670cdaa823b1613444e79204fb812e193d33cbf995cb7d77b05",
+      "verifierIdentitySha256": "8af0c8e1c7ae61cdb9028c94be04bfd1ec4401b9111b55f19e011f9c99d4b6ac",
+      "verifierImageId": "sha256:11adbf248e5f79a96a6fac9faedc3ff7877c51b987088e8f32eb51daace22079",
+      "originalContextSha256": "10392af6d418d0dcd7f99a685ece07c7fd50604cc8479ba5623bcf048e939e07",
+      "copiedDockerfileSha256": "2befccaf22627390d4c8f948196776570e2a4dea7662977f4f1d57c4f2fd7d15",
+      "baseImageDigest": "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
+      "runtimeMountCount": 0,
+      "verifierContainerAbsent": true,
+      "copiedBuildContextRemoved": true,
+      "sourceSnapshot": "verifier-control-source-v4",
+      "sourceCommit": "8a75f4e8a65a5e413ce2a360f4ae962ce1478737",
+      "note": "Both arms failed during pytest import: cannot import TerminalFormatter from pygments.formatters.terminal. All 46 CTRF entries are missing-test placeholders, not executed test failures. Oracle patch was collected (22076 bytes); no task score is accepted.",
+      "executedTests": 0,
+      "missingReportTests": 46,
+      "diagnosticFailure": "ImportError: cannot import name TerminalFormatter from pygments.formatters.terminal"
     }
   ]
 }

@@ -1613,7 +1613,6 @@ class PluginValueCodex(Codex):
             raise FileNotFoundError(f"host runner not found: {self.host_runner}")
 
         container_id = await environment.benchmark_container_id()
-        remote_cwd = "/app"
         container_user = (
             str(environment.default_user)
             if environment.default_user is not None
@@ -1625,6 +1624,7 @@ class PluginValueCodex(Codex):
         self.logs_dir.mkdir(parents=True, exist_ok=True)
         host_control = self._prepare_host_control_dir()
         host_cwd = str(host_control / "workspace")
+        remote_cwd = host_cwd
         runtime_home = str(host_control / "runtime-home")
         request_path = host_control / "host-runner-request.json"
         result_path = host_control / "host-runner-result.json"

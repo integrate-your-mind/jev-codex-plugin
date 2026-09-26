@@ -11,6 +11,8 @@ corrects the registry setting after a preserved startup failure; model task
 execution still selects only the remote environment.
 The [separate verifier amendment](runtime-amendment-verifier-2026-09-26.md)
 restores the upstream tests build with a pinned base and recorded image identity.
+The [host hook directory mapping amendment](runtime-amendment-cwd-mapping-2026-09-26.md)
+records the per-run host/container alias needed by the pinned hook launcher.
 
 ## Question and estimand
 

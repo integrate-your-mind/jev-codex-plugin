@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {chmod, mkdtemp, mkdir, readFile, rm, symlink, writeFile} from 'node:fs/promises';
+import {chmod, lstat, mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import test from 'node:test';
@@ -11,6 +12,9 @@ import {
   buildRemoteEnvironmentSelection,
   buildThreadStartParams,
   buildTurnStartParams,
+  CONTAINER_WORKSPACE_ALIAS_ACCESS_SCRIPT,
+  CONTAINER_WORKSPACE_ALIAS_REMOVE_SCRIPT,
+  CONTAINER_WORKSPACE_ALIAS_SETUP_SCRIPT,
   compactHookRun,
   compactMcp,
   replaceStateDirectory,
@@ -37,7 +41,7 @@ const request = Object.freeze({
   logsDir: '/tmp/private-results',
   model: 'gpt-6-astra',
   effort: 'medium',
-  remoteCwd: '/app',
+  remoteCwd: '/tmp/private-results/workspace',
   hostCwd: '/tmp/private-results/workspace',
   runtimeHome: '/tmp/private-results/runtime-home',
   turnTimeoutMs: 10_700_000,
@@ -65,6 +69,10 @@ test('request pins model, effort, remote cwd, and host hook shadow', () => {
   assert.throws(() => validateRequest({...request, model: 'other'}), /gpt-6-astra/);
   assert.throws(() => validateRequest({...request, remoteCwd: '/tmp/work'}), /remoteCwd/);
   assert.throws(() => validateRequest({...request, hostCwd: '/tmp/work'}), /hostCwd/);
+  assert.throws(
+    () => validateRequest({...request, logsDir: '/app/host-control', hostCwd: '/app/host-control/workspace', remoteCwd: '/app/host-control/workspace', runtimeHome: '/app/host-control/runtime-home'}),
+    /protected task-container path/,
+  );
   assert.throws(() => validateRequest({...request, containerId: 'a;touch x'}), /container id/);
   assert.throws(() => validateRequest({...request, nodeSha256: 'not-a-hash'}), /nodeSha256/);
 });
@@ -117,14 +125,14 @@ test('exec-server launcher clears host env and forwards no credential', () => {
   assert.match(toml, /default = "deep-swe"/);
   assert.match(toml, /program = "\/usr\/bin\/env"/);
   assert.equal((toml.match(/"-i"/g) ?? []).length, 3);
-  assert.match(toml, /"exec", "-i", "-u", "agent"/);
+  assert.match(toml, /"exec", "-i", "-u", "agent", "-w", "\/tmp\/private-results\/workspace"/);
   assert.match(toml, /"\/usr\/bin\/env", "-i", "PATH=\/usr\/local\/bin:\/usr\/bin:\/bin", "HOME=\/installed-agent\/codex-exec-launcher", "CODEX_HOME=\/installed-agent\/codex-exec-home"/);
   assert.doesNotMatch(toml, /CODEX_HOME=\/tmp/);
   assert.doesNotMatch(toml, /OPENAI|TYPESAFE|JEV_API_KEY|auth\.json/);
 });
 
 test('thread and turn select only the remote environment with external sandboxing', () => {
-  const environments = [{environmentId: 'deep-swe', cwd: '/app', runtimeWorkspaceRoots: ['/app']}];
+  const environments = [{environmentId: 'deep-swe', cwd: request.remoteCwd, runtimeWorkspaceRoots: [request.remoteCwd]}];
   assert.deepEqual(buildRemoteEnvironmentSelection(request), environments);
   assert.deepEqual(buildThreadStartParams(request), {
     cwd: request.hostCwd,
@@ -165,7 +173,13 @@ test('remote environment proof rejects local, pending, and host-native identitie
       {cwd: 'file:///app', shell: {name: 'bash', path: '/bin/bash'}},
       request,
     ),
-    {status: 'ready', cwd: 'file:///app', shell: {name: 'bash', path: '/bin/bash'}},
+    {
+      status: 'ready',
+      cwd: 'file:///app',
+      selectedCwdAlias: request.remoteCwd,
+      canonicalCwd: '/app',
+      shell: {name: 'bash', path: '/bin/bash'},
+    },
   );
   assert.throws(
     () => verifyRemoteEnvironment({status: 'pending'}, {cwd: 'file:///app', shell: {name: 'sh', path: '/bin/sh'}}, request),
@@ -173,8 +187,49 @@ test('remote environment proof rejects local, pending, and host-native identitie
   );
   assert.throws(
     () => verifyRemoteEnvironment({status: 'ready'}, {cwd: 'file:\/\/\/tmp\/host', shell: {name: 'zsh', path: '/bin/zsh'}}, request),
-    /cwd drifted/,
+    /canonical cwd drifted/,
   );
+});
+
+test('container workspace alias scripts reject redirected parents and clean exact owned paths', async t => {
+  const traversableTemporaryRoot = process.platform === 'darwin' ? '/private/tmp' : tmpdir();
+  const temporary = await mkdtemp(join(traversableTemporaryRoot, 'plugin-value-alias-'));
+  t.after(() => rm(temporary, {recursive: true, force: true}));
+  const root = await realpath(temporary);
+  await chmod(root, 0o711);
+  const target = join(root, 'target');
+  const alias = join(root, 'owned', 'nested', 'workspace');
+  await mkdir(target);
+  const setup = spawnSync(process.execPath, ['-e', CONTAINER_WORKSPACE_ALIAS_SETUP_SCRIPT, alias, target], {encoding: 'utf8'});
+  assert.equal(setup.status, 0, setup.stderr);
+  const setupReceipt = JSON.parse(setup.stdout);
+  assert.equal(setupReceipt.selectedCwdAlias, alias);
+  assert.equal(setupReceipt.canonicalTarget, target);
+  assert.equal((await lstat(alias)).isSymbolicLink(), true);
+  assert.equal(await realpath(alias), target);
+  for (const directory of setupReceipt.createdDirectories) {
+    assert.equal((await lstat(directory)).mode & 0o777, 0o711, 'created alias parents must be traversable without being listable or writable');
+  }
+  const access = spawnSync(process.execPath, ['-e', CONTAINER_WORKSPACE_ALIAS_ACCESS_SCRIPT, alias, target], {encoding: 'utf8'});
+  assert.equal(access.status, 0, access.stderr);
+  assert.deepEqual(JSON.parse(access.stdout), {selectedCwdAlias: alias, canonicalCwd: target, accessible: true});
+  const cleanup = spawnSync(process.execPath, [
+    '-e', CONTAINER_WORKSPACE_ALIAS_REMOVE_SCRIPT, alias, target,
+    JSON.stringify(setupReceipt.createdDirectories),
+  ], {encoding: 'utf8'});
+  assert.equal(cleanup.status, 0, cleanup.stderr);
+  assert.equal(JSON.parse(cleanup.stdout).removed, true);
+  await assert.rejects(lstat(alias), /ENOENT/);
+
+  const redirectedParent = join(root, 'redirected');
+  const otherTarget = join(root, 'other-target');
+  await mkdir(otherTarget);
+  await symlink(target, redirectedParent);
+  const rejected = spawnSync(process.execPath, [
+    '-e', CONTAINER_WORKSPACE_ALIAS_SETUP_SCRIPT, join(redirectedParent, 'workspace'), otherTarget,
+  ], {encoding: 'utf8'});
+  assert.notEqual(rejected.status, 0);
+  assert.match(rejected.stderr, /redirected or not a directory/);
 });
 
 test('host config fails closed for task command environment', () => {

@@ -19,15 +19,16 @@ const nonce = '0123456789abcdef0123456789abcdef';
 const image = 'example.invalid/repository@sha256:' + 'a'.repeat(64);
 const workspace = '/private/control/workspace';
 const runtimeBundle = '/private/runtime';
+const selectedCwdAlias = '/private/control/host-control/workspace';
 
 function receipt(arm) {
   const events = [
     {method: 'item/completed', item: {
-      type: 'commandExecution', status: 'completed', exitCode: 0, cwd: '/app', source: 'unifiedExecStartup',
+      type: 'commandExecution', status: 'completed', exitCode: 0, cwd: selectedCwdAlias, source: 'unifiedExecStartup',
       commandBytes: 167, commandSha256: 'a'.repeat(64), outputBytes: 49, outputSha256: 'b'.repeat(64),
     }},
     {method: 'item/completed', item: {type: 'fileChange', status: 'completed', changes: [{
-      path: '/app/patch-target.txt', kind: {type: 'update', move_path: null}, diffBytes: 72, diffSha256: 'c'.repeat(64),
+      path: `${selectedCwdAlias}/patch-target.txt`, kind: {type: 'update', move_path: null}, diffBytes: 72, diffSha256: 'c'.repeat(64),
     }]}},
   ];
   if (arm === 'treatment') {
@@ -43,8 +44,14 @@ function receipt(arm) {
   }
   return {
     schemaVersion: 'plugin-value-runtime-v1', arm, status: 'passed', preflightOnly: false,
-    environment: {status: 'ready', cwd: 'file:///app'},
-    modelEnvironmentSelection: [{environmentId: 'deep-swe', cwd: '/app', runtimeWorkspaceRoots: ['/app']}],
+    environment: {status: 'ready', cwd: 'file:///app', selectedCwdAlias, canonicalCwd: '/app'},
+    workspaceAlias: {
+      selectedCwdAlias,
+      canonicalTarget: '/app',
+      taskUserAccess: {selectedCwdAlias, canonicalCwd: '/app', accessible: true},
+      cleanup: {removed: true},
+    },
+    modelEnvironmentSelection: [{environmentId: 'deep-swe', cwd: selectedCwdAlias, runtimeWorkspaceRoots: [selectedCwdAlias]}],
     turn: {status: 'completed'}, evidence: {sessions: true, jevState: arm === 'treatment'}, events,
   };
 }
@@ -72,6 +79,8 @@ test('synthetic prompt keeps the hidden nonce in the fixture and treatment deman
   assert.match(treatment, /jev_status/);
   assert.match(treatment, /apply_patch/);
   assert.match(treatment, /shell command/);
+  assert.match(treatment, /without changing directories/);
+  assert.match(treatment, /pwd -P/);
 });
 
 test('hidden verifier checks exact artifacts and has no task solution', () => {
@@ -113,36 +122,39 @@ test('hidden verifier rejects extra entries and a wrong nonce', async t => {
 });
 
 test('control receipt requires remote command, patch, Jev provider proof, and hooks', () => {
-  assert.deepEqual(validateControlReceipt(receipt('baseline'), 'baseline'), {
+  assert.deepEqual(validateControlReceipt(receipt('baseline'), 'baseline', selectedCwdAlias), {
     commands: 1, fileChanges: 1, mcpCalls: 0, hookRuns: 0,
   });
-  assert.deepEqual(validateControlReceipt(receipt('treatment'), 'treatment'), {
+  assert.deepEqual(validateControlReceipt(receipt('treatment'), 'treatment', selectedCwdAlias), {
     commands: 1, fileChanges: 1, mcpCalls: 2, hookRuns: 2,
   });
   const noPatch = receipt('baseline');
   noPatch.events = noPatch.events.filter(event => event.item?.type !== 'fileChange');
-  assert.throws(() => validateControlReceipt(noPatch, 'baseline'), /apply_patch/);
+  assert.throws(() => validateControlReceipt(noPatch, 'baseline', selectedCwdAlias), /apply_patch/);
   const local = receipt('baseline');
   local.environment.cwd = 'file:///private/host';
-  assert.throws(() => validateControlReceipt(local, 'baseline'), /cwd drifted/);
+  assert.throws(() => validateControlReceipt(local, 'baseline', selectedCwdAlias), /cwd drifted/);
   const localSelection = receipt('baseline');
   localSelection.modelEnvironmentSelection.push({
     environmentId: 'local', cwd: '/private/host', runtimeWorkspaceRoots: ['/private/host'],
   });
-  assert.throws(() => validateControlReceipt(localSelection, 'baseline'), /environment selection drifted/);
+  assert.throws(() => validateControlReceipt(localSelection, 'baseline', selectedCwdAlias), /environment selection drifted/);
+  const canonicalOnlyCommand = receipt('baseline');
+  canonicalOnlyCommand.events.find(event => event.item?.type === 'commandExecution').item.cwd = '/app';
+  assert.throws(() => validateControlReceipt(canonicalOnlyCommand, 'baseline', selectedCwdAlias), /selected alias/);
   const noProvider = receipt('treatment');
   noProvider.events.find(event => event.item?.tool === 'classify_decision').item.result.transport.fetchInvoked = false;
-  assert.throws(() => validateControlReceipt(noProvider, 'treatment'), /did not call/);
+  assert.throws(() => validateControlReceipt(noProvider, 'treatment', selectedCwdAlias), /did not call/);
 });
 
 test('control receipt accepts only pinned model-triggered command sources', () => {
   const interaction = receipt('baseline');
   interaction.events.find(event => event.item?.type === 'commandExecution').item.source = 'unifiedExecInteraction';
-  assert.equal(validateControlReceipt(interaction, 'baseline').commands, 1);
+  assert.equal(validateControlReceipt(interaction, 'baseline', selectedCwdAlias).commands, 1);
   for (const source of ['userShell', 'agent', 'unknownSource']) {
     const invalid = receipt('baseline');
     invalid.events.find(event => event.item?.type === 'commandExecution').item.source = source;
-    assert.throws(() => validateControlReceipt(invalid, 'baseline'), /user-shell or unknown source/);
+    assert.throws(() => validateControlReceipt(invalid, 'baseline', selectedCwdAlias), /user-shell or unknown source/);
   }
 });
 

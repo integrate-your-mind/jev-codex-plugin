@@ -157,7 +157,7 @@ export function buildSyntheticInstruction(arm) {
   return [
     'This is a synthetic native tool-routing control, outside the scored benchmark.',
     ...jev,
-    'Use a shell command in /app to print the working directory, read READ_ME.txt, and create command-proof.txt.',
+    'From the selected workspace, without changing directories, use a shell command to run pwd -P, read READ_ME.txt, and create command-proof.txt.',
     'command-proof.txt must contain exactly two lines: read_nonce=<the value after READ_NONCE=> and cwd=/app.',
     'Then use the apply_patch tool to change the only line in patch-target.txt from state=before to state=after:<the same nonce>.',
     'Use a final shell command to read command-proof.txt and patch-target.txt. Do not create or modify any other workspace file.',
@@ -193,22 +193,37 @@ printf '%s\n' '{"schemaVersion":"plugin-value-synthetic-verifier-v1","passed":tr
 `;
 }
 
-function normalizedChangePath(value) {
+function normalizedChangePath(value, expectedAlias) {
   if (typeof value !== 'string') return null;
-  return value.startsWith('/app/') ? value.slice('/app/'.length) : value.replace(/^\.\//, '');
+  if (value.startsWith('/app/')) return value.slice('/app/'.length);
+  if (value.startsWith(`${expectedAlias}/`)) return value.slice(expectedAlias.length + 1);
+  return value.replace(/^\.\//, '');
 }
 
-export function validateControlReceipt(receipt, arm) {
+export function validateControlReceipt(receipt, arm, expectedAlias) {
+  assert.equal(typeof expectedAlias, 'string', 'expected workspace alias is missing');
+  assert.equal(expectedAlias.startsWith('/'), true, 'expected workspace alias must be absolute');
+  assert.notEqual(expectedAlias, '/app', 'selected workspace alias must remain distinct from its canonical target');
   assert.equal(receipt?.schemaVersion, RUNTIME_SCHEMA, 'host runner receipt schema drifted');
   assert.equal(receipt?.arm, arm, 'host runner receipt arm drifted');
   assert.equal(receipt?.status, 'passed', 'host runner did not pass');
   assert.equal(receipt?.preflightOnly, false, 'synthetic control must execute one model turn');
   assert.equal(receipt?.environment?.status, 'ready', 'remote environment was not ready');
   assert.equal(receipt?.environment?.cwd, 'file:///app', 'remote environment cwd drifted');
+  assert.equal(receipt?.environment?.selectedCwdAlias, expectedAlias, 'remote environment selected alias drifted');
+  assert.equal(receipt?.environment?.canonicalCwd, '/app', 'remote environment canonical cwd drifted');
+  assert.equal(receipt?.workspaceAlias?.selectedCwdAlias, expectedAlias, 'container workspace alias drifted');
+  assert.equal(receipt?.workspaceAlias?.canonicalTarget, '/app', 'container workspace alias target drifted');
+  assert.deepEqual(receipt?.workspaceAlias?.taskUserAccess, {
+    selectedCwdAlias: expectedAlias,
+    canonicalCwd: '/app',
+    accessible: true,
+  }, 'container workspace alias was not accessible to the task user');
+  assert.equal(receipt?.workspaceAlias?.cleanup?.removed, true, 'container workspace alias was not cleaned');
   assert.deepEqual(receipt?.modelEnvironmentSelection, [{
     environmentId: 'deep-swe',
-    cwd: '/app',
-    runtimeWorkspaceRoots: ['/app'],
+    cwd: expectedAlias,
+    runtimeWorkspaceRoots: [expectedAlias],
   }], 'model execution environment selection drifted');
   assert.equal(receipt?.turn?.status, 'completed', 'model turn did not complete');
   assert.equal(receipt?.evidence?.sessions, true, 'Codex session evidence is missing');
@@ -217,9 +232,9 @@ export function validateControlReceipt(receipt, arm) {
   const commands = items.filter(item => item?.type === 'commandExecution');
   assert.equal(commands.length > 0, true, 'no remote model shell command was recorded');
   assert.equal(commands.every(item => MODEL_COMMAND_SOURCES.has(item.source)), true, 'command receipt contains a user-shell or unknown source');
-  assert.equal(commands.some(item => item.status === 'completed' && item.exitCode === 0 && item.cwd === '/app'), true, 'no completed remote model shell command');
+  assert.equal(commands.some(item => item.status === 'completed' && item.exitCode === 0 && item.cwd === expectedAlias), true, 'no completed remote model shell command from the selected alias');
   const changes = items.filter(item => item?.type === 'fileChange' && item.status === 'completed').flatMap(item => item.changes ?? []);
-  assert.equal(changes.some(change => normalizedChangePath(change.path) === 'patch-target.txt'), true, 'apply_patch did not change patch-target.txt');
+  assert.equal(changes.some(change => normalizedChangePath(change.path, expectedAlias) === 'patch-target.txt'), true, 'apply_patch did not change patch-target.txt');
 
   const mcp = items.filter(item => item?.type === 'mcpToolCall');
   const hooks = (receipt?.events ?? []).filter(event => event?.method === 'hook/completed').map(event => event.hook);
@@ -430,6 +445,7 @@ async function runHostControl(options, containerId, hostControl) {
   const bin = join(hostControl, 'bin');
   await mkdir(bin, {mode: 0o700});
   await symlink(options.node, join(bin, 'node'));
+  const selectedCwdAlias = join(hostControl, 'workspace');
   const request = {
     schemaVersion: RUNTIME_SCHEMA,
     arm: options.arm,
@@ -445,8 +461,8 @@ async function runHostControl(options, containerId, hostControl) {
     logsDir: hostControl,
     model: 'gpt-6-astra',
     effort: 'medium',
-    remoteCwd: '/app',
-    hostCwd: join(hostControl, 'workspace'),
+    remoteCwd: selectedCwdAlias,
+    hostCwd: selectedCwdAlias,
     runtimeHome: join(hostControl, 'runtime-home'),
     turnTimeoutMs: options.turnTimeoutMs,
     preflightOnly: false,
@@ -462,7 +478,7 @@ async function runHostControl(options, containerId, hostControl) {
   await writeFile(join(hostControl, 'host-runner.stderr'), result.stderr, {mode: 0o600});
   const receipt = JSON.parse(await readFile(join(hostControl, 'runtime-evidence.json'), 'utf8'));
   if (result.code !== 0) throw new Error(`host runner failed: ${receipt?.failure?.message ?? result.stderr.slice(-500)}`);
-  return {receipt, eventSummary: validateControlReceipt(receipt, options.arm)};
+  return {receipt, eventSummary: validateControlReceipt(receipt, options.arm, selectedCwdAlias)};
 }
 
 async function runVerifier(options, validated, workspace, oracle, verifierOutput, name) {
@@ -544,6 +560,9 @@ export async function runSyntheticControl(options) {
       taskCredentials: 'none',
       taskSourceMounted: false,
       verifierRuntimeMounted: false,
+      selectedCwdAlias: join(hostControl, 'workspace'),
+      canonicalRemoteCwd: '/app',
+      aliasAddsHostMount: false,
     },
     fixture: {
       nonceSha256: sha256(nonce),

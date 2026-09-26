@@ -48,14 +48,39 @@ inspection found 42 Pier bytecode cache files absent from its RECORD and no Harb
 extras. The adapter executes verified source bytes and uses a fresh private
 bytecode-cache prefix. Complete-host attestation is not a claim of these checks.
 
-The original-task no-op control also failed before grading because the adapter
-incorrectly required the agent image for the separate upstream verifier build.
-No reward was produced; its reference-solution control did not start. Repairing
-that build path and validating its pinned image/context are separate from the
-successful synthetic baseline.
+The original-task verifier adapter now preserves the separate upstream tests
+build context, pins its base digest, explicitly binds the Compose image name,
+and records the running verifier image and context identities. The repaired
+adapter passed 39 Python tests independently. Earlier build/configuration and
+snapshot-packaging failures remain in the attempt audit.
+
+The latest no-op and reference-solution controls both reached the verifier, but
+pytest failed to import Pygments `TerminalFormatter` before any test executed.
+All 46 reported entries are missing-test placeholders. The reference patch was
+collected (22,076 bytes), so patch collection is not the cause. Both zero rewards
+are infrastructure-invalid and excluded from task-quality claims. Package/image
+provenance diagnosis and fresh controls are still required.
+
+The native hook launch failure was separately reproduced without a model call:
+the host was asked to launch hooks with a container-only `/app` working directory.
+A private host/container directory alias passed the offline mapping probe and
+then fresh native controls in both arms, as described below.
 
 Before scoring, the runtime still needs both arms' passing native controls on
 the final configuration, and no-op and reference-solution verifier controls.
 `executionReady` remains false. Any final runtime choice must be documented and
 frozen before the first scored attempt; a successful version probe alone cannot
 satisfy that requirement.
+
+The frozen directory-mapping revision subsequently passed both native v4 controls.
+Baseline completed the command/patch workflow and independent nonce verifier.
+Treatment completed all 15 emitted hooks, retained 12 validated HTTP 200 provider
+receipts with actual request IDs, and passed the same independent artifact check.
+Its trace retains one failed initial shell attempt followed by two successful
+commands. Both controls verified container and alias cleanup. These are native
+integration controls, not task-quality measurements or reconciled billing.
+
+Registry inspection confirms that the original Pygments layer has healthy files;
+the local unpacked base and verifier snapshots expose empty files instead. A
+separately identified restoration from original registry bytes is being prepared;
+original no-op/reference grading and scored trials remain unfinished.
