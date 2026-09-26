@@ -80,16 +80,16 @@
     },
     {
       "path": "grader.mjs",
-      "bytes": 14721,
-      "sha256": "691b964a6761bbdbf192654c6e435ae8079daf20672f43012ea5749d73cc1fc4"
+      "bytes": 22637,
+      "sha256": "27345dcfcaa6a7e2075fd8e456de27e3af24417789a67ae3909f42a11fd81fda"
     },
     {
       "path": "run.mjs",
-      "bytes": 18211,
-      "sha256": "e85aa4aa345f1713ea2dc65174377ffefcdee5232a5e02bb3a9b1ba96a624db0"
+      "bytes": 22600,
+      "sha256": "62eec794eee77f43a485c6d19d5f415511b5b0b56727a5d4fc204fe1aa4245ba"
     }
   ],
-  "harnessCombinedSha256": "0b3b52979f736884ae845dd52b6942f0a1d7fac665cf51af162d1877048e5fd5",
+  "harnessCombinedSha256": "de518abb2de5fd63bd5e77afa32e18d63003df0ff1f6eb0b753bee61239e73fc",
   "truthBoundary": "Oracle content is used only for freeze validation and post-operation code grading. It is never included in service input or provider transport.",
   "claimBoundary": "This classifier-only component ablation executes no action and measures no independently verified task/action benefit. It does not test native automatic Codex behavior and cannot by itself support a positive task-quality claim."
 }

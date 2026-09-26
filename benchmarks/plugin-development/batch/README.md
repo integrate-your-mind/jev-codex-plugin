@@ -74,6 +74,12 @@ Live execution is intentionally gated and has not been run. After root reviews
 the frozen inputs, use a new private output path outside `Documents`, the exact
 SHA-256 of `freeze.json`, the pinned Node runtime, and both explicit gates:
 
+The raw output is a private mode-`0600`, fsynced JSONL journal. Its
+`benchmark-private-jsonl-fsync-v1` adapter retains complete approved service
+receipts and provider request IDs for reconciliation. Report summaries expose
+only identifier-presence booleans and counts; this adapter does not measure the
+native `FileStore` persistence latency.
+
 ```sh
 JEV_RUN_LIVE_BATCH_BENCHMARK=1 \
 JEV_API_KEY_FILE=/absolute/private/credential-file \
@@ -100,4 +106,4 @@ host delivery, execution, or a verified postcondition.
 
 ## Review checkpoint
 
-The [integration review](review.json) accepts the exact recorded freeze for classifier-only evaluation after 10 offline regressions. Live calls remain unrun because durable private writes are unreliable. The review does not select an improved plugin configuration or establish task/action benefit.
+The [integration review](review.json) accepts freeze 7190b847d193e36e6d86dd63f73793406fbbb1c489adfe45b770fb0455d87d42 for classifier-only evaluation after 17 offline regressions (13 journal/grader and 4 exporter). Root reviewed the receipt durability and correspondence fixes. Actual provider IDs are retained privately; credential fingerprints are stripped. A bounded private host write/fsync/readback succeeded before this checkpoint, but future journal writes must still succeed. No live call has run at this review checkpoint. This does not select an improved plugin configuration or establish task/action benefit.

@@ -31,31 +31,91 @@ function parseArgs(argv = process.argv.slice(2)) {
     if (arg === '--synthetic') config.synthetic = value;
   }
   if (!config.out || !isAbsolute(config.out)) throw new Error('--out must be an absolute new file path');
-  if (!['valid', 'malformed', 'unavailable', 'mixed', 'service-error'].includes(config.synthetic)) throw new Error('--synthetic must be valid, malformed, unavailable, mixed, or service-error');
+  if (!['valid', 'malformed', 'unavailable', 'mixed', 'service-error', 'receipt-failure'].includes(config.synthetic)) throw new Error('--synthetic must be valid, malformed, unavailable, mixed, service-error, or receipt-failure');
   if (config.live && config.synthetic !== 'valid') throw new Error('--synthetic is a dry-run option');
   return config;
 }
 
 async function createLog(path) {
-  await mkdir(dirname(path), {recursive: true, mode: 0o700});
+  const parent = dirname(path);
+  await mkdir(parent, {recursive: true, mode: 0o700});
   const handle = await open(path, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+  try {
+    const parentHandle = await open(parent, constants.O_RDONLY);
+    try { await parentHandle.sync(); }
+    finally { await parentHandle.close(); }
+  } catch (error) {
+    await handle.close();
+    throw error;
+  }
   const records = [];
+  let writeTail = Promise.resolve();
+  let writeFailure = null;
+  let closed = false;
+  let handleClosed = false;
   return {
     records,
-    async append(record) {
-      records.push(structuredClone(record));
-      await handle.writeFile(`${JSON.stringify(record)}\n`);
-      await handle.sync();
+    get writable() { return !closed && !writeFailure; },
+    append(record) {
+      if (closed) throw new Error('private journal is closed');
+      if (writeFailure) throw writeFailure;
+      const retained = structuredClone(record);
+      writeTail = writeTail.then(async () => {
+        await handle.writeFile(`${JSON.stringify(retained)}\n`);
+        await handle.sync();
+        records.push(retained);
+      }).catch(error => {
+        writeFailure = error;
+        throw error;
+      });
+      return writeTail;
     },
-    async close() { await handle.sync(); await handle.close(); },
+    async close() {
+      if (handleClosed) return;
+      closed = true;
+      try {
+        await writeTail;
+        await handle.sync();
+      } finally {
+        try { await handle.close(); }
+        finally { handleClosed = true; }
+      }
+    },
   };
+}
+
+function assertApprovedPrivateReceipt(receipt) {
+  const forbiddenKeys = new Set(['authorization', 'headers', 'apikey', 'credential', 'credentialfingerprint']);
+  const visit = value => {
+    if (!value || typeof value !== 'object') return;
+    for (const [key, child] of Object.entries(value)) {
+      assert.equal(forbiddenKeys.has(key.toLowerCase()), false, `private receipt contains forbidden secret field: ${key}`);
+      visit(child);
+    }
+  };
+  visit(receipt);
+}
+
+function stripCredentialFingerprints(value) {
+  if (Array.isArray(value)) return value.map(stripCredentialFingerprints);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => key.toLowerCase() !== 'credentialfingerprint')
+    .map(([key, child]) => [key, stripCredentialFingerprints(child)]));
 }
 
 class AttemptStore {
   reservations = [];
   receipts = [];
   saveDurationsMs = [];
-  constructor(reservePlan = null) { this.reservePlan = reservePlan; }
+  saveFailures = [];
+  constructor({attempt, log, requestGroup, reservePlan = null, failSaves = false}) {
+    this.attempt = attempt;
+    this.log = log;
+    this.requestGroup = requestGroup;
+    this.reservePlan = reservePlan;
+    this.failSaves = failSaves;
+  }
   async reserve(bytes) {
     this.reservations.push(bytes);
     if (!this.reservePlan?.length) return true;
@@ -65,8 +125,38 @@ class AttemptStore {
   }
   async save(receipt) {
     const start = performance.now();
-    this.receipts.push(structuredClone(receipt));
-    this.saveDurationsMs.push(performance.now() - start);
+    try {
+      if (this.failSaves) throw new Error('synthetic receipt persistence failure');
+      const requestGroup = this.requestGroup();
+      assert.ok(requestGroup, `${this.attempt.attemptId}: receipt has no active request group`);
+      const retainedReceipt = stripCredentialFingerprints(structuredClone(receipt));
+      assertApprovedPrivateReceipt(retainedReceipt);
+      const localReceiptId = retainedReceipt.receiptId;
+      assert.ok(typeof localReceiptId === 'string' && localReceiptId.length > 0, `${this.attempt.attemptId}: receipt ID missing`);
+      const providerRequestId = retainedReceipt.transport?.providerRequestId ?? null;
+      await this.log.append({
+        kind: 'private_receipt_persisted',
+        private: true,
+        attemptId: this.attempt.attemptId,
+        caseId: this.attempt.caseId,
+        cluster: this.attempt.cluster,
+        repeat: this.attempt.repeat,
+        arm: this.attempt.arm,
+        requestOrdinal: requestGroup.requestOrdinal,
+        requestGroupId: requestGroup.requestGroupId,
+        questionIds: requestGroup.questionIds,
+        localReceiptId,
+        providerRequestId,
+        persistedAt: new Date().toISOString(),
+        receipt: retainedReceipt,
+      });
+      this.receipts.push(retainedReceipt);
+    } catch (error) {
+      this.saveFailures.push({name: error?.name ?? 'Error', message: String(error?.message ?? error)});
+      throw error;
+    } finally {
+      this.saveDurationsMs.push(performance.now() - start);
+    }
   }
 }
 
@@ -179,7 +269,11 @@ async function makeTransport({attempt, live, synthetic, log, oracleMarker}) {
       entry.rawPromise = response.clone().text()
         .then(text => { entry.rawResponse = text; })
         .catch(error => { entry.rawResponseError = {name: error?.name ?? 'Error', message: String(error?.message ?? error)}; });
-      await log.append({kind: 'provider_response_received', attemptId: attempt.attemptId, requestOrdinal, requestGroupId, fetchSequence, responseStatus: response.status, providerRequestIdPresent: ['x-typesafe-request-id', 'x-request-id', 'request-id'].some(name => Boolean(response.headers.get(name))), receivedAt: new Date().toISOString(), requestLatencyMs: entry.requestLatencyMs});
+      const providerRequestIdHeader = ['x-typesafe-request-id', 'x-request-id', 'request-id'].find(name => Boolean(response.headers.get(name))) ?? null;
+      const providerRequestId = providerRequestIdHeader ? response.headers.get(providerRequestIdHeader) : null;
+      entry.providerRequestIdHeader = providerRequestIdHeader;
+      entry.providerRequestIdPresent = providerRequestId !== null;
+      await log.append({kind: 'private_provider_response_received', private: true, attemptId: attempt.attemptId, requestOrdinal, requestGroupId, fetchSequence, responseStatus: response.status, providerRequestIdHeader, providerRequestId, receivedAt: new Date().toISOString(), requestLatencyMs: entry.requestLatencyMs});
       return response;
     } catch (error) {
       entry.requestLatencyMs = performance.now() - start;
@@ -198,6 +292,7 @@ async function makeTransport({attempt, live, synthetic, log, oracleMarker}) {
       assert.equal(activeRequestGroup?.requestGroupId, requestGroupId, `${attempt.attemptId}: service request group mismatch`);
       activeRequestGroup = null;
     },
+    activeRequestGroup() { return activeRequestGroup; },
   };
 }
 
@@ -205,8 +300,14 @@ async function runAttempt({attempt, fixture, createService, log, live, synthetic
   const startedAt = new Date().toISOString();
   await log.append({kind: 'attempt_started', attemptId: attempt.attemptId, caseId: attempt.caseId, cluster: attempt.cluster, repeat: attempt.repeat, arm: attempt.arm, expectedProviderRequests: attempt.expectedProviderRequests, startedAt});
   const operationStart = performance.now();
-  const store = new AttemptStore(synthetic === 'mixed' ? [new Error('synthetic reserve failure'), true, true] : null);
   const transport = await makeTransport({attempt, live, synthetic, log, oracleMarker});
+  const store = new AttemptStore({
+    attempt,
+    log,
+    requestGroup: () => transport.activeRequestGroup(),
+    reservePlan: synthetic === 'mixed' ? [new Error('synthetic reserve failure'), true, true] : null,
+    failSaves: synthetic === 'receipt-failure',
+  });
   const env = {...process.env, JEV_ENABLED: '1', JEV_MAX_CALLS_PER_DAY: 'unlimited', JEV_MAX_BYTES_PER_DAY: 'unlimited'};
   if (!live) {
     delete env.JEV_API_KEY_FILE;
@@ -268,7 +369,9 @@ async function runAttempt({attempt, fixture, createService, log, live, synthetic
     providerRequestIdsPresent: results.filter(result => result.transport?.providerRequestIdPresent).length,
     providerVersionsPresent: results.filter(result => result.providerVersionPresent).length,
     reservations: store.reservations.length,
+    storeSaveAttempts: store.saveDurationsMs.length,
     storeSaves: store.receipts.length,
+    storeSaveFailures: store.saveFailures.length,
     retriesConfigured: 0,
     retriesObserved: 0,
   };
@@ -277,7 +380,9 @@ async function runAttempt({attempt, fixture, createService, log, live, synthetic
     repeat: attempt.repeat, arm: attempt.arm, expectedProviderRequests: attempt.expectedProviderRequests,
     startedAt, completedAt: new Date().toISOString(),
     harnessStatus, harnessError, operationDurationMs,
+    persistenceAdapter: 'benchmark-private-jsonl-fsync-v1',
     persistenceDurationMs: store.saveDurationsMs.reduce((sum, value) => sum + value, 0),
+    privatePersistenceFailures: store.saveFailures,
     inputProjectionSha256: hash({state: fixture.state, questions: fixture.questions, policy: fixture.policy}),
     inputPolicy: fixture.policy,
     serviceRequestLatencyMs: results.map(result => result.latencyMs),
@@ -324,6 +429,7 @@ async function runWorker(config) {
     runtime: {node: process.version, platform: process.platform, arch: process.arch},
     plannedAttempts: schedule.attempts.length, plannedProviderRequests: frozen.plannedProviderRequests,
     noAdaptiveRetries: true, rawOutputPrivate: true,
+    persistenceAdapter: 'benchmark-private-jsonl-fsync-v1',
   };
   await log.append(header);
   try {
@@ -335,9 +441,14 @@ async function runWorker(config) {
     await log.close();
     process.stdout.write(`${JSON.stringify({ok: true, mode: header.mode, outputCreated: true, plannedAttempts: header.plannedAttempts, plannedProviderRequests: header.plannedProviderRequests, claimBoundary: grade.claimBoundary})}\n`);
   } catch (error) {
-    await log.append({kind: 'run_error', error: {name: error?.name ?? 'Error', message: String(error?.message ?? error)}});
-    await log.close();
-    throw error;
+    let journalError = null;
+    if (log.writable) {
+      try { await log.append({kind: 'run_error', error: {name: error?.name ?? 'Error', message: String(error?.message ?? error)}}); }
+      catch (appendError) { journalError = appendError; }
+    }
+    try { await log.close(); }
+    catch (closeError) { journalError ??= closeError; }
+    throw journalError ?? error;
   }
 }
 

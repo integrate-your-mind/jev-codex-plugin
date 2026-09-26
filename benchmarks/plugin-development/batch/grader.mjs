@@ -7,6 +7,60 @@ export function median(values) {
   return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
+function retainedAnswersProjection(answers) {
+  if (!answers) return null;
+  return Object.fromEntries(Object.entries(answers).map(([id, answer]) => {
+    if (answer?.type !== 'score') return [id, answer];
+    const {legend: _structuredCriteria, ...retained} = answer;
+    return [id, retained];
+  }));
+}
+
+function safeTransportProjection(transport) {
+  if (!transport) return null;
+  return {
+    requestStartedAt: transport.requestStartedAt ?? null,
+    fetchInvoked: transport.fetchInvoked === true,
+    responseReceivedAt: transport.responseReceivedAt ?? null,
+    responseStatus: transport.responseStatus ?? null,
+    validatedResponse: transport.validatedResponse === true,
+    providerRequestIdPresent: typeof transport.providerRequestId === 'string' && transport.providerRequestId.length > 0,
+    providerRequestIdHeaderPresent: typeof transport.providerRequestIdHeader === 'string',
+    retryAfterPresent: typeof transport.retryAfter === 'string',
+    networkPolicyError: transport.networkPolicyError ?? null,
+    responseValidationFailure: transport.responseValidationFailure ?? null,
+    responseValidationDiagnostic: transport.responseValidationDiagnostic ?? null,
+  };
+}
+
+function privateReceiptResultProjection(receipt) {
+  return {
+    status: receipt.status,
+    reasonCode: receipt.reasonCode ?? null,
+    model: receipt.model ?? null,
+    providerVersionPresent: typeof receipt.model === 'string' && receipt.model.length > 0,
+    answers: retainedAnswersProjection(receipt.answers),
+    usage: receipt.usage ?? null,
+    latencyMs: receipt.latencyMs ?? null,
+    receiptIdPresent: typeof receipt.receiptId === 'string' && receipt.receiptId.length > 0,
+    transport: safeTransportProjection(receipt.transport),
+  };
+}
+
+function completedResultProjection(result) {
+  return {
+    status: result.status,
+    reasonCode: result.reasonCode ?? null,
+    model: result.model ?? null,
+    providerVersionPresent: result.providerVersionPresent === true,
+    answers: retainedAnswersProjection(result.answers),
+    usage: result.usage ?? null,
+    latencyMs: result.latencyMs ?? null,
+    receiptIdPresent: result.receiptIdPresent === true,
+    transport: result.transport ?? null,
+  };
+}
+
 export function validateCompleteRecords(records, schedule) {
   assert.equal(records[0]?.kind, 'header', 'header must be the first record');
   const headers = records.filter(record => record.kind === 'header');
@@ -60,6 +114,8 @@ export function validateCompleteRecords(records, schedule) {
       if (record.attemptId !== undefined) assert.equal(record.attemptId, attempt.attemptId, `${attempt.attemptId}: interleaved attempt event`);
     }
     const providerStarts = records.filter(record => record.kind === 'provider_request_started' && record.attemptId === attempt.attemptId);
+    const privateProviderResponses = records.filter(record => record.kind === 'private_provider_response_received' && record.attemptId === attempt.attemptId);
+    const privateReceipts = records.filter(record => record.kind === 'private_receipt_persisted' && record.attemptId === attempt.attemptId);
     const requestCompletions = records.filter(record => record.kind === 'service_request_completed' && record.attemptId === attempt.attemptId);
     assert.ok(providerStarts.length <= attempt.expectedProviderRequests, `${attempt.attemptId}: provider requests exceed frozen plan`);
     assert.ok(requestCompletions.length <= attempt.expectedProviderRequests, `${attempt.attemptId}: service completions exceed frozen plan`);
@@ -76,13 +132,63 @@ export function validateCompleteRecords(records, schedule) {
       const completion = requestCompletions.find(record => record.requestOrdinal === providerStart.requestOrdinal);
       if (completion) assert.deepEqual(providerStart.questionIds, completion.questionIds, `${attempt.attemptId}: provider/service question group mismatch`);
     }
+    for (const events of [privateProviderResponses, privateReceipts]) {
+      const ordinals = events.map(record => record.requestOrdinal);
+      const groupIds = events.map(record => record.requestGroupId);
+      assert.equal(new Set(ordinals).size, ordinals.length, `${attempt.attemptId}: duplicate private request ordinal`);
+      assert.equal(new Set(groupIds).size, groupIds.length, `${attempt.attemptId}: duplicate private request group`);
+      for (const record of events) {
+        assert.ok(Number.isInteger(record.requestOrdinal) && record.requestOrdinal >= 1 && record.requestOrdinal <= attempt.expectedProviderRequests, `${attempt.attemptId}: private request ordinal outside frozen plan`);
+        assert.equal(record.requestGroupId, `${attempt.attemptId}.request-${record.requestOrdinal}`, `${attempt.attemptId}: private request group mismatch`);
+      }
+    }
+    for (const response of privateProviderResponses) {
+      assert.equal(response.private, true, `${attempt.attemptId}: provider response event not marked private`);
+      const providerStart = providerStarts.find(record => record.requestOrdinal === response.requestOrdinal);
+      const providerDetail = attemptFinished.providerRequests?.find(record => record.requestOrdinal === response.requestOrdinal);
+      assert.ok(providerStart, `${attempt.attemptId}: private provider response has no matching request`);
+      assert.ok(providerDetail, `${attempt.attemptId}: private provider response has no retained request detail`);
+      assert.equal(response.requestGroupId, providerStart.requestGroupId, `${attempt.attemptId}: provider response/request group mismatch`);
+      assert.equal(response.responseStatus, providerDetail.responseStatus, `${attempt.attemptId}: provider response status mismatch`);
+      assert.equal(response.requestLatencyMs, providerDetail.requestLatencyMs, `${attempt.attemptId}: provider response latency mismatch`);
+      assert.equal(response.providerRequestIdHeader, providerDetail.providerRequestIdHeader ?? null, `${attempt.attemptId}: provider response header mismatch`);
+      assert.equal(response.providerRequestId !== null, providerDetail.providerRequestIdPresent === true, `${attempt.attemptId}: retained provider ID presence mismatch`);
+      if (response.providerRequestId === null) assert.equal(response.providerRequestIdHeader, null, `${attempt.attemptId}: missing provider ID has a fabricated header`);
+      else {
+        assert.ok(typeof response.providerRequestId === 'string' && response.providerRequestId.length > 0, `${attempt.attemptId}: invalid provider request ID`);
+        assert.ok(['x-typesafe-request-id', 'x-request-id', 'request-id'].includes(response.providerRequestIdHeader), `${attempt.attemptId}: provider request ID used an unapproved header`);
+      }
+    }
     assert.equal(attemptFinished.accounting?.providerRequestsStarted, providerStarts.length, `${attempt.attemptId}: provider request accounting mismatch`);
     assert.equal(attemptFinished.accounting?.fetchInvoked, providerStarts.length, `${attempt.attemptId}: fetch accounting mismatch`);
+    assert.equal(attemptFinished.accounting?.httpResponses, privateProviderResponses.length, `${attempt.attemptId}: provider response accounting mismatch`);
+    assert.equal(attemptFinished.accounting?.persistedReceipts, privateReceipts.length, `${attempt.attemptId}: persisted receipt accounting mismatch`);
+    assert.equal(attemptFinished.accounting?.storeSaves, privateReceipts.length, `${attempt.attemptId}: journal save accounting mismatch`);
+    assert.equal(requestCompletions.filter(record => record.result?.receiptPersisted === true).length, privateReceipts.length, `${attempt.attemptId}: service persisted flags do not match receipt journal`);
     assert.equal(attemptFinished.providerRequests?.length, providerStarts.length, `${attempt.attemptId}: provider request detail mismatch`);
     assert.equal(attemptFinished.serviceResults?.length, requestCompletions.length, `${attempt.attemptId}: service result accounting mismatch`);
     for (const completion of requestCompletions) {
       const serviceResult = attemptFinished.serviceResults.find(result => result.requestOrdinal === completion.requestOrdinal);
       assert.deepEqual(serviceResult, completion.result, `${attempt.attemptId}: service completion/result mismatch`);
+    }
+    for (const receipt of privateReceipts) {
+      assert.equal(receipt.private, true, `${attempt.attemptId}: receipt event not marked private`);
+      assert.equal(receipt.requestGroupId, `${attempt.attemptId}.request-${receipt.requestOrdinal}`, `${attempt.attemptId}: receipt request group mismatch`);
+      assert.equal(receipt.localReceiptId, receipt.receipt?.receiptId, `${attempt.attemptId}: local receipt ID mismatch`);
+      assert.equal(receipt.providerRequestId, receipt.receipt?.transport?.providerRequestId ?? null, `${attempt.attemptId}: receipt provider request ID mismatch`);
+      const response = privateProviderResponses.find(record => record.requestGroupId === receipt.requestGroupId);
+      assert.equal(receipt.providerRequestId, response?.providerRequestId ?? null, `${attempt.attemptId}: receipt/provider response ID mismatch`);
+      const completion = requestCompletions.find(record => record.requestGroupId === receipt.requestGroupId);
+      assert.equal(completion?.result?.receiptPersisted, true, `${attempt.attemptId}: receipt lacks matching persisted service result`);
+      assert.deepEqual(privateReceiptResultProjection(receipt.receipt), completedResultProjection(completion.result), `${attempt.attemptId}: private receipt/service result projection mismatch`);
+    }
+    for (const completion of requestCompletions) {
+      const receipt = privateReceipts.find(record => record.requestGroupId === completion.requestGroupId);
+      assert.equal(Boolean(receipt), completion.result?.receiptPersisted === true, `${attempt.attemptId}: service persistence flag/receipt mismatch`);
+      const response = privateProviderResponses.find(record => record.requestGroupId === completion.requestGroupId);
+      if (response && completion.result?.transport) {
+        assert.equal(completion.result.transport.providerRequestIdPresent, response.providerRequestId !== null, `${attempt.attemptId}: provider ID presence mismatch`);
+      }
     }
   }
   return {header, started, finished};

@@ -229,3 +229,31 @@ Arbitrary internal Codex decisions cannot be assumed interceptable through
 ordinary plugin hooks. Universal decision-domain support and unlimited usage
 remain compatible with these experiments. No product defaults changed and no
 new live benchmark ran during this follow-up.
+
+
+## Follow-up: task context, delegation, and cache costs
+
+[Kun Chen's post](https://x.com/kunchenguid/status/2103895901140042044), read in Chrome on 26 September, argues that isolated prompts underspecify task complexity, model switching can lose cache savings, and a context-aware orchestrator should delegate substantial tasks after investigation. It quotes the already-reviewed Theo DeepSWE experiment; it is not a new controlled result. Its categorical claim that request-level routing cannot work is a hypothesis, not established by that single comparison.
+
+A [reply by the Reflex maintainer](https://x.com/ziyacivan/status/2103914173507727573) links primary implementation notes. At [commit 4ad555624a1a19ffdf2fa937990663c7bfe0df89](https://github.com/ziyacivan/reflex-router/tree/4ad555624a1a19ffdf2fa937990663c7bfe0df89), the [README](https://github.com/ziyacivan/reflex-router/blob/4ad555624a1a19ffdf2fa937990663c7bfe0df89/README.md) and [observations](https://github.com/ziyacivan/reflex-router/blob/4ad555624a1a19ffdf2fa937990663c7bfe0df89/docs/observations.md) report:
+
+- Three days, 27 sessions, 2,209 classified requests and roughly 384 million tokens.
+- 96 downward model moves estimated to save $3.76, versus 38 upward moves adding $3.73: approximately $0.03 net.
+- 73.4% of tokens came from main-chat tool-loop continuations; 18 main-chat switches were refused by a cache-cost check.
+- A downward switch rewrote 63,689 context tokens. A local randomized token audit reports about 2.7 times as many Sonnet 5 output tokens as Opus 5.5, without measurable cost-per-task improvement.
+- The maintainer attributes its strongest session's savings to routing new subagents from researched task briefs.
+
+These are author-reported observations from one machine and user, with list-price estimates, uncalibrated routing thresholds and no independently reproduced quality benchmark. The estimator assumes equal token counts and omits other billing effects. Do not treat a best session, cumulative request count, or cheaper price per token as proof of task benefit.
+
+Reflex is a gateway that can alter upstream model requests and pin subagents. Our advisory plugin does not own that boundary. Its current fixed-model cohort therefore cannot attribute a model-switching effect to Jev. The relevant comparison is whether added advice changes independently verified outcomes enough to justify its total overhead.
+
+[OpenAI's current cache documentation](https://developers.openai.com/api/docs/guides/prompt-caching) says reuse depends on an unchanged rendered prefix; model, tool definitions and output settings can change it. The API reports cache reads and writes separately on current models. Report observed fields and actual available prices; leave absent cache-write measurements and unreconciled billing unknown. API documentation does not establish what a particular Codex trace or subscription was billed.
+
+### Additional hypotheses, outside the frozen cohorts
+
+1. **Context sufficiency:** compare the same decision with the latest prompt alone versus a bounded task brief containing objective, current constraints, repository observations, failed attempts and actual available candidates. Measure oracle agreement, abstention, required-evidence retention and downstream task completion separately.
+2. **Decision timing:** measure advice at a task boundary, after new failures or requirements, and on unchanged tool-loop steps. Record whether advice changes an action or merely repeats it. This is an experimental trigger comparison, not a daily quota or a change to installed automation.
+3. **Full operation accounting:** separate context preparation, Jev transport, host delivery, downstream model generation, tool execution and verification. Include retries, corrective turns, input/output/cache-read/cache-write tokens when observed; do not infer total savings from classifier latency.
+4. **Delegation and escalation:** only in a separately authorized, capability-verified routing experiment, compare fixed strong-model execution with researched subtask assignment. Keep workers pinned for their task; count handoff overhead, missing reports, failed postconditions, corrective work and escalation. Jev cannot certify its own success.
+
+These are prospective research questions. No existing schedule, held-out reservation, completed measurement, model default or feature-selection rule changed in response to the post.

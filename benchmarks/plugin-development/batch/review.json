@@ -1,16 +1,21 @@
 {
   "schemaVersion": "jev-batch-review-v1",
-  "reviewedFreezeSha256": "57c740f60fcf3799d557bd7467e0575c3cccb792327b1cbb42f27188ac4b34d5",
-  "decision": "accepted-for-classifier-component-evaluation",
-  "reviewer": "root integration review",
+  "status": "accepted_component_only",
+  "previousReviewedFreezeSha256": "57c740f60fcf3799d557bd7467e0575c3cccb792327b1cbb42f27188ac4b34d5",
+  "candidateFreezeSha256": "7190b847d193e36e6d86dd63f73793406fbbb1c489adfe45b770fb0455d87d42",
+  "reviewedFreezeSha256": "7190b847d193e36e6d86dd63f73793406fbbb1c489adfe45b770fb0455d87d42",
+  "decision": "accepted_for_frozen_authored_component_evaluation",
+  "reviewer": "root independent integration review after context_hooks findings",
   "runtime": "Node v22.23.2",
   "offlineTests": {
-    "passed": 10,
+    "passed": 17,
     "failed": 0
   },
   "liveCalls": 0,
   "taskQualityEvidence": false,
   "releaseOrDefaultChange": false,
-  "unresolvedExecutionDependency": "Durable private receipt writes must work before starting live calls; current host writes intermittently return ENOSPC.",
-  "scope": "Only shared-state typed batch versus identical serial questions. Authored numeric ranges are not calibration. Raw choices, local policy, delivered recommendations, transport attempts and action outcomes remain separate."
+  "unresolvedExecutionDependency": "Live run has not started. Each private journal append must sync successfully; storage failure must stop execution without rerun.",
+  "scope": "Only shared-state typed batch versus identical serial questions. Authored numeric ranges are not calibration. Raw choices, local policy, delivered recommendations, transport attempts and action outcomes remain separate.",
+  "receiptParityBoundary": "Private response IDs/status/latency/header and safe receipt result projections match the independently retained service completion and attempt representations. Actual provider billing remains unverified.",
+  "privateCredentialFingerprintRetained": false
 }
