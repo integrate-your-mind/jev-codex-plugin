@@ -149,7 +149,7 @@
   ],
   "blocker": {
     "kind": "original-verifier-local-snapshot-corruption",
-    "observedFailure": "Native controls pass. Registry Pygments module bytes are healthy, but local base and verifier expose338emptyPythonfiles and missing package metadata; pytest cannot run. Verified minimal restoration is in progress before original verifier controls and scoring.",
+    "observedFailure": "Native controls pass. Registry Pygments module bytes are healthy, but local base and verifier expose338emptyPythonfiles; pytest cannot run. Initial metadata glob was case-sensitive and cannot establish metadata absence. Verified minimal restoration is in progress before original verifier controls and scoring.",
     "scoredRunsStarted": false
   },
   "nextRequiredControl": "Validate restoration against registry hashes; freeze explicit image recovery amendment; rerun independent original nop/reference verifier controls before any scored row.",
@@ -280,7 +280,7 @@
     "pygmentsPythonFiles": 338,
     "pygmentsEmptyPythonFiles": 338,
     "terminalModuleSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "pygmentsDistInfoPresent": false,
+    "pygmentsDistInfoPresent": null,
     "pytestImport": "ImportError: cannot import TerminalFormatter from pygments.formatters.terminal",
     "imagesCompared": [
       "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
@@ -292,7 +292,8 @@
     "ownedProbeContainersRetained": 0,
     "registryLayerDigest": "sha256:7af86c1121e677d40e31d478434bd24c148439e6f6710f2567a924e9642f4c2f",
     "registryTerminalModuleBytes": 4626,
-    "registryPackageInitBytes": 2959
+    "registryPackageInitBytes": 2959,
+    "metadataProbeLimitation": "Initial probe searched only capitalized Pygments-*.dist-info; lowercase wheel metadata was not checked, so metadata absence is unproven. A corrected case-insensitive probe is required."
   },
   "latestSourceValidation": {
     "validatedAt": "2026-09-26T22:34:07.660492+00:00",
