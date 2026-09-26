@@ -6,7 +6,7 @@ This report distinguishes software validation from measured agent performance.
 | --- | --- |
 | Plugin typecheck, build, manifests | Passed; production distribution remains version 0.4.0 |
 | Plugin tests | 163/163 passed |
-| Generated distribution parity and drift tests | Passed; 2/2 tests |
+| Generated distribution parity and drift tests | Passed; 3/3 tests |
 | Portable export, task lock, comparison, normalization | 21/21 tests passed |
 | Generic JSON Schema | Valid schema; actual normalized plan and all 16 trial records accepted |
 | Authored task oracle controls | All initial broken fixtures rejected; all reference controls accepted |
@@ -23,3 +23,9 @@ The agent-neutral reducer is exercised against the real pilot, not just syntheti
 Jev's own advisory completion check **abstained** at confidence 0.46 for low confidence. It is not used as a grader or as proof that these benchmarks are valid. Independent artifact tests, runtime evidence and source reconciliation support the claims above.
 
 No DeepSWE model evaluation, live QQ comparison, reconciled dollar-cost comparison, or general quality improvement is established by these checks. Hosted CI is a separate result from this local report.
+
+## Linux verification and hosted CI
+
+The public revision was also checked in a credential-free Docker Linux arm64 container using digest-pinned Node 22.22.0. Typecheck, build, all 163 plugin tests, manifests and distribution parity passed. The first run exposed an existing fixture-filter bug: an absolute `/work/` ancestor caused the distribution test to omit its source tree. The filter now considers only paths relative to the fixture source; an added regression covers that case. The corrected Linux rerun passed all 3 distribution tests and all 21 cross-agent tests. [Sanitized execution receipt](cross-agent/linux-node22-validation.json) retains code/log hashes and the initial failure boundary.
+
+GitHub did not start [hosted CI](https://github.com/integrate-your-mind/jev-codex-plugin/actions/runs/36253715386): its annotation reports that the account is locked due to a billing issue. Local Linux success is not hosted CI success.
