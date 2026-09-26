@@ -41,3 +41,7 @@ git apply /absolute/path/to/repair-source.patch
 ```
 
 The resulting `source/jev-workflows/src/decision-hook.ts` must match the repair entry hash above. Follow the source package's normal dependency, build, and test instructions to regenerate distribution files; the live study imported source directly. The [frozen harness](../../plugin-live-eval/README.md) records all remaining input and runtime pins. A new provider run is a new cohort and must use a new output path.
+
+## Provider attribution limitation
+
+The frozen runner checked each native receipt before removing its temporary per-attempt state. The retained transcript preserves local receipt IDs, parity, HTTP/validation observations and provider-ID **presence flags**, but not actual provider request ID values. An audit of the retained transcript found zero actual provider-ID fields. Therefore the 72 observed validated responses cannot now be joined individually to provider billing from this artifact alone. The reported persistence count describes receipts observed on disk during the run, not 72 raw receipts still retained today. Billing remains unknown. The frozen inputs and measured results are preserved; future cohorts must retain provider IDs and full approved receipt records privately before temporary-state cleanup.
