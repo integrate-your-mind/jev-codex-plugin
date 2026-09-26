@@ -1,0 +1,182 @@
+{
+  "schemaVersion": "jev-plugin-value-native-controls-audit-v1",
+  "status": "local-mcp-startup-fixed-hooks-and-evaluate-control-under-investigation",
+  "controls": [
+    {
+      "run": "synthetic-native-baseline-v1",
+      "arm": "baseline",
+      "status": "failed",
+      "scored": false,
+      "runtimeIdentitySha256": "ddc16952256816428a208d05dd2d3525e92d1bcdc0ef340753a1676851ffdb78",
+      "hostRunnerSha256": "da87ff002dfa849719032453ac807d82eb41604ceccf66022ec362ea821a94b9",
+      "driverSha256": "540917fbcc9ffc66360449435edf2031a28424e0bb1ffdef231fcf128044b039",
+      "manifestSha256": "38fcb6a5ed546abc991b701ecd41868ee824b4d1fcf2ee88dbeff0fbef1f7622",
+      "supervisorSha256": "efcae978bc815eaad068f302510bc5a0e8549f9e1957662cae303c7499c4b0ec",
+      "runtimeEvidenceSha256": null,
+      "completedModelTurns": null,
+      "successfulRemoteShellEvents": null,
+      "completedPatchEvents": null,
+      "independentVerifierPassed": null,
+      "cleanupVerifiedAfterRecovery": true,
+      "failure": "Host ENOSPC while saving stdout; no complete runtime receipt. Model/provider activity unknown. Docker cleanup confirmed only after supported recovery."
+    },
+    {
+      "run": "synthetic-native-baseline-v2",
+      "arm": "baseline",
+      "status": "failed",
+      "scored": false,
+      "runtimeIdentitySha256": "ddc16952256816428a208d05dd2d3525e92d1bcdc0ef340753a1676851ffdb78",
+      "hostRunnerSha256": "da87ff002dfa849719032453ac807d82eb41604ceccf66022ec362ea821a94b9",
+      "driverSha256": "540917fbcc9ffc66360449435edf2031a28424e0bb1ffdef231fcf128044b039",
+      "manifestSha256": "7e9209a1a7a097c8c8856b53022a4bc1d7b9a05ba42fddc8a282a4606446a367",
+      "supervisorSha256": "d9b0c863096bc6470cd8220fccb751a3e76b05aaf6c9e3729618aeebc0071e83",
+      "runtimeEvidenceSha256": "bf537528fe460ffd34f91f08a346f8fce5b0f7953e079163d1112e3ef86ede5f",
+      "completedModelTurns": 1,
+      "successfulRemoteShellEvents": 2,
+      "completedPatchEvents": 1,
+      "independentVerifierPassed": null,
+      "cleanupVerifiedAfterRecovery": true,
+      "failure": "Control validator expected a nonexistent agent source value; native unifiedExecStartup shell and patch events completed. Separate verifier was not reached."
+    },
+    {
+      "run": "synthetic-native-baseline-v3",
+      "arm": "baseline",
+      "status": "passed",
+      "scored": false,
+      "runtimeIdentitySha256": "1522229fbc3c2f72375b5ac3c7812f5566b653653237c634af553a222ca01695",
+      "hostRunnerSha256": "da87ff002dfa849719032453ac807d82eb41604ceccf66022ec362ea821a94b9",
+      "driverSha256": "4c6d6deb1542285b27972bc46b14515e43151cc4d5521a55cae4fb7988bff2cc",
+      "manifestSha256": "88453409fefa570ed76483a46f0ad72a610d7dc7f5a84b17322669fade8c3eba",
+      "supervisorSha256": "2899ad0200026a00fb16838bb12554abee6e26c6c6417e190548fb635de237da",
+      "runtimeEvidenceSha256": "31a0348c49156486467dd852212ba95fb351cfe323218f399e9be3644bc70ea0",
+      "completedModelTurns": 1,
+      "successfulRemoteShellEvents": 2,
+      "completedPatchEvents": 1,
+      "independentVerifierPassed": true,
+      "cleanupVerifiedAfterRecovery": true,
+      "eventSummary": {
+        "commands": 2,
+        "fileChanges": 1,
+        "mcpCalls": 0,
+        "hookRuns": 0
+      }
+    },
+    {
+      "run": "synthetic-native-treatment-v1",
+      "arm": "treatment",
+      "status": "failed",
+      "scored": false,
+      "runtimeIdentitySha256": "1522229fbc3c2f72375b5ac3c7812f5566b653653237c634af553a222ca01695",
+      "hostRunnerSha256": "da87ff002dfa849719032453ac807d82eb41604ceccf66022ec362ea821a94b9",
+      "driverSha256": "4c6d6deb1542285b27972bc46b14515e43151cc4d5521a55cae4fb7988bff2cc",
+      "manifestSha256": "d72c05736982e8699acab0b69580435fbd257ab2e367b9635a4a5bb45ab034e3",
+      "supervisorSha256": "bea8159bfb85caa9a7dff8a5113c333693859f6603ccff8669142f9d819dccd6",
+      "runtimeEvidenceSha256": "59426d262597f52252dff83f73f2bd5ba8bb5d3cd993f2ef15e2fad784f6f58a",
+      "completedModelTurns": 0,
+      "successfulRemoteShellEvents": null,
+      "completedPatchEvents": null,
+      "independentVerifierPassed": null,
+      "cleanupVerifiedAfterRecovery": true,
+      "failure": "Plugin MCP server reported failed startup and an empty tool catalog; all 12 hooks were enabled and trusted. No model turn started; hook/provider activity is not inferred from the missing MCP catalog."
+    },
+    {
+      "run": "synthetic-native-treatment-v2",
+      "arm": "treatment",
+      "status": "failed",
+      "scored": false,
+      "runtimeIdentitySha256": "e0b50bddbd21534aed3fa6e2f6da6698d84d6c9ec2ed44fba715e90c30763063",
+      "hostRunnerSha256": "52cfacf423e85d65fcc381cb15abea4ef32df35804d691ef610c09ff7d80b745",
+      "driverSha256": "4c6d6deb1542285b27972bc46b14515e43151cc4d5521a55cae4fb7988bff2cc",
+      "manifestSha256": "76b250e2c040b854011799e12e0a350eb19ee0dd833e5aa760adacd9b17f239e",
+      "supervisorSha256": "23526477eaa4d5f76595035f501b7f27240f9fccb7fc96b6e1342d321afb5fb3",
+      "runtimeEvidenceSha256": "4709e3b189aa949f4550ed58205deadc891bc7b4b9cfe11a517f76ced627912d",
+      "completedModelTurns": 0,
+      "successfulRemoteShellEvents": null,
+      "completedPatchEvents": null,
+      "independentVerifierPassed": null,
+      "cleanupVerifiedAfterRecovery": true,
+      "failure": "Diagnostic-only rerun confirmed that the local stdio Jev MCP server requires a registered local environment. No model turn started. The registry correction is separately amended before the next control.",
+      "mcpErrorExcerptSha256": "0830fe68799e402463f722eb5c8c9132ce23b95fd5492472ae25bb2f0894c2fd"
+    },
+    {
+      "run": "synthetic-native-treatment-v3",
+      "arm": "treatment",
+      "status": "failed",
+      "scored": false,
+      "runtimeIdentitySha256": "f7a40fa05deb6c48c9d04eca0488b226149130a110dc7bdf0c590212419212b2",
+      "hostRunnerSha256": "65ee3ebed792cec44ea1da21ba6fee9768db93c0bf060682a2431ae746c56f72",
+      "driverSha256": "c6243cc715881afe3da50f97392b51b87fc7553ac958e14998ca28246adbeb89",
+      "manifestSha256": "7bfed55a633383593e5122733c9915f899729b48cfe69d37e5cb5bbafa63ac84",
+      "supervisorSha256": "0a89bd616027b67aa7a9f273edcbe2a29144f07a0457210e70be9dad583f9a62",
+      "runtimeEvidenceSha256": "f4eda2189494ccc546480598e3ee377d76470fa11235352ea03c2f23e59e5b03",
+      "completedModelTurns": 1,
+      "successfulRemoteShellEvents": 2,
+      "completedPatchEvents": 1,
+      "independentVerifierPassed": null,
+      "cleanupVerifiedAfterRecovery": true,
+      "eventSummary": {
+        "commands": 3,
+        "successfulCommands": 2,
+        "fileChanges": 1,
+        "mcpCalls": 2,
+        "classificationStatuses": [
+          "preview"
+        ],
+        "hookStatuses": {
+          "failed": 15
+        }
+      },
+      "failure": "MCP startup succeeded, but the only classification was preview-only and all emitted hooks failed. No provider-backed decision was demonstrated. Host-runner passed denotes completion of its turn, not a passing native control; the synthetic control correctly rejected the result."
+    }
+  ],
+  "scoredDeepSweTrials": 0,
+  "readyForScored": false,
+  "taskQualityClaim": null,
+  "notes": [
+    "Setup controls are outside the task-quality denominator. Failed controls remain listed.",
+    "The exact nonce workspace is independently verified in a new offline container only for a passed control.",
+    "A control pass does not measure plugin benefit, original task-verifier validity or billed cost.",
+    "Private runtime receipts and session traces are retained; only selected fields and hashes are public."
+  ],
+  "taskVerifierControls": [
+    {
+      "run": "verifier-controls-v1-nop-20260926T213704Z-98608-0",
+      "taskId": "ipython-session-bundle-replay",
+      "agent": "nop",
+      "scored": false,
+      "status": "infrastructure-error",
+      "reward": null,
+      "modelTurns": 0,
+      "referenceSolutionControlStarted": false,
+      "failure": "The adapter required the agent docker_image when constructing the separate upstream verifier whose build context is tests/Dockerfile. The no-op agent and artifact collection completed; verifier construction failed before grading.",
+      "trialResultSha256": "435a7550b856388a0c22d7134f2678532a177a70fe0a0edab0de4d60019bae75",
+      "remainingTrialContainersAfterRun": 0
+    },
+    {
+      "run": "verifier-controls-v1-nop-20260926T220546Z-90720-0",
+      "taskId": "ipython-session-bundle-replay",
+      "agent": "nop",
+      "scored": false,
+      "status": "infrastructure-error",
+      "reward": null,
+      "modelTurns": 0,
+      "referenceSolutionControlStarted": false,
+      "failure": "Root source-snapshot packaging omitted the registry image-manifests directory. Input validation rejected a missing manifest before any container or verifier startup; repaired source is a new snapshot, preserving the failed one.",
+      "sourceSnapshot": "verifier-control-source-v2",
+      "runtimeIdentitySha256": "ce1e7f48ca376bdecd0bb1efa9b8a9b0081d7d619f5c90e4ac0fab6291f0427a"
+    },
+    {
+      "run": "verifier-controls-v1-nop-20260926T220737Z-96375-0",
+      "taskId": "ipython-session-bundle-replay",
+      "agent": "nop",
+      "scored": false,
+      "status": "infrastructure-error",
+      "reward": null,
+      "modelTurns": 0,
+      "referenceSolutionControlStarted": false,
+      "failure": "The upstream tests image built and a separate verifier container started, but the pinned Pier build template ignores MAIN_IMAGE_NAME and Compose used its per-project default image name. The identity check rejected it before test execution. Repaired source adds an explicit image-only Compose override.",
+      "trialResultSha256": "960d39a60572deed82cb6ce191e2fc178d1540e549eea25c9aa2315b85742e3b",
+      "sourceSnapshot": "verifier-control-source-v3"
+    }
+  ]
+}

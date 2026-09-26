@@ -15,7 +15,23 @@
     "attemptsPerTask": 1,
     "imageDigests": "partial_or_unresolved_public_registry_manifests",
     "imageDigestRegistry": "https://public.ecr.aws/v2/d3j8x8q7/swe-bench-202605/manifests/{tag}",
-    "imageDigestLayersPulled": false
+    "imageDigestLayersPulled": false,
+    "metadataAmendments": [
+      {
+        "taskId": "koota-entity-snapshot-rollback",
+        "field": "metadata.baseCommitHash",
+        "kind": "expand-truncated-upstream-commit-id",
+        "upstreamValue": "72ebef44b8e024d877250f055eea60cdfaa4506",
+        "effectiveValue": "72ebef44b8e024d877250f055eea60cdfaa45069",
+        "upstreamTaskTomlBlob": "e290a79944e6a2dece881820818a01cf4b34be60",
+        "upstreamTaskTomlSha256": "11444ab835894c82a89dce7232632d74cc2ec15cc23047c045dfb931b22d50b1",
+        "resolution": {
+          "repositoryCommitApi": "https://api.github.com/repos/pmndrs/koota/commits/72ebef44b8e024d877250f055eea60cdfaa4506",
+          "upstreamAuditIssue": "https://github.com/datacurve-ai/deep-swe/issues/52",
+          "note": "The pinned upstream task.toml remains unchanged and contains upstreamValue; GitHub resolves that unique truncated ID to effectiveValue."
+        }
+      }
+    ]
   },
   "tasks": [
     {
@@ -405,7 +421,8 @@
         "category": "feature_request",
         "displayTitle": "Add entity snapshot and rollback APIs to Koota",
         "repositoryUrl": "https://github.com/pmndrs/koota",
-        "baseCommitHash": "72ebef44b8e024d877250f055eea60cdfaa4506"
+        "baseCommitHash": "72ebef44b8e024d877250f055eea60cdfaa45069",
+        "baseCommitHashUpstream": "72ebef44b8e024d877250f055eea60cdfaa4506"
       },
       "runtime": {
         "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh71b98xenay7p45357036xq5x82tcdf-v1.1",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 import sys
@@ -36,7 +37,7 @@ def main() -> None:
                 "validate-inputs requires tasks metadata metadata-sha task mode arm "
                 "trial schedule schedule-sha"
             )
-        runtime.validate_benchmark_inputs(
+        result = runtime.validate_benchmark_inputs(
             tasks_dir=sys.argv[2],
             task_metadata_path=sys.argv[3],
             task_metadata_sha256=sys.argv[4],
@@ -47,6 +48,7 @@ def main() -> None:
             schedule_path=sys.argv[9],
             schedule_sha256=sys.argv[10],
         )
+        print(json.dumps(result, sort_keys=True))
         return
     from pier.cli.main import app
 

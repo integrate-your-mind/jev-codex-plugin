@@ -4,6 +4,14 @@ Status: protocol draft; no scored DeepSWE inference has started. Runtime identit
 image digests, and the machine-readable schedule must be frozen before launch.
 This is a plugin experiment, not a model-router comparison.
 
+The [26 September runtime amendment](runtime-amendment-2026-09-26.md) freezes
+the remote execution boundary and required native controls before inference.
+The [local MCP registration amendment](runtime-amendment-local-mcp-2026-09-26.md)
+corrects the registry setting after a preserved startup failure; model task
+execution still selects only the remote environment.
+The [separate verifier amendment](runtime-amendment-verifier-2026-09-26.md)
+restores the upstream tests build with a pinned base and recorded image identity.
+
 ## Question and estimand
 
 Does enabling the released Jev Workflows 0.4.0 plugin change the probability that

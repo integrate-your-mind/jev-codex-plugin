@@ -241,6 +241,65 @@ export function buildEnvironmentsToml(request) {
   ].join('\n');
 }
 
+export function buildRemoteEnvironmentSelection(request) {
+  return [{
+    environmentId: 'deep-swe',
+    cwd: request.remoteCwd,
+    runtimeWorkspaceRoots: [request.remoteCwd],
+  }];
+}
+
+export function verifyModelEnvironmentSelection(environments, request) {
+  const expected = buildRemoteEnvironmentSelection(request);
+  assert.deepEqual(environments, expected, 'model execution must retain exactly the deep-swe environment');
+  return expected;
+}
+
+export function buildThreadStartParams(request) {
+  return {
+    cwd: request.hostCwd,
+    environments: buildRemoteEnvironmentSelection(request),
+    ephemeral: false,
+    approvalPolicy: 'never',
+    sandbox: 'workspace-write',
+    model: request.model,
+  };
+}
+
+export function buildTurnStartParams(request, threadId) {
+  assert.equal(typeof threadId, 'string', 'thread id must be a string');
+  return {
+    threadId,
+    environments: buildRemoteEnvironmentSelection(request),
+    input: [{type: 'text', text: request.instruction, text_elements: []}],
+    model: request.model,
+    effort: request.effort,
+    approvalPolicy: 'never',
+    sandboxPolicy: {
+      type: 'externalSandbox',
+      networkAccess: 'restricted',
+    },
+  };
+}
+
+export function verifyRemoteEnvironment(status, info, request) {
+  assert.equal(status?.status, 'ready', 'remote exec-server environment is not ready');
+  assert.equal(status?.error ?? null, null, 'remote exec-server environment reported an error');
+  assert.equal(typeof info?.cwd, 'string', 'remote environment reported no cwd');
+  const cwd = new URL(info.cwd);
+  assert.equal(cwd.protocol, 'file:', 'remote environment cwd is not a file URI');
+  assert.equal(cwd.host, '', 'remote environment cwd unexpectedly names a host');
+  assert.equal(decodeURIComponent(cwd.pathname).replace(/\/$/, ''), request.remoteCwd, 'remote environment cwd drifted');
+  assert.equal(typeof info?.shell?.name, 'string', 'remote environment reported no shell name');
+  assert.equal(typeof info?.shell?.path, 'string', 'remote environment reported no shell path');
+  assert.equal(info.shell.path.startsWith('/'), true, 'remote environment shell path is not target-native');
+  return {
+    status: status.status,
+    cwd: info.cwd,
+    shell: {name: info.shell.name, path: info.shell.path},
+  };
+}
+
 export function buildConfigToml(request, trustedHooks = []) {
   const lines = [
     `model = ${tomlString(request.model)}`,
@@ -357,22 +416,35 @@ class AppServer {
     const turnId = message.params?.turnId ?? message.params?.turn?.id;
     if (message.method === 'hook/completed') {
       const run = message.params?.run ?? {};
-      this.events.push({method: message.method, threadId, turnId, hook: {
-        eventName: run.eventName,
-        pluginId: run.pluginId,
-        status: run.status,
-        durationMs: run.durationMs,
-      }});
+      this.events.push({method: message.method, threadId, turnId, hook: compactHookRun(run)});
     } else if (message.method === 'item/completed') {
       const item = message.params?.item ?? {};
-      this.events.push({method: message.method, threadId, turnId, item: {
+      const compact = {
         type: item.type,
         status: item.status,
         exitCode: item.exitCode,
         server: item.server,
         tool: item.tool,
         pluginId: item.pluginId,
-      }});
+      };
+      if (item.type === 'commandExecution') {
+        compact.cwd = item.cwd;
+        compact.source = item.source;
+        compact.commandBytes = Buffer.byteLength(item.command ?? '');
+        compact.commandSha256 = sha256(item.command ?? '');
+        compact.outputBytes = Buffer.byteLength(item.aggregatedOutput ?? '');
+        compact.outputSha256 = sha256(item.aggregatedOutput ?? '');
+      } else if (item.type === 'fileChange') {
+        compact.changes = (Array.isArray(item.changes) ? item.changes : []).map(change => ({
+          path: change?.path,
+          kind: change?.kind,
+          diffBytes: Buffer.byteLength(change?.diff ?? ''),
+          diffSha256: sha256(change?.diff ?? ''),
+        }));
+      } else if (item.type === 'mcpToolCall') {
+        compact.result = compactJevProbe(item?.result?.structuredContent);
+      }
+      this.events.push({method: message.method, threadId, turnId, item: compact});
     } else if (/tokenUsage/i.test(message.method)) {
       this.events.push({method: message.method, threadId, turnId, usage: message.params});
     }
@@ -473,7 +545,27 @@ function compactHooks(hooks) {
   }));
 }
 
-function compactMcp(response) {
+function compactDiagnostic(value) {
+  if (typeof value !== 'string' || value.length === 0) return null;
+  let redacted = value;
+  for (const key of FORBIDDEN_CREDENTIAL_ENV_KEYS) {
+    const secret = process.env[key];
+    if (typeof secret === 'string' && secret.length > 0) redacted = redacted.split(secret).join('[REDACTED]');
+  }
+  redacted = redacted
+    .replace(/\b(Bearer)\s+[^\s,;]+/gi, '$1 [REDACTED]')
+    .replace(/\b((?:api[_-]?key|token|secret|password|authorization)\s*[:=]\s*)[^\s,;]+/gi, '$1[REDACTED]')
+    .replace(/\bsk-[A-Za-z0-9_-]{8,}\b/g, '[REDACTED]');
+  const excerpt = redacted.slice(0, 2_000);
+  return {
+    bytes: Buffer.byteLength(value),
+    excerpt,
+    excerptSha256: sha256(excerpt),
+    truncated: redacted.length > 2_000,
+  };
+}
+
+export function compactMcp(response) {
   const data = Array.isArray(response?.data) ? response.data : [];
   return data.map(item => {
     const tools = item?.tools && typeof item.tools === 'object' && !Array.isArray(item.tools) ? item.tools : {};
@@ -484,8 +576,28 @@ function compactMcp(response) {
       runtimeStatus: item?.runtimeStatus,
       authStatus: item?.authStatus,
       tools: Object.keys(tools).sort(),
+      toolsError: compactDiagnostic(item?.toolsError),
     };
   });
+}
+
+export function compactHookRun(run) {
+  const entries = Array.isArray(run?.entries) ? run.entries : [];
+  return {
+    eventName: run?.eventName,
+    source: run?.source,
+    handlerType: run?.handlerType,
+    executionMode: run?.executionMode,
+    status: run?.status,
+    durationMs: run?.durationMs,
+    statusMessage: compactDiagnostic(run?.statusMessage),
+    entries: entries.slice(0, 16).map(entry => ({
+      kind: entry?.kind,
+      text: compactDiagnostic(entry?.text),
+    })),
+    entriesTotal: entries.length,
+    entriesTruncated: entries.length > 16,
+  };
 }
 
 function pathContains(ancestor, candidate) {
@@ -714,8 +826,9 @@ async function run(request) {
     server = new AppServer({request, codexHome: runtime.home, hostShadow});
     await server.initialize();
     receipt.startup = {processToInitializedMs: server.initializedMs};
-    receipt.environmentStatus = await server.rpc('environment/status', {environmentId: 'deep-swe'});
-    receipt.environmentInfo = await server.rpc('environment/info', {environmentId: 'deep-swe'});
+    const environmentInfo = await server.rpc('environment/info', {environmentId: 'deep-swe'});
+    const environmentStatus = await server.rpc('environment/status', {environmentId: 'deep-swe'});
+    receipt.environment = verifyRemoteEnvironment(environmentStatus, environmentInfo, request);
 
     const hooks = compactHooks(flattenHooks(await server.rpc('hooks/list', {cwds: [hostShadow]})));
     receipt.hooks = hooks;
@@ -725,18 +838,11 @@ async function run(request) {
       assert.equal(hooks.every(hook => hook.enabled && hook.trustStatus === 'trusted'), true, 'treatment hooks must be enabled and trusted');
     }
 
-    const selectedEnvironment = [{environmentId: 'deep-swe', cwd: request.remoteCwd, runtimeWorkspaceRoots: [request.remoteCwd]}];
-    const started = await server.rpc('thread/start', {
-      cwd: hostShadow,
-      environments: selectedEnvironment,
-      ephemeral: false,
-      approvalPolicy: 'never',
-      sandbox: 'workspace-write',
-      model: request.model,
-    }, INITIALIZE_TIMEOUT_MS);
+    const selectedEnvironment = buildRemoteEnvironmentSelection(request);
+    const started = await server.rpc('thread/start', buildThreadStartParams(request), INITIALIZE_TIMEOUT_MS);
     threadId = started?.thread?.id;
     assert.equal(typeof threadId, 'string', 'thread/start returned no thread id');
-    assert.deepEqual(started?.thread?.environments, selectedEnvironment, 'thread did not retain exactly one remote environment');
+    receipt.modelEnvironmentSelection = verifyModelEnvironmentSelection(started?.thread?.environments, request);
 
     const mcp = compactMcp(await server.rpc('mcpServerStatus/list', {threadId, detail: 'full', limit: 200}));
     receipt.mcp = mcp;
@@ -765,20 +871,7 @@ async function run(request) {
     }
 
     if (!request.preflightOnly) {
-      const turn = await server.rpc('turn/start', {
-        threadId,
-        input: [{type: 'text', text: request.instruction, text_elements: []}],
-        model: request.model,
-        effort: request.effort,
-        approvalPolicy: 'never',
-        sandboxPolicy: {
-          type: 'workspaceWrite',
-          writableRoots: [request.remoteCwd],
-          networkAccess: false,
-          excludeTmpdirEnvVar: false,
-          excludeSlashTmp: false,
-        },
-      });
+      const turn = await server.rpc('turn/start', buildTurnStartParams(request, threadId));
       const turnId = turn?.turn?.id;
       assert.equal(typeof turnId, 'string', 'turn/start returned no turn id');
       const completion = await server.waitForTurn(threadId, turnId);

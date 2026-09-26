@@ -66,6 +66,18 @@ _FROZEN_TASK_IDS = frozenset(
         "yaegi-go-embed-directives",
     }
 )
+_KOOTA_TASK_ID = "koota-entity-snapshot-rollback"
+_KOOTA_UPSTREAM_BASE_COMMIT = "72ebef44b8e024d877250f055eea60cdfaa4506"
+_KOOTA_EFFECTIVE_BASE_COMMIT = "72ebef44b8e024d877250f055eea60cdfaa45069"
+_KOOTA_TASK_TOML_BLOB = "e290a79944e6a2dece881820818a01cf4b34be60"
+_KOOTA_TASK_TOML_SHA256 = (
+    "11444ab835894c82a89dce7232632d74cc2ec15cc23047c045dfb931b22d50b1"
+)
+_KOOTA_COMMIT_API = (
+    "https://api.github.com/repos/pmndrs/koota/commits/"
+    f"{_KOOTA_UPSTREAM_BASE_COMMIT}"
+)
+_KOOTA_AUDIT_ISSUE = "https://github.com/datacurve-ai/deep-swe/issues/52"
 
 
 @dataclass(frozen=True)
@@ -355,9 +367,23 @@ def _load_image_identities(
     return result
 
 
-def _pin_task_image(task_env_config: Any, identity: TaskImageIdentity) -> Any:
+def _pin_task_image(
+    task_env_config: Any,
+    identity: TaskImageIdentity,
+    *,
+    separate_verifier: bool = False,
+) -> Any:
     current_image = getattr(task_env_config, "docker_image", None)
-    if current_image not in {identity.tagged_image, identity.pinned_image}:
+    if separate_verifier:
+        # Pier intentionally passes the explicit [verifier.environment]
+        # resource config here.  Its missing image means "build the exact
+        # tests/Dockerfile context"; injecting the agent image would silently
+        # omit hidden tests and turn the verifier into a different execution.
+        if current_image is not None:
+            raise ValueError(
+                "separate verifier must omit docker_image so Pier can build its tests context"
+            )
+    elif current_image not in {identity.tagged_image, identity.pinned_image}:
         raise ValueError(
             f"task image for {identity.task_id} does not match its frozen identity"
         )
@@ -368,7 +394,68 @@ def _pin_task_image(task_env_config: Any, identity: TaskImageIdentity) -> Any:
     model_copy = getattr(task_env_config, "model_copy", None)
     if not callable(model_copy):
         raise TypeError("task environment config does not support an immutable copy")
+    if separate_verifier:
+        return model_copy(deep=True, update={"docker_image": None})
     return model_copy(deep=True, update={"docker_image": identity.pinned_image})
+
+
+def _validate_verifier_build_context(
+    environment_dir: Path, identity: TaskImageIdentity
+) -> str:
+    """Bind a separate verifier's opaque tests context to the frozen base image."""
+
+    dockerfile = environment_dir / "Dockerfile"
+    if not dockerfile.is_file():
+        raise ValueError("separate verifier Dockerfile is missing")
+    try:
+        lines = dockerfile.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError) as exc:
+        raise ValueError("separate verifier Dockerfile is unreadable") from exc
+    from_images = []
+    for line in lines:
+        match = re.match(r"^\s*FROM\s+([^\s]+)", line, flags=re.IGNORECASE)
+        if match:
+            from_images.append(match.group(1))
+    if len(from_images) != 1:
+        raise ValueError("separate verifier Dockerfile must have exactly one FROM image")
+    base_image = from_images[0]
+    if base_image not in {identity.tagged_image, identity.pinned_image}:
+        raise ValueError("separate verifier base image does not match its frozen identity")
+    return base_image
+
+
+def _rewrite_verifier_build_context(
+    source_dir: Path,
+    destination_dir: Path,
+    *,
+    pinned_base_image: str,
+) -> None:
+    """Copy an opaque verifier context and rewrite only its validated FROM line."""
+
+    if destination_dir.exists():
+        raise RuntimeError("verifier build context already exists")
+    try:
+        shutil.copytree(source_dir, destination_dir, symlinks=True)
+        source_dockerfile = source_dir / "Dockerfile"
+        destination_dockerfile = destination_dir / "Dockerfile"
+        original = source_dockerfile.read_text(encoding="utf-8")
+        match = re.search(
+            r"^(\s*FROM\s+)([^\s]+)(.*)$",
+            original,
+            flags=re.IGNORECASE | re.MULTILINE,
+        )
+        if match is None:
+            raise ValueError("separate verifier Dockerfile has no FROM image")
+        rewritten = (
+            original[: match.start(2)]
+            + pinned_base_image
+            + original[match.end(2) :]
+        )
+        destination_dockerfile.write_text(rewritten, encoding="utf-8")
+        destination_dockerfile.chmod(source_dockerfile.stat().st_mode & 0o7777)
+    except Exception:
+        shutil.rmtree(destination_dir, ignore_errors=True)
+        raise
 
 
 def _git_output(repository: Path, *arguments: str) -> str:
@@ -388,6 +475,54 @@ def _git_output(repository: Path, *arguments: str) -> str:
     if completed.returncode != 0:
         raise ValueError("frozen task checkout validation failed")
     return completed.stdout.strip()
+
+
+def _validate_task_metadata_amendments(
+    provenance: Mapping[str, Any], indexed_metadata: Mapping[str, Mapping[str, Any]]
+) -> None:
+    """Bind the one audited upstream metadata correction without rewriting its source."""
+
+    expected_amendment = {
+        "taskId": _KOOTA_TASK_ID,
+        "field": "metadata.baseCommitHash",
+        "kind": "expand-truncated-upstream-commit-id",
+        "upstreamValue": _KOOTA_UPSTREAM_BASE_COMMIT,
+        "effectiveValue": _KOOTA_EFFECTIVE_BASE_COMMIT,
+        "upstreamTaskTomlBlob": _KOOTA_TASK_TOML_BLOB,
+        "upstreamTaskTomlSha256": _KOOTA_TASK_TOML_SHA256,
+        "resolution": {
+            "repositoryCommitApi": _KOOTA_COMMIT_API,
+            "upstreamAuditIssue": _KOOTA_AUDIT_ISSUE,
+            "note": (
+                "The pinned upstream task.toml remains unchanged and contains "
+                "upstreamValue; GitHub resolves that unique truncated ID to "
+                "effectiveValue."
+            ),
+        },
+    }
+    if provenance.get("metadataAmendments") != [expected_amendment]:
+        raise ValueError("task runtime metadata amendment provenance is invalid")
+
+    koota = indexed_metadata.get(_KOOTA_TASK_ID)
+    koota_metadata = koota.get("metadata") if isinstance(koota, Mapping) else None
+    if (
+        not isinstance(koota_metadata, Mapping)
+        or koota.get("taskTomlBlob") != _KOOTA_TASK_TOML_BLOB
+        or koota.get("taskTomlSha256") != _KOOTA_TASK_TOML_SHA256
+        or koota_metadata.get("baseCommitHashUpstream")
+        != _KOOTA_UPSTREAM_BASE_COMMIT
+        or koota_metadata.get("baseCommitHash") != _KOOTA_EFFECTIVE_BASE_COMMIT
+    ):
+        raise ValueError("Koota base-commit amendment does not match its frozen source")
+
+    for task, task_metadata in indexed_metadata.items():
+        details = task_metadata.get("metadata")
+        if (
+            task != _KOOTA_TASK_ID
+            and isinstance(details, Mapping)
+            and "baseCommitHashUpstream" in details
+        ):
+            raise ValueError("unexpected upstream base-commit amendment")
 
 
 def validate_benchmark_inputs(
@@ -429,7 +564,21 @@ def validate_benchmark_inputs(
     }
     if set(indexed_metadata) != _FROZEN_TASK_IDS:
         raise ValueError("task runtime metadata does not match the frozen 20-task set")
+    for frozen_task_id, frozen_task_metadata in indexed_metadata.items():
+        task_details = frozen_task_metadata.get("metadata")
+        base_commit = (
+            task_details.get("baseCommitHash")
+            if isinstance(task_details, dict)
+            else None
+        )
+        if not isinstance(base_commit, str) or not re.fullmatch(
+            r"[0-9a-f]{40}", base_commit
+        ):
+            raise ValueError(
+                f"task runtime metadata base commit is invalid for {frozen_task_id}"
+            )
     task_metadata = indexed_metadata[task_id]
+    expected_base_commit = task_metadata["metadata"]["baseCommitHash"]
 
     task_root = _absolute_path(tasks_dir, label="DEEPSWE_TASKS")
     if not task_root.is_dir():
@@ -442,6 +591,7 @@ def validate_benchmark_inputs(
     provenance = metadata.get("provenance")
     if not isinstance(provenance, dict):
         raise ValueError("task runtime metadata provenance is invalid")
+    _validate_task_metadata_amendments(provenance, indexed_metadata)
     expected_commit = provenance.get("commit")
     if not isinstance(expected_commit, str) or not re.fullmatch(r"[0-9a-f]{40}", expected_commit):
         raise ValueError("task runtime metadata commit is invalid")
@@ -524,6 +674,7 @@ def validate_benchmark_inputs(
         "deepSweCommit": expected_commit,
         "taskTree": task_metadata["gitTree"],
         "taskTomlSha256": task_metadata["taskTomlSha256"],
+        "baseCommitHash": expected_base_commit,
     }
 
 
@@ -785,6 +936,7 @@ class PluginValueDockerEnvironment(DockerEnvironment):
         image_identity_path: str,
         image_identity_sha256: str,
         expected_task_id: str,
+        expected_base_commit: str,
         execution_mode: str,
         host_docker_path: str,
         host_docker_sha256: str,
@@ -808,6 +960,13 @@ class PluginValueDockerEnvironment(DockerEnvironment):
         if not self._shared_runtime_source.is_dir():
             raise ValueError("shared_runtime_dir must be a directory")
         self._task_image_identity: TaskImageIdentity | None = None
+        self._verifier_base_image: str | None = None
+        self._verifier_source_context: Path | None = None
+        self._verifier_context_sha256: str | None = None
+        self._verifier_build_context: Path | None = None
+        self._verifier_build_name: str | None = None
+        self._verifier_image_compose_path: Path | None = None
+        self._container_identity_evidence: dict[str, str | int] | None = None
         self._container_identity_verified = False
         self._host_docker_path = _absolute_path(host_docker_path, label="host_docker_path")
         if not self._host_docker_path.is_file() or not os.access(
@@ -818,10 +977,15 @@ class PluginValueDockerEnvironment(DockerEnvironment):
             raise ValueError("host_docker_sha256 is invalid")
         if _sha256_file(self._host_docker_path) != host_docker_sha256:
             raise ValueError("host Docker executable hash does not match the frozen identity")
-        if environment_name != expected_task_id:
+        if environment_name != f"datacurve/{expected_task_id}":
             raise ValueError("Pier environment name does not match expected_task_id")
         if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", expected_task_id):
             raise ValueError("expected_task_id has an invalid value")
+        if not re.fullmatch(r"[0-9a-f]{40}", expected_base_commit):
+            raise ValueError("expected_base_commit has an invalid value")
+        self._expected_base_commit = expected_base_commit
+        self._repository_identity_verified = False
+        self._repository_readiness: dict[str, str] | None = None
 
         identities = _load_image_identities(
             image_identity_path,
@@ -833,7 +997,15 @@ class PluginValueDockerEnvironment(DockerEnvironment):
         except KeyError as exc:
             raise ValueError("expected task is absent from the image identity ledger") from exc
         self._task_image_identity = image_identity
-        effective_task_config = _pin_task_image(task_env_config, image_identity)
+        if is_verifier:
+            self._verifier_source_context = Path(environment_dir).resolve()
+            self._verifier_base_image = _validate_verifier_build_context(
+                self._verifier_source_context, image_identity
+            )
+            self._verifier_context_sha256 = _tree_sha256(self._verifier_source_context)
+        effective_task_config = _pin_task_image(
+            task_env_config, image_identity, separate_verifier=is_verifier
+        )
 
         if (Path(environment_dir) / "docker-compose.yaml").exists():
             raise RuntimeError(
@@ -899,13 +1071,116 @@ class PluginValueDockerEnvironment(DockerEnvironment):
             raise RuntimeError("the verifier has no pinned agent image")
         return self._task_image_identity.pinned_image
 
+    def _prepare_verifier_build_context(self) -> None:
+        if self._is_benchmark_agent:
+            return
+        if (
+            self._verifier_source_context is None
+            or self._verifier_base_image is None
+            or self._verifier_context_sha256 is None
+            or self._task_image_identity is None
+        ):
+            raise RuntimeError("verifier build identity was not initialized")
+        if self._verifier_build_context is not None:
+            return
+        if _tree_sha256(self._verifier_source_context) != self._verifier_context_sha256:
+            raise RuntimeError("separate verifier source context changed before build")
+        trial_dir = getattr(self, "trial_paths", None)
+        trial_dir = getattr(trial_dir, "trial_dir", None)
+        if not isinstance(trial_dir, Path):
+            raise RuntimeError("Pier did not provide a trial directory for verifier context")
+        build_context = trial_dir / "verifier-build-context"
+        _rewrite_verifier_build_context(
+            self._verifier_source_context,
+            build_context,
+            pinned_base_image=self._task_image_identity.pinned_image,
+        )
+        if _tree_sha256(self._verifier_source_context) != self._verifier_context_sha256:
+            shutil.rmtree(build_context, ignore_errors=True)
+            raise RuntimeError("separate verifier source context changed during copy")
+        digest_suffix = self._task_image_identity.manifest_digest.removeprefix("sha256:")[:16]
+        context_suffix = self._verifier_context_sha256[:24]
+        self._verifier_build_name = f"hb__verifier-{context_suffix}-{digest_suffix}:latest"
+        self._verifier_build_context = build_context
+        self.environment_dir = build_context
+        self._env_vars.context_dir = build_context.resolve().as_posix()
+        self._env_vars.main_image_name = self._verifier_build_name
+        # Pinned Pier's build template does not consume MAIN_IMAGE_NAME.
+        # Bind the generated image explicitly instead of accepting Compose's
+        # unrelated per-project default image name.
+        image_compose = trial_dir / "verifier-compose-image.json"
+        image_compose.write_text(json.dumps({
+            "services": {"main": {"image": self._verifier_build_name}}
+        }) + "\n", encoding="utf-8")
+        image_compose.chmod(0o600)
+        self._verifier_image_compose_path = image_compose
+
+    @property
+    def _docker_compose_paths(self) -> list[Path]:
+        paths = super()._docker_compose_paths
+        if self._verifier_image_compose_path is not None:
+            paths.append(self._verifier_image_compose_path)
+        return paths
+
+    def _write_verifier_identity_receipt(self) -> None:
+        if self._verifier_build_context is None or self._verifier_context_sha256 is None:
+            raise RuntimeError("verifier build identity is unavailable")
+        trial_dir = getattr(getattr(self, "trial_paths", None), "trial_dir", None)
+        if not isinstance(trial_dir, Path):
+            raise RuntimeError("Pier did not provide a trial directory for verifier receipt")
+        evidence = self._container_identity_evidence
+        if evidence is None or self._task_image_identity is None:
+            raise RuntimeError("container identity evidence is unavailable")
+        payload = {
+            "schemaVersion": "jev-plugin-value-verifier-runtime-identity-v1",
+            "containerId": evidence["containerId"],
+            "imageId": evidence["imageId"],
+            "configuredImage": evidence["image"],
+            "originalContextSha256": self._verifier_context_sha256,
+            "copiedDockerfileSha256": _sha256_file(self._verifier_build_context / "Dockerfile"),
+            "baseImageDigest": self._task_image_identity.manifest_digest,
+            "runtimeMountCount": evidence["runtimeMountCount"],
+        }
+        receipt = trial_dir / "verifier-runtime-identity.json"
+        temporary = trial_dir / ".verifier-runtime-identity.json.tmp"
+        temporary.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+        temporary.chmod(0o600)
+        os.replace(temporary, receipt)
+
+    def _cleanup_verifier_build_context(self) -> None:
+        build_context = self._verifier_build_context
+        trial_dir = getattr(getattr(self, "trial_paths", None), "trial_dir", None)
+        if not isinstance(build_context, Path) or not isinstance(trial_dir, Path):
+            return
+        expected = trial_dir / "verifier-build-context"
+        if build_context == expected:
+            shutil.rmtree(build_context, ignore_errors=True)
+        self._verifier_build_context = None
+
+    async def stop(self, delete: bool) -> None:
+        # Preserve the digest-pinned base image for the paired controls.  The
+        # copied verifier context is removed only after this exact compose
+        # project reports no main container; failures retain it for diagnosis.
+        await super().stop(delete=False)
+        stopped = await self._run_docker_compose_command(
+            ["ps", "--all", "-q", "main"], check=False, timeout_sec=30
+        )
+        if stopped.return_code != 0 or (stopped.stdout or "").strip():
+            raise RuntimeError("verifier compose project still has a main container")
+        self._cleanup_verifier_build_context()
+
     async def start(self, force_build: bool) -> None:
         if force_build:
-            raise RuntimeError("plugin-value environments must use the pinned prebuilt image")
+            raise RuntimeError("plugin-value environments do not permit force_build")
+        self._prepare_verifier_build_context()
         await super().start(force_build=force_build)
-        if not self._use_prebuilt:
+        if self._is_benchmark_agent and not self._use_prebuilt:
             raise RuntimeError("Pier did not select the pinned prebuilt task image")
+        if not self._is_benchmark_agent and self._use_prebuilt:
+            raise RuntimeError("Pier bypassed the separate verifier tests build context")
         await self._verify_running_container(expect_runtime=self._is_benchmark_agent)
+        if self._is_benchmark_agent:
+            await self._verify_repository_ready()
 
     async def benchmark_container_id(self) -> str:
         result = await self._run_docker_compose_command(
@@ -947,8 +1222,19 @@ class PluginValueDockerEnvironment(DockerEnvironment):
         container_id = await self.benchmark_container_id()
         inspected = await self._inspect_container(container_id)
         config = inspected.get("Config")
-        if not isinstance(config, dict) or config.get("Image") != self.pinned_task_image:
+        if not isinstance(config, dict):
+            raise RuntimeError("running task container image identity is unavailable")
+        configured_image = config.get("Image")
+        if expect_runtime and configured_image != self.pinned_task_image:
             raise RuntimeError("running task container is not using the digest-pinned image")
+        if not expect_runtime:
+            if self._verifier_build_name is None or configured_image != self._verifier_build_name:
+                raise RuntimeError("verifier container image does not match its context identity")
+            if self._verifier_build_context is None or self._task_image_identity is None:
+                raise RuntimeError("verifier build base is not the frozen image digest")
+        image_id = inspected.get("Image")
+        if not isinstance(image_id, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", image_id):
+            raise RuntimeError("docker did not return the verifier image identity")
         host_config = inspected.get("HostConfig")
         if not isinstance(host_config, dict) or host_config.get("NetworkMode") != "none":
             raise RuntimeError("running task container network mode must be none")
@@ -981,7 +1267,14 @@ class PluginValueDockerEnvironment(DockerEnvironment):
                 raise RuntimeError("running task container exposes an unexpected runtime source")
         elif overlapping_sources:
             raise RuntimeError("verifier container exposes the shared agent runtime")
+        self._container_identity_evidence = {
+            "containerId": container_id,
+            "imageId": image_id,
+            "image": self.pinned_task_image if expect_runtime else str(configured_image),
+            "runtimeMountCount": len(runtime_mounts),
+        }
         if not expect_runtime:
+            self._write_verifier_identity_receipt()
             self._container_identity_verified = True
             return
         mount = runtime_mounts[0]
@@ -995,6 +1288,55 @@ class PluginValueDockerEnvironment(DockerEnvironment):
         ):
             raise RuntimeError("running task container runtime mount is not the verified read-only bind")
         self._container_identity_verified = True
+
+    @property
+    def repository_readiness(self) -> dict[str, str]:
+        if not self._repository_identity_verified or self._repository_readiness is None:
+            raise RuntimeError("task repository identity has not been verified")
+        return dict(self._repository_readiness)
+
+    @property
+    def container_identity_evidence(self) -> dict[str, str | int]:
+        if not self._container_identity_verified or self._container_identity_evidence is None:
+            raise RuntimeError("container identity has not been verified")
+        return dict(self._container_identity_evidence)
+
+    async def _verify_repository_ready(self) -> None:
+        """Reject incomplete or dirty task repositories before agent setup."""
+
+        base = shlex.quote(self._expected_base_commit)
+        command = (
+            "set -eu"
+            " && head=$(/usr/bin/git -C /app rev-parse --verify 'HEAD^{commit}')"
+            f" && test \"$head\" = {base}"
+            f" && commit=$(/usr/bin/git -C /app rev-parse --verify {base}'^{{commit}}')"
+            f" && test \"$commit\" = {base}"
+            f" && tree=$(/usr/bin/git -C /app rev-parse --verify {base}'^{{tree}}')"
+            " && test -n \"$tree\""
+            " && test -n \"$(/usr/bin/git -C /app ls-files)\""
+            f" && /usr/bin/git -C /app diff --quiet --cached {base} --"
+            " && /usr/bin/git -C /app diff --quiet --"
+            " && test -z \"$(/usr/bin/git -C /app status --porcelain=v1 --untracked-files=all)\""
+            " && printf '%s\\n%s\\n' \"$head\" \"$tree\""
+        )
+        result = await self.exec(command, timeout_sec=120, user="root")
+        lines = (result.stdout or "").splitlines()
+        if (
+            result.return_code != 0
+            or len(lines) != 2
+            or lines[0] != self._expected_base_commit
+            or not re.fullmatch(r"[0-9a-f]{40}", lines[1])
+        ):
+            raise RuntimeError(
+                "task repository is missing its frozen base commit, has an invalid "
+                "HEAD/tree, or is not clean"
+            )
+        self._repository_readiness = {
+            "baseCommitHash": self._expected_base_commit,
+            "headCommit": lines[0],
+            "headTree": lines[1],
+        }
+        self._repository_identity_verified = True
 
 
 class PluginValueCodex(Codex):
@@ -1082,6 +1424,8 @@ class PluginValueCodex(Codex):
             raise TypeError("PluginValueCodex requires PluginValueDockerEnvironment")
         if not environment._container_identity_verified:
             raise RuntimeError("task container identity was not verified before agent setup")
+        if not environment._repository_identity_verified:
+            raise RuntimeError("task repository identity was not verified before agent setup")
 
         runtime = environment.shared_runtime
         node_path = RUNTIME_MOUNT.joinpath(*runtime.node.path.parts)
@@ -1203,6 +1547,23 @@ class PluginValueCodex(Codex):
             try:
                 os.killpg(process.pid, 0)
             except ProcessLookupError:
+                return False
+            except PermissionError:
+                # Darwin can report EPERM while a terminated process group is
+                # disappearing. Permission denial alone is not absence: verify
+                # against the OS process table and propagate it if any member
+                # remains or the independent query cannot establish absence.
+                if sys.platform != "darwin":
+                    raise
+                observed = subprocess.run(
+                    ["/bin/ps", "-e", "-o", "pgid="],
+                    capture_output=True, text=True, check=True, timeout=5,
+                )
+                groups = observed.stdout.split()
+                if not groups or any(not value.isdecimal() for value in groups):
+                    raise RuntimeError("cannot verify process-group absence")
+                if str(process.pid) in groups:
+                    raise
                 return False
             return True
 

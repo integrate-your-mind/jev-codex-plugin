@@ -8,10 +8,17 @@ import test from 'node:test';
 import {
   buildConfigToml,
   buildEnvironmentsToml,
+  buildRemoteEnvironmentSelection,
+  buildThreadStartParams,
+  buildTurnStartParams,
+  compactHookRun,
+  compactMcp,
   replaceStateDirectory,
   validateRequest,
+  verifyRemoteEnvironment,
   verifyPinnedPlugin,
   verifyHostRuntimeIdentity,
+  verifyModelEnvironmentSelection,
 } from '../host-runner.mjs';
 
 const CONTAINER = 'a'.repeat(64);
@@ -107,12 +114,67 @@ test('host runtime identity binds the executing Node and Codex bytes', async t =
 test('exec-server launcher clears host env and forwards no credential', () => {
   const toml = buildEnvironmentsToml(request);
   assert.match(toml, /include_local = true/);
+  assert.match(toml, /default = "deep-swe"/);
   assert.match(toml, /program = "\/usr\/bin\/env"/);
   assert.equal((toml.match(/"-i"/g) ?? []).length, 3);
   assert.match(toml, /"exec", "-i", "-u", "agent"/);
   assert.match(toml, /"\/usr\/bin\/env", "-i", "PATH=\/usr\/local\/bin:\/usr\/bin:\/bin", "HOME=\/installed-agent\/codex-exec-launcher", "CODEX_HOME=\/installed-agent\/codex-exec-home"/);
   assert.doesNotMatch(toml, /CODEX_HOME=\/tmp/);
   assert.doesNotMatch(toml, /OPENAI|TYPESAFE|JEV_API_KEY|auth\.json/);
+});
+
+test('thread and turn select only the remote environment with external sandboxing', () => {
+  const environments = [{environmentId: 'deep-swe', cwd: '/app', runtimeWorkspaceRoots: ['/app']}];
+  assert.deepEqual(buildRemoteEnvironmentSelection(request), environments);
+  assert.deepEqual(buildThreadStartParams(request), {
+    cwd: request.hostCwd,
+    environments,
+    ephemeral: false,
+    approvalPolicy: 'never',
+    sandbox: 'workspace-write',
+    model: 'gpt-6-astra',
+  });
+  assert.deepEqual(buildTurnStartParams({...request, preflightOnly: false}, 'thread-1'), {
+    threadId: 'thread-1',
+    environments,
+    input: [{type: 'text', text: request.instruction, text_elements: []}],
+    model: 'gpt-6-astra',
+    effort: 'medium',
+    approvalPolicy: 'never',
+    sandboxPolicy: {type: 'externalSandbox', networkAccess: 'restricted'},
+  });
+  assert.deepEqual(verifyModelEnvironmentSelection(environments, request), environments);
+  assert.throws(
+    () => verifyModelEnvironmentSelection([...environments, {
+      environmentId: 'local', cwd: request.hostCwd, runtimeWorkspaceRoots: [request.hostCwd],
+    }], request),
+    /exactly the deep-swe environment/,
+  );
+  assert.throws(
+    () => verifyModelEnvironmentSelection([{
+      environmentId: 'local', cwd: request.hostCwd, runtimeWorkspaceRoots: [request.hostCwd],
+    }], request),
+    /exactly the deep-swe environment/,
+  );
+});
+
+test('remote environment proof rejects local, pending, and host-native identities', () => {
+  assert.deepEqual(
+    verifyRemoteEnvironment(
+      {status: 'ready'},
+      {cwd: 'file:///app', shell: {name: 'bash', path: '/bin/bash'}},
+      request,
+    ),
+    {status: 'ready', cwd: 'file:///app', shell: {name: 'bash', path: '/bin/bash'}},
+  );
+  assert.throws(
+    () => verifyRemoteEnvironment({status: 'pending'}, {cwd: 'file:///app', shell: {name: 'sh', path: '/bin/sh'}}, request),
+    /not ready/,
+  );
+  assert.throws(
+    () => verifyRemoteEnvironment({status: 'ready'}, {cwd: 'file:\/\/\/tmp\/host', shell: {name: 'zsh', path: '/bin/zsh'}}, request),
+    /cwd drifted/,
+  );
 });
 
 test('host config fails closed for task command environment', () => {
@@ -125,6 +187,66 @@ test('host config fails closed for task command environment', () => {
   assert.match(toml, /plugins = true/);
   assert.match(toml, /trusted_hash = "sha256:/);
   assert.doesNotMatch(toml, /OPENAI_API_KEY|TYPESAFE_API_KEY|JEV_API_KEY_FILE/);
+});
+
+test('MCP startup diagnostics are bounded and redact credential-shaped values', () => {
+  const oldApiKey = process.env.TYPESAFE_API_KEY;
+  process.env.TYPESAFE_API_KEY = 'private-fixture-value';
+  try {
+    const [server] = compactMcp({data: [{
+      name: 'jev-workflows',
+      pluginId: 'jev-workflows@personal',
+      runtimeStatus: 'failed',
+      authStatus: 'unsupported',
+      tools: {},
+      toolsError: `local stdio MCP server failed: api_key=super-secret Bearer bearer-secret private-fixture-value ${'x'.repeat(2_100)}`,
+    }]});
+    assert.equal(server.name, 'jev-workflows');
+    assert.equal(server.runtimeStatus, 'failed');
+    assert.deepEqual(server.tools, []);
+    assert.equal(server.toolsError.bytes > 2_000, true);
+    assert.equal(server.toolsError.truncated, true);
+    assert.equal(server.toolsError.excerpt.length <= 2_000, true);
+    assert.match(server.toolsError.excerpt, /api_key=\[REDACTED\]/);
+    assert.match(server.toolsError.excerpt, /Bearer \[REDACTED\]/);
+    assert.doesNotMatch(server.toolsError.excerpt, /super-secret|bearer-secret|private-fixture-value/);
+    assert.match(server.toolsError.excerptSha256, /^[0-9a-f]{64}$/);
+  } finally {
+    if (oldApiKey === undefined) delete process.env.TYPESAFE_API_KEY;
+    else process.env.TYPESAFE_API_KEY = oldApiKey;
+  }
+  assert.equal(compactMcp({data: [{name: 'ready', tools: {}}]})[0].toolsError, null);
+});
+
+test('failed hook diagnostics retain bounded redacted status and output entries', () => {
+  const oldApiKey = process.env.TYPESAFE_API_KEY;
+  process.env.TYPESAFE_API_KEY = 'private-fixture-value';
+  try {
+    const hook = compactHookRun({
+      eventName: 'sessionStart',
+      source: 'plugin',
+      handlerType: 'command',
+      executionMode: 'sync',
+      status: 'failed',
+      durationMs: 2,
+      statusMessage: 'token=status-secret',
+      entries: [
+        {kind: 'error', text: `spawn failed api_key=entry-secret private-fixture-value ${'x'.repeat(2_100)}`},
+        ...Array.from({length: 16}, (_, index) => ({kind: 'warning', text: `warning-${index}`})),
+      ],
+    });
+    assert.equal(hook.status, 'failed');
+    assert.equal(hook.entriesTotal, 17);
+    assert.equal(hook.entriesTruncated, true);
+    assert.equal(hook.entries.length, 16);
+    assert.match(hook.statusMessage.excerpt, /token=\[REDACTED\]/);
+    assert.match(hook.entries[0].text.excerpt, /api_key=\[REDACTED\]/);
+    assert.doesNotMatch(hook.entries[0].text.excerpt, /entry-secret|private-fixture-value/);
+    assert.equal(hook.entries[0].text.truncated, true);
+  } finally {
+    if (oldApiKey === undefined) delete process.env.TYPESAFE_API_KEY;
+    else process.env.TYPESAFE_API_KEY = oldApiKey;
+  }
 });
 
 test('fresh install wiring rewrites MCP and every hook state path', async () => {

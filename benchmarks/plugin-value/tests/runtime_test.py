@@ -41,6 +41,13 @@ from runtime import (
     PluginValueCodex,
     PluginValueDockerEnvironment,
     _FROZEN_TASK_IDS,
+    _KOOTA_AUDIT_ISSUE,
+    _KOOTA_COMMIT_API,
+    _KOOTA_EFFECTIVE_BASE_COMMIT,
+    _KOOTA_TASK_ID,
+    _KOOTA_TASK_TOML_BLOB,
+    _KOOTA_TASK_TOML_SHA256,
+    _KOOTA_UPSTREAM_BASE_COMMIT,
     _load_image_identities,
     _sha256_file,
     _tree_sha256,
@@ -175,19 +182,46 @@ class RuntimeFixture(unittest.TestCase):
         metadata_tasks = []
         for task_id in sorted(_FROZEN_TASK_IDS):
             task_toml = tasks / task_id / "task.toml"
-            metadata_tasks.append(
-                {
-                    "taskId": task_id,
-                    "gitTree": self.git(repository, "rev-parse", f"HEAD:tasks/{task_id}"),
-                    "taskTomlBlob": self.git(
-                        repository, "rev-parse", f"HEAD:tasks/{task_id}/task.toml"
-                    ),
-                    "taskTomlSha256": _sha256_file(task_toml),
+            item = {
+                "taskId": task_id,
+                "gitTree": self.git(repository, "rev-parse", f"HEAD:tasks/{task_id}"),
+                "taskTomlBlob": self.git(
+                    repository, "rev-parse", f"HEAD:tasks/{task_id}/task.toml"
+                ),
+                "taskTomlSha256": _sha256_file(task_toml),
+                "metadata": {"baseCommitHash": commit},
+            }
+            if task_id == _KOOTA_TASK_ID:
+                item["taskTomlBlob"] = _KOOTA_TASK_TOML_BLOB
+                item["taskTomlSha256"] = _KOOTA_TASK_TOML_SHA256
+                item["metadata"] = {
+                    "baseCommitHash": _KOOTA_EFFECTIVE_BASE_COMMIT,
+                    "baseCommitHashUpstream": _KOOTA_UPSTREAM_BASE_COMMIT,
                 }
-            )
+            metadata_tasks.append(item)
         metadata = {
             "schemaVersion": "jev-deepswe-runtime-metadata-v1",
-            "provenance": {"commit": commit},
+            "provenance": {
+                "commit": commit,
+                "metadataAmendments": [{
+                    "taskId": _KOOTA_TASK_ID,
+                    "field": "metadata.baseCommitHash",
+                    "kind": "expand-truncated-upstream-commit-id",
+                    "upstreamValue": _KOOTA_UPSTREAM_BASE_COMMIT,
+                    "effectiveValue": _KOOTA_EFFECTIVE_BASE_COMMIT,
+                    "upstreamTaskTomlBlob": _KOOTA_TASK_TOML_BLOB,
+                    "upstreamTaskTomlSha256": _KOOTA_TASK_TOML_SHA256,
+                    "resolution": {
+                        "repositoryCommitApi": _KOOTA_COMMIT_API,
+                        "upstreamAuditIssue": _KOOTA_AUDIT_ISSUE,
+                        "note": (
+                            "The pinned upstream task.toml remains unchanged and contains "
+                            "upstreamValue; GitHub resolves that unique truncated ID to "
+                            "effectiveValue."
+                        ),
+                    },
+                }],
+            },
             "tasks": metadata_tasks,
         }
         metadata_path = self.root / "task-runtime-metadata.json"
@@ -509,6 +543,7 @@ class BenchmarkInputTests(RuntimeFixture):
             schedule_sha256=_sha256_file(schedule),
         )
         self.assertEqual(result["taskId"], FIRST_TASK)
+        self.assertEqual(result["baseCommitHash"], self.git(tasks.parent, "rev-parse", "HEAD"))
         with self.assertRaisesRegex(ValueError, "frozen schedule row"):
             validate_benchmark_inputs(
                 tasks_dir=tasks,
@@ -560,8 +595,65 @@ class BenchmarkInputTests(RuntimeFixture):
                 schedule_sha256=_sha256_file(schedule),
             )
 
+    def test_every_task_requires_a_frozen_base_commit(self):
+        tasks, metadata, schedule = self.build_frozen_tasks()
+        value = json.loads(metadata.read_text(encoding="utf-8"))
+        value["tasks"][-1]["metadata"]["baseCommitHash"] = "not-a-commit"
+        metadata.write_text(json.dumps(value) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "base commit"):
+            validate_benchmark_inputs(
+                tasks_dir=tasks,
+                task_metadata_path=metadata,
+                task_metadata_sha256=_sha256_file(metadata),
+                task_id=FIRST_TASK,
+                mode="preflight",
+                arm="baseline",
+                trial_id="unit-preflight",
+                schedule_path=schedule,
+                schedule_sha256=_sha256_file(schedule),
+            )
+
+    def test_upstream_base_commit_amendment_is_exact_and_auditable(self):
+        tasks, metadata, schedule = self.build_frozen_tasks()
+        value = json.loads(metadata.read_text(encoding="utf-8"))
+        value["provenance"]["metadataAmendments"][0]["effectiveValue"] = "0" * 40
+        metadata.write_text(json.dumps(value) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "amendment provenance"):
+            validate_benchmark_inputs(
+                tasks_dir=tasks,
+                task_metadata_path=metadata,
+                task_metadata_sha256=_sha256_file(metadata),
+                task_id=FIRST_TASK,
+                mode="preflight",
+                arm="baseline",
+                trial_id="unit-preflight",
+                schedule_path=schedule,
+                schedule_sha256=_sha256_file(schedule),
+            )
+
 
 class EnvironmentMountTests(RuntimeFixture):
+    def test_stop_preserves_images_and_checks_stopped_containers_before_cleanup(self):
+        for code, stdout, succeeds in ((0, "", True), (0, "stopped-container", False), (1, "", False)):
+            with self.subTest(code=code, stdout=stdout):
+                environment = object.__new__(PluginValueDockerEnvironment)
+                environment._run_docker_compose_command = mock.AsyncMock(
+                    return_value=SimpleNamespace(return_code=code, stdout=stdout)
+                )
+                environment._cleanup_verifier_build_context = mock.Mock()
+                with mock.patch.object(DockerEnvironment, "stop", new_callable=mock.AsyncMock) as stop:
+                    if succeeds:
+                        asyncio.run(environment.stop(delete=True))
+                        environment._cleanup_verifier_build_context.assert_called_once_with()
+                    else:
+                        with self.assertRaisesRegex(RuntimeError, "still has a main container"):
+                            asyncio.run(environment.stop(delete=True))
+                        environment._cleanup_verifier_build_context.assert_not_called()
+                    stop.assert_awaited_once_with(delete=False)
+                environment._run_docker_compose_command.assert_awaited_once_with(
+                    ["ps", "--all", "-q", "main"], check=False, timeout_sec=30
+                )
+
     @staticmethod
     def fake_docker_init(
         instance,
@@ -585,6 +677,7 @@ class EnvironmentMountTests(RuntimeFixture):
 
     def make_environment(self, runtime_root, task_config, **overrides):
         _, _, docker = self.build_host_executables()
+        environment_dir = overrides.pop("environment_dir", self.root / "environment")
         try:
             runtime_identity = validate_shared_runtime(runtime_root)
             manifest_sha256 = runtime_identity.manifest_sha256
@@ -593,8 +686,8 @@ class EnvironmentMountTests(RuntimeFixture):
             manifest_sha256 = "0" * 64
             tree_sha256 = "0" * 64
         values = {
-            "environment_dir": self.root / "environment",
-            "environment_name": FIRST_TASK,
+            "environment_dir": environment_dir,
+            "environment_name": f"datacurve/{FIRST_TASK}",
             "session_id": "trial-agent",
             "trial_paths": object(),
             "task_env_config": task_config,
@@ -604,6 +697,7 @@ class EnvironmentMountTests(RuntimeFixture):
             "image_identity_path": str(IMAGE_LEDGER),
             "image_identity_sha256": IMAGE_LEDGER_SHA256,
             "expected_task_id": FIRST_TASK,
+            "expected_base_commit": "a" * 40,
             "execution_mode": "preflight",
             "host_docker_path": str(docker),
             "host_docker_sha256": _sha256_file(docker),
@@ -612,6 +706,15 @@ class EnvironmentMountTests(RuntimeFixture):
         values.update(overrides)
         with mock.patch.object(DockerEnvironment, "__init__", self.fake_docker_init):
             return PluginValueDockerEnvironment(**values)
+
+    def make_verifier_context(self, base_image=FIRST_TAG):
+        context = self.root / "verifier-tests"
+        context.mkdir(parents=True, exist_ok=True)
+        (context / "Dockerfile").write_text(
+            f"FROM {base_image}\nCOPY opaque-test-artifact /tests/artifact\n",
+            encoding="utf-8",
+        )
+        return context
 
     def test_agent_retains_default_mounts_and_gets_one_read_only_runtime(self):
         runtime_root = self.build_runtime()
@@ -636,7 +739,7 @@ class EnvironmentMountTests(RuntimeFixture):
         (environment_dir / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
         environment = PluginValueDockerEnvironment(
             environment_dir=environment_dir,
-            environment_name=FIRST_TASK,
+            environment_name=f"datacurve/{FIRST_TASK}",
             session_id="actual-pier-agent",
             trial_paths=trial_paths,
             task_env_config=EnvironmentConfig(
@@ -650,6 +753,7 @@ class EnvironmentMountTests(RuntimeFixture):
             image_identity_path=str(IMAGE_LEDGER),
             image_identity_sha256=IMAGE_LEDGER_SHA256,
             expected_task_id=FIRST_TASK,
+            expected_base_commit="a" * 40,
             execution_mode="preflight",
             host_docker_path=str(docker),
             host_docker_sha256=_sha256_file(docker),
@@ -666,33 +770,37 @@ class EnvironmentMountTests(RuntimeFixture):
         ]
         environment = self.make_environment(
             runtime_root,
-            FakeTaskEnvironment(),
+            FakeTaskEnvironment(None),
             session_id="trial__verifier__trial",
             mounts_json=verifier_mounts,
+            environment_dir=self.make_verifier_context(),
         )
         self.assertEqual(environment._mounts_json, verifier_mounts)
-        self.assertEqual(environment.task_env_config.docker_image, FIRST_PINNED)
+        self.assertIsNone(environment.task_env_config.docker_image)
+        self.assertEqual(environment._verifier_base_image, FIRST_TAG)
         self.assertFalse(
             any(mount.get("target") == str(RUNTIME_MOUNT) for mount in environment._mounts_json)
         )
 
     def test_verifier_rejects_runtime_source_alias_and_nested_target_overlay(self):
         runtime_root = self.build_runtime()
+        verifier_context = self.make_verifier_context()
         alias = self.root / "runtime-alias"
         alias.symlink_to(runtime_root, target_is_directory=True)
         with self.assertRaisesRegex(RuntimeError, "overlaps the shared agent runtime"):
             self.make_environment(
                 runtime_root,
-                FakeTaskEnvironment(),
+                FakeTaskEnvironment(None),
                 session_id="trial__verifier__trial",
                 mounts_json=[
                     {"type": "bind", "source": str(alias), "target": "/logs/verifier"}
                 ],
+                environment_dir=verifier_context,
             )
         with self.assertRaisesRegex(RuntimeError, "target overlaps"):
             self.make_environment(
                 runtime_root,
-                FakeTaskEnvironment(),
+                FakeTaskEnvironment(None),
                 session_id="trial__verifier__trial",
                 mounts_json=[
                     {"type": "bind", "source": "/host/agent", "target": "/logs/agent"},
@@ -702,6 +810,7 @@ class EnvironmentMountTests(RuntimeFixture):
                         "target": str(RUNTIME_MOUNT / "lib"),
                     },
                 ],
+                environment_dir=verifier_context,
             )
 
     def test_mount_contract_and_source_tag_mismatches_fail_closed(self):
@@ -709,8 +818,9 @@ class EnvironmentMountTests(RuntimeFixture):
         with self.assertRaisesRegex(RuntimeError, "mount/session contract"):
             self.make_environment(
                 runtime_root,
-                FakeTaskEnvironment(),
+                FakeTaskEnvironment(None),
                 mounts_json=[{"type": "bind", "source": "/x", "target": "/y"}],
+                environment_dir=self.make_verifier_context(),
             )
         with self.assertRaisesRegex(ValueError, "does not match its frozen identity"):
             self.make_environment(runtime_root, FakeTaskEnvironment("example.invalid:latest"))
@@ -724,12 +834,107 @@ class EnvironmentMountTests(RuntimeFixture):
             self.make_environment(
                 runtime_root,
                 FakeTaskEnvironment(),
-                environment_name="missing-frozen-task",
+                environment_name="datacurve/missing-frozen-task",
                 expected_task_id="missing-frozen-task",
+            )
+
+    def test_separate_verifier_rejects_explicit_image_or_wrong_base(self):
+        runtime_root = self.build_runtime()
+        mounts = [{"type": "bind", "source": "/host/verifier", "target": "/logs/verifier"}]
+        with self.assertRaisesRegex(ValueError, "separate verifier must omit docker_image"):
+            self.make_environment(
+                runtime_root,
+                FakeTaskEnvironment(),
+                session_id="trial__verifier__trial",
+                mounts_json=mounts,
+                environment_dir=self.make_verifier_context(),
+            )
+        with self.assertRaisesRegex(ValueError, "base image does not match"):
+            self.make_environment(
+                runtime_root,
+                FakeTaskEnvironment(None),
+                session_id="trial__verifier__trial",
+                mounts_json=mounts,
+                environment_dir=self.make_verifier_context("example.invalid:wrong"),
+            )
+
+    def test_separate_verifier_rewrites_only_private_context_and_names_build(self):
+        runtime_root = self.build_runtime()
+        source_context = self.make_verifier_context()
+        source_hash = _tree_sha256(source_context)
+        original_dockerfile = (source_context / "Dockerfile").read_text(encoding="utf-8")
+        environment = self.make_environment(
+            runtime_root,
+            FakeTaskEnvironment(None),
+            session_id="trial__verifier__trial",
+            mounts_json=[{"type": "bind", "source": "/host/verifier", "target": "/logs/verifier"}],
+            environment_dir=source_context,
+        )
+        trial_paths = TrialPaths(self.root / "trial")
+        trial_paths.mkdir()
+        environment.trial_paths = trial_paths
+        environment._env_vars = SimpleNamespace(context_dir="", main_image_name="old")
+
+        environment._prepare_verifier_build_context()
+
+        copied = environment._verifier_build_context
+        self.assertIsNotNone(copied)
+        self.assertNotEqual(copied, source_context)
+        self.assertEqual(_tree_sha256(source_context), source_hash)
+        self.assertIn(FIRST_PINNED, (copied / "Dockerfile").read_text(encoding="utf-8"))
+        self.assertEqual((source_context / "Dockerfile").read_text(encoding="utf-8"), original_dockerfile)
+        self.assertEqual(environment._env_vars.context_dir, copied.resolve().as_posix())
+        self.assertIn(source_hash[:24], environment._env_vars.main_image_name)
+        self.assertIn(FIRST_PINNED.split("sha256:", 1)[1][:16], environment._env_vars.main_image_name)
+        self.assertEqual(json.loads(environment._verifier_image_compose_path.read_text()), {
+            "services": {"main": {"image": environment._verifier_build_name}}
+        })
+        with mock.patch.object(DockerEnvironment, "_docker_compose_paths", new_callable=mock.PropertyMock) as paths:
+            paths.return_value = [Path("upstream-compose")]
+            self.assertEqual(environment._docker_compose_paths, [
+                Path("upstream-compose"), environment._verifier_image_compose_path
+            ])
+        environment._cleanup_verifier_build_context()
+        self.assertFalse(copied.exists())
+
+    def test_separate_verifier_rejects_source_context_drift_before_copy(self):
+        runtime_root = self.build_runtime()
+        source_context = self.make_verifier_context()
+        environment = self.make_environment(
+            runtime_root,
+            FakeTaskEnvironment(None),
+            session_id="trial__verifier__trial",
+            mounts_json=[{"type": "bind", "source": "/host/verifier", "target": "/logs/verifier"}],
+            environment_dir=source_context,
+        )
+        trial_paths = TrialPaths(self.root / "drift-trial")
+        trial_paths.mkdir()
+        environment.trial_paths = trial_paths
+        environment._env_vars = SimpleNamespace(context_dir="", main_image_name="old")
+        (source_context / "drift-marker").write_text("changed", encoding="utf-8")
+        with self.assertRaisesRegex(RuntimeError, "source context changed"):
+            environment._prepare_verifier_build_context()
+
+    def test_environment_name_must_match_the_canonical_datacurve_task_name(self):
+        runtime_root = self.build_runtime()
+        environment = self.make_environment(runtime_root, FakeTaskEnvironment())
+        self.assertEqual(environment.task_env_config.docker_image, FIRST_PINNED)
+        with self.assertRaisesRegex(ValueError, "environment name"):
+            self.make_environment(
+                runtime_root,
+                FakeTaskEnvironment(),
+                environment_name=FIRST_TASK,
+            )
+        with self.assertRaisesRegex(ValueError, "environment name"):
+            self.make_environment(
+                runtime_root,
+                FakeTaskEnvironment(),
+                environment_name="datacurve/anko-default-function-arguments",
             )
 
     def test_container_inspection_proves_agent_mount_and_verifier_absence(self):
         identity = validate_shared_runtime(self.build_runtime())
+        verifier_context = self.make_verifier_context()
         image_identity = _load_image_identities(
             IMAGE_LEDGER,
             expected_sha256=IMAGE_LEDGER_SHA256,
@@ -739,11 +944,20 @@ class EnvironmentMountTests(RuntimeFixture):
         environment._shared_runtime = identity
         environment._shared_runtime_source = identity.root
         environment._task_image_identity = image_identity
+        environment._verifier_build_name = "built-verifier-image"
+        environment._verifier_build_context = verifier_context
+        environment._verifier_source_context = verifier_context
+        environment._verifier_context_sha256 = _tree_sha256(environment._verifier_source_context)
+        environment._verifier_base_image = FIRST_TAG
+        trial_paths = TrialPaths(self.root / "identity-trial")
+        trial_paths.mkdir()
+        environment.trial_paths = trial_paths
         environment._container_identity_verified = False
         environment.benchmark_container_id = mock.AsyncMock(return_value="a" * 64)
         environment._inspect_container = mock.AsyncMock(
             return_value={
                 "Config": {"Image": FIRST_PINNED},
+                "Image": "sha256:" + "a" * 64,
                 "HostConfig": {"NetworkMode": "none"},
                 "Mounts": [
                     {
@@ -757,28 +971,78 @@ class EnvironmentMountTests(RuntimeFixture):
         )
         asyncio.run(environment._verify_running_container(expect_runtime=True))
         self.assertTrue(environment._container_identity_verified)
+        self.assertEqual(environment.container_identity_evidence["imageId"], "sha256:" + "a" * 64)
+        self.assertEqual(environment.container_identity_evidence["runtimeMountCount"], 1)
 
         environment._container_identity_verified = False
         environment._inspect_container = mock.AsyncMock(
             return_value={
-                "Config": {"Image": FIRST_PINNED},
+                "Config": {"Image": "built-verifier-image"},
+                "Image": "sha256:" + "b" * 64,
                 "HostConfig": {"NetworkMode": "none"},
                 "Mounts": [],
             }
         )
         asyncio.run(environment._verify_running_container(expect_runtime=False))
         self.assertTrue(environment._container_identity_verified)
+        self.assertEqual(environment.container_identity_evidence["image"], "built-verifier-image")
+        self.assertEqual(environment.container_identity_evidence["runtimeMountCount"], 0)
+        receipt = trial_paths.trial_dir / "verifier-runtime-identity.json"
+        self.assertTrue(receipt.is_file())
+        receipt_data = json.loads(receipt.read_text(encoding="utf-8"))
+        self.assertEqual(receipt_data["baseImageDigest"], "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1")
+        self.assertEqual(receipt_data["runtimeMountCount"], 0)
+        self.assertNotIn("trial", json.dumps(receipt_data))
 
         environment._container_identity_verified = False
         environment._inspect_container = mock.AsyncMock(
             return_value={
-                "Config": {"Image": FIRST_PINNED},
+                "Config": {"Image": "built-verifier-image"},
+                "Image": "sha256:" + "c" * 64,
                 "HostConfig": {"NetworkMode": "bridge"},
                 "Mounts": [],
             }
         )
         with self.assertRaisesRegex(RuntimeError, "network mode"):
             asyncio.run(environment._verify_running_container(expect_runtime=False))
+
+    def test_repository_readiness_binds_head_tree_and_clean_state(self):
+        environment = object.__new__(PluginValueDockerEnvironment)
+        environment._expected_base_commit = "a" * 40
+        environment._repository_identity_verified = False
+        environment._repository_readiness = None
+        environment.exec = mock.AsyncMock(
+            return_value=SimpleNamespace(
+                return_code=0,
+                stdout=f"{'a' * 40}\n{'b' * 40}\n",
+            )
+        )
+        asyncio.run(environment._verify_repository_ready())
+        self.assertEqual(environment.repository_readiness, {
+            "baseCommitHash": "a" * 40,
+            "headCommit": "a" * 40,
+            "headTree": "b" * 40,
+        })
+        command = environment.exec.await_args.args[0]
+        self.assertIn("diff --quiet --cached", command)
+        self.assertIn("status --porcelain=v1 --untracked-files=all", command)
+        self.assertTrue(environment._repository_identity_verified)
+
+        environment._repository_identity_verified = False
+        environment.exec = mock.AsyncMock(
+            return_value=SimpleNamespace(return_code=1, stdout="")
+        )
+        with self.assertRaisesRegex(RuntimeError, "not clean"):
+            asyncio.run(environment._verify_repository_ready())
+
+        environment.exec = mock.AsyncMock(
+            return_value=SimpleNamespace(
+                return_code=0,
+                stdout=f"{'c' * 40}\n{'b' * 40}\n",
+            )
+        )
+        with self.assertRaisesRegex(RuntimeError, "invalid HEAD"):
+            asyncio.run(environment._verify_repository_ready())
 
 
 class PluginValueCodexTests(RuntimeFixture):
@@ -824,6 +1088,7 @@ class PluginValueCodexTests(RuntimeFixture):
         identity = validate_shared_runtime(self.build_runtime())
         environment = object.__new__(PluginValueDockerEnvironment)
         environment._container_identity_verified = True
+        environment._repository_identity_verified = True
         environment._shared_runtime = identity
         environment.default_user = "agent"
 
@@ -850,6 +1115,13 @@ class PluginValueCodexTests(RuntimeFixture):
         environment.exec = mock.AsyncMock(side_effect=execute)
         asyncio.run(self.make_agent().setup(environment))
         self.assertEqual(environment.exec.await_count, 5)
+
+    def test_setup_rejects_an_unverified_task_repository(self):
+        environment = object.__new__(PluginValueDockerEnvironment)
+        environment._container_identity_verified = True
+        environment._repository_identity_verified = False
+        with self.assertRaisesRegex(RuntimeError, "repository identity"):
+            asyncio.run(self.make_agent().setup(environment))
 
     def test_host_transient_cleanup_removes_only_known_paths(self):
         host_control = self.root / "host-control"
@@ -897,6 +1169,20 @@ class PluginValueCodexTests(RuntimeFixture):
         self.assertEqual(request["logsDir"], str(host_control.resolve()))
         self.assertEqual(list(agent_logs.iterdir()), [])
         self.assertTrue((host_control / "host-runner-result.json").is_file())
+
+    def test_darwin_permission_error_requires_independent_group_absence(self):
+        process = SimpleNamespace(pid=424242, wait=mock.AsyncMock())
+        with mock.patch("runtime.sys.platform", "darwin"), mock.patch(
+            "runtime.os.killpg", side_effect=PermissionError(1, "Operation not permitted")
+        ), mock.patch("runtime.subprocess.run") as ps:
+            ps.return_value = SimpleNamespace(stdout="1\n42\n")
+            asyncio.run(PluginValueCodex._terminate_subprocess(process))
+            process.wait.assert_awaited_once_with()
+            process.wait.reset_mock()
+            ps.return_value = SimpleNamespace(stdout="1\n424242\n")
+            with self.assertRaises(PermissionError):
+                asyncio.run(PluginValueCodex._terminate_subprocess(process))
+            process.wait.assert_not_awaited()
 
     def test_cancellation_terminates_the_entire_host_process_group(self):
         agent = self.make_agent()
@@ -954,11 +1240,12 @@ class RunOneScriptTests(RuntimeFixture):
             "      *hostRuntime*runner*) echo " + "d" * 64 + " ;;\n"
             f"      *manifestSha256*) echo {runtime_identity.manifest_sha256} ;;\n"
             f"      *treeSha256*) echo {runtime_identity.tree_sha256} ;;\n"
+            "      *baseCommitHash*) echo eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee ;;\n"
             "      *) exit 3 ;;\n"
             "    esac ;;\n"
             "  *pier-main.py)\n"
             "    shift\n"
-            "    if [ \"${1:-}\" = validate-inputs ]; then exit 0; fi\n"
+            "    if [ \"${1:-}\" = validate-inputs ]; then printf '%s\\n' '{\"baseCommitHash\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"}'; exit 0; fi\n"
             f"    {sys.executable} -c 'import json,os,sys; json.dump(sys.argv[1:], open(os.environ[\"CAPTURE\"], \"w\"))' \"$@\" ;;\n"
             "  *) exit 4 ;;\n"
             "esac\n",
@@ -1012,6 +1299,7 @@ class RunOneScriptTests(RuntimeFixture):
         self.assertIn("image_identity_path=" + str(IMAGE_LEDGER), arguments)
         self.assertIn("image_identity_sha256=" + IMAGE_LEDGER_SHA256, arguments)
         self.assertIn("expected_task_id=" + FIRST_TASK, arguments)
+        self.assertIn("expected_base_commit=" + "e" * 40, arguments)
         self.assertIn("execution_mode=preflight", arguments)
         task_option = arguments.index("--include-task-name")
         self.assertEqual(arguments[task_option + 1], FIRST_TASK)

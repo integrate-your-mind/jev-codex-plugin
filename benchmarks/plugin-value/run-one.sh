@@ -132,12 +132,17 @@ trap cleanup_launcher_bin 0 1 2 15
 PATH="$launcher_bin:/usr/bin:/bin:/usr/sbin:/sbin"
 export PATH
 
-PLUGIN_VALUE_PINNED_SITE_PACKAGES="$site_packages" \
+validated_inputs=$(PLUGIN_VALUE_PINNED_SITE_PACKAGES="$site_packages" \
 PLUGIN_VALUE_ADAPTER_PATH="$script_dir/runtime.py" \
   clean_python -X "pycache_prefix=$pycache_prefix" \
     "$script_dir/pier-main.py" validate-inputs \
     "$DEEPSWE_TASKS" "$task_metadata_path" "$task_metadata_sha256" \
-    "$task_id" "$mode" "$arm" "$job_name" "$schedule_path" "$schedule_sha256"
+    "$task_id" "$mode" "$arm" "$job_name" "$schedule_path" "$schedule_sha256")
+expected_base_commit=$(
+  clean_python -c \
+    'import json,re,sys; d=json.loads(sys.argv[1]); v=d.get("baseCommitHash"); isinstance(v,str) and re.fullmatch(r"[0-9a-f]{40}",v) or sys.exit("task base commit is not frozen"); print(v)' \
+    "$validated_inputs"
+)
 
 set -- run \
   --path "$DEEPSWE_TASKS" \
@@ -164,6 +169,7 @@ set -- run \
   --environment-kwarg image_identity_path="$image_identity_path" \
   --environment-kwarg image_identity_sha256="$image_identity_sha256" \
   --environment-kwarg expected_task_id="$task_id" \
+  --environment-kwarg expected_base_commit="$expected_base_commit" \
   --environment-kwarg execution_mode="$mode" \
   --environment-kwarg host_docker_path="$PLUGIN_VALUE_HOST_DOCKER" \
   --environment-kwarg host_docker_sha256="$host_docker_sha256" \

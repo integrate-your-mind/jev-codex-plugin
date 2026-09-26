@@ -1,13 +1,16 @@
 {
   "schemaVersion": "plugin-value-runtime-validation-v1",
-  "generatedAt": "2026-09-26T20:19:55Z",
-  "status": "source-validated-native-controls-pending",
+  "generatedAt": "2026-09-26T21:54:12.373213+00:00",
+  "status": "local-mcp-startup-fixed-hooks-and-evaluate-control-under-investigation",
   "controlsPassed": false,
   "readyForScored": false,
   "calls": {
     "scoredModel": 0,
-    "preflightModel": 0,
-    "jevProviderPreflight": 0
+    "preflightModel": null,
+    "knownCompletedSyntheticModelTurns": 3,
+    "preflightModelAccounting": "Counts here are completed model turns, not HTTP requests. Baseline v1 activity is unknown after ENOSPC; known completed turns are a lower bound. Every synthetic attempt remains outside the scored denominator.",
+    "jevProviderPreflight": null,
+    "jevProviderPreflightAccounting": "Unknown across all controls; no total inferred from preview calls, missing traces, tool catalog availability or hook completion."
   },
   "identities": {
     "scheduleSha256": "58a1cc48ce1fa705b593edeeee9a3c307f88ffbe4833d0a356734e76d43608dd",
@@ -27,14 +30,18 @@
       "pier-main.py": "49634bc47391198c8e5c45a94d1eb72185ffc10668c27dfdde6ac682707de20a"
     },
     "pendingSharedRuntimeFiles": {
-      "runtime.py": "c68b1c82354108f92a40081935bb0fa514f81a2aaf33e38f771898fd8721eeae",
-      "run-one.sh": "7c16d49aadfb5b8d2f335cbc6aa357cb984e444e20a68b005fdca70ed1911584",
-      "runtime-identity.json": "bad5c10d310b9b050b93aacaa57e2b6ba7a8a57ee33875a612379c060a3ae455",
-      "tests/runtime_test.py": "b889369e4ff41f5b31149e3d2c3bf7999886411bfa1b039e8f917a75f9ded19c",
-      "host-runner.mjs": "fd9e4648f19540f517def93ab54cf6be4d9ed6cac0985aadc0d82a3c67e4879e",
-      "pier-main.py": "e3de3a23c0989ae21fe582b94b5b6c35a132ac105097064f3084fb25e158bdda",
+      "runtime.py": "b32a77e550a46c18e7fd5986b57d911f3ffd9f8326aec4c61b845a57fdefe5ad",
+      "run-one.sh": "196b8d8334acc825555da5efd009a8c1ba1360c6d1adda6365d27460c63bced3",
+      "runtime-identity.json": "1522229fbc3c2f72375b5ac3c7812f5566b653653237c634af553a222ca01695",
+      "tests/runtime_test.py": "83cb70e5ecbdefbd883ed41696368309008981569ef183ea21384e139172e82b",
+      "host-runner.mjs": "da87ff002dfa849719032453ac807d82eb41604ceccf66022ec362ea821a94b9",
+      "pier-main.py": "e4a8c929804939b61fb3178d1e1d667aaaed9f6c523c07322028644a11423391",
       "image-identities.json": "3ec2e7b2a732720f43c76f03735057b44968afc4e2f7089862a7ab88694ea819",
-      "tests/host-runner.test.mjs": "d4bd56900e0014dbf896651f22369b50d31f14774ad5921559ae51248c328c16"
+      "tests/host-runner.test.mjs": "e6ebdeb2c1467f160aaad48edb94da5a3bbdddcfc7006d2b717a2fc196bbafd0",
+      "synthetic-native-control.mjs": "4c6d6deb1542285b27972bc46b14515e43151cc4d5521a55cae4fb7988bff2cc",
+      "tests/synthetic-native-control.test.mjs": "ae9994dfa0a5964251c28460e672b94fa1499360a54d3fb9794c06187edd5c69",
+      "task-runtime-metadata.json": "be07a30172faf2ac3213c920c7f8036881f1127707d5f7fc70610820aaef85ff",
+      "runtime-amendment-2026-09-26.md": "c25e74edc6a283596e7592c233381be8ab35d1415e97981d435987fe5bca30ce"
     },
     "sharedRuntime": {
       "manifestSha256": "a3a4b16d095d901fd0bbcfc6153c1fa9bd6777a077edb361e57cba16187cab36",
@@ -46,21 +53,23 @@
   },
   "staticChecks": {
     "status": "passed",
-    "nodeTests": "6/6 passed",
-    "pythonTests": "29/29 passed",
+    "nodeTests": "17/17 passed",
+    "pythonTests": "34/34 passed",
     "nodeSyntax": "passed",
     "pythonSyntax": "passed",
     "shellSyntax": "passed",
     "realPinnedBootstrap": "passed",
     "installedPluginInventory": "30/30 hash-verified files",
-    "sharedRuntimeOfflineBootstrap": "passed with non-temporary CODEX_HOME; native workspace-write sandbox remains unpassed"
+    "sharedRuntimeOfflineBootstrap": "passed with non-temporary CODEX_HOME; native workspace-write sandbox remains unpassed",
+    "syntheticDriverInputIdentity": "passed against identity 1522229fbc3c2f72375b5ac3c7812f5566b653653237c634af553a222ca01695 without Docker, network, model, or provider calls",
+    "scope": "Retained earlier source checkpoint; not a claim for currently edited verifier source."
   },
   "pendingSharedRuntimeRevision": {
-    "validatedAt": "2026-09-26T20:19:55Z",
-    "status": "independently-reviewed-source-and-bootstrap; native controls pending",
+    "validatedAt": "2026-09-26T21:28:00Z",
+    "status": "source-validated after pinned CommandExecutionSource correction; corrected baseline and treatment controls pending",
     "sourceOnly": true,
-    "pythonTests": "29/29 passed",
-    "nodeTests": "6/6 passed",
+    "pythonTests": "34/34 passed",
+    "nodeTests": "17/17 passed",
     "realPinnedBootstrap": "passed",
     "pluginTreeVerification": "30/30 files passed",
     "pythonSyntax": "passed",
@@ -72,25 +81,33 @@
     "modelCalls": 0,
     "jevProviderCalls": 0,
     "nativeControlsPassed": false,
-    "readyForScored": false
+    "readyForScored": false,
+    "syntheticDriverInputIdentity": "passed against coherent identity 1522229fbc3c2f72375b5ac3c7812f5566b653653237c634af553a222ca01695",
+    "taskMetadataAmendment": "Koota upstream 39-character commit retained with source blob/hash and repository-resolved 40-character effective commit"
   },
   "docker": {
     "daemonStatus": "running after bounded recovery",
     "daemonVersion": "29.8.0",
     "storageDriver": "overlayfs",
     "firstImagePresent": true,
-    "firstImagePresence": "verified before the daemon was stopped",
+    "firstImagePresence": "same digest rematerialized; repair receipt verifies nonempty representative source and Git metadata, expected clean HEAD, and no residual containers",
     "firstImageArchitecture": "amd64",
-    "firstImageSizeBytes": 3856016466
+    "firstImageSizeBytes": 3856016466,
+    "repairReceiptSha256": "8aedc5acc77e70ed089a81a7cdb42e8560005c72ac7cb82e8d65975a933b88cf"
   },
   "controls": {
-    "baselinePreflight": "failed-before-app-server in retained v4 attempt",
-    "treatmentPreflight": "not-run",
+    "baselineRemoteStartup": "passed in real Pier with preflightOnly=true; remote ready at file:///app; baseline hooks and MCP empty; no model/provider call",
+    "baselinePierTrial": "failed after the agent preflight during collect because the retained image git base object was inaccessible",
+    "treatmentPreflight": "not-run on this revision",
     "sharedRuntimeOfflineBootstrap": "passed",
-    "nativeWorkspaceSandbox": "unproven; default sandbox launch failed before child",
-    "nativeCommandPatch": "not-run",
-    "noopVerifier": "not-run",
-    "oracleVerifier": "not-run"
+    "nativeModelCommandPatch": "passed in baseline v3; synthetic nonce independently verified in a separate offline container",
+    "syntheticBaseline": "v1 ENOSPC unknown activity; v2 checker failure retained; v3 passed; corrected local registration baseline rerun pending",
+    "syntheticTreatment": "v1/v2 MCP startup failed; v3 MCP loaded and turn completed but classification was preview-only and all 15 hooks failed; native control remains failed",
+    "noopVerifier": "first configuration rejected agent-image substitution; v2 snapshot omitted registry manifest files; v3 built and started original verifier but rejected Compose default image name; explicit image binding fixed, repaired control pending",
+    "oracleVerifier": "not-started",
+    "repositoryReadinessGate": "real original-image no-op control passed agent setup and collection before the separate verifier construction failure; all scored tasks still require their own pre-agent integrity check",
+    "taskMetadataAmendment": "source-validated and authenticated; pinned upstream value preserved separately from repository-resolved effective commit",
+    "baselineNativeV2": "failed control: model turn completed with two remote /app commands and one patch, then the driver rejected pinned source unifiedExecStartup; receipt retained and no verifier verdict accepted"
   },
   "priorAttempts": [
     {
@@ -131,16 +148,15 @@
     }
   ],
   "blocker": {
-    "kind": "native-workspace-sandbox",
-    "observedFailure": "The initial default-sandbox probe used obsolete CLI subcommand syntax and failed in bubblewrap before any child command. A separate named workspace-profile probe with explicit legacy Landlock was rejected before its child. Neither establishes a passing workspace-write command or patch control.",
-    "daemonRecovered": true,
+    "kind": "corrected-native-baseline-rerun-treatment-and-verifier-controls",
+    "observedFailure": "Baseline v2 proved remote command and patch execution but remains a failed control because the driver expected a non-schema source label. Pinned Codex 0.155 defines userShell, unifiedExecStartup, and unifiedExecInteraction; the corrected validator accepts only the two model-triggered unified-exec values and rejects userShell or unknown values.",
     "scoredRunsStarted": false
   },
-  "nextRequiredControl": "Resolve the pinned container sandbox namespace failure without weakening the frozen security boundary, then pass real command and patch, baseline, treatment, noop-verifier, and oracle-verifier controls before setting executionReady true.",
+  "nextRequiredControl": "Run a fresh corrected synthetic baseline v3 and treatment control through the independent offline verifier, then run the repaired DeepSWE pre-agent repository gate and Pier collection before any scored model call.",
   "independentReview": {
-    "status": "accepted-as-pending-source-checkpoint",
-    "pythonTestsPassed": 29,
-    "nodeTestsPassed": 6,
+    "status": "prior blocker review passed; focused pinned CommandExecutionSource regression passed; fresh native controls pending",
+    "pythonTestsPassed": 34,
+    "nodeTestsPassed": 17,
     "modelCalls": 0,
     "providerCalls": 0,
     "dockerCalls": 0,
@@ -180,6 +196,80 @@
       "positiveFileControl": "not-executed",
       "negativeFileControl": "skipped because positive prerequisite failed",
       "privateReceiptSha256": "0c496fec17434422fd459e7e37d00c5eee5d2c88b129a09e771930d8b048781b"
+    },
+    {
+      "id": "real-pier-baseline-startup-v8",
+      "status": "remote-startup-passed-pier-collect-failed",
+      "sandboxPolicy": "startup-only thread workspace-write; no turn/model was started",
+      "environment": "deep-swe ready; cwd file:///app; shell bash at /bin/bash",
+      "pluginSurface": "baseline hooks empty; MCP empty",
+      "modelCalls": 0,
+      "providerCalls": 0,
+      "collectionFailure": "git diff could not access the expected base object because retained image repository bytes were unavailable",
+      "privateSummarySha256": "89379926d13ea997c80cda2b1e520b56b6b0357ae99378db2e555c37632f73fd"
+    },
+    {
+      "id": "synthetic-native-baseline-v2",
+      "status": "failed-control-after-completed-model-turn",
+      "scored": false,
+      "modelTurn": "completed",
+      "remoteEvidence": "two completed commandExecution items at /app with exit code 0 and source unifiedExecStartup; one completed fileChange for /app/patch-target.txt",
+      "controlFailure": "driver rejected pinned CommandExecutionSource unifiedExecStartup because it expected agent",
+      "verifierVerdict": "not accepted",
+      "jevProviderCalls": 0,
+      "controlManifestSha256": "7e9209a1a7a097c8c8856b53022a4bc1d7b9a05ba42fddc8a282a4606446a367",
+      "runtimeEvidenceSha256": "bf537528fe460ffd34f91f08a346f8fce5b0f7953e079163d1112e3ef86ede5f"
     }
-  ]
+  ],
+  "runtimeChoice": {
+    "turnSandboxPolicy": {
+      "type": "externalSandbox",
+      "networkAccess": "restricted"
+    },
+    "remoteSelection": "include_local=false plus the same sole deep-swe environment on thread/start and turn/start",
+    "evidence": "Pinned Codex 0.155.0 schema supports this shape; real startup transport passed with remote ready, file:///app, and /bin/bash. The exact choice is frozen in runtime-amendment-2026-09-26.md.",
+    "remainingDecision": "none for this cohort; native controls must still pass before scoring",
+    "dangerFullAccessUsed": false,
+    "amendmentSha256": "c25e74edc6a283596e7592c233381be8ab35d1415e97981d435987fe5bca30ce"
+  },
+  "startupEvidence": {
+    "auditReceiptSha256": "3518f20613542e308c77f713e848b1d52f36a110561b38706e09c54759cd0c78",
+    "v8SummarySha256": "89379926d13ea997c80cda2b1e520b56b6b0357ae99378db2e555c37632f73fd",
+    "v8ElapsedSecondsApprox": 16,
+    "v8AgentTransportPassed": true,
+    "v8PierCollectPassed": false,
+    "v8ModelCalls": 0,
+    "v8ProviderCalls": 0,
+    "v8TaskContainerRemoved": true
+  },
+  "nativeControlAudit": {
+    "path": "native-controls-2026-09-26.json",
+    "sha256": "cde5964a3935d7ce39a787230c5fa9d459054640ed9263c9c222704e42b60777"
+  },
+  "latestHostSourceChecks": {
+    "nodeVersion": "22.23.2",
+    "testsPassed": 18,
+    "rootIndependentRun": true,
+    "runtimeIdentitySha256": "f7a40fa05deb6c48c9d04eca0488b226149130a110dc7bdf0c590212419212b2",
+    "nativeTreatmentControl": "failed; see audit"
+  },
+  "currentSourceCheckpoint": {
+    "checkedAt": "2026-09-26T22:08:52.183114+00:00",
+    "scope": "source only; native controls incomplete; no scored inference",
+    "runtimeIdentitySha256": "f82ea58be9a0f50d552b6aebde543cde9f52a70bc16e4ef9389c9000daaca344",
+    "pythonTests": "39/39 root independent pass after Darwin process-group absence repair; narrow independent source review found no blockers",
+    "nodeTests": "19/19 root independent pass on Node22.23.2",
+    "sourceHashes": {
+      "runtime.py": "f33ad3fb4c189610a6edcf037f221d8398668ab8c26b5ae6784a785b1b5250ce",
+      "pier-main.py": "e4a8c929804939b61fb3178d1e1d667aaaed9f6c523c07322028644a11423391",
+      "run-one.sh": "196b8d8334acc825555da5efd009a8c1ba1360c6d1adda6365d27460c63bced3",
+      "host-runner.mjs": "92d5c832be69a5a98a187c098d67947cfb08d2bbe9b1cc8c81a009c77caf7e82",
+      "synthetic-native-control.mjs": "6a3cc8f99104f1166e0dcd381e2be3a3f3ca093e038cb268ba33c62a96ed764e",
+      "tests/runtime_test.py": "ea1fb8836e795bebf5940b8dd61a965bf2fa590d0b86ec3dc39fe6667098a232",
+      "tests/host-runner.test.mjs": "a0d6f398408273d203e990da89668b52e67c26776fb78791383e9722eb1675f0",
+      "tests/synthetic-native-control.test.mjs": "d91d73fc25d774cbf00e4d1ff604944eb61a213260557a174b0bc170d25618e3"
+    },
+    "verifierMetadata": "20/20 selected Dockerfiles match one corresponding frozen image ledger base; no oracle contents output",
+    "preservedFailures": "worker36/37 and root37/38 cancellation checks raised Darwin EPERM after SIGTERM; fixed source uses independent OS process-group absence evidence; prior failures are not erased"
+  }
 }

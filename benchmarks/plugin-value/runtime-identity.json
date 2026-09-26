@@ -1,6 +1,6 @@
 {
   "schemaVersion": "plugin-value-runtime-identity-v1",
-  "status": "pending-native-controls",
+  "status": "pending-native-model-and-verifier-controls",
   "executionReady": false,
   "agent": {
     "cli": "codex-cli 0.155.0",
@@ -11,7 +11,8 @@
   "dataset": {
     "deepSweCommit": "0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
     "scheduleSha256": "58a1cc48ce1fa705b593edeeee9a3c307f88ffbe4833d0a356734e76d43608dd",
-    "taskRuntimeMetadataSha256": "91e48b4c5eca1156d5128111f16536d2bea7b4bf75ea8b8cb8ffa562b8c24708",
+    "taskRuntimeMetadataSha256": "be07a30172faf2ac3213c920c7f8036881f1127707d5f7fc70610820aaef85ff",
+    "taskRuntimeMetadataStatus": "audited same-commit amendment: the pinned upstream Koota task TOML retains its 39-character value while runtime metadata binds the repository-resolved 40-character commit",
     "taskCount": 20,
     "imageIdentityLedger": "image-identities.json",
     "imageIdentityLedgerSha256": "3ec2e7b2a732720f43c76f03735057b44968afc4e2f7089862a7ab88694ea819",
@@ -27,7 +28,7 @@
     "nodeVersion": "22.23.2",
     "manifestSha256": "a3a4b16d095d901fd0bbcfc6153c1fa9bd6777a077edb361e57cba16187cab36",
     "treeSha256": "32225cab4ec5d69ec0e54ef484b73357398ea23238cfb65f8860d5900bbaf175",
-    "status": "sandbox-capable-artifact-offline-bootstrap-passed-native-workspace-control-pending"
+    "status": "sandbox-capable-artifact-offline-bootstrap-and-remote-startup-passed-native-model-controls-pending"
   },
   "hostRuntime": {
     "platform": "darwin/arm64",
@@ -44,7 +45,7 @@
       "sha256": "49d98ab806e8678cd6341b09dad6389e5bcd8a46513de7651053bee3d8366e8d"
     },
     "runner": {
-      "sha256": "fd9e4648f19540f517def93ab54cf6be4d9ed6cac0985aadc0d82a3c67e4879e"
+      "sha256": "92d5c832be69a5a98a187c098d67947cfb08d2bbe9b1cc8c81a009c77caf7e82"
     },
     "pathPolicy": "Operators supply absolute executable paths; content hashes and versions above are enforced before use. App-server hook and MCP PATH resolves node only through a host-control symlink to the pinned Node executable."
   },
@@ -94,8 +95,8 @@
       "version": "3.12.13",
       "sha256": "fe46716a94d8efa4514feb3c39ba3e270deee2187556986f6ddcff54aba7bb9a"
     },
-    "adapterSha256": "c68b1c82354108f92a40081935bb0fa514f81a2aaf33e38f771898fd8721eeae",
-    "launcherSha256": "e3de3a23c0989ae21fe582b94b5b6c35a132ac105097064f3084fb25e158bdda",
+    "adapterSha256": "f33ad3fb4c189610a6edcf037f221d8398668ab8c26b5ae6784a785b1b5250ce",
+    "launcherSha256": "e4a8c929804939b61fb3178d1e1d667aaaed9f6c523c07322028644a11423391",
     "pierDistribution": {
       "version": "0.3.1",
       "recordSha256": "45818d9724e3733ca8e2a08f9b2f8661eac9f31c5ab2869faacd41be6627bbd4",
@@ -120,7 +121,49 @@
       "classification": "operational temporary location excluded from measured study conditions",
       "policy": "owner-only directory disjoint from jobs, frozen task inputs, the Pier runtime, and the shared task runtime"
     },
-    "runOneSha256": "7c16d49aadfb5b8d2f335cbc6aa357cb984e444e20a68b005fdca70ed1911584",
-    "pythonCachePolicy": "The authenticated adapter is compiled from source bytes; Pier runs with -B and an exclusive empty pycache prefix."
+    "runOneSha256": "196b8d8334acc825555da5efd009a8c1ba1360c6d1adda6365d27460c63bced3",
+    "pythonCachePolicy": "The authenticated adapter is compiled from source bytes; Pier runs with -B and an exclusive empty pycache prefix.",
+    "environmentSelection": {
+      "configuration": "include_local=true registers the host MCP environment while default=deep-swe; thread and turn each select only the explicit deep-swe environment",
+      "requiredRemoteIdentity": "ready exec-server reporting file:///app and a target-native absolute shell path"
+    },
+    "turnSandboxPolicy": {
+      "type": "externalSandbox",
+      "networkAccess": "restricted",
+      "status": "frozen before inference; supported by pinned Codex 0.155.0 schema and startup transport; native model command and patch controls pending",
+      "protocolDisposition": "frozen by runtime-amendment-2026-09-26.md before any synthetic or scored model inference"
+    },
+    "runtimeAmendment": {
+      "path": "runtime-amendment-2026-09-26.md",
+      "sha256": "c25e74edc6a283596e7592c233381be8ab35d1415e97981d435987fe5bca30ce",
+      "status": "frozen before any synthetic native model control or scored inference"
+    },
+    "localMcpAmendment": {
+      "path": "runtime-amendment-local-mcp-2026-09-26.md",
+      "sha256": "19b2e192797714555428f45e80c349d3673f345fdec4356efd22a7c8dba0355f",
+      "status": "supersedes only the earlier include_local registry setting after treatment v2 confirmed the pinned Codex local-stdio failure; frozen before corrected treatment or scored inference"
+    },
+    "repositoryReadiness": {
+      "timing": "after digest-pinned container identity and before agent setup or model inference",
+      "policy": "require exact metadata base commit at HEAD, resolvable commit and tree objects, non-empty tracked content, and clean index, worktree, and untracked state",
+      "status": "passed in original-task no-op agent setup before separate verifier construction failure; every scored task still requires its own check"
+    },
+    "verifierBuildAmendment": {
+      "path": "runtime-amendment-verifier-2026-09-26.md",
+      "sha256": "26329e40d96b3615f62b35b8100d241acddb6f373b14f8a1e584a5fb40bef8c4",
+      "status": "frozen before repaired no-model verifier controls and before scoring"
+    }
+  },
+  "syntheticNativeControl": {
+    "schemaVersion": "plugin-value-synthetic-native-control-v1",
+    "driver": "synthetic-native-control.mjs",
+    "driverSha256": "6a3cc8f99104f1166e0dcd381e2be3a3f3ca093e038cb268ba33c62a96ed764e",
+    "testSha256": "d91d73fc25d774cbf00e4d1ff604944eb61a213260557a174b0bc170d25618e3",
+    "status": "baseline v3 passed under previous registration; treatment v3 failed with preview-only classification and failed native hooks; diagnostics and explicit evaluate prompt source repaired, host/remote cwd incompatibility unresolved",
+    "scope": "fresh nonce workspace hides task image /app; no DeepSWE source or solution is mounted",
+    "baseImageTaskIdentity": "ipython-session-bundle-replay",
+    "baseImageDigest": "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
+    "agentBoundary": "linux/amd64 digest-pinned image, network none, secretless, runtime bundle read-only",
+    "verifierBoundary": "fresh offline container, submission and hidden oracle read-only, agent runtime absent"
   }
 }
