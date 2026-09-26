@@ -10,6 +10,9 @@ These benchmarks measure whether Jev changes an agent's independently verified r
 - [Plugin feature diagnostics](plugin-features/README.md): 16 deterministic checks against the current and experimental repaired source. The current source satisfies 11; the repair satisfies 16. These use simulated provider responses and establish integration behavior, not Jev accuracy or coding-task quality.
 - [Research-to-test record](plugin-value/research.md): the completed GPT-6 Pro/Deep Research review, 31 research questions, reproduced payload defects, and primary documentation.
 
+- [Live candidate delivery/action study](plugin-development/experiment/results-live-v1/REPORT.md): 16 calls across four authored cases, with actual provider IDs retained privately. Released hook delivery was 0/8; repaired delivery and independently verified fixture actions were 8/8. Input tokens rose 2.61%; this is a bundled component result, not improved Codex task completion.
+- [Explicit outcome storage contract](plugin-development/explicit-outcomes/README.md): all four caller claims were stored faithfully as supported, while independent evidence supported only one. Ten offline regressions keep caller claims and verified effects separate.
+
 - [72-call decision evaluation](results/2026-09-26-plugin-decisions-v1/README.md): provider decisions matched the authored oracle in both arms; the repair delivered all 32 assessed choices and used 28.05% fewer input tokens. This does not establish improved task completion.
 
 ## Reuse
@@ -17,7 +20,7 @@ These benchmarks measure whether Jev changes an agent's independently verified r
 - [Agent-neutral task pack and study protocol](cross-agent/README.md): Harbor/Pier task format, independent verifier environments, deterministic 20-task DeepSWE selection, and a comparison contract for Codex, QQ, and other adapters.
 - [Native Codex paired runner](../source/jev-workflows/benchmarks/paired-v1/README.md): tests the actual installed plugin and lifecycle hooks with a fixed model, including a two-turn changed-requirements task.
 - [Plugin value protocol](plugin-value/protocol.md) and [40-trial schedule](plugin-value/schedule.json): fixed-model task-quality comparison under development. A schedule is not an executed result.
-- [Native runtime checkpoint](plugin-value/runtime-review.md): a native baseline completed remote commands and a patch, then passed independent nonce verification. Treatment now loads its MCP tools but still fails the hook/provider control; original task-verifier controls remain incomplete and scoring is disabled. [Every control attempt is recorded](plugin-value/native-controls-2026-09-26.json).
+- [Native runtime checkpoint](plugin-value/runtime-review.md): baseline and treatment v4 both passed remote commands, patching and independent nonce verification. The original DeepSWE verifier still cannot execute its tests because of damaged dependencies in the local image; scoring remains disabled. [Every control attempt is recorded](plugin-value/native-controls-2026-09-26.json).
 - [Pinned offline runtime builder](plugin-value/runtime-builder/README.md): reproducible source and nine offline checks for the shared Linux runtime; a build is not proof of native task completion.
 - [Native runtime amendment](plugin-value/runtime-amendment-2026-09-26.md): fixed execution boundary and independent control requirements recorded before model inference.
 - [Development selection rule](plugin-value/development-selection.md) and [held-out reservation](plugin-value/heldout-selection.json): prospective feature-selection criteria and a disjoint 20-task sample. Execution is pending.

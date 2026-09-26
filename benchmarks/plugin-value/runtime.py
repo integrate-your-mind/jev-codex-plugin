@@ -37,11 +37,29 @@ RUNTIME_MANIFEST_SCHEMA = "plugin-value-shared-runtime-v1"
 RUNTIME_MOUNT = PurePosixPath("/opt/jev-codex-runtime")
 RUNTIME_MANIFEST_NAME = "runtime-manifest.json"
 IMAGE_LEDGER_SCHEMA = "jev-plugin-value-image-identities-v1"
+IMAGE_RECOVERY_SCHEMA = "jev-plugin-value-image-recovery-v1"
+RESTORED_FILES_SCHEMA = "jev-plugin-value-restored-files-v1"
+RECOVERY_BUILD_RECEIPT_SCHEMA = "jev-plugin-value-image-build-receipt-v2"
+REGISTRY_LAYER_EVIDENCE_SCHEMA = "jev-plugin-value-registry-audit-v2"
+RECOVERY_RECIPE_SCHEMA = "jev-plugin-value-image-recipe-v2"
 _CONTAINER_ID = re.compile(r"^[0-9a-f]{12,64}$")
 _CONTAINER_USER = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
 _TRIAL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _SHA256_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+_FORBIDDEN_CONTAINER_ENV = frozenset(
+    {
+        "TYPESAFE_API_KEY",
+        "JEV_API_KEY",
+        "JEV_API_KEY_FILE",
+        "OPENAI_API_KEY",
+        "CODEX_ACCESS_TOKEN",
+    }
+)
+_RECOVERY_IMAGE_REF = re.compile(
+    r"^jev-plugin-value-recovery/[a-z0-9]+(?:[._-][a-z0-9]+)*"
+    r"(?::[A-Za-z0-9][A-Za-z0-9_.-]{0,127})$"
+)
 _FROZEN_TASK_IDS = frozenset(
     {
         "adaptix-name-mapping-aliases",
@@ -102,6 +120,47 @@ class TaskImageIdentity:
     tagged_image: str
     pinned_image: str
     manifest_digest: str
+    config_digest: str
+    layer_digests: tuple[str, ...]
+    layer_sizes: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class RestoredFileIdentity:
+    path: PurePosixPath
+    mode: str
+    uid: int
+    gid: int
+    size: int
+    sha256: str
+
+
+@dataclass(frozen=True)
+class RestoredFilesIdentity:
+    packages: tuple[str, ...]
+    files: tuple[RestoredFileIdentity, ...]
+
+
+@dataclass(frozen=True)
+class ResolvedTaskImage:
+    source: TaskImageIdentity
+    effective_reference: str
+    effective_image_id: str | None
+    expected_rootfs_diff_ids: tuple[str, ...] | None
+    recovery_manifest_sha256: str
+    source_layer_digests: tuple[tuple[str, str], ...] = ()
+    repair_layer_inventory_sha256: str | None = None
+    restored_files: tuple[RestoredFileIdentity, ...] = ()
+    registry_layer_evidence_sha256: str | None = None
+    restored_files_artifact_sha256: str | None = None
+    build_receipt_sha256: str | None = None
+    recipe_artifact_sha256: str | None = None
+    dockerfile_sha256: str | None = None
+    recovery_git_head: str | None = None
+
+    @property
+    def is_recovered(self) -> bool:
+        return bool(self.restored_files)
 
 
 def _sha256_file(path: Path) -> str:
@@ -347,19 +406,41 @@ def _load_image_identities(
             raise ValueError(f"manifest artifact sha256 mismatch for {task_id}")
         artifact_json = _json_object(artifact, label=f"manifest artifact for {task_id}")
         config = artifact_json.get("config")
+        layers = artifact_json.get("layers")
         if (
             artifact_json.get("schemaVersion") != 2
             or artifact_json.get("mediaType") != item.get("mediaType")
             or not isinstance(config, dict)
             or config.get("digest") != config_digest
+            or not isinstance(layers, list)
+            or not layers
         ):
             raise ValueError(f"manifest artifact metadata mismatch for {task_id}")
+        layer_digests = tuple(
+            layer.get("digest") if isinstance(layer, dict) else None for layer in layers
+        )
+        layer_sizes = tuple(
+            layer.get("size") if isinstance(layer, dict) else None for layer in layers
+        )
+        if any(
+            not isinstance(digest, str) or not _SHA256_DIGEST.fullmatch(digest)
+            for digest in layer_digests
+        ):
+            raise ValueError(f"manifest artifact layer identity is invalid for {task_id}")
+        if any(
+            not isinstance(size, int) or isinstance(size, bool) or size < 0
+            for size in layer_sizes
+        ):
+            raise ValueError(f"manifest artifact layer size is invalid for {task_id}")
 
         result[task_id] = TaskImageIdentity(
             task_id=task_id,
             tagged_image=tagged_image,
             pinned_image=f"{repository}@{manifest_digest}",
             manifest_digest=manifest_digest,
+            config_digest=config_digest,
+            layer_digests=layer_digests,
+            layer_sizes=layer_sizes,
         )
 
     if set(result) != _FROZEN_TASK_IDS:
@@ -367,12 +448,795 @@ def _load_image_identities(
     return result
 
 
+def _bound_artifact(
+    root: Path,
+    relative_value: Any,
+    expected_sha256: Any,
+    *,
+    label: str,
+) -> Path:
+    relative = _safe_relative_path(relative_value, label=label)
+    if not isinstance(expected_sha256, str) or not _SHA256.fullmatch(expected_sha256):
+        raise ValueError(f"{label} sha256 is invalid")
+    candidate = root.joinpath(*relative.parts)
+    resolved = _require_inside(root, candidate, label=label)
+    if candidate.is_symlink() or not resolved.is_file():
+        raise ValueError(f"{label} must be a regular file")
+    if _sha256_file(resolved) != expected_sha256:
+        raise ValueError(f"{label} sha256 mismatch")
+    return resolved
+
+
+def _restored_file_path(
+    value: Any,
+    *,
+    root: PurePosixPath,
+    packages: tuple[str, ...],
+) -> PurePosixPath:
+    if not isinstance(value, str) or not value.startswith("/"):
+        raise ValueError("restored file path must be absolute")
+    if any(ord(character) < 0x20 for character in value):
+        raise ValueError("restored file path contains a control character")
+    path = PurePosixPath(value)
+    if path.as_posix() != value or path == PurePosixPath("/") or ".." in path.parts:
+        raise ValueError("restored file path must be normalized")
+    if root not in path.parents:
+        raise ValueError("restored file path escapes the reviewed site-packages root")
+    relative = path.relative_to(root)
+    if len(relative.parts) < 2:
+        raise ValueError("restored file path must identify a package file")
+    package_root = relative.parts[0]
+    allowed_roots: set[str] = set()
+    allowed_dist_info: list[re.Pattern[str]] = []
+    for package in packages:
+        allowed_roots.add(re.sub(r"[-.]+", "_", package).lower())
+        distribution = re.sub(r"[-_.]+", "-", package)
+        allowed_dist_info.append(
+            re.compile(
+                rf"{re.escape(distribution)}-[A-Za-z0-9_.+-]+\.dist-info",
+                flags=re.IGNORECASE,
+            )
+        )
+    if package_root not in allowed_roots and not any(
+        pattern.fullmatch(package_root) for pattern in allowed_dist_info
+    ):
+        raise ValueError("restored file path is outside the reviewed package allowlist")
+    return path
+
+
+def _load_restored_files(
+    artifact_path: Path,
+) -> RestoredFilesIdentity:
+    artifact = _json_object(artifact_path, label="restored-files artifact")
+    if set(artifact) != {"schemaVersion", "root", "packages", "files"}:
+        raise ValueError("restored-files artifact has unexpected or missing fields")
+    if artifact["schemaVersion"] != RESTORED_FILES_SCHEMA:
+        raise ValueError("restored-files artifact schema is not supported")
+    if artifact["root"] != "/usr/local/lib/python3.12/site-packages":
+        raise ValueError("restored-files artifact has an unexpected site-packages root")
+    packages_value = artifact["packages"]
+    if (
+        not isinstance(packages_value, list)
+        or not packages_value
+        or any(
+            not isinstance(package, str)
+            or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", package) is None
+            for package in packages_value
+        )
+        or packages_value != sorted(set(packages_value))
+    ):
+        raise ValueError("restored-files artifact packages must be sorted and unique")
+    packages = tuple(packages_value)
+    root = PurePosixPath(artifact["root"])
+    files = artifact["files"]
+    if not isinstance(files, list) or not files:
+        raise ValueError("restored-files artifact must contain repaired files")
+
+    result: list[RestoredFileIdentity] = []
+    observed_paths: list[str] = []
+    required_keys = {"path", "mode", "uid", "gid", "size", "sha256"}
+    for item in files:
+        if not isinstance(item, dict) or set(item) != required_keys:
+            raise ValueError("restored-files artifact contains an invalid entry")
+        path = _restored_file_path(item["path"], root=root, packages=packages)
+        mode = item["mode"]
+        uid = item["uid"]
+        gid = item["gid"]
+        size = item["size"]
+        checksum = item["sha256"]
+        if not isinstance(mode, str) or re.fullmatch(r"0[0-7]{3}", mode) is None:
+            raise ValueError(f"restored file mode is invalid for {path}")
+        if int(mode, 8) & 0o7000:
+            raise ValueError(f"restored file mode is privileged for {path}")
+        if int(mode, 8) & 0o022:
+            raise ValueError(f"restored file mode is group/world writable for {path}")
+        if not isinstance(uid, int) or isinstance(uid, bool) or uid < 0:
+            raise ValueError(f"restored file uid is invalid for {path}")
+        if not isinstance(gid, int) or isinstance(gid, bool) or gid < 0:
+            raise ValueError(f"restored file gid is invalid for {path}")
+        if not isinstance(size, int) or isinstance(size, bool) or size < 0:
+            raise ValueError(f"restored file size is invalid for {path}")
+        if not isinstance(checksum, str) or not _SHA256.fullmatch(checksum):
+            raise ValueError(f"restored file sha256 is invalid for {path}")
+        observed_paths.append(path.as_posix())
+        result.append(
+            RestoredFileIdentity(
+                path=path,
+                mode=mode,
+                uid=uid,
+                gid=gid,
+                size=size,
+                sha256=checksum,
+            )
+        )
+    if observed_paths != sorted(set(observed_paths)):
+        raise ValueError("restored-files artifact paths must be sorted and unique")
+    return RestoredFilesIdentity(packages=packages, files=tuple(result))
+
+
+def _package_key(package: str) -> str:
+    return re.sub(r"[-_.]+", "-", package).lower()
+
+
+def _registry_relative_path(value: Any, *, label: str) -> PurePosixPath:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{label} must be a non-empty path")
+    if any(ord(character) < 0x20 for character in value):
+        raise ValueError(f"{label} contains a control character")
+    while value.startswith("./"):
+        value = value[2:]
+    path = PurePosixPath(value)
+    if (
+        path.is_absolute()
+        or path == PurePosixPath(".")
+        or ".." in path.parts
+        or path.as_posix() != value
+    ):
+        raise ValueError(f"{label} is not a normalized relative path")
+    return path
+
+
+def _restored_package_roots(
+    restored: RestoredFilesIdentity,
+) -> dict[str, tuple[PurePosixPath, ...]]:
+    site_root = PurePosixPath("usr/local/lib/python3.12/site-packages")
+    file_roots = {
+        item.path.relative_to("/").relative_to(site_root).parts[0]
+        for item in restored.files
+    }
+    result: dict[str, tuple[PurePosixPath, ...]] = {}
+    for package in restored.packages:
+        package_key = _package_key(package)
+        import_root = re.sub(r"[-.]+", "_", package).lower()
+        if import_root not in file_roots:
+            raise ValueError("restored package inventory omits its import root")
+        dist_info = sorted(
+            root
+            for root in file_roots
+            if root.lower().startswith(package_key + "-")
+            and root.lower().endswith(".dist-info")
+        )
+        if len(dist_info) != 1:
+            raise ValueError("restored package inventory must contain one dist-info root")
+        result[package_key] = (
+            site_root / import_root,
+            site_root / dist_info[0],
+        )
+    return result
+
+
+def _whiteout_affects_roots(
+    value: Any,
+    roots: tuple[PurePosixPath, ...],
+) -> bool:
+    path = _registry_relative_path(value, label="registry whiteout path")
+    name = path.name
+    if not name.startswith(".wh."):
+        raise ValueError("registry whiteout path is not a whiteout")
+    if name == ".wh..wh..opq":
+        target = path.parent
+    else:
+        target_name = name.removeprefix(".wh.")
+        if not target_name:
+            raise ValueError("registry whiteout target is empty")
+        target = path.parent / target_name
+    return any(_posix_paths_overlap(target, root) for root in roots)
+
+
+def _validate_registry_layer_evidence(
+    artifact_path: Path,
+    *,
+    source: TaskImageIdentity,
+    source_layer_digests: Mapping[str, str],
+    restored: RestoredFilesIdentity,
+) -> None:
+    evidence = _json_object(artifact_path, label="registry-layer evidence")
+    required_keys = {
+        "schemaVersion",
+        "repository",
+        "manifestDigest",
+        "configDigest",
+        "sourceLayerDigests",
+        "sourceLayerIndexes",
+        "laterLayers",
+        "uniqueLaterLayerCount",
+        "allLaterLayerDigestsVerified",
+        "allAncestorWhiteoutsRecorded",
+        "whiteoutRegression",
+    }
+    if set(evidence) != required_keys:
+        raise ValueError("registry-layer evidence has unexpected or missing fields")
+    if evidence["schemaVersion"] != REGISTRY_LAYER_EVIDENCE_SCHEMA:
+        raise ValueError("registry-layer evidence schema is not supported")
+    repository = source.pinned_image.rsplit("@", 1)[0]
+    if repository.startswith("public.ecr.aws/"):
+        repository = repository.removeprefix("public.ecr.aws/")
+    if (
+        evidence["repository"] != repository
+        or evidence["manifestDigest"] != source.manifest_digest
+        or evidence["configDigest"] != source.config_digest
+    ):
+        raise ValueError("registry-layer evidence does not match the source image")
+    package_keys = set(source_layer_digests)
+    source_indexes = evidence["sourceLayerIndexes"]
+    if (
+        evidence["sourceLayerDigests"] != dict(source_layer_digests)
+        or not isinstance(source_indexes, dict)
+        or set(source_indexes) != set(source_layer_digests.values())
+        or evidence["allLaterLayerDigestsVerified"] is not True
+        or evidence["allAncestorWhiteoutsRecorded"] is not True
+    ):
+        raise ValueError("registry-layer evidence package coverage is invalid")
+
+    package_indexes: dict[str, int] = {}
+    for package, expected_digest in source_layer_digests.items():
+        index = source_indexes[expected_digest]
+        if (
+            not isinstance(index, int)
+            or isinstance(index, bool)
+            or index < 0
+            or index >= len(source.layer_digests)
+            or source.layer_digests[index] != expected_digest
+        ):
+            raise ValueError("registry source-layer identity does not match the manifest")
+        package_indexes[package] = index
+
+    later_item_keys = {
+        "digest",
+        "compressedSha256",
+        "contentLength",
+        "digestVerified",
+        "matchCount",
+        "whiteoutCount",
+        "matches",
+        "whiteouts",
+    }
+    first_source_index = min(package_indexes.values())
+    expected_layers = tuple(
+        zip(
+            source.layer_digests[first_source_index + 1 :],
+            source.layer_sizes[first_source_index + 1 :],
+            strict=True,
+        )
+    )
+    later_layers = evidence["laterLayers"]
+    if (
+        not isinstance(later_layers, list)
+        or evidence["uniqueLaterLayerCount"] != len(expected_layers)
+        or len(later_layers) != len(expected_layers)
+    ):
+        raise ValueError("registry later-layer coverage is incomplete")
+    package_roots = _restored_package_roots(restored)
+    restored_paths = {
+        item.path.relative_to("/") for item in restored.files
+    }
+    for item, (expected_digest, expected_size) in zip(
+        later_layers, expected_layers, strict=True
+    ):
+        if not isinstance(item, dict) or set(item) != later_item_keys:
+            raise ValueError("registry later-layer evidence is invalid")
+        matches = item["matches"]
+        whiteouts = item["whiteouts"]
+        if (
+            item["digest"] != expected_digest
+            or item["compressedSha256"] != expected_digest.removeprefix("sha256:")
+            or item["contentLength"] != expected_size
+            or item["digestVerified"] is not True
+            or not isinstance(matches, list)
+            or item["matchCount"] != len(matches)
+            or not isinstance(whiteouts, list)
+            or item["whiteoutCount"] != len(whiteouts)
+        ):
+            raise ValueError("registry later-layer digest evidence is invalid")
+        source_packages = {
+            package
+            for package, digest in source_layer_digests.items()
+            if digest == expected_digest
+        }
+        normalized_matches = [
+            _registry_relative_path(value, label="registry package match")
+            for value in matches
+        ]
+        if normalized_matches and not source_packages:
+            raise ValueError("a later registry layer unexpectedly matches restored paths")
+        for match in normalized_matches:
+            if not any(
+                any(_posix_paths_overlap(match, root) for root in package_roots[package])
+                for package in source_packages
+            ):
+                raise ValueError("registry package match escapes its reviewed source layer")
+        for package in source_packages:
+            expected_files = {
+                path
+                for path in restored_paths
+                if any(root in path.parents for root in package_roots[package])
+            }
+            if not expected_files.issubset(set(normalized_matches)):
+                raise ValueError("registry source layer omits restored package files")
+        for whiteout in whiteouts:
+            if not isinstance(whiteout, dict) or set(whiteout) != {"path", *package_keys}:
+                raise ValueError("registry whiteout evidence is invalid")
+            for package in package_keys:
+                expected = _whiteout_affects_roots(
+                    whiteout["path"], package_roots[package]
+                )
+                if whiteout[package] is not expected:
+                    raise ValueError("registry whiteout classification is invalid")
+                if expected:
+                    raise ValueError("a later registry layer deletes a restored package path")
+
+    regression = evidence["whiteoutRegression"]
+    if not isinstance(regression, dict) or not regression:
+        raise ValueError("registry whiteout regression evidence is missing")
+    observed_true = {package: False for package in package_keys}
+    observed_false = False
+    for path, classifications in regression.items():
+        if not isinstance(classifications, dict) or set(classifications) != package_keys:
+            raise ValueError("registry whiteout regression entry is invalid")
+        expected = {
+            package: _whiteout_affects_roots(path, package_roots[package])
+            for package in package_keys
+        }
+        if classifications != expected:
+            raise ValueError("registry whiteout regression classification is invalid")
+        for package, affects in expected.items():
+            observed_true[package] |= affects
+        observed_false |= not any(expected.values())
+    if not all(observed_true.values()) or not observed_false:
+        raise ValueError("registry whiteout regression coverage is incomplete")
+
+
+def _validate_recovery_recipe(
+    artifact_path: Path,
+    *,
+    source: TaskImageIdentity,
+    restored: RestoredFilesIdentity,
+    expected_dockerfile_sha256: str,
+    expected_copy_path_count: int,
+    expected_copy_paths_sha256: str,
+    expected_directory_copy_count: int,
+    expected_file_copy_count: int,
+) -> None:
+    recipe = _json_object(artifact_path, label="recovery recipe")
+    if set(recipe) != {
+        "schemaVersion",
+        "baseImage",
+        "copyPaths",
+        "copyPathCount",
+        "dockerfileSha256",
+        "copyPathsSha256",
+        "directoryCopyCount",
+        "fileCopyCount",
+        "dockerfile",
+        "allowedPackages",
+    }:
+        raise ValueError("recovery recipe has unexpected or missing fields")
+    if recipe["schemaVersion"] != RECOVERY_RECIPE_SCHEMA:
+        raise ValueError("recovery recipe schema is not supported")
+    if (
+        recipe["baseImage"] != source.pinned_image
+        or recipe["allowedPackages"] != list(restored.packages)
+        or recipe["dockerfileSha256"] != expected_dockerfile_sha256
+        or recipe["copyPathCount"] != expected_copy_path_count
+        or recipe["copyPathsSha256"] != expected_copy_paths_sha256
+        or recipe["directoryCopyCount"] != expected_directory_copy_count
+        or recipe["fileCopyCount"] != expected_file_copy_count
+    ):
+        raise ValueError("recovery recipe does not match the build receipt")
+    copy_paths = recipe["copyPaths"]
+    if (
+        not isinstance(copy_paths, list)
+        or any(
+            not isinstance(value, str)
+            or any(ord(character) < 0x20 for character in value)
+            or _safe_relative_path(value, label="recovery recipe copy path").as_posix()
+            != value
+            for value in copy_paths
+        )
+        or len(copy_paths) != len(set(copy_paths))
+    ):
+        raise ValueError("recovery recipe copy paths are invalid")
+    site_root = PurePosixPath("/usr/local/lib/python3.12/site-packages")
+    expected_paths = [
+        (
+            PurePosixPath("restored")
+            / site_root.relative_to("/")
+            / re.sub(r"[-.]+", "_", package).lower()
+        ).as_posix()
+        for package in restored.packages
+    ]
+    expected_paths.extend(
+        (PurePosixPath("restored") / item.path.relative_to("/")).as_posix()
+        for item in restored.files
+        if item.path.relative_to(site_root).parts[0].endswith(".dist-info")
+    )
+    if copy_paths != expected_paths:
+        raise ValueError("recovery recipe copy paths do not cover the restored inventory")
+    if (
+        expected_directory_copy_count != len(restored.packages)
+        or expected_file_copy_count != len(expected_paths) - len(restored.packages)
+        or expected_copy_path_count
+        != expected_directory_copy_count + expected_file_copy_count
+    ):
+        raise ValueError("recovery recipe copy counts do not match the inventory")
+    copy_paths_sha256 = hashlib.sha256(
+        json.dumps(copy_paths, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    if copy_paths_sha256 != expected_copy_paths_sha256:
+        raise ValueError("recovery recipe copy-path sha256 does not match its inventory")
+    dockerfile = recipe["dockerfile"]
+    expected_dockerfile = "\n".join(
+        [f"FROM {source.pinned_image}"]
+        + [
+            "COPY "
+            + path
+            + " /"
+            + PurePosixPath(path).relative_to("restored").as_posix()
+            for path in expected_paths
+        ]
+    ) + "\n"
+    if (
+        not isinstance(dockerfile, str)
+        or dockerfile != expected_dockerfile
+        or hashlib.sha256(dockerfile.encode("utf-8")).hexdigest()
+        != expected_dockerfile_sha256
+    ):
+        raise ValueError("recovery recipe Dockerfile does not match its inventory")
+
+
+def _validate_restored_versions(
+    restored: RestoredFilesIdentity,
+    *,
+    versions: Any,
+) -> None:
+    if not isinstance(versions, dict) or set(versions) != set(restored.packages):
+        raise ValueError("recovery build versions do not match restored packages")
+    site_root = PurePosixPath("/usr/local/lib/python3.12/site-packages")
+    roots = {
+        item.path.relative_to(site_root).parts[0]
+        for item in restored.files
+    }
+    for package in restored.packages:
+        prefix = _package_key(package) + "-"
+        dist_info = [
+            root
+            for root in roots
+            if root.lower().startswith(prefix) and root.lower().endswith(".dist-info")
+        ]
+        if len(dist_info) != 1:
+            raise ValueError("recovery build package metadata coverage is invalid")
+        version = dist_info[0][len(prefix) : -len(".dist-info")]
+        if not version or versions[package] != version:
+            raise ValueError("recovery build package version is invalid")
+
+
+def _load_image_recoveries(
+    value: str | os.PathLike[str],
+    *,
+    expected_sha256: str,
+    source_identities: Mapping[str, TaskImageIdentity],
+    require_execution_ready: bool,
+) -> dict[str, ResolvedTaskImage]:
+    manifest_path = _absolute_path(value, label="image_recovery_path")
+    if not manifest_path.is_file():
+        raise ValueError("image_recovery_path must be a file")
+    if not _SHA256.fullmatch(expected_sha256):
+        raise ValueError("image_recovery_sha256 is invalid")
+    if _sha256_file(manifest_path) != expected_sha256:
+        raise ValueError("image recovery manifest sha256 mismatch")
+    manifest = _json_object(manifest_path, label="image recovery manifest")
+    required_manifest_keys = {
+        "schemaVersion",
+        "executionReady",
+        "recoveries",
+    }
+    if set(manifest) != required_manifest_keys:
+        raise ValueError("image recovery manifest has unexpected or missing fields")
+    if manifest["schemaVersion"] != IMAGE_RECOVERY_SCHEMA:
+        raise ValueError("image recovery manifest schema is not supported")
+    if not isinstance(manifest["executionReady"], bool):
+        raise ValueError("image recovery executionReady must be boolean")
+    if require_execution_ready and manifest["executionReady"] is not True:
+        raise ValueError("image recovery manifest is not ready for scored execution")
+    recoveries = manifest["recoveries"]
+    if not isinstance(recoveries, list):
+        raise ValueError("image recovery recoveries must be a list")
+
+    if not recoveries:
+        raise ValueError("image recovery manifest must contain a diagnosed repair")
+    manifest_root = manifest_path.parent
+    manifest_checksum = _sha256_file(manifest_path)
+    resolved = {
+        task_id: ResolvedTaskImage(
+            source=source,
+            effective_reference=source.pinned_image,
+            effective_image_id=None,
+            expected_rootfs_diff_ids=None,
+            recovery_manifest_sha256=manifest_checksum,
+        )
+        for task_id, source in source_identities.items()
+    }
+
+    expected_keys = {
+        "taskId",
+        "sourceManifestDigest",
+        "sourceConfigDigest",
+        "sourceLayerDigests",
+        "sourceLayerArtifact",
+        "sourceLayerArtifactSha256",
+        "restoredFilesArtifact",
+        "restoredFilesArtifactSha256",
+        "buildReceiptArtifact",
+        "buildReceiptArtifactSha256",
+        "effectiveImageRef",
+        "effectiveImageId",
+        "effectiveRootfsDiffIds",
+        "repairLayerInventorySha256",
+    }
+    indexed: dict[str, dict[str, Any]] = {}
+    for item in recoveries:
+        if not isinstance(item, dict) or set(item) != expected_keys:
+            raise ValueError("image recovery manifest contains an invalid entry")
+        task_id = item["taskId"]
+        if not isinstance(task_id, str) or task_id in indexed:
+            raise ValueError("image recovery task ids must be unique strings")
+        indexed[task_id] = item
+    if not set(indexed).issubset(_FROZEN_TASK_IDS):
+        raise ValueError("image recovery manifest contains a task outside the frozen set")
+
+    for task_id, item in indexed.items():
+        source = source_identities.get(task_id)
+        if source is None:
+            raise ValueError(f"image recovery task is absent from the source ledger: {task_id}")
+        if item["sourceManifestDigest"] != source.manifest_digest:
+            raise ValueError(f"image recovery source manifest mismatch for {task_id}")
+        if item["sourceConfigDigest"] != source.config_digest:
+            raise ValueError(f"image recovery source config mismatch for {task_id}")
+        source_layer_artifact = _bound_artifact(
+            manifest_root,
+            item["sourceLayerArtifact"],
+            item["sourceLayerArtifactSha256"],
+            label=f"source-layer artifact for {task_id}",
+        )
+        restored_artifact = _bound_artifact(
+            manifest_root,
+            item["restoredFilesArtifact"],
+            item["restoredFilesArtifactSha256"],
+            label=f"restored-files artifact for {task_id}",
+        )
+        build_receipt_path = _bound_artifact(
+            manifest_root,
+            item["buildReceiptArtifact"],
+            item["buildReceiptArtifactSha256"],
+            label=f"recovery build receipt for {task_id}",
+        )
+        effective_reference = item["effectiveImageRef"]
+        effective_image_id = item["effectiveImageId"]
+        rootfs_diff_ids = item["effectiveRootfsDiffIds"]
+        repair_inventory = item["repairLayerInventorySha256"]
+        if not isinstance(effective_reference, str) or _RECOVERY_IMAGE_REF.fullmatch(
+            effective_reference
+        ) is None:
+            raise ValueError(f"effective recovery image reference is invalid for {task_id}")
+        if effective_reference in {source.tagged_image, source.pinned_image}:
+            raise ValueError(f"effective recovery image must be distinct for {task_id}")
+        if not isinstance(effective_image_id, str) or not _SHA256_DIGEST.fullmatch(
+            effective_image_id
+        ):
+            raise ValueError(f"effective recovery image id is invalid for {task_id}")
+        if effective_image_id == source.config_digest:
+            raise ValueError(f"effective recovery image id must be a derivative for {task_id}")
+        if (
+            not isinstance(rootfs_diff_ids, list)
+            or not rootfs_diff_ids
+            or any(
+                not isinstance(digest, str) or not _SHA256_DIGEST.fullmatch(digest)
+                for digest in rootfs_diff_ids
+            )
+        ):
+            raise ValueError(f"effective recovery rootfs identity is invalid for {task_id}")
+        if not isinstance(repair_inventory, str) or not _SHA256.fullmatch(repair_inventory):
+            raise ValueError(f"repair layer inventory sha256 is invalid for {task_id}")
+
+        restored_identity = _load_restored_files(restored_artifact)
+        source_layer_digests = item["sourceLayerDigests"]
+        package_keys = {
+            re.sub(r"[-_.]+", "-", package).lower()
+            for package in restored_identity.packages
+        }
+        if (
+            not isinstance(source_layer_digests, dict)
+            or set(source_layer_digests) != package_keys
+            or any(
+                not isinstance(digest, str)
+                or not _SHA256_DIGEST.fullmatch(digest)
+                or digest not in source.layer_digests
+                for digest in source_layer_digests.values()
+            )
+        ):
+            raise ValueError(
+                "image recovery source layers do not match the reviewed packages "
+                f"and registry manifest for {task_id}"
+            )
+        _validate_registry_layer_evidence(
+            source_layer_artifact,
+            source=source,
+            source_layer_digests=source_layer_digests,
+            restored=restored_identity,
+        )
+        if repair_inventory != item["restoredFilesArtifactSha256"]:
+            raise ValueError(
+                f"repair layer inventory does not bind the restored-file manifest for {task_id}"
+            )
+        receipt = _json_object(build_receipt_path, label=f"recovery build receipt for {task_id}")
+        receipt_keys = {
+            "schemaVersion",
+            "taskId",
+            "sourceManifestDigest",
+            "sourceConfigDigest",
+            "sourceLayerDigests",
+            "effectiveImageRef",
+            "effectiveImageId",
+            "effectiveRootfsDiffIds",
+            "import",
+            "versions",
+            "gitHead",
+            "recipeArtifact",
+            "recipeArtifactSha256",
+            "restoredFilesArtifact",
+            "restoredFilesArtifactSha256",
+            "registryAuditArtifact",
+            "registryAuditArtifactSha256",
+            "priorBuildReceipt",
+            "priorBuildReceiptSha256",
+            "dockerfileSha256",
+            "copyPathCount",
+            "copyPathsSha256",
+            "directoryCopyCount",
+            "fileCopyCount",
+        }
+        if set(receipt) != receipt_keys:
+            raise ValueError(f"recovery build receipt has invalid fields for {task_id}")
+        if (
+            receipt["schemaVersion"] != RECOVERY_BUILD_RECEIPT_SCHEMA
+            or receipt["taskId"] != task_id
+            or receipt["sourceManifestDigest"] != source.manifest_digest
+            or receipt["sourceConfigDigest"] != source.config_digest
+            or receipt["sourceLayerDigests"] != source_layer_digests
+            or receipt["effectiveImageRef"] != effective_reference
+            or receipt["effectiveImageId"] != effective_image_id
+            or receipt["effectiveRootfsDiffIds"] != rootfs_diff_ids
+        ):
+            raise ValueError(f"recovery build receipt does not match the manifest for {task_id}")
+        dockerfile_sha256 = receipt["dockerfileSha256"]
+        copy_path_count = receipt["copyPathCount"]
+        copy_paths_sha256 = receipt["copyPathsSha256"]
+        directory_copy_count = receipt["directoryCopyCount"]
+        file_copy_count = receipt["fileCopyCount"]
+        recovery_git_head = receipt["gitHead"]
+        if (
+            not isinstance(dockerfile_sha256, str)
+            or not _SHA256.fullmatch(dockerfile_sha256)
+            or not isinstance(copy_path_count, int)
+            or isinstance(copy_path_count, bool)
+            or copy_path_count <= 0
+            or not isinstance(directory_copy_count, int)
+            or isinstance(directory_copy_count, bool)
+            or directory_copy_count <= 0
+            or not isinstance(file_copy_count, int)
+            or isinstance(file_copy_count, bool)
+            or file_copy_count <= 0
+            or not isinstance(copy_paths_sha256, str)
+            or not _SHA256.fullmatch(copy_paths_sha256)
+            or not isinstance(recovery_git_head, str)
+            or re.fullmatch(r"[0-9a-f]{40}", recovery_git_head) is None
+        ):
+            raise ValueError(f"recovery build identity is invalid for {task_id}")
+        if receipt["import"] != {
+            "hookimplMarker": True,
+            "pluggy": True,
+            "pygments": True,
+            "pytest": True,
+            "terminalFormatter": True,
+        }:
+            raise ValueError(f"recovery build import checks are incomplete for {task_id}")
+        versions = receipt["versions"]
+        if (
+            not isinstance(versions, dict)
+            or set(versions) != set(restored_identity.packages)
+            or any(not isinstance(version, str) or not version for version in versions.values())
+        ):
+            raise ValueError(f"recovery build versions are invalid for {task_id}")
+        _validate_restored_versions(restored_identity, versions=versions)
+        receipt_registry_artifact = _bound_artifact(
+            manifest_root,
+            receipt["registryAuditArtifact"],
+            receipt["registryAuditArtifactSha256"],
+            label=f"receipt registry-layer artifact for {task_id}",
+        )
+        receipt_restored_artifact = _bound_artifact(
+            manifest_root,
+            receipt["restoredFilesArtifact"],
+            receipt["restoredFilesArtifactSha256"],
+            label=f"receipt restored-files artifact for {task_id}",
+        )
+        recipe_artifact = _bound_artifact(
+            manifest_root,
+            receipt["recipeArtifact"],
+            receipt["recipeArtifactSha256"],
+            label=f"recovery recipe for {task_id}",
+        )
+        _bound_artifact(
+            manifest_root,
+            receipt["priorBuildReceipt"],
+            receipt["priorBuildReceiptSha256"],
+            label=f"prior recovery build receipt for {task_id}",
+        )
+        if (
+            receipt_registry_artifact != source_layer_artifact
+            or receipt_restored_artifact != restored_artifact
+            or receipt["registryAuditArtifactSha256"]
+            != item["sourceLayerArtifactSha256"]
+            or receipt["restoredFilesArtifactSha256"]
+            != item["restoredFilesArtifactSha256"]
+        ):
+            raise ValueError(f"recovery build artifacts do not match the manifest for {task_id}")
+        _validate_recovery_recipe(
+            recipe_artifact,
+            source=source,
+            restored=restored_identity,
+            expected_dockerfile_sha256=dockerfile_sha256,
+            expected_copy_path_count=copy_path_count,
+            expected_copy_paths_sha256=copy_paths_sha256,
+            expected_directory_copy_count=directory_copy_count,
+            expected_file_copy_count=file_copy_count,
+        )
+        resolved[task_id] = ResolvedTaskImage(
+            source=source,
+            effective_reference=effective_reference,
+            effective_image_id=effective_image_id,
+            expected_rootfs_diff_ids=tuple(rootfs_diff_ids),
+            recovery_manifest_sha256=manifest_checksum,
+            source_layer_digests=tuple(sorted(source_layer_digests.items())),
+            repair_layer_inventory_sha256=repair_inventory,
+            restored_files=restored_identity.files,
+            registry_layer_evidence_sha256=item["sourceLayerArtifactSha256"],
+            restored_files_artifact_sha256=item["restoredFilesArtifactSha256"],
+            build_receipt_sha256=item["buildReceiptArtifactSha256"],
+            recipe_artifact_sha256=receipt["recipeArtifactSha256"],
+            dockerfile_sha256=dockerfile_sha256,
+            recovery_git_head=recovery_git_head,
+        )
+    return resolved
+
+
 def _pin_task_image(
     task_env_config: Any,
-    identity: TaskImageIdentity,
+    resolved_image: ResolvedTaskImage,
     *,
     separate_verifier: bool = False,
 ) -> Any:
+    identity = resolved_image.source
     current_image = getattr(task_env_config, "docker_image", None)
     if separate_verifier:
         # Pier intentionally passes the explicit [verifier.environment]
@@ -396,7 +1260,10 @@ def _pin_task_image(
         raise TypeError("task environment config does not support an immutable copy")
     if separate_verifier:
         return model_copy(deep=True, update={"docker_image": None})
-    return model_copy(deep=True, update={"docker_image": identity.pinned_image})
+    return model_copy(
+        deep=True,
+        update={"docker_image": resolved_image.effective_reference},
+    )
 
 
 def _validate_verifier_build_context(
@@ -913,7 +1780,7 @@ from pier.models.agent.network import NetworkAllowlist
 
 
 class PluginValueDockerEnvironment(DockerEnvironment):
-    """Digest-pin the task image and mount a verified runtime into agents only.
+    """Authenticate source/effective images and mount a verified runtime into agents only.
 
     Pier 0.3.1 passes ``mounts_json=None`` only for the agent environment and
     supplies an explicit verifier-log mount for a separate verifier.  Calling
@@ -935,6 +1802,8 @@ class PluginValueDockerEnvironment(DockerEnvironment):
         runtime_tree_sha256: str,
         image_identity_path: str,
         image_identity_sha256: str,
+        image_recovery_path: str,
+        image_recovery_sha256: str,
         expected_task_id: str,
         expected_base_commit: str,
         execution_mode: str,
@@ -960,13 +1829,18 @@ class PluginValueDockerEnvironment(DockerEnvironment):
         if not self._shared_runtime_source.is_dir():
             raise ValueError("shared_runtime_dir must be a directory")
         self._task_image_identity: TaskImageIdentity | None = None
+        self._resolved_task_image: ResolvedTaskImage | None = None
+        self._effective_image_verified = False
+        self._verified_effective_image_id: str | None = None
+        self._verified_effective_rootfs: tuple[str, ...] | None = None
+        self._restored_files_verified = False
         self._verifier_base_image: str | None = None
         self._verifier_source_context: Path | None = None
         self._verifier_context_sha256: str | None = None
         self._verifier_build_context: Path | None = None
         self._verifier_build_name: str | None = None
         self._verifier_image_compose_path: Path | None = None
-        self._container_identity_evidence: dict[str, str | int] | None = None
+        self._container_identity_evidence: dict[str, Any] | None = None
         self._container_identity_verified = False
         self._host_docker_path = _absolute_path(host_docker_path, label="host_docker_path")
         if not self._host_docker_path.is_file() or not os.access(
@@ -997,6 +1871,19 @@ class PluginValueDockerEnvironment(DockerEnvironment):
         except KeyError as exc:
             raise ValueError("expected task is absent from the image identity ledger") from exc
         self._task_image_identity = image_identity
+        resolved_images = _load_image_recoveries(
+            image_recovery_path,
+            expected_sha256=image_recovery_sha256,
+            source_identities=identities,
+            require_execution_ready=execution_mode == "score",
+        )
+        resolved_image = resolved_images[expected_task_id]
+        if (
+            resolved_image.recovery_git_head is not None
+            and resolved_image.recovery_git_head != expected_base_commit
+        ):
+            raise ValueError("recovery image git head does not match expected_base_commit")
+        self._resolved_task_image = resolved_image
         if is_verifier:
             self._verifier_source_context = Path(environment_dir).resolve()
             self._verifier_base_image = _validate_verifier_build_context(
@@ -1004,7 +1891,7 @@ class PluginValueDockerEnvironment(DockerEnvironment):
             )
             self._verifier_context_sha256 = _tree_sha256(self._verifier_source_context)
         effective_task_config = _pin_task_image(
-            task_env_config, image_identity, separate_verifier=is_verifier
+            task_env_config, resolved_image, separate_verifier=is_verifier
         )
 
         if (Path(environment_dir) / "docker-compose.yaml").exists():
@@ -1067,9 +1954,9 @@ class PluginValueDockerEnvironment(DockerEnvironment):
 
     @property
     def pinned_task_image(self) -> str:
-        if self._task_image_identity is None:
+        if self._resolved_task_image is None:
             raise RuntimeError("the verifier has no pinned agent image")
-        return self._task_image_identity.pinned_image
+        return self._resolved_task_image.effective_reference
 
     def _prepare_verifier_build_context(self) -> None:
         if self._is_benchmark_agent:
@@ -1079,6 +1966,7 @@ class PluginValueDockerEnvironment(DockerEnvironment):
             or self._verifier_base_image is None
             or self._verifier_context_sha256 is None
             or self._task_image_identity is None
+            or self._resolved_task_image is None
         ):
             raise RuntimeError("verifier build identity was not initialized")
         if self._verifier_build_context is not None:
@@ -1093,12 +1981,14 @@ class PluginValueDockerEnvironment(DockerEnvironment):
         _rewrite_verifier_build_context(
             self._verifier_source_context,
             build_context,
-            pinned_base_image=self._task_image_identity.pinned_image,
+            pinned_base_image=self._resolved_task_image.effective_reference,
         )
         if _tree_sha256(self._verifier_source_context) != self._verifier_context_sha256:
             shutil.rmtree(build_context, ignore_errors=True)
             raise RuntimeError("separate verifier source context changed during copy")
-        digest_suffix = self._task_image_identity.manifest_digest.removeprefix("sha256:")[:16]
+        if self._verified_effective_image_id is None:
+            raise RuntimeError("effective verifier base image id was not verified")
+        digest_suffix = self._verified_effective_image_id.removeprefix("sha256:")
         context_suffix = self._verifier_context_sha256[:24]
         self._verifier_build_name = f"hb__verifier-{context_suffix}-{digest_suffix}:latest"
         self._verifier_build_context = build_context
@@ -1110,7 +2000,14 @@ class PluginValueDockerEnvironment(DockerEnvironment):
         # unrelated per-project default image name.
         image_compose = trial_dir / "verifier-compose-image.json"
         image_compose.write_text(json.dumps({
-            "services": {"main": {"image": self._verifier_build_name}}
+            "services": {"main": {
+                "image": self._verifier_build_name,
+                # The host is arm64, while the authenticated task and shared
+                # runtime are amd64. Pin both the build and launch selection;
+                # otherwise BuildKit tries to resolve an arm64 local base.
+                "platform": "linux/amd64",
+                "build": {"platforms": ["linux/amd64"]},
+            }}
         }) + "\n", encoding="utf-8")
         image_compose.chmod(0o600)
         self._verifier_image_compose_path = image_compose
@@ -1129,16 +2026,50 @@ class PluginValueDockerEnvironment(DockerEnvironment):
         if not isinstance(trial_dir, Path):
             raise RuntimeError("Pier did not provide a trial directory for verifier receipt")
         evidence = self._container_identity_evidence
-        if evidence is None or self._task_image_identity is None:
+        if (
+            evidence is None
+            or self._task_image_identity is None
+            or self._resolved_task_image is None
+            or not self._restored_files_verified
+            or self._verified_effective_image_id is None
+            or self._verified_effective_rootfs is None
+        ):
             raise RuntimeError("container identity evidence is unavailable")
         payload = {
-            "schemaVersion": "jev-plugin-value-verifier-runtime-identity-v1",
+            "schemaVersion": "jev-plugin-value-verifier-runtime-identity-v2",
+            "taskId": self._resolved_task_image.source.task_id,
+            "sessionId": self.session_id,
             "containerId": evidence["containerId"],
             "imageId": evidence["imageId"],
             "configuredImage": evidence["image"],
             "originalContextSha256": self._verifier_context_sha256,
             "copiedDockerfileSha256": _sha256_file(self._verifier_build_context / "Dockerfile"),
-            "baseImageDigest": self._task_image_identity.manifest_digest,
+            "sourceRegistryManifestDigest": self._task_image_identity.manifest_digest,
+            "sourceConfigDigest": self._task_image_identity.config_digest,
+            "effectiveBaseImageReference": self._resolved_task_image.effective_reference,
+            "effectiveBaseImageId": self._verified_effective_image_id,
+            "effectiveBaseRootfsDiffIds": list(self._verified_effective_rootfs),
+            "imageRecoveryManifestSha256": (
+                self._resolved_task_image.recovery_manifest_sha256
+            ),
+            "sourceLayerDigests": dict(
+                self._resolved_task_image.source_layer_digests
+            ),
+            "repairLayerInventorySha256": (
+                self._resolved_task_image.repair_layer_inventory_sha256
+            ),
+            "registryLayerEvidenceSha256": (
+                self._resolved_task_image.registry_layer_evidence_sha256
+            ),
+            "restoredFilesArtifactSha256": (
+                self._resolved_task_image.restored_files_artifact_sha256
+            ),
+            "buildReceiptSha256": self._resolved_task_image.build_receipt_sha256,
+            "recipeArtifactSha256": self._resolved_task_image.recipe_artifact_sha256,
+            "recoveryDockerfileSha256": self._resolved_task_image.dockerfile_sha256,
+            "recoveryGitHead": self._resolved_task_image.recovery_git_head,
+            "restoredFileCount": len(self._resolved_task_image.restored_files),
+            "restoredFilesVerified": True,
             "runtimeMountCount": evidence["runtimeMountCount"],
         }
         receipt = trial_dir / "verifier-runtime-identity.json"
@@ -1158,7 +2089,7 @@ class PluginValueDockerEnvironment(DockerEnvironment):
         self._verifier_build_context = None
 
     async def stop(self, delete: bool) -> None:
-        # Preserve the digest-pinned base image for the paired controls.  The
+        # Preserve the authenticated effective base image for paired controls.  The
         # copied verifier context is removed only after this exact compose
         # project reports no main container; failures retain it for diagnosis.
         await super().stop(delete=False)
@@ -1172,13 +2103,18 @@ class PluginValueDockerEnvironment(DockerEnvironment):
     async def start(self, force_build: bool) -> None:
         if force_build:
             raise RuntimeError("plugin-value environments do not permit force_build")
+        await self._verify_effective_image()
         self._prepare_verifier_build_context()
         await super().start(force_build=force_build)
         if self._is_benchmark_agent and not self._use_prebuilt:
-            raise RuntimeError("Pier did not select the pinned prebuilt task image")
+            raise RuntimeError("Pier did not select the authenticated effective task image")
         if not self._is_benchmark_agent and self._use_prebuilt:
             raise RuntimeError("Pier bypassed the separate verifier tests build context")
         await self._verify_running_container(expect_runtime=self._is_benchmark_agent)
+        await self._verify_restored_files()
+        if not self._is_benchmark_agent:
+            self._write_verifier_identity_receipt()
+        self._container_identity_verified = True
         if self._is_benchmark_agent:
             await self._verify_repository_ready()
 
@@ -1218,7 +2154,117 @@ class PluginValueDockerEnvironment(DockerEnvironment):
             raise RuntimeError("docker returned an unexpected container identity")
         return value[0]
 
+    async def _inspect_image(self, reference: str) -> dict[str, Any]:
+        process = await asyncio.create_subprocess_exec(
+            str(self._host_docker_path),
+            "image",
+            "inspect",
+            reference,
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30)
+        except asyncio.TimeoutError as exc:
+            process.kill()
+            await process.communicate()
+            raise RuntimeError("docker image identity check timed out") from exc
+        if process.returncode != 0:
+            message = stderr.decode("utf-8", errors="replace")[-500:]
+            raise RuntimeError(f"docker image identity check failed: {message}")
+        try:
+            value = json.loads(stdout)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("docker returned invalid image identity JSON") from exc
+        if not isinstance(value, list) or len(value) != 1 or not isinstance(value[0], dict):
+            raise RuntimeError("docker returned an unexpected image identity")
+        return value[0]
+
+    async def _pull_source_image(self, reference: str) -> None:
+        process = await asyncio.create_subprocess_exec(
+            str(self._host_docker_path),
+            "image",
+            "pull",
+            "--platform",
+            "linux/amd64",
+            reference,
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            _, stderr = await asyncio.wait_for(process.communicate(), timeout=1800)
+        except asyncio.TimeoutError as exc:
+            process.kill()
+            await process.communicate()
+            raise RuntimeError("digest-pinned source image pull timed out") from exc
+        if process.returncode != 0:
+            message = stderr.decode("utf-8", errors="replace")[-500:]
+            raise RuntimeError(f"digest-pinned source image pull failed: {message}")
+
+    @staticmethod
+    def _image_rootfs_diff_ids(inspected: Mapping[str, Any]) -> tuple[str, ...]:
+        rootfs = inspected.get("RootFS")
+        layers = rootfs.get("Layers") if isinstance(rootfs, dict) else None
+        if (
+            not isinstance(rootfs, dict)
+            or rootfs.get("Type") != "layers"
+            or not isinstance(layers, list)
+            or not layers
+            or any(
+                not isinstance(item, str) or not _SHA256_DIGEST.fullmatch(item)
+                for item in layers
+            )
+        ):
+            raise RuntimeError("docker image rootfs identity is unavailable")
+        return tuple(layers)
+
+    async def _verify_effective_image(self) -> None:
+        resolved = self._resolved_task_image
+        if resolved is None:
+            raise RuntimeError("effective task image was not initialized")
+        if not resolved.is_recovered:
+            await self._pull_source_image(resolved.source.pinned_image)
+        inspected = await self._inspect_image(resolved.effective_reference)
+        observed_image_id = inspected.get("Id")
+        if not isinstance(observed_image_id, str) or not _SHA256_DIGEST.fullmatch(
+            observed_image_id
+        ):
+            raise RuntimeError("effective task image id is unavailable")
+        if resolved.is_recovered:
+            if observed_image_id != resolved.effective_image_id:
+                raise RuntimeError(
+                    "effective task image id does not match the recovery identity"
+                )
+        else:
+            repo_digests = inspected.get("RepoDigests")
+            if (
+                not isinstance(repo_digests, list)
+                or resolved.source.pinned_image not in repo_digests
+            ):
+                raise RuntimeError(
+                    "effective source image is not bound to the frozen registry digest"
+                )
+        if inspected.get("Os") != "linux" or inspected.get("Architecture") != "amd64":
+            raise RuntimeError("effective task image platform must be linux/amd64")
+        rootfs = self._image_rootfs_diff_ids(inspected)
+        if (
+            resolved.expected_rootfs_diff_ids is not None
+            and rootfs != resolved.expected_rootfs_diff_ids
+        ):
+            raise RuntimeError("effective task image rootfs does not match the recovery identity")
+        self._verified_effective_rootfs = rootfs
+        self._verified_effective_image_id = observed_image_id
+        self._effective_image_verified = True
+
     async def _verify_running_container(self, *, expect_runtime: bool) -> None:
+        if (
+            not self._effective_image_verified
+            or self._resolved_task_image is None
+            or self._verified_effective_image_id is None
+        ):
+            raise RuntimeError("effective task image was not verified before container start")
         container_id = await self.benchmark_container_id()
         inspected = await self._inspect_container(container_id)
         config = inspected.get("Config")
@@ -1226,18 +2272,53 @@ class PluginValueDockerEnvironment(DockerEnvironment):
             raise RuntimeError("running task container image identity is unavailable")
         configured_image = config.get("Image")
         if expect_runtime and configured_image != self.pinned_task_image:
-            raise RuntimeError("running task container is not using the digest-pinned image")
+            raise RuntimeError("running task container is not using the effective task image")
         if not expect_runtime:
             if self._verifier_build_name is None or configured_image != self._verifier_build_name:
                 raise RuntimeError("verifier container image does not match its context identity")
             if self._verifier_build_context is None or self._task_image_identity is None:
-                raise RuntimeError("verifier build base is not the frozen image digest")
+                raise RuntimeError("verifier build base identity was not initialized")
         image_id = inspected.get("Image")
         if not isinstance(image_id, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", image_id):
             raise RuntimeError("docker did not return the verifier image identity")
+        if expect_runtime and image_id != self._verified_effective_image_id:
+            raise RuntimeError(
+                "running task container image id does not match the recovery identity"
+            )
+        if not expect_runtime:
+            if self._verified_effective_rootfs is None:
+                raise RuntimeError("effective verifier base rootfs was not verified")
+            built_image = await self._inspect_image(image_id)
+            if built_image.get("Id") != image_id:
+                raise RuntimeError("verifier image inspection returned a different image id")
+            built_rootfs = self._image_rootfs_diff_ids(built_image)
+            base_layers = self._verified_effective_rootfs
+            if built_rootfs[: len(base_layers)] != base_layers:
+                raise RuntimeError("verifier image does not inherit the effective repaired base")
         host_config = inspected.get("HostConfig")
         if not isinstance(host_config, dict) or host_config.get("NetworkMode") != "none":
             raise RuntimeError("running task container network mode must be none")
+        if host_config.get("Privileged") is True:
+            raise RuntimeError("running task container is privileged")
+        if host_config.get("CapAdd"):
+            raise RuntimeError("running task container adds Linux capabilities")
+        if host_config.get("PidMode") == "host":
+            raise RuntimeError("running task container shares the host PID namespace")
+        if host_config.get("IpcMode") == "host":
+            raise RuntimeError("running task container shares the host IPC namespace")
+        if host_config.get("Devices"):
+            raise RuntimeError("running task container exposes host devices")
+        if host_config.get("DeviceRequests"):
+            raise RuntimeError("running task container requests host devices")
+        configured_env = config.get("Env", [])
+        if not isinstance(configured_env, list):
+            raise RuntimeError("running task container environment identity is invalid")
+        for value in configured_env:
+            if not isinstance(value, str):
+                raise RuntimeError("running task container environment identity is invalid")
+            key = value.split("=", 1)[0]
+            if key in _FORBIDDEN_CONTAINER_ENV:
+                raise RuntimeError(f"running task container exposes forbidden credential env {key}")
         mounts = inspected.get("Mounts")
         if not isinstance(mounts, list):
             raise RuntimeError("docker container mount identity is unavailable")
@@ -1267,15 +2348,102 @@ class PluginValueDockerEnvironment(DockerEnvironment):
                 raise RuntimeError("running task container exposes an unexpected runtime source")
         elif overlapping_sources:
             raise RuntimeError("verifier container exposes the shared agent runtime")
+
+        configured_mounts = self._mounts_json
+        if not isinstance(configured_mounts, list):
+            raise RuntimeError("configured container mount identity is unavailable")
+        if len(mounts) != len(configured_mounts):
+            raise RuntimeError("running task container has an unexpected mount count")
+
+        def normalized_source(value: Any, mount_type: str) -> str:
+            if not isinstance(value, str):
+                raise RuntimeError("configured container mount source is invalid")
+            if mount_type == "bind":
+                try:
+                    return Path(value).resolve().as_posix()
+                except OSError as exc:
+                    raise RuntimeError("configured container mount source is invalid") from exc
+            return value
+
+        expected_mounts: list[tuple[str, str, str, bool]] = []
+        for configured in configured_mounts:
+            if not isinstance(configured, dict):
+                raise RuntimeError("configured container mount identity is invalid")
+            mount_type = configured.get("type")
+            source = configured.get("source")
+            target = configured.get("target")
+            read_only = configured.get("read_only", False)
+            if (
+                not isinstance(mount_type, str)
+                or not isinstance(target, str)
+                or not isinstance(read_only, bool)
+            ):
+                raise RuntimeError("configured container mount identity is invalid")
+            expected_mounts.append(
+                (mount_type, normalized_source(source, mount_type), target, not read_only)
+            )
+
+        observed_mounts: list[tuple[str, str, str, bool]] = []
+        for observed in mounts:
+            if not isinstance(observed, dict):
+                raise RuntimeError("docker container mount identity is invalid")
+            mount_type = observed.get("Type")
+            source = observed.get("Source")
+            target = observed.get("Destination")
+            read_write = observed.get("RW")
+            if (
+                not isinstance(mount_type, str)
+                or not isinstance(target, str)
+                or not isinstance(read_write, bool)
+            ):
+                raise RuntimeError("docker container mount identity is invalid")
+            observed_mounts.append(
+                (mount_type, normalized_source(source, mount_type), target, read_write)
+            )
+
+        unmatched = list(observed_mounts)
+        for expected in expected_mounts:
+            try:
+                unmatched.remove(expected)
+            except ValueError:
+                if not any(item[:3] == expected[:3] for item in observed_mounts):
+                    raise RuntimeError("running task container mount source does not match configured mount")
+                if not any(item[:2] == expected[:2] and item[2] == expected[2] for item in observed_mounts):
+                    raise RuntimeError("running task container mount type or target does not match configured mount")
+                raise RuntimeError("running task container mount mode does not match configured mount")
+        if unmatched:
+            raise RuntimeError("running task container has an unexpected mount")
         self._container_identity_evidence = {
             "containerId": container_id,
             "imageId": image_id,
             "image": self.pinned_task_image if expect_runtime else str(configured_image),
+            "sourceRegistryManifestDigest": self._resolved_task_image.source.manifest_digest,
+            "sourceConfigDigest": self._resolved_task_image.source.config_digest,
+            "effectiveBaseImageId": self._verified_effective_image_id,
+            "imageRecoveryManifestSha256": (
+                self._resolved_task_image.recovery_manifest_sha256
+            ),
+            "sourceLayerDigests": dict(
+                self._resolved_task_image.source_layer_digests
+            ),
+            "repairLayerInventorySha256": (
+                self._resolved_task_image.repair_layer_inventory_sha256
+            ),
+            "registryLayerEvidenceSha256": (
+                self._resolved_task_image.registry_layer_evidence_sha256
+            ),
+            "restoredFilesArtifactSha256": (
+                self._resolved_task_image.restored_files_artifact_sha256
+            ),
+            "buildReceiptSha256": self._resolved_task_image.build_receipt_sha256,
+            "recipeArtifactSha256": self._resolved_task_image.recipe_artifact_sha256,
+            "recoveryDockerfileSha256": self._resolved_task_image.dockerfile_sha256,
+            "recoveryGitHead": self._resolved_task_image.recovery_git_head,
+            "restoredFileCount": len(self._resolved_task_image.restored_files),
+            "restoredFilesVerified": False,
             "runtimeMountCount": len(runtime_mounts),
         }
         if not expect_runtime:
-            self._write_verifier_identity_receipt()
-            self._container_identity_verified = True
             return
         mount = runtime_mounts[0]
         source = mount.get("Source")
@@ -1286,8 +2454,136 @@ class PluginValueDockerEnvironment(DockerEnvironment):
             or not isinstance(source, str)
             or Path(source).resolve() != self.shared_runtime.root
         ):
-            raise RuntimeError("running task container runtime mount is not the verified read-only bind")
-        self._container_identity_verified = True
+            raise RuntimeError(
+                "running task container runtime mount is not the verified read-only bind"
+            )
+
+    async def _verify_restored_files(self) -> None:
+        resolved = self._resolved_task_image
+        evidence = self._container_identity_evidence
+        if resolved is None or evidence is None:
+            raise RuntimeError("container identity is unavailable for restored-file checks")
+        if not resolved.restored_files:
+            evidence["restoredFilesVerified"] = True
+            self._restored_files_verified = True
+            return
+        container_id = evidence.get("containerId")
+        if not isinstance(container_id, str) or not _CONTAINER_ID.fullmatch(container_id):
+            raise RuntimeError("container id is invalid for restored-file checks")
+        paths = tuple(item.path.as_posix() for item in resolved.restored_files)
+        stat_output = await self._exec_restored_file_identity_command(
+            container_id,
+            "/usr/bin/stat",
+            "--printf",
+            "%f\\0%u\\0%g\\0%s\\0%n\\0",
+            "--",
+            *paths,
+        )
+        stat_fields = stat_output.split(b"\0")
+        if stat_fields and stat_fields[-1] == b"":
+            stat_fields.pop()
+        if len(stat_fields) % 5 != 0:
+            raise RuntimeError("restored-file metadata output has an invalid record")
+        observed_metadata: dict[str, tuple[int, int, int, int]] = {}
+        for index in range(0, len(stat_fields), 5):
+            encoded_mode, encoded_uid, encoded_gid, encoded_size, encoded_path = (
+                stat_fields[index : index + 5]
+            )
+            try:
+                raw_mode = int(encoded_mode.decode("ascii"), 16)
+                uid = int(encoded_uid.decode("ascii"), 10)
+                gid = int(encoded_gid.decode("ascii"), 10)
+                size = int(encoded_size.decode("ascii"), 10)
+                path = encoded_path.decode("utf-8")
+            except (UnicodeDecodeError, ValueError) as exc:
+                raise RuntimeError(
+                    "restored-file metadata output is not valid text"
+                ) from exc
+            if path in observed_metadata:
+                raise RuntimeError("restored-file metadata output has a duplicate path")
+            observed_metadata[path] = (raw_mode, uid, gid, size)
+        expected_metadata = {
+            item.path.as_posix(): (
+                int(item.mode, 8),
+                item.uid,
+                item.gid,
+                item.size,
+            )
+            for item in resolved.restored_files
+        }
+        if set(observed_metadata) != set(expected_metadata):
+            raise RuntimeError("restored-file metadata paths do not match the recovery manifest")
+        for path, (raw_mode, uid, gid, size) in observed_metadata.items():
+            expected_mode, expected_uid, expected_gid, expected_size = expected_metadata[path]
+            if not stat.S_ISREG(raw_mode):
+                raise RuntimeError(f"restored file is not regular: {path}")
+            if (
+                stat.S_IMODE(raw_mode) != expected_mode
+                or uid != expected_uid
+                or gid != expected_gid
+                or size != expected_size
+            ):
+                raise RuntimeError(
+                    "restored-file metadata does not match the recovery manifest"
+                )
+
+        stdout = await self._exec_restored_file_identity_command(
+            container_id,
+            "/usr/bin/sha256sum",
+            "--zero",
+            "--",
+            *paths,
+        )
+        observed: dict[str, str] = {}
+        records = stdout.split(b"\0")
+        if records and records[-1] == b"":
+            records.pop()
+        for record in records:
+            checksum, separator, encoded_path = record.partition(b"  ")
+            try:
+                path = encoded_path.decode("utf-8")
+                checksum_text = checksum.decode("ascii")
+            except UnicodeDecodeError as exc:
+                raise RuntimeError("restored-file identity output is not valid text") from exc
+            if separator != b"  " or not _SHA256.fullmatch(checksum_text) or path in observed:
+                raise RuntimeError("restored-file identity output has an invalid record")
+            observed[path] = checksum_text
+        expected = {
+            item.path.as_posix(): item.sha256 for item in resolved.restored_files
+        }
+        if observed != expected:
+            raise RuntimeError("restored-file bytes do not match the recovery manifest")
+        evidence["restoredFilesVerified"] = True
+        self._restored_files_verified = True
+
+    async def _exec_restored_file_identity_command(
+        self,
+        container_id: str,
+        executable: str,
+        *arguments: str,
+    ) -> bytes:
+        process = await asyncio.create_subprocess_exec(
+            str(self._host_docker_path),
+            "exec",
+            "--user",
+            "0",
+            container_id,
+            executable,
+            *arguments,
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=60)
+        except asyncio.TimeoutError as exc:
+            process.kill()
+            await process.communicate()
+            raise RuntimeError("restored-file identity check timed out") from exc
+        if process.returncode != 0:
+            message = stderr.decode("utf-8", errors="replace")[-500:]
+            raise RuntimeError(f"restored-file identity check failed: {message}")
+        return stdout
 
     @property
     def repository_readiness(self) -> dict[str, str]:
@@ -1296,7 +2592,7 @@ class PluginValueDockerEnvironment(DockerEnvironment):
         return dict(self._repository_readiness)
 
     @property
-    def container_identity_evidence(self) -> dict[str, str | int]:
+    def container_identity_evidence(self) -> dict[str, Any]:
         if not self._container_identity_verified or self._container_identity_evidence is None:
             raise RuntimeError("container identity has not been verified")
         return dict(self._container_identity_evidence)

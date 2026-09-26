@@ -25,6 +25,42 @@ const RUNTIME_MOUNT = '/opt/jev-codex-runtime';
 const FORBIDDEN_ENV = ['TYPESAFE_API_KEY', 'JEV_API_KEY', 'JEV_API_KEY_FILE', 'OPENAI_API_KEY', 'CODEX_ACCESS_TOKEN'];
 const MODEL_COMMAND_SOURCES = new Set(['unifiedExecStartup', 'unifiedExecInteraction']);
 const SHA256 = /^[0-9a-f]{64}$/;
+const SHA256_DIGEST = /^sha256:[0-9a-f]{64}$/;
+const RECOVERY_SCHEMA = 'jev-plugin-value-image-recovery-v1';
+const RESTORED_FILES_SCHEMA = 'jev-plugin-value-restored-files-v1';
+const RESTORED_FILES_VERIFIER_SCRIPT = [
+  'import hashlib, json, os, stat, sys',
+  'def fail(message):',
+  '    print(message, file=sys.stderr)',
+  '    raise SystemExit(1)',
+  'try:',
+  '    files = json.load(sys.stdin)',
+  'except Exception as error:',
+  '    fail("invalid restored-file manifest: " + str(error))',
+  'if not isinstance(files, list) or not files:',
+  '    fail("restored-file manifest must be a non-empty list")',
+  'for item in files:',
+  '    if not isinstance(item, dict): fail("restored-file entry is not an object")',
+  '    try:',
+  '        path = item["path"]',
+  '        expected_mode = int(item["mode"], 8)',
+  '        expected_uid = item["uid"]',
+  '        expected_gid = item["gid"]',
+  '        expected_size = item["size"]',
+  '        expected_sha256 = item["sha256"]',
+  '        metadata = os.lstat(path)',
+  '        if not stat.S_ISREG(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode): fail("restored-file is not a regular file: " + path)',
+  '        if stat.S_IMODE(metadata.st_mode) != expected_mode: fail("restored-file mode mismatch: " + path)',
+  '        if metadata.st_uid != expected_uid or metadata.st_gid != expected_gid: fail("restored-file ownership mismatch: " + path)',
+  '        if metadata.st_size != expected_size: fail("restored-file size mismatch: " + path)',
+  '        digest = hashlib.sha256()',
+  '        with open(path, "rb") as stream:',
+  '            for chunk in iter(lambda: stream.read(1024 * 1024), b""): digest.update(chunk)',
+  '        if digest.hexdigest() != expected_sha256: fail("restored-file bytes mismatch: " + path)',
+  '    except (KeyError, OSError, TypeError, ValueError) as error:',
+  '        fail("restored-file verification failed: " + str(error))',
+  'print("restored-files-verified")',
+].join('\n');
 const DRIVER_PATH = fileURLToPath(import.meta.url);
 
 function sha256(value) {
@@ -62,7 +98,12 @@ async function execCapture(command, args, options = {}) {
 
 async function spawnCapture(command, args, options = {}) {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, {...options, stdio: ['ignore', 'pipe', 'pipe']});
+    const {input, ...spawnOptions} = options;
+    const child = spawn(command, args, {
+      ...spawnOptions,
+      stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
+    });
+    if (input !== undefined) child.stdin.end(input);
     const stdout = [];
     const stderr = [];
     let stdoutBytes = 0;
@@ -138,6 +179,7 @@ export function parseOptions(argv) {
     output: resolve(requiredOption(values, 'output')),
     identity: resolve(requiredOption(values, 'identity')),
     imageLedger: resolve(requiredOption(values, 'image-ledger')),
+    imageRecovery: values['image-recovery'] === undefined ? null : resolve(values['image-recovery']),
     runtimeBundle: resolve(requiredOption(values, 'runtime-bundle')),
     hostRunner: resolve(requiredOption(values, 'host-runner')),
     node: resolve(requiredOption(values, 'node')),
@@ -261,8 +303,9 @@ export function validateControlReceipt(receipt, arm, expectedAlias) {
   return {commands: commands.length, fileChanges: changes.length, mcpCalls: mcp.length, hookRuns: hooks.length};
 }
 
-export function validateAgentInspection(inspection, {image, workspace, runtimeBundle}) {
+export function validateAgentInspection(inspection, {image, imageId, workspace, runtimeBundle}) {
   assert.equal(inspection?.Config?.Image, image, 'agent container image drifted');
+  if (imageId !== undefined) assert.equal(inspection?.Image, imageId, 'agent effective image id drifted');
   assert.equal(inspection?.Config?.WorkingDir, '/app', 'agent container workdir drifted');
   assert.equal(inspection?.HostConfig?.NetworkMode, 'none', 'agent container network is enabled');
   assert.equal(Boolean(inspection?.HostConfig?.Privileged), false, 'agent container is privileged');
@@ -287,8 +330,9 @@ export function validateAgentInspection(inspection, {image, workspace, runtimeBu
   return {networkMode: 'none', workspaceReadWrite: true, runtimeReadOnly: true, credentialsPresent: false};
 }
 
-export function validateVerifierInspection(inspection, {image, workspace, oracle, output}) {
+export function validateVerifierInspection(inspection, {image, imageId, workspace, oracle, output}) {
   assert.equal(inspection?.Config?.Image, image, 'verifier image drifted');
+  if (imageId !== undefined) assert.equal(inspection?.Image, imageId, 'verifier effective image id drifted');
   assert.equal(inspection?.HostConfig?.NetworkMode, 'none', 'verifier network is enabled');
   assert.equal(Boolean(inspection?.HostConfig?.Privileged), false, 'verifier is privileged');
   assert.equal((inspection?.HostConfig?.CapAdd ?? []).length, 0, 'verifier adds Linux capabilities');
@@ -296,6 +340,8 @@ export function validateVerifierInspection(inspection, {image, workspace, oracle
   assert.notEqual(inspection?.HostConfig?.IpcMode, 'host', 'verifier shares the host IPC namespace');
   assert.equal((inspection?.HostConfig?.Devices ?? []).length, 0, 'verifier exposes host devices');
   assert.equal((inspection?.HostConfig?.DeviceRequests ?? []).length, 0, 'verifier requests host devices');
+  const envNames = (inspection?.Config?.Env ?? []).map(value => String(value).split('=', 1)[0]);
+  for (const key of FORBIDDEN_ENV) assert.equal(envNames.includes(key), false, `verifier container exposes ${key}`);
   const mounts = inspection?.Mounts ?? [];
   assert.equal(mounts.some(mount => mount?.Destination === RUNTIME_MOUNT), false, 'verifier exposes the agent runtime');
   assert.equal(mounts.length, 3, 'verifier has an unexpected mount');
@@ -312,15 +358,69 @@ export function validateVerifierInspection(inspection, {image, workspace, oracle
   return {networkMode: 'none', runtimePresent: false, workspaceReadOnly: true};
 }
 
-export function validateLocalImageInspection(inspection, image) {
+function validateImageId(value, label) {
+  assert.match(value ?? '', SHA256_DIGEST, `${label} is invalid`);
+  return value;
+}
+
+export function validateRestoredFilesArtifact(artifact) {
+  assert.equal(artifact?.schemaVersion, RESTORED_FILES_SCHEMA, 'restored-files artifact schema is unsupported');
+  assert.equal(artifact?.root, '/usr/local/lib/python3.12/site-packages', 'restored-files root drifted');
+  assert.equal(Array.isArray(artifact?.packages) && artifact.packages.length > 0, true, 'restored-files packages are missing');
+  assert.deepEqual(artifact.packages, [...new Set(artifact.packages)].sort(), 'restored-files packages are not sorted and unique');
+  assert.equal(Array.isArray(artifact?.files) && artifact.files.length > 0, true, 'restored-files entries are missing');
+  const paths = [];
+  for (const item of artifact.files) {
+    assert.deepEqual(Object.keys(item).sort(), ['gid', 'mode', 'path', 'sha256', 'size', 'uid'], 'restored-file entry shape drifted');
+    assert.equal(typeof item.path, 'string', 'restored-file path is invalid');
+    assert.equal(item.path.startsWith(`${artifact.root}/`), true, 'restored-file path escapes site-packages');
+    assert.equal(item.path.includes('..'), false, 'restored-file path is not normalized');
+    assert.match(item.mode ?? '', /^0[0-7]{3}$/, `restored-file mode is invalid for ${item.path}`);
+    assert.equal((Number.parseInt(item.mode, 8) & 0o7000) === 0, true, `restored-file mode is privileged for ${item.path}`);
+    assert.equal((Number.parseInt(item.mode, 8) & 0o022) === 0, true, `restored-file mode is writable for ${item.path}`);
+    for (const [name, value] of [['uid', item.uid], ['gid', item.gid], ['size', item.size]]) {
+      assert.equal(Number.isSafeInteger(value) && value >= 0, true, `restored-file ${name} is invalid for ${item.path}`);
+    }
+    assert.match(item.sha256 ?? '', SHA256, `restored-file sha256 is invalid for ${item.path}`);
+    paths.push(item.path);
+  }
+  assert.deepEqual(paths, [...new Set(paths)].sort(), 'restored-file paths are not sorted and unique');
+  return artifact;
+}
+
+export function validateRecoveryManifest(manifest, expectedTaskId = IMAGE_TASK, restoredFilesArtifact = null) {
+  assert.equal(manifest?.schemaVersion, RECOVERY_SCHEMA, 'image recovery manifest schema is unsupported');
+  assert.equal(typeof manifest?.executionReady, 'boolean', 'image recovery executionReady is invalid');
+  assert.equal(Array.isArray(manifest?.recoveries) && manifest.recoveries.length > 0, true, 'image recovery entries are missing');
+  const entry = manifest.recoveries.find(item => item?.taskId === expectedTaskId);
+  assert.ok(entry, `image recovery entry is missing for ${expectedTaskId}`);
+  assert.match(entry.effectiveImageRef ?? '', /^jev-plugin-value-recovery\/[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[A-Za-z0-9][A-Za-z0-9_.-]{0,127})$/, 'effective recovery image reference is invalid');
+  validateImageId(entry.effectiveImageId, 'effective recovery image id');
+  assert.equal(Array.isArray(entry.effectiveRootfsDiffIds) && entry.effectiveRootfsDiffIds.length > 0, true, 'effective recovery rootfs identity is missing');
+  entry.effectiveRootfsDiffIds.forEach((digest, index) => validateImageId(digest, `effective recovery rootfs layer ${index}`));
+  for (const [artifactName, hashName] of [['sourceLayerArtifact', 'sourceLayerArtifactSha256'], ['restoredFilesArtifact', 'restoredFilesArtifactSha256'], ['buildReceiptArtifact', 'buildReceiptArtifactSha256']]) {
+    assert.equal(typeof entry[artifactName] === 'string' && entry[artifactName].length > 0, true, `${artifactName} is missing`);
+    assert.match(entry[hashName] ?? '', SHA256, `${hashName} is invalid`);
+  }
+  if (restoredFilesArtifact !== null) validateRestoredFilesArtifact(restoredFilesArtifact);
+  return entry;
+}
+
+export function validateLocalImageInspection(inspection, image, expected = {}) {
   assert.equal(inspection?.Os, 'linux', 'synthetic base image OS drifted');
   assert.equal(inspection?.Architecture, 'amd64', 'synthetic base image architecture drifted');
-  assert.equal((inspection?.RepoDigests ?? []).includes(image), true, 'digest-pinned synthetic base image is not present locally');
+  const located = expected.id !== undefined
+    ? (inspection?.RepoTags ?? []).includes(image) || (inspection?.RepoDigests ?? []).includes(image)
+    : (inspection?.RepoDigests ?? []).includes(image);
+  assert.equal(located, true, expected.id !== undefined ? 'effective recovery image is not present locally' : 'digest-pinned synthetic base image is not present locally');
   assert.match(inspection?.Id ?? '', /^sha256:[0-9a-f]{64}$/, 'synthetic base image id is invalid');
+  if (expected.id !== undefined) assert.equal(inspection.Id, expected.id, 'effective recovery image id drifted');
+  if (expected.rootfs !== undefined) assert.deepEqual(inspection?.RootFS?.Layers, expected.rootfs, 'effective recovery rootfs drifted');
   return {id: inspection.Id, os: inspection.Os, architecture: inspection.Architecture, digest: image};
 }
 
 export async function validateControlInputs(options) {
+  if (options.imageRecovery === undefined) options.imageRecovery = null;
   for (const [label, path] of Object.entries({
     identity: options.identity,
     imageLedger: options.imageLedger,
@@ -366,13 +466,65 @@ export async function validateControlInputs(options) {
   const image = ledger.images?.find(item => item.taskId === IMAGE_TASK);
   assert.ok(image, 'synthetic base image is absent from the ledger');
   assert.match(image.manifestDigest ?? '', /^sha256:[0-9a-f]{64}$/);
+  const boundRecoverySha256 = identity.dataset?.imageRecoveryManifestSha256;
+  let imageRecovery = null;
+  let effectiveImage = `${image.repository}@${image.manifestDigest}`;
+  let effectiveImageId = null;
+  let effectiveRootfsDiffIds = null;
+  if (boundRecoverySha256 !== undefined) {
+    assert.match(boundRecoverySha256 ?? '', SHA256, 'image recovery manifest sha256 binding is invalid');
+    const boundRecoveryName = identity.dataset?.imageRecoveryManifest ?? 'image-recovery.json';
+    assert.equal(typeof boundRecoveryName, 'string', 'image recovery manifest name is invalid');
+    const defaultRecoveryPath = resolve(dirname(options.identity), boundRecoveryName);
+    if (options.imageRecovery === null) options.imageRecovery = defaultRecoveryPath;
+    assert.equal(resolve(options.imageRecovery), defaultRecoveryPath, 'image recovery path does not match the runtime identity binding');
+    const recoveryCanonical = await realpath(options.imageRecovery);
+    assert.equal((await lstat(recoveryCanonical)).isSymbolicLink(), false, 'image recovery canonical path cannot be a symlink');
+    options.imageRecovery = recoveryCanonical;
+    assert.equal(await fileSha256(options.imageRecovery), boundRecoverySha256, 'image recovery manifest sha256 drifted');
+    const recoveryManifest = JSON.parse(await readFile(options.imageRecovery, 'utf8'));
+    const recoveryEntry = validateRecoveryManifest(recoveryManifest);
+    assert.equal(recoveryEntry.sourceManifestDigest, image.manifestDigest, 'image recovery source manifest digest drifted');
+    assert.equal(recoveryEntry.sourceConfigDigest, image.configDigest, 'image recovery source config digest drifted');
+    assert.notEqual(recoveryEntry.effectiveImageRef, image.image, 'effective recovery image reference did not change');
+    assert.notEqual(recoveryEntry.effectiveImageId, image.configDigest, 'effective recovery image id did not change');
+    const recoveryRoot = dirname(options.imageRecovery);
+    const artifactValues = {};
+    for (const [artifactName, hashName] of [['sourceLayerArtifact', 'sourceLayerArtifactSha256'], ['restoredFilesArtifact', 'restoredFilesArtifactSha256'], ['buildReceiptArtifact', 'buildReceiptArtifactSha256']]) {
+      const artifactPath = resolve(recoveryRoot, recoveryEntry[artifactName]);
+      assert.equal(pathContains(recoveryRoot, artifactPath), true, `${artifactName} escapes the recovery bundle`);
+      assert.equal((await lstat(artifactPath)).isSymbolicLink(), false, `${artifactName} cannot be a symlink`);
+      const artifactCanonical = await realpath(artifactPath);
+      assert.equal(pathContains(recoveryRoot, artifactCanonical), true, `${artifactName} resolves outside the recovery bundle`);
+      assert.equal(await fileSha256(artifactCanonical), recoveryEntry[hashName], `${artifactName} sha256 drifted`);
+      artifactValues[artifactName] = artifactCanonical;
+    }
+    const restoredFilesArtifact = JSON.parse(await readFile(artifactValues.restoredFilesArtifact, 'utf8'));
+    validateRecoveryManifest(recoveryManifest, IMAGE_TASK, restoredFilesArtifact);
+    imageRecovery = {
+      manifest: recoveryManifest,
+      entry: recoveryEntry,
+      manifestSha256: boundRecoverySha256,
+      artifacts: artifactValues,
+      restoredFiles: restoredFilesArtifact.files,
+    };
+    effectiveImage = recoveryEntry.effectiveImageRef;
+    effectiveImageId = recoveryEntry.effectiveImageId;
+    effectiveRootfsDiffIds = recoveryEntry.effectiveRootfsDiffIds;
+  } else {
+    assert.equal(options.imageRecovery, null, 'image recovery path supplied without a runtime identity binding');
+  }
   return {
     identity,
     identitySha256,
     imageLedgerSha256,
     driverSha256,
     runtimeManifest,
-    image: `${image.repository}@${image.manifestDigest}`,
+    image: effectiveImage,
+    effectiveImage,
+    effectiveImageId,
+    effectiveRootfsDiffIds,
+    imageRecovery,
     imageIdentity: image,
   };
 }
@@ -385,13 +537,58 @@ async function dockerInspect(docker, containerId) {
   return values[0];
 }
 
-async function inspectLocalImage(docker, image) {
+async function inspectLocalImage(docker, image, expected = {}) {
   const inspected = await execCapture(docker, ['image', 'inspect', image]);
   if (inspected.code !== 0) throw new Error(`pinned synthetic image is not locally available: ${inspected.stderr.slice(-500)}`);
   const values = JSON.parse(inspected.stdout);
   assert.equal(Array.isArray(values) && values.length === 1, true, 'docker image inspect returned an unexpected shape');
-  validateLocalImageInspection(values[0], image);
+  validateLocalImageInspection(values[0], image, expected);
   return values[0];
+}
+
+export function buildRestoredFilesVerificationScript() {
+  return `${RESTORED_FILES_VERIFIER_SCRIPT}\n`;
+}
+
+export function buildRestoredFilesVerificationPayload(files) {
+  assert.equal(Array.isArray(files) && files.length > 0, true, 'restored-file verification requires files');
+  return `${JSON.stringify(files)}\n`;
+}
+
+export function syntheticControlLabels(output) {
+  const suffix = basename(resolve(output));
+  return {
+    control: `com.openai.jev.synthetic-control=${suffix}`,
+    verifier: `com.openai.jev.synthetic-verifier=${suffix}`,
+  };
+}
+
+export function buildRecoveryImageCheckArgs(image, verifierLabel) {
+  return [
+    'run', '--rm', '-i', '--platform', 'linux/amd64', '--network', 'none',
+    '--label', verifierLabel, '--entrypoint', 'python3', image,
+    '-B', '-c', buildRestoredFilesVerificationScript(),
+  ];
+}
+
+async function verifyRestoredFilesInContainer(docker, containerId, files, label) {
+  if (!files) return null;
+  const result = await spawnCapture(docker, [
+    'exec', '-i', '-u', '0', containerId, 'python3', '-B', '-c', buildRestoredFilesVerificationScript(),
+  ], {input: buildRestoredFilesVerificationPayload(files)});
+  if (result.code !== 0) throw new Error(`${label} failed: ${result.stderr.slice(-500)}`);
+  assert.equal(result.stdout.trim(), 'restored-files-verified', `${label} returned an unexpected result`);
+  return {count: files.length, status: 'verified'};
+}
+
+async function verifyRestoredFilesInImage(docker, validated, verifierLabel) {
+  if (!validated.imageRecovery) return null;
+  const result = await spawnCapture(docker, buildRecoveryImageCheckArgs(validated.image, verifierLabel), {
+    input: buildRestoredFilesVerificationPayload(validated.imageRecovery.restoredFiles),
+  });
+  assert.equal(result.code, 0, `recovery restored-file image check failed: ${result.stderr.slice(-500)}`);
+  assert.equal(result.stdout.trim(), 'restored-files-verified', 'recovery restored-file image check returned an unexpected result');
+  return {count: validated.imageRecovery.restoredFiles.length, status: 'verified'};
 }
 
 async function dockerCommand(docker, args, label) {
@@ -408,9 +605,10 @@ function runnerEnvironment(hostControl) {
 }
 
 async function createAgentContainer(options, validated, workspace, name) {
+  const labels = syntheticControlLabels(options.output);
   const id = await dockerCommand(options.docker, [
     'create', '--platform', 'linux/amd64', '--network', 'none', '--workdir', '/app',
-    '--label', `com.openai.jev.synthetic-control=${basename(options.output)}`,
+    '--label', labels.control,
     '--mount', `type=bind,src=${safeMountPath(workspace, 'workspace')},dst=/app`,
     '--mount', `type=bind,src=${safeMountPath(options.runtimeBundle, 'runtime bundle')},dst=${RUNTIME_MOUNT},readonly`,
     '--name', name, '--entrypoint', '/bin/sh', validated.image,
@@ -420,7 +618,13 @@ async function createAgentContainer(options, validated, workspace, name) {
     assert.match(id, /^[0-9a-f]{64}$/);
     await dockerCommand(options.docker, ['start', id], 'agent container start');
     const inspection = await dockerInspect(options.docker, id);
-    validateAgentInspection(inspection, {image: validated.image, workspace, runtimeBundle: options.runtimeBundle});
+    validateAgentInspection(inspection, {
+      image: validated.image,
+      imageId: validated.effectiveImageId ?? undefined,
+      workspace,
+      runtimeBundle: options.runtimeBundle,
+    });
+    await verifyRestoredFilesInContainer(options.docker, id, validated.imageRecovery?.restoredFiles, 'agent restored-file verification');
     return {id, inspection};
   } catch (error) {
     await cleanupContainer(options.docker, id);
@@ -482,9 +686,15 @@ async function runHostControl(options, containerId, hostControl) {
 }
 
 async function runVerifier(options, validated, workspace, oracle, verifierOutput, name) {
+  const labels = syntheticControlLabels(options.output);
+  await inspectLocalImage(options.docker, validated.image, {
+    id: validated.effectiveImageId ?? undefined,
+    rootfs: validated.effectiveRootfsDiffIds ?? undefined,
+  });
+  await verifyRestoredFilesInImage(options.docker, validated, labels.verifier);
   const id = await dockerCommand(options.docker, [
     'create', '--platform', 'linux/amd64', '--network', 'none', '--workdir', '/submission',
-    '--label', `com.openai.jev.synthetic-verifier=${basename(options.output)}`,
+    '--label', labels.verifier,
     '--mount', `type=bind,src=${safeMountPath(workspace, 'workspace')},dst=/submission,readonly`,
     '--mount', `type=bind,src=${safeMountPath(oracle, 'oracle')},dst=/tests,readonly`,
     '--mount', `type=bind,src=${safeMountPath(verifierOutput, 'verifier output')},dst=/logs/verifier`,
@@ -492,7 +702,13 @@ async function runVerifier(options, validated, workspace, oracle, verifierOutput
   ], 'verifier container create');
   try {
     const inspection = await dockerInspect(options.docker, id);
-    validateVerifierInspection(inspection, {image: validated.image, workspace, oracle, output: verifierOutput});
+    validateVerifierInspection(inspection, {
+      image: validated.image,
+      imageId: validated.effectiveImageId ?? undefined,
+      workspace,
+      oracle,
+      output: verifierOutput,
+    });
     await writeJsonDurable(join(options.output, 'verifier-inspect.json'), inspection);
     const execution = await spawnCapture(options.docker, ['start', '-a', id]);
     const completed = await dockerInspect(options.docker, id);
@@ -544,7 +760,19 @@ export async function runSyntheticControl(options) {
     startedAt: new Date().toISOString(),
     identities: {
       image: validated.image,
+      imageId: validated.effectiveImageId,
       imageManifestDigest: validated.imageIdentity.manifestDigest,
+      effectiveImageId: validated.effectiveImageId,
+      effectiveRootfsDiffIds: validated.effectiveRootfsDiffIds,
+      imageRecoveryManifestSha256: validated.imageRecovery?.manifestSha256 ?? null,
+      imageRecoveryArtifactSha256: validated.imageRecovery === null ? null : Object.fromEntries(
+        Object.entries(validated.imageRecovery.entry)
+          .filter(([key]) => key.endsWith('ArtifactSha256'))
+          .map(([key, value]) => [key, value]),
+      ),
+      imageRecoverySourceLayerDigests: validated.imageRecovery?.entry.sourceLayerDigests ?? null,
+      imageRecoveryRepairLayerInventorySha256: validated.imageRecovery?.entry.repairLayerInventorySha256 ?? null,
+      imageRecoveryRestoredFiles: validated.imageRecovery?.restoredFiles ?? null,
       runtimeManifestSha256: validated.identity.sharedRuntime.manifestSha256,
       runtimeTreeSha256: validated.identity.sharedRuntime.treeSha256,
       hostRunnerSha256: await fileSha256(options.hostRunner),
@@ -575,7 +803,10 @@ export async function runSyntheticControl(options) {
   let agent;
   let verifier;
   try {
-    const imageInspection = await inspectLocalImage(options.docker, validated.image);
+    const imageInspection = await inspectLocalImage(options.docker, validated.image, {
+      id: validated.effectiveImageId ?? undefined,
+      rootfs: validated.effectiveRootfsDiffIds ?? undefined,
+    });
     await writeJsonDurable(join(options.output, 'image-inspect.json'), imageInspection);
     agent = await createAgentContainer(options, validated, workspace, `jev-native-${controlId}`);
     await writeJsonDurable(join(options.output, 'agent-inspect.json'), agent.inspection);

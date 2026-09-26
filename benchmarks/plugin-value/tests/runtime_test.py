@@ -8,6 +8,8 @@ import json
 import os
 from pathlib import Path
 import py_compile
+import shutil
+import stat
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
@@ -31,6 +33,7 @@ from pier.models.task.config import EnvironmentConfig
 from pier.models.trial.paths import TrialPaths
 
 from runtime import (
+    IMAGE_RECOVERY_SCHEMA,
     PINNED_CODEX_VERSION,
     PINNED_EFFORT,
     PINNED_MODEL,
@@ -49,6 +52,8 @@ from runtime import (
     _KOOTA_TASK_TOML_SHA256,
     _KOOTA_UPSTREAM_BASE_COMMIT,
     _load_image_identities,
+    _load_image_recoveries,
+    _load_restored_files,
     _sha256_file,
     _tree_sha256,
     _validate_private_launch_paths,
@@ -68,6 +73,21 @@ FIRST_TAG = (
 FIRST_PINNED = (
     "public.ecr.aws/d3j8x8q7/swe-bench-202605@"
     "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1"
+)
+FIRST_CONFIG_DIGEST = "sha256:16f3202367c11789748053c85a4fc47db30d6fb356aa3389f2b84fb61bab4313"
+FIRST_BASE_COMMIT = "0bb317d10fdcb3aa13beb1031d5f10e5b821203b"
+PUBLIC_RECOVERY_MANIFEST = json.loads(
+    (PLUGIN_VALUE_DIR / "image-recovery.json").read_text(encoding="utf-8")
+)
+PUBLIC_RECOVERY_ENTRY = PUBLIC_RECOVERY_MANIFEST["recoveries"][0]
+RECOVERY_REF = PUBLIC_RECOVERY_ENTRY["effectiveImageRef"]
+RECOVERY_IMAGE_ID = PUBLIC_RECOVERY_ENTRY["effectiveImageId"]
+RECOVERY_ROOTFS = tuple(PUBLIC_RECOVERY_ENTRY["effectiveRootfsDiffIds"])
+PYGMENTS_LAYER_DIGEST = (
+    "sha256:7af86c1121e677d40e31d478434bd24c148439e6f6710f2567a924e9642f4c2f"
+)
+PLUGGY_LAYER_DIGEST = (
+    "sha256:d0648bc472c60b4f930117e02bbbe63760a15394251035e234e8db17bb3c1844"
 )
 
 
@@ -152,6 +172,20 @@ class RuntimeFixture(unittest.TestCase):
         codex.chmod(0o500)
         docker.chmod(0o500)
         return node, codex, docker
+
+    def build_image_recovery(self, *, execution_ready=False):
+        shutil.copytree(
+            PLUGIN_VALUE_DIR / "image-recovery-artifacts",
+            self.root / "image-recovery-artifacts",
+            dirs_exist_ok=True,
+        )
+        manifest = self.root / "image-recovery.json"
+        value = json.loads(
+            (PLUGIN_VALUE_DIR / "image-recovery.json").read_text(encoding="utf-8")
+        )
+        value["executionReady"] = execution_ready
+        manifest.write_text(json.dumps(value, sort_keys=True) + "\n", encoding="utf-8")
+        return manifest, _sha256_file(manifest)
 
     def git(self, repository, *arguments):
         completed = subprocess.run(
@@ -285,6 +319,251 @@ class SharedRuntimeTests(RuntimeFixture):
         with self.assertRaisesRegex(ValueError, "writable"):
             validate_shared_runtime(root)
 
+
+class ImageRecoveryTests(RuntimeFixture):
+    def source_identities(self):
+        return _load_image_identities(
+            IMAGE_LEDGER,
+            expected_sha256=IMAGE_LEDGER_SHA256,
+            require_execution_ready=False,
+        )
+
+    def rewrite_bound_recovery_artifact(self, recovery, artifact_name, mutate):
+        manifest = json.loads(recovery.read_text(encoding="utf-8"))
+        entry = manifest["recoveries"][0]
+        build_path = self.root / entry["buildReceiptArtifact"]
+        build = json.loads(build_path.read_text(encoding="utf-8"))
+        if artifact_name == "recipe":
+            artifact_path = self.root / build["recipeArtifact"]
+            build_sha_key = "recipeArtifactSha256"
+            entry_sha_key = None
+        elif artifact_name == "registry":
+            artifact_path = self.root / build["registryAuditArtifact"]
+            build_sha_key = "registryAuditArtifactSha256"
+            entry_sha_key = "sourceLayerArtifactSha256"
+        elif artifact_name == "build":
+            artifact_path = build_path
+            build_sha_key = None
+            entry_sha_key = None
+        else:
+            raise AssertionError(f"unsupported fixture artifact: {artifact_name}")
+        artifact = build if artifact_name == "build" else json.loads(
+            artifact_path.read_text(encoding="utf-8")
+        )
+        mutate(artifact)
+        artifact_path.write_text(
+            json.dumps(artifact, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        if build_sha_key is not None:
+            artifact_sha256 = _sha256_file(artifact_path)
+            build[build_sha_key] = artifact_sha256
+            if entry_sha_key is not None:
+                entry[entry_sha_key] = artifact_sha256
+            build_path.write_text(
+                json.dumps(build, sort_keys=True) + "\n", encoding="utf-8"
+            )
+        entry["buildReceiptArtifactSha256"] = _sha256_file(build_path)
+        recovery.write_text(
+            json.dumps(manifest, sort_keys=True) + "\n", encoding="utf-8"
+        )
+
+    def test_recovery_resolves_a_distinct_authenticated_image_without_mutating_source(self):
+        ledger_before = IMAGE_LEDGER.read_bytes()
+        recovery, checksum = self.build_image_recovery()
+        first = _load_image_recoveries(
+            recovery,
+            expected_sha256=checksum,
+            source_identities=self.source_identities(),
+            require_execution_ready=False,
+        )
+        second = _load_image_recoveries(
+            recovery,
+            expected_sha256=checksum,
+            source_identities=self.source_identities(),
+            require_execution_ready=False,
+        )
+        resolved = first[FIRST_TASK]
+        self.assertEqual(resolved.source.pinned_image, FIRST_PINNED)
+        self.assertEqual(resolved.source.config_digest, FIRST_CONFIG_DIGEST)
+        self.assertEqual(resolved.effective_reference, RECOVERY_REF)
+        self.assertEqual(resolved.effective_image_id, RECOVERY_IMAGE_ID)
+        self.assertEqual(resolved.expected_rootfs_diff_ids, RECOVERY_ROOTFS)
+        restored_paths = {item.path.as_posix() for item in resolved.restored_files}
+        self.assertEqual(len(restored_paths), 706)
+        self.assertIn(
+            "/usr/local/lib/python3.12/site-packages/pygments/__init__.py",
+            restored_paths,
+        )
+        self.assertIn(
+            "/usr/local/lib/python3.12/site-packages/pluggy/py.typed",
+            restored_paths,
+        )
+        self.assertEqual(
+            next(
+                item.size
+                for item in resolved.restored_files
+                if item.path.as_posix().endswith("/pluggy/py.typed")
+            ),
+            0,
+        )
+        self.assertEqual(dict(resolved.source_layer_digests), {
+            "pluggy": PLUGGY_LAYER_DIGEST,
+            "pygments": PYGMENTS_LAYER_DIGEST,
+        })
+        self.assertEqual(second[FIRST_TASK], resolved)
+        unaffected = first["anko-default-function-arguments"]
+        self.assertEqual(unaffected.effective_reference, unaffected.source.pinned_image)
+        self.assertIsNone(unaffected.effective_image_id)
+        self.assertFalse(unaffected.is_recovered)
+        self.assertEqual(IMAGE_LEDGER.read_bytes(), ledger_before)
+
+    def test_recovery_blocks_score_until_separately_marked_ready(self):
+        recovery, checksum = self.build_image_recovery(execution_ready=False)
+        with self.assertRaisesRegex(ValueError, "not ready for scored execution"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=checksum,
+                source_identities=self.source_identities(),
+                require_execution_ready=True,
+            )
+        recovery, checksum = self.build_image_recovery(execution_ready=True)
+        resolved = _load_image_recoveries(
+            recovery,
+            expected_sha256=checksum,
+            source_identities=self.source_identities(),
+            require_execution_ready=True,
+        )
+        self.assertTrue(resolved[FIRST_TASK].is_recovered)
+
+    def test_recovery_rejects_source_or_artifact_drift(self):
+        recovery, _ = self.build_image_recovery()
+        value = json.loads(recovery.read_text(encoding="utf-8"))
+        value["recoveries"][0]["sourceConfigDigest"] = "sha256:" + "0" * 64
+        recovery.write_text(json.dumps(value, sort_keys=True) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "source config mismatch"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+    def test_recovery_rejects_rehashed_recipe_registry_and_version_tampering(self):
+        recovery, _ = self.build_image_recovery()
+        self.rewrite_bound_recovery_artifact(
+            recovery,
+            "recipe",
+            lambda artifact: artifact["copyPaths"].__setitem__(
+                0, artifact["copyPaths"][0].removeprefix("restored/")
+            ),
+        )
+        with self.assertRaisesRegex(ValueError, "copy paths do not cover"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+        recovery, _ = self.build_image_recovery()
+        self.rewrite_bound_recovery_artifact(
+            recovery,
+            "registry",
+            lambda artifact: artifact["laterLayers"][0].__setitem__(
+                "digestVerified", False
+            ),
+        )
+        with self.assertRaisesRegex(ValueError, "digest evidence"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+        recovery, _ = self.build_image_recovery()
+        self.rewrite_bound_recovery_artifact(
+            recovery,
+            "registry",
+            lambda artifact: artifact["whiteoutRegression"][
+                "usr/share/.wh.unrelated"
+            ].__setitem__("pluggy", True),
+        )
+        with self.assertRaisesRegex(ValueError, "whiteout regression classification"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+        recovery, _ = self.build_image_recovery()
+        self.rewrite_bound_recovery_artifact(
+            recovery,
+            "build",
+            lambda artifact: artifact["versions"].__setitem__("Pygments", "0.0.0"),
+        )
+        with self.assertRaisesRegex(ValueError, "package version"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+        recovery, _ = self.build_image_recovery()
+        value = json.loads(recovery.read_text(encoding="utf-8"))
+        restored = self.root / value["recoveries"][0]["restoredFilesArtifact"]
+        restored.write_text("{}\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "restored-files artifact.*sha256 mismatch"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+    def test_recovery_rejects_unknown_task_and_untrusted_image_reference(self):
+        recovery, _ = self.build_image_recovery()
+        value = json.loads(recovery.read_text(encoding="utf-8"))
+        value["recoveries"][0]["taskId"] = "not-a-frozen-task"
+        recovery.write_text(json.dumps(value, sort_keys=True) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "outside the frozen set"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+        recovery, _ = self.build_image_recovery()
+        value = json.loads(recovery.read_text(encoding="utf-8"))
+        value["recoveries"][0]["effectiveImageRef"] = FIRST_PINNED
+        recovery.write_text(json.dumps(value, sort_keys=True) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "reference is invalid"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+    def test_restored_file_allowlist_rejects_workspace_and_undeclared_packages(self):
+        recovery, _ = self.build_image_recovery()
+        manifest = json.loads(recovery.read_text(encoding="utf-8"))
+        artifact_path = self.root / manifest["recoveries"][0]["restoredFilesArtifact"]
+        artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+        artifact["files"][0]["path"] = "/app/credential"
+        artifact_path.write_text(json.dumps(artifact) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "escapes the reviewed"):
+            _load_restored_files(artifact_path)
+
+        artifact["files"][0]["path"] = (
+            "/usr/local/lib/python3.12/site-packages/pytest/__init__.py"
+        )
+        artifact_path.write_text(json.dumps(artifact) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "package allowlist"):
+            _load_restored_files(artifact_path)
 
 class BootstrapIntegrityTests(RuntimeFixture):
     @staticmethod
@@ -510,6 +789,8 @@ class ImageIdentityTests(unittest.TestCase):
         )
         self.assertEqual(len(identities), 20)
         self.assertEqual(identities[FIRST_TASK].pinned_image, FIRST_PINNED)
+        self.assertEqual(identities[FIRST_TASK].config_digest, FIRST_CONFIG_DIGEST)
+        self.assertIn(PYGMENTS_LAYER_DIGEST, identities[FIRST_TASK].layer_digests)
         self.assertNotIn(":kh", identities[FIRST_TASK].pinned_image)
 
     def test_ledger_hash_and_readiness_fail_closed(self):
@@ -677,6 +958,7 @@ class EnvironmentMountTests(RuntimeFixture):
 
     def make_environment(self, runtime_root, task_config, **overrides):
         _, _, docker = self.build_host_executables()
+        recovery_path, recovery_sha256 = self.build_image_recovery()
         environment_dir = overrides.pop("environment_dir", self.root / "environment")
         try:
             runtime_identity = validate_shared_runtime(runtime_root)
@@ -696,8 +978,10 @@ class EnvironmentMountTests(RuntimeFixture):
             "runtime_tree_sha256": tree_sha256,
             "image_identity_path": str(IMAGE_LEDGER),
             "image_identity_sha256": IMAGE_LEDGER_SHA256,
+            "image_recovery_path": str(recovery_path),
+            "image_recovery_sha256": recovery_sha256,
             "expected_task_id": FIRST_TASK,
-            "expected_base_commit": "a" * 40,
+            "expected_base_commit": FIRST_BASE_COMMIT,
             "execution_mode": "preflight",
             "host_docker_path": str(docker),
             "host_docker_sha256": _sha256_file(docker),
@@ -721,7 +1005,7 @@ class EnvironmentMountTests(RuntimeFixture):
         original = FakeTaskEnvironment()
         environment = self.make_environment(runtime_root, original)
         self.assertEqual(original.docker_image, FIRST_TAG)
-        self.assertEqual(environment.task_env_config.docker_image, FIRST_PINNED)
+        self.assertEqual(environment.task_env_config.docker_image, RECOVERY_REF)
         self.assertEqual(len(environment._mounts_json), 4)
         runtime_mount = environment._mounts_json[-1]
         self.assertEqual(runtime_mount["target"], str(RUNTIME_MOUNT))
@@ -737,6 +1021,7 @@ class EnvironmentMountTests(RuntimeFixture):
         environment_dir = self.root / "environment"
         environment_dir.mkdir()
         (environment_dir / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
+        recovery_path, recovery_sha256 = self.build_image_recovery()
         environment = PluginValueDockerEnvironment(
             environment_dir=environment_dir,
             environment_name=f"datacurve/{FIRST_TASK}",
@@ -752,15 +1037,17 @@ class EnvironmentMountTests(RuntimeFixture):
             runtime_tree_sha256=validate_shared_runtime(runtime_root).tree_sha256,
             image_identity_path=str(IMAGE_LEDGER),
             image_identity_sha256=IMAGE_LEDGER_SHA256,
+            image_recovery_path=str(recovery_path),
+            image_recovery_sha256=recovery_sha256,
             expected_task_id=FIRST_TASK,
-            expected_base_commit="a" * 40,
+            expected_base_commit=FIRST_BASE_COMMIT,
             execution_mode="preflight",
             host_docker_path=str(docker),
             host_docker_sha256=_sha256_file(docker),
             mounts_json=None,
             agent_install_spec=None,
         )
-        self.assertEqual(environment.task_env_config.docker_image, FIRST_PINNED)
+        self.assertEqual(environment.task_env_config.docker_image, RECOVERY_REF)
         self.assertEqual(len(environment._mounts_json), 4)
 
     def test_verifier_keeps_only_its_explicit_mount_and_never_mounts_bundle(self):
@@ -874,6 +1161,7 @@ class EnvironmentMountTests(RuntimeFixture):
         trial_paths.mkdir()
         environment.trial_paths = trial_paths
         environment._env_vars = SimpleNamespace(context_dir="", main_image_name="old")
+        environment._verified_effective_image_id = RECOVERY_IMAGE_ID
 
         environment._prepare_verifier_build_context()
 
@@ -881,13 +1169,17 @@ class EnvironmentMountTests(RuntimeFixture):
         self.assertIsNotNone(copied)
         self.assertNotEqual(copied, source_context)
         self.assertEqual(_tree_sha256(source_context), source_hash)
-        self.assertIn(FIRST_PINNED, (copied / "Dockerfile").read_text(encoding="utf-8"))
+        self.assertIn(RECOVERY_REF, (copied / "Dockerfile").read_text(encoding="utf-8"))
         self.assertEqual((source_context / "Dockerfile").read_text(encoding="utf-8"), original_dockerfile)
         self.assertEqual(environment._env_vars.context_dir, copied.resolve().as_posix())
         self.assertIn(source_hash[:24], environment._env_vars.main_image_name)
-        self.assertIn(FIRST_PINNED.split("sha256:", 1)[1][:16], environment._env_vars.main_image_name)
+        self.assertIn(RECOVERY_IMAGE_ID.removeprefix("sha256:")[:16], environment._env_vars.main_image_name)
         self.assertEqual(json.loads(environment._verifier_image_compose_path.read_text()), {
-            "services": {"main": {"image": environment._verifier_build_name}}
+            "services": {"main": {
+                "image": environment._verifier_build_name,
+                "platform": "linux/amd64",
+                "build": {"platforms": ["linux/amd64"]},
+            }}
         })
         with mock.patch.object(DockerEnvironment, "_docker_compose_paths", new_callable=mock.PropertyMock) as paths:
             paths.return_value = [Path("upstream-compose")]
@@ -911,6 +1203,7 @@ class EnvironmentMountTests(RuntimeFixture):
         trial_paths.mkdir()
         environment.trial_paths = trial_paths
         environment._env_vars = SimpleNamespace(context_dir="", main_image_name="old")
+        environment._verified_effective_image_id = RECOVERY_IMAGE_ID
         (source_context / "drift-marker").write_text("changed", encoding="utf-8")
         with self.assertRaisesRegex(RuntimeError, "source context changed"):
             environment._prepare_verifier_build_context()
@@ -918,7 +1211,7 @@ class EnvironmentMountTests(RuntimeFixture):
     def test_environment_name_must_match_the_canonical_datacurve_task_name(self):
         runtime_root = self.build_runtime()
         environment = self.make_environment(runtime_root, FakeTaskEnvironment())
-        self.assertEqual(environment.task_env_config.docker_image, FIRST_PINNED)
+        self.assertEqual(environment.task_env_config.docker_image, RECOVERY_REF)
         with self.assertRaisesRegex(ValueError, "environment name"):
             self.make_environment(
                 runtime_root,
@@ -932,6 +1225,157 @@ class EnvironmentMountTests(RuntimeFixture):
                 environment_name="datacurve/anko-default-function-arguments",
             )
 
+    def test_effective_image_requires_exact_local_id_platform_and_rootfs(self):
+        environment = self.make_environment(self.build_runtime(), FakeTaskEnvironment())
+        environment._pull_source_image = mock.AsyncMock()
+        environment._inspect_image = mock.AsyncMock(
+            return_value={
+                "Id": RECOVERY_IMAGE_ID,
+                "Os": "linux",
+                "Architecture": "amd64",
+                "RootFS": {"Type": "layers", "Layers": list(RECOVERY_ROOTFS)},
+            }
+        )
+        asyncio.run(environment._verify_effective_image())
+        environment._pull_source_image.assert_not_awaited()
+        self.assertTrue(environment._effective_image_verified)
+        self.assertEqual(environment._verified_effective_rootfs, RECOVERY_ROOTFS)
+        environment._inspect_image.return_value["Id"] = "sha256:" + "0" * 64
+        with self.assertRaisesRegex(RuntimeError, "image id"):
+            asyncio.run(environment._verify_effective_image())
+        environment._inspect_image.return_value.update(
+            {
+                "Id": RECOVERY_IMAGE_ID,
+                "RootFS": {
+                    "Type": "layers",
+                    "Layers": ["sha256:" + "1" * 64],
+                },
+            }
+        )
+        with self.assertRaisesRegex(RuntimeError, "rootfs"):
+            asyncio.run(environment._verify_effective_image())
+
+    def test_original_image_is_pulled_by_exact_digest_before_inspection(self):
+        environment = self.make_environment(self.build_runtime(), FakeTaskEnvironment())
+        identities = _load_image_identities(
+            IMAGE_LEDGER,
+            expected_sha256=IMAGE_LEDGER_SHA256,
+            require_execution_ready=False,
+        )
+        recovery_path, recovery_sha256 = self.build_image_recovery()
+        resolved = _load_image_recoveries(
+            recovery_path,
+            expected_sha256=recovery_sha256,
+            source_identities=identities,
+            require_execution_ready=False,
+        )["anko-default-function-arguments"]
+        environment._resolved_task_image = resolved
+        environment._pull_source_image = mock.AsyncMock()
+        observed_image_id = resolved.source.manifest_digest
+        environment._inspect_image = mock.AsyncMock(
+            return_value={
+                "Id": observed_image_id,
+                "Os": "linux",
+                "Architecture": "amd64",
+                "RepoDigests": [resolved.source.pinned_image],
+                "RootFS": {"Type": "layers", "Layers": ["sha256:" + "a" * 64]},
+            }
+        )
+
+        asyncio.run(environment._verify_effective_image())
+
+        environment._pull_source_image.assert_awaited_once_with(resolved.source.pinned_image)
+        environment._inspect_image.assert_awaited_once_with(resolved.source.pinned_image)
+
+        environment._effective_image_verified = False
+        environment._inspect_image.return_value["RepoDigests"] = [
+            resolved.source.pinned_image.rsplit("@", 1)[0] + "@sha256:" + "0" * 64
+        ]
+        with self.assertRaisesRegex(RuntimeError, "frozen registry digest"):
+            asyncio.run(environment._verify_effective_image())
+
+    def test_restored_files_are_metadata_checked_and_hashed_live_before_execution(self):
+        environment = self.make_environment(self.build_runtime(), FakeTaskEnvironment())
+        environment._container_identity_evidence = {
+            "containerId": "a" * 64,
+            "restoredFilesVerified": False,
+        }
+        restored = environment._resolved_task_image.restored_files
+        self.assertEqual(len(restored), 706)
+        empty_file = next(item for item in restored if item.size == 0)
+        pygments_file = next(
+            item for item in restored if "/pygments/" in item.path.as_posix()
+        )
+
+        def metadata_payload(*, change_index=None, field=None, value=None):
+            records = []
+            for index, item in enumerate(restored):
+                values = {
+                    "mode": format(stat.S_IFREG | int(item.mode, 8), "x"),
+                    "uid": item.uid,
+                    "gid": item.gid,
+                    "size": item.size,
+                }
+                if index == change_index:
+                    values[field] = value
+                records.append(
+                    f"{values['mode']}\0{values['uid']}\0{values['gid']}\0"
+                    f"{values['size']}\0{item.path.as_posix()}\0"
+                )
+            return "".join(records).encode()
+
+        metadata = metadata_payload()
+        checksums = "".join(
+            f"{item.sha256}  {item.path.as_posix()}\0" for item in restored
+        )
+        environment._exec_restored_file_identity_command = mock.AsyncMock(
+            side_effect=[metadata, checksums.encode()]
+        )
+        asyncio.run(environment._verify_restored_files())
+        self.assertTrue(environment._restored_files_verified)
+        self.assertTrue(environment._container_identity_evidence["restoredFilesVerified"])
+        calls = environment._exec_restored_file_identity_command.await_args_list
+        self.assertEqual(calls[0].args[1], "/usr/bin/stat")
+        self.assertEqual(calls[1].args[1], "/usr/bin/sha256sum")
+        self.assertIn(empty_file.path.as_posix(), calls[0].args)
+        self.assertIn(pygments_file.path.as_posix(), calls[1].args)
+
+        environment._restored_files_verified = False
+        environment._container_identity_evidence["restoredFilesVerified"] = False
+        bad_metadata = metadata_payload(change_index=0, field="mode", value="a1ff")
+        environment._exec_restored_file_identity_command = mock.AsyncMock(
+            side_effect=[bad_metadata, checksums.encode()]
+        )
+        with self.assertRaisesRegex(RuntimeError, "not regular"):
+            asyncio.run(environment._verify_restored_files())
+
+        for field, value in (
+            ("mode", "81ed"),
+            ("uid", restored[0].uid + 1),
+            ("gid", restored[0].gid + 1),
+            ("size", restored[0].size + 1),
+        ):
+            with self.subTest(field=field):
+                environment._restored_files_verified = False
+                environment._container_identity_evidence["restoredFilesVerified"] = False
+                environment._exec_restored_file_identity_command = mock.AsyncMock(
+                    side_effect=[
+                        metadata_payload(change_index=0, field=field, value=value),
+                        checksums.encode(),
+                    ]
+                )
+                with self.assertRaisesRegex(RuntimeError, "metadata does not match"):
+                    asyncio.run(environment._verify_restored_files())
+
+        environment._restored_files_verified = False
+        environment._container_identity_evidence["restoredFilesVerified"] = False
+        bad_checksums = checksums.replace(restored[0].sha256, "0" * 64, 1)
+        environment._exec_restored_file_identity_command = mock.AsyncMock(
+            side_effect=[metadata, bad_checksums.encode()]
+        )
+        with self.assertRaisesRegex(RuntimeError, "bytes do not match"):
+            asyncio.run(environment._verify_restored_files())
+
     def test_container_inspection_proves_agent_mount_and_verifier_absence(self):
         identity = validate_shared_runtime(self.build_runtime())
         verifier_context = self.make_verifier_context()
@@ -940,15 +1384,36 @@ class EnvironmentMountTests(RuntimeFixture):
             expected_sha256=IMAGE_LEDGER_SHA256,
             require_execution_ready=False,
         )[FIRST_TASK]
+        recovery_path, recovery_sha256 = self.build_image_recovery()
+        resolved_image = _load_image_recoveries(
+            recovery_path,
+            expected_sha256=recovery_sha256,
+            source_identities={FIRST_TASK: image_identity},
+            require_execution_ready=False,
+        )[FIRST_TASK]
         environment = object.__new__(PluginValueDockerEnvironment)
         environment._shared_runtime = identity
         environment._shared_runtime_source = identity.root
         environment._task_image_identity = image_identity
+        environment._resolved_task_image = resolved_image
+        environment._effective_image_verified = True
+        environment._verified_effective_image_id = RECOVERY_IMAGE_ID
+        environment._verified_effective_rootfs = RECOVERY_ROOTFS
+        environment._restored_files_verified = False
         environment._verifier_build_name = "built-verifier-image"
         environment._verifier_build_context = verifier_context
         environment._verifier_source_context = verifier_context
         environment._verifier_context_sha256 = _tree_sha256(environment._verifier_source_context)
         environment._verifier_base_image = FIRST_TAG
+        environment.session_id = "trial__verifier__trial"
+        environment._mounts_json = [
+            {
+                "type": "bind",
+                "source": str(identity.root),
+                "target": str(RUNTIME_MOUNT),
+                "read_only": True,
+            }
+        ]
         trial_paths = TrialPaths(self.root / "identity-trial")
         trial_paths.mkdir()
         environment.trial_paths = trial_paths
@@ -956,8 +1421,8 @@ class EnvironmentMountTests(RuntimeFixture):
         environment.benchmark_container_id = mock.AsyncMock(return_value="a" * 64)
         environment._inspect_container = mock.AsyncMock(
             return_value={
-                "Config": {"Image": FIRST_PINNED},
-                "Image": "sha256:" + "a" * 64,
+                "Config": {"Image": RECOVERY_REF},
+                "Image": RECOVERY_IMAGE_ID,
                 "HostConfig": {"NetworkMode": "none"},
                 "Mounts": [
                     {
@@ -970,11 +1435,25 @@ class EnvironmentMountTests(RuntimeFixture):
             }
         )
         asyncio.run(environment._verify_running_container(expect_runtime=True))
+        environment._restored_files_verified = True
+        environment._container_identity_evidence["restoredFilesVerified"] = True
+        environment._container_identity_verified = True
         self.assertTrue(environment._container_identity_verified)
-        self.assertEqual(environment.container_identity_evidence["imageId"], "sha256:" + "a" * 64)
+        self.assertEqual(environment.container_identity_evidence["imageId"], RECOVERY_IMAGE_ID)
         self.assertEqual(environment.container_identity_evidence["runtimeMountCount"], 1)
 
         environment._container_identity_verified = False
+        environment._restored_files_verified = False
+        environment._mounts_json = []
+        environment._inspect_image = mock.AsyncMock(
+            return_value={
+                "Id": "sha256:" + "b" * 64,
+                "RootFS": {
+                    "Type": "layers",
+                    "Layers": [*RECOVERY_ROOTFS, "sha256:" + "f" * 64],
+                },
+            }
+        )
         environment._inspect_container = mock.AsyncMock(
             return_value={
                 "Config": {"Image": "built-verifier-image"},
@@ -984,26 +1463,133 @@ class EnvironmentMountTests(RuntimeFixture):
             }
         )
         asyncio.run(environment._verify_running_container(expect_runtime=False))
+        environment._restored_files_verified = True
+        environment._container_identity_evidence["restoredFilesVerified"] = True
+        environment._write_verifier_identity_receipt()
+        environment._container_identity_verified = True
         self.assertTrue(environment._container_identity_verified)
         self.assertEqual(environment.container_identity_evidence["image"], "built-verifier-image")
         self.assertEqual(environment.container_identity_evidence["runtimeMountCount"], 0)
         receipt = trial_paths.trial_dir / "verifier-runtime-identity.json"
         self.assertTrue(receipt.is_file())
         receipt_data = json.loads(receipt.read_text(encoding="utf-8"))
-        self.assertEqual(receipt_data["baseImageDigest"], "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1")
+        self.assertEqual(
+            receipt_data["sourceRegistryManifestDigest"],
+            "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
+        )
+        self.assertEqual(receipt_data["effectiveBaseImageId"], RECOVERY_IMAGE_ID)
+        self.assertEqual(
+            receipt_data["registryLayerEvidenceSha256"],
+            resolved_image.registry_layer_evidence_sha256,
+        )
+        self.assertEqual(
+            receipt_data["restoredFilesArtifactSha256"],
+            resolved_image.restored_files_artifact_sha256,
+        )
+        self.assertEqual(
+            receipt_data["buildReceiptSha256"],
+            resolved_image.build_receipt_sha256,
+        )
+        self.assertEqual(
+            receipt_data["recipeArtifactSha256"],
+            resolved_image.recipe_artifact_sha256,
+        )
+        self.assertTrue(receipt_data["restoredFilesVerified"])
         self.assertEqual(receipt_data["runtimeMountCount"], 0)
-        self.assertNotIn("trial", json.dumps(receipt_data))
+        self.assertEqual(receipt_data["taskId"], FIRST_TASK)
+        self.assertEqual(receipt_data["sessionId"], "trial__verifier__trial")
+        self.assertNotIn("JEV_API_KEY", json.dumps(receipt_data))
+
+        inspection = environment._inspect_container.return_value
+        environment._container_identity_verified = False
+        inspection["Config"]["Env"] = ["JEV_API_KEY=redacted"]
+        with self.assertRaisesRegex(RuntimeError, "forbidden credential env JEV_API_KEY"):
+            asyncio.run(environment._verify_running_container(expect_runtime=False))
+        inspection["Config"].pop("Env")
+
+        environment._container_identity_verified = False
+        inspection["HostConfig"]["Privileged"] = True
+        with self.assertRaisesRegex(RuntimeError, "privileged"):
+            asyncio.run(environment._verify_running_container(expect_runtime=False))
+        inspection["HostConfig"].pop("Privileged")
+
+        environment._container_identity_verified = False
+        inspection["Mounts"].append(
+            {"Type": "bind", "Source": "/unexpected", "Destination": "/unexpected", "RW": False}
+        )
+        with self.assertRaisesRegex(RuntimeError, "unexpected mount count"):
+            asyncio.run(environment._verify_running_container(expect_runtime=False))
+        inspection["Mounts"].pop()
+
+        environment._container_identity_verified = False
+        environment._mounts_json = [
+            {
+                "type": "bind",
+                "source": "/host/verifier",
+                "target": "/logs/verifier",
+                "read_only": True,
+            }
+        ]
+        inspection["Mounts"] = [
+            {
+                "Type": "bind",
+                "Source": "/host/verifier",
+                "Destination": "/logs/verifier",
+                "RW": True,
+            }
+        ]
+        with self.assertRaisesRegex(RuntimeError, "mount mode"):
+            asyncio.run(environment._verify_running_container(expect_runtime=False))
+        inspection["Mounts"][0]["RW"] = False
+        inspection["Mounts"][0]["Source"] = "/wrong-source"
+        with self.assertRaisesRegex(RuntimeError, "mount source"):
+            asyncio.run(environment._verify_running_container(expect_runtime=False))
 
         environment._container_identity_verified = False
         environment._inspect_container = mock.AsyncMock(
             return_value={
                 "Config": {"Image": "built-verifier-image"},
-                "Image": "sha256:" + "c" * 64,
+                "Image": "sha256:" + "b" * 64,
                 "HostConfig": {"NetworkMode": "bridge"},
                 "Mounts": [],
             }
         )
         with self.assertRaisesRegex(RuntimeError, "network mode"):
+            asyncio.run(environment._verify_running_container(expect_runtime=False))
+
+    def test_verifier_rejects_a_built_image_from_the_wrong_effective_base(self):
+        context = self.make_verifier_context()
+        environment = self.make_environment(
+            self.build_runtime(),
+            FakeTaskEnvironment(None),
+            session_id="trial__verifier__trial",
+            mounts_json=[{"type": "bind", "source": "/host/verifier", "target": "/logs/verifier"}],
+            environment_dir=context,
+        )
+        environment._effective_image_verified = True
+        environment._verified_effective_image_id = RECOVERY_IMAGE_ID
+        environment._verified_effective_rootfs = RECOVERY_ROOTFS
+        environment._verifier_build_name = "built-verifier-image"
+        environment._verifier_build_context = context
+        environment.benchmark_container_id = mock.AsyncMock(return_value="a" * 64)
+        environment._inspect_container = mock.AsyncMock(
+            return_value={
+                "Config": {"Image": "built-verifier-image"},
+                "Image": "sha256:" + "b" * 64,
+                "HostConfig": {"NetworkMode": "none"},
+                "Mounts": [],
+            }
+        )
+        environment._inspect_image = mock.AsyncMock(
+            return_value={
+                "Id": "sha256:" + "b" * 64,
+                "RootFS": {
+                    "Type": "layers",
+                    "Layers": ["sha256:" + "f" * 64],
+                },
+            }
+        )
+        with self.assertRaisesRegex(RuntimeError, "does not inherit"):
             asyncio.run(environment._verify_running_container(expect_runtime=False))
 
     def test_repository_readiness_binds_head_tree_and_clean_state(self):
@@ -1216,6 +1802,7 @@ class RunOneScriptTests(RuntimeFixture):
         (pier / "bin").mkdir(parents=True)
         fake_python = pier / "bin" / "python"
         runtime_identity = validate_shared_runtime(runtime_root)
+        recovery_path, recovery_sha256 = self.build_image_recovery()
         fake_python.write_text(
             "#!/bin/sh\n"
             "while :; do\n"
@@ -1232,6 +1819,7 @@ class RunOneScriptTests(RuntimeFixture):
             "    case \"$code\" in\n"
             "      *executionReady*) echo 'runtime identity is not ready for scored execution' >&2; exit 1 ;;\n"
             f"      *imageIdentityLedgerSha256*) echo {IMAGE_LEDGER_SHA256} ;;\n"
+            f"      *imageRecoveryManifestSha256*) echo {recovery_sha256} ;;\n"
             f"      *taskRuntimeMetadataSha256*) echo {_sha256_file(PLUGIN_VALUE_DIR / 'task-runtime-metadata.json')} ;;\n"
             f"      *scheduleSha256*) echo {_sha256_file(PLUGIN_VALUE_DIR / 'schedule.json')} ;;\n"
             "      *hostRuntime*node*) echo " + "a" * 64 + " ;;\n"
@@ -1266,6 +1854,7 @@ class RunOneScriptTests(RuntimeFixture):
             "PLUGIN_VALUE_HOST_NODE": str(node),
             "PLUGIN_VALUE_HOST_CODEX": str(codex),
             "PLUGIN_VALUE_HOST_DOCKER": str(docker),
+            "PLUGIN_VALUE_IMAGE_RECOVERY_PATH": str(recovery_path),
             "CAPTURE": str(capture),
         }
 
@@ -1298,6 +1887,11 @@ class RunOneScriptTests(RuntimeFixture):
         self.assertIn("runtime_tree_sha256=" + runtime_identity.tree_sha256, arguments)
         self.assertIn("image_identity_path=" + str(IMAGE_LEDGER), arguments)
         self.assertIn("image_identity_sha256=" + IMAGE_LEDGER_SHA256, arguments)
+        self.assertIn(
+            "image_recovery_path=" + env["PLUGIN_VALUE_IMAGE_RECOVERY_PATH"], arguments
+        )
+        recovery_sha256 = _sha256_file(Path(env["PLUGIN_VALUE_IMAGE_RECOVERY_PATH"]))
+        self.assertIn("image_recovery_sha256=" + recovery_sha256, arguments)
         self.assertIn("expected_task_id=" + FIRST_TASK, arguments)
         self.assertIn("expected_base_commit=" + "e" * 40, arguments)
         self.assertIn("execution_mode=preflight", arguments)

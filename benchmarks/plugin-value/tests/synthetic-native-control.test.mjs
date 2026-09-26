@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import {mkdir, mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -7,12 +8,18 @@ import test from 'node:test';
 
 import {
   buildSyntheticInstruction,
+  buildRecoveryImageCheckArgs,
+  buildRestoredFilesVerificationScript,
+  buildRestoredFilesVerificationPayload,
   buildVerifierScript,
   parseOptions,
   validateAgentInspection,
   validateControlReceipt,
   validateLocalImageInspection,
+  validateRecoveryManifest,
+  validateRestoredFilesArtifact,
   validateVerifierInspection,
+  syntheticControlLabels,
 } from '../synthetic-native-control.mjs';
 
 const nonce = '0123456789abcdef0123456789abcdef';
@@ -172,6 +179,10 @@ test('agent inspection enforces offline secretless container and exact mounts', 
   const writableRuntime = agentInspection();
   writableRuntime.Mounts[1].RW = true;
   assert.throws(() => validateAgentInspection(writableRuntime, {image, workspace, runtimeBundle}), /read-only/);
+  const effectiveId = 'sha256:' + 'c'.repeat(64);
+  const recovered = agentInspection({Image: effectiveId});
+  assert.doesNotThrow(() => validateAgentInspection(recovered, {image, imageId: effectiveId, workspace, runtimeBundle}));
+  assert.throws(() => validateAgentInspection(recovered, {image, imageId: 'sha256:' + 'd'.repeat(64), workspace, runtimeBundle}), /effective image id/);
 });
 
 test('verifier inspection excludes runtime and keeps oracle and submission read-only', () => {
@@ -189,8 +200,27 @@ test('verifier inspection excludes runtime and keeps oracle and submission read-
   assert.deepEqual(validateVerifierInspection(inspection, {image, workspace, oracle, output}), {
     networkMode: 'none', runtimePresent: false, workspaceReadOnly: true,
   });
+  inspection.Config.Env = ['JEV_API_KEY=redacted'];
+  assert.throws(() => validateVerifierInspection(inspection, {image, workspace, oracle, output}), /JEV_API_KEY/);
+  delete inspection.Config.Env;
+  inspection.HostConfig.Privileged = true;
+  assert.throws(() => validateVerifierInspection(inspection, {image, workspace, oracle, output}), /privileged/);
+  delete inspection.HostConfig.Privileged;
+  inspection.Mounts.push({Source: '/private/unexpected', Destination: '/unexpected', RW: false});
+  assert.throws(() => validateVerifierInspection(inspection, {image, workspace, oracle, output}), /unexpected mount/);
+  inspection.Mounts.pop();
+  inspection.Mounts[0].RW = true;
+  assert.throws(() => validateVerifierInspection(inspection, {image, workspace, oracle, output}), /mode/);
+  inspection.Mounts[0].RW = false;
+  inspection.Mounts[0].Source = '/private/wrong-source';
+  assert.throws(() => validateVerifierInspection(inspection, {image, workspace, oracle, output}), /source/);
+  inspection.Mounts[0].Source = workspace;
   inspection.Mounts.push({Source: runtimeBundle, Destination: '/opt/jev-codex-runtime', RW: false});
   assert.throws(() => validateVerifierInspection(inspection, {image, workspace, oracle, output}), /agent runtime/);
+  inspection.Mounts.pop();
+  inspection.Image = 'sha256:' + 'c'.repeat(64);
+  assert.doesNotThrow(() => validateVerifierInspection(inspection, {image, imageId: inspection.Image, workspace, oracle, output}));
+  assert.throws(() => validateVerifierInspection(inspection, {image, imageId: 'sha256:' + 'd'.repeat(64), workspace, oracle, output}), /effective image id/);
 });
 
 test('base image must already exist under the frozen linux/amd64 digest', () => {
@@ -205,6 +235,83 @@ test('base image must already exist under the frozen linux/amd64 digest', () => 
   assert.throws(() => validateLocalImageInspection({
     Id: 'sha256:' + 'b'.repeat(64), Os: 'linux', Architecture: 'amd64', RepoDigests: [],
   }, image), /not present locally/);
+});
+
+test('recovery image inspection requires the exact effective id and rootfs', () => {
+  const effectiveImage = 'jev-plugin-value-recovery/ipython-session-bundle-replay:fixture-v1';
+  const effectiveId = 'sha256:' + 'c'.repeat(64);
+  const rootfs = ['sha256:' + 'd'.repeat(64), 'sha256:' + 'e'.repeat(64)];
+  const inspection = {
+    Id: effectiveId, Os: 'linux', Architecture: 'amd64', RepoTags: [effectiveImage], RootFS: {Layers: rootfs},
+  };
+  assert.deepEqual(validateLocalImageInspection(inspection, effectiveImage, {id: effectiveId, rootfs}), {
+    id: effectiveId, os: 'linux', architecture: 'amd64', digest: effectiveImage,
+  });
+  assert.throws(() => validateLocalImageInspection({...inspection, Id: 'sha256:' + 'f'.repeat(64)}, effectiveImage, {id: effectiveId, rootfs}), /effective recovery image id/);
+  assert.throws(() => validateLocalImageInspection({...inspection, RootFS: {Layers: rootfs.slice(0, 1)}}, effectiveImage, {id: effectiveId, rootfs}), /effective recovery rootfs/);
+});
+
+test('recovery manifest binds reviewed image identity, artifact shape, and restored metadata', () => {
+  const restored = {
+    schemaVersion: 'jev-plugin-value-restored-files-v1',
+    root: '/usr/local/lib/python3.12/site-packages',
+    packages: ['Pygments'],
+    files: [{
+      path: '/usr/local/lib/python3.12/site-packages/pygments/__init__.py',
+      mode: '0644', uid: 0, gid: 0, size: 3, sha256: 'a'.repeat(64),
+    }],
+  };
+  const entry = {
+    taskId: 'ipython-session-bundle-replay',
+    sourceLayerArtifact: 'artifacts/source.json',
+    sourceLayerArtifactSha256: 'b'.repeat(64),
+    restoredFilesArtifact: 'artifacts/restored.json',
+    restoredFilesArtifactSha256: 'c'.repeat(64),
+    buildReceiptArtifact: 'artifacts/build.json',
+    buildReceiptArtifactSha256: 'd'.repeat(64),
+    effectiveImageRef: 'jev-plugin-value-recovery/ipython-session-bundle-replay:fixture-v1',
+    effectiveImageId: 'sha256:' + 'e'.repeat(64),
+    effectiveRootfsDiffIds: ['sha256:' + 'f'.repeat(64)],
+  };
+  assert.equal(validateRecoveryManifest({schemaVersion: 'jev-plugin-value-image-recovery-v1', executionReady: true, recoveries: [entry]}, undefined, restored), entry);
+  assert.equal(validateRestoredFilesArtifact(restored), restored);
+  const script = buildRestoredFilesVerificationScript();
+  assert.match(script, /json\.load\(sys\.stdin\)/);
+  assert.match(script, /os\.lstat/);
+  assert.match(script, /hashlib\.sha256/);
+  assert.match(script, /restored-files-verified/);
+  assert.equal(validateRecoveryManifest({schemaVersion: 'jev-plugin-value-image-recovery-v1', executionReady: false, recoveries: [entry]}, undefined, restored), entry);
+  assert.throws(() => validateRecoveryManifest({schemaVersion: 'jev-plugin-value-image-recovery-v1', recoveries: [entry]}, undefined, restored), /executionReady/);
+  assert.throws(() => validateRestoredFilesArtifact({...restored, files: [{...restored.files[0], mode: '0666'}]}), /writable/);
+});
+
+test('recovery verifier uses bounded stdin for 706 files and cleanup labels', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'plugin-value-recovery-'));
+  t.after(() => rm(root, {recursive: true, force: true}));
+  const uid = process.getuid?.() ?? 0;
+  const gid = process.getgid?.() ?? 0;
+  const files = Array.from({length: 706}, (_, index) => {
+    const bytes = Buffer.from(`restored-${index}\n`);
+    return {path: join(root, `file-${String(index).padStart(3, '0')}.py`), mode: '0644', uid, gid, size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), bytes};
+  });
+  await Promise.all(files.map(file => writeFile(file.path, file.bytes, {mode: 0o644})));
+  const payload = buildRestoredFilesVerificationPayload(files.map(({bytes, ...file}) => file));
+  assert.equal(JSON.parse(payload).length, 706);
+  const verified = spawnSync('python3', ['-B', '-c', buildRestoredFilesVerificationScript()], {input: payload, encoding: 'utf8'});
+  assert.equal(verified.status, 0, verified.stderr);
+  assert.equal(verified.stdout.trim(), 'restored-files-verified');
+
+  const labels = syntheticControlLabels(join(root, 'control-run'));
+  assert.deepEqual(labels, {
+    control: 'com.openai.jev.synthetic-control=control-run',
+    verifier: 'com.openai.jev.synthetic-verifier=control-run',
+  });
+  const imageCheck = buildRecoveryImageCheckArgs('jev-plugin-value-recovery/example:fixture', labels.verifier);
+  assert.equal(imageCheck.includes('--rm'), true);
+  assert.equal(imageCheck.includes('-i'), true);
+  assert.equal(imageCheck.includes('--network') && imageCheck[imageCheck.indexOf('--network') + 1], 'none');
+  assert.equal(imageCheck.includes('--label') && imageCheck[imageCheck.indexOf('--label') + 1], labels.verifier);
+  assert.equal(imageCheck.at(-2), '-c');
 });
 
 test('CLI parser rejects missing, duplicate, and scored-arm options', () => {

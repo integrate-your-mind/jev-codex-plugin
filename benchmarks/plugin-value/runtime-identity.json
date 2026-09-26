@@ -1,6 +1,6 @@
 {
   "schemaVersion": "plugin-value-runtime-identity-v1",
-  "status": "pending-native-model-and-verifier-controls",
+  "status": "dependency-corruption-prevents-scored-execution",
   "executionReady": false,
   "agent": {
     "cli": "codex-cli 0.155.0",
@@ -16,8 +16,11 @@
     "taskCount": 20,
     "imageIdentityLedger": "image-identities.json",
     "imageIdentityLedgerSha256": "3ec2e7b2a732720f43c76f03735057b44968afc4e2f7089862a7ab88694ea819",
-    "imagePolicy": "Agent and separate-verifier task images must equal the ledger tag and are replaced with repository@sha256 before Pier starts them; no mutable-tag fallback is allowed.",
-    "imagePlatform": "linux/amd64"
+    "imagePolicy": "Original task tags must match the frozen ledger. Healthy originals use repository@manifest-digest with platform and RepoDigests verification followed by captured local image ID and RootFS verification. The one explicitly recovered image uses the exact separate derivative identity and all 706 restored byte/metadata checks; both arms and the independent verifier share that effective base. No mutable-tag fallback.",
+    "imagePlatform": "linux/amd64",
+    "imageRecoveryManifest": "image-recovery.json",
+    "imageRecoveryManifestSha256": "80d9ad43fdeb51cc9dd03509a0d06aa73499800cae9c650f3039ee74fead8cb1",
+    "recoveryScope": "ipython-session-bundle-replay only; registry-authenticated Pygments 2.19.2 and Pluggy 1.6.0 bytes. No task or verifier source change."
   },
   "sharedRuntime": {
     "schemaVersion": "plugin-value-shared-runtime-v1",
@@ -28,7 +31,7 @@
     "nodeVersion": "22.23.2",
     "manifestSha256": "a3a4b16d095d901fd0bbcfc6153c1fa9bd6777a077edb361e57cba16187cab36",
     "treeSha256": "32225cab4ec5d69ec0e54ef484b73357398ea23238cfb65f8860d5900bbaf175",
-    "status": "sandbox-capable-artifact-offline-bootstrap-and-remote-startup-passed-native-model-controls-pending"
+    "status": "native v4 command/patch/bootstrap passed; recovered-image native controls pending"
   },
   "hostRuntime": {
     "platform": "darwin/arm64",
@@ -96,7 +99,7 @@
       "version": "3.12.13",
       "sha256": "fe46716a94d8efa4514feb3c39ba3e270deee2187556986f6ddcff54aba7bb9a"
     },
-    "adapterSha256": "84da9f07f3d5161f006374f30f7598db2e461bb04769a47aa0c739577d9a3291",
+    "adapterSha256": "cb1b816df6798a2d94386042e31a6c9e741e463eb5b4a73006096eb2b4bc63f0",
     "launcherSha256": "e4a8c929804939b61fb3178d1e1d667aaaed9f6c523c07322028644a11423391",
     "pierDistribution": {
       "version": "0.3.1",
@@ -114,7 +117,7 @@
     "transport": "host app-server to container exec-server over env -i docker exec -i -w <per-run selected alias> stdio",
     "taskCredentials": "none",
     "agentInstallSpec": null,
-    "taskImageExecution": "digest-pinned prebuilt task image with no per-task Codex derivative build",
+    "taskImageExecution": "Manifest-pinned original task image or explicitly authenticated recovery derivative; same effective image in both arms and inherited by the separate verifier.",
     "verifierRuntimeBundle": "absent",
     "hostArchitecture": "darwin/arm64",
     "taskArchitecture": "linux/amd64 (emulated)",
@@ -122,7 +125,7 @@
       "classification": "operational temporary location excluded from measured study conditions",
       "policy": "owner-only directory disjoint from jobs, frozen task inputs, the Pier runtime, and the shared task runtime"
     },
-    "runOneSha256": "196b8d8334acc825555da5efd009a8c1ba1360c6d1adda6365d27460c63bced3",
+    "runOneSha256": "337f1be367330b07fb2efe7ad8c098d123f992dea59fac24831e6b171020b0aa",
     "pythonCachePolicy": "The authenticated adapter is compiled from source bytes; Pier runs with -B and an exclusive empty pycache prefix.",
     "environmentSelection": {
       "configuration": "include_local=true registers the host MCP environment while default=deep-swe; thread and turn each select only the explicit deep-swe environment",
@@ -132,7 +135,7 @@
     "turnSandboxPolicy": {
       "type": "externalSandbox",
       "networkAccess": "restricted",
-      "status": "frozen before inference; supported by pinned Codex 0.155.0 schema and startup transport; native model command and patch controls pending",
+      "status": "passed native v4 command/patch controls under the prior runtime; revalidation on the recovered image remains required",
       "protocolDisposition": "frozen by runtime-amendment-2026-09-26.md before any synthetic or scored model inference"
     },
     "runtimeAmendment": {
@@ -148,7 +151,7 @@
     "repositoryReadiness": {
       "timing": "after digest-pinned container identity and before agent setup or model inference",
       "policy": "require exact metadata base commit at HEAD, resolvable commit and tree objects, non-empty tracked content, and clean index, worktree, and untracked state",
-      "status": "passed in original-task no-op agent setup before separate verifier construction failure; every scored task still requires its own check"
+      "status": "original commit/tree and clean workspace remain mandatory before inference; recovered image controls pending"
     },
     "verifierBuildAmendment": {
       "path": "runtime-amendment-verifier-2026-09-26.md",
@@ -159,19 +162,26 @@
       "path": "runtime-amendment-cwd-mapping-2026-09-26.md",
       "sha256": "c947194e6b77b03d68ac7c9c9b4d8d121e11e6dea1833dc71dc676a1822310b0",
       "status": "frozen after a model-free offline alias probe and before corrected native model controls or scored inference"
-    }
+    },
+    "imageRecoveryAmendment": {
+      "path": "runtime-amendment-image-recovery-2026-09-26.md",
+      "sha256": "0a50cbc305ce73957802fd73561136cb4d302b00331532a083c9b305a3eb3281",
+      "status": "records platform correction and broader dependency corruption; no valid task-verifier controls yet"
+    },
+    "verifierPlatform": "linux/amd64 for both Compose service and build platforms; live post-build image architecture checked"
   },
   "syntheticNativeControl": {
     "schemaVersion": "plugin-value-synthetic-native-control-v1",
     "driver": "synthetic-native-control.mjs",
-    "driverSha256": "e451405587913819d1fcae3a742d97b43ffe25c403414e884294c846c847f1c7",
-    "testSha256": "38981fa7b1701701db1c54aca6612d58a36bb2d097c00f15b67e5c5b1f55db51",
-    "status": "baseline v3 passed under the prior /app selection; treatment v3 failed with preview-only classification and failed native hooks; explicit evaluate prompting and the model-free-proven per-run cwd alias repair are frozen, with fresh baseline and treatment controls still required",
+    "driverSha256": "bdbc44061ef3d2ed121b5dc32547ecef73d7cad4efddba4efb40318f5815383f",
+    "testSha256": "43f5f7d8e568cd06a4cb900b39d4d85a6dcb61f835d8044b168c079351892521",
+    "status": "historical baseline and treatment v4 passed under prior runtime identity; driver now verifies all recovered files by fixed Python program over stdin; new recovery-image baseline and treatment controls pending",
     "scope": "fresh nonce workspace hides task image /app; no DeepSWE source or solution is mounted",
     "baseImageTaskIdentity": "ipython-session-bundle-replay",
     "baseImageDigest": "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
-    "agentBoundary": "linux/amd64 digest-pinned image, network none, secretless, runtime bundle read-only",
+    "agentBoundary": "offline secretless linux/amd64 explicitly recovered image; shared runtime mounted read-only only in agent",
     "verifierBoundary": "fresh offline container, submission and hidden oracle read-only, agent runtime absent",
-    "workspaceAliasPolicy": "same per-run logical path on host and in the agent container; container-only owned ancestors are mode 0711, task-user traversal is preflighted, the alias canonicalizes to /app, adds no host mount, and every owned alias path is removed after app-server shutdown"
+    "workspaceAliasPolicy": "same per-run logical path on host and in the agent container; container-only owned ancestors are mode 0711, task-user traversal is preflighted, the alias canonicalizes to /app, adds no host mount, and every owned alias path is removed after app-server shutdown",
+    "effectiveImageId": "sha256:e4a23f5337686d21aa9f6c96a145af852c5742920150c1b93dfcbbab9258b027"
   }
 }

@@ -38,6 +38,7 @@ script_dir=$(CDPATH= cd -- "$(/usr/bin/dirname "$0")" && pwd)
 python_bin="$PIER_RUNTIME/bin/python"
 site_packages="$PIER_RUNTIME/lib/python3.12/site-packages"
 image_identity_path=${PLUGIN_VALUE_IMAGE_IDENTITY_PATH:-"$script_dir/image-identities.json"}
+image_recovery_path=${PLUGIN_VALUE_IMAGE_RECOVERY_PATH:-"$script_dir/image-recovery.json"}
 runtime_identity_path="$script_dir/runtime-identity.json"
 task_metadata_path="$script_dir/task-runtime-metadata.json"
 schedule_path="$script_dir/schedule.json"
@@ -48,7 +49,9 @@ clean_python() {
 }
 
 case "$image_identity_path" in /*) ;; *) echo "image identity path must be absolute" >&2; exit 2 ;; esac
+case "$image_recovery_path" in /*) ;; *) echo "image recovery path must be absolute" >&2; exit 2 ;; esac
 [ -f "$image_identity_path" ] || { echo "image identity ledger not found" >&2; exit 2; }
+[ -f "$image_recovery_path" ] || { echo "image recovery manifest not found" >&2; exit 2; }
 [ -f "$runtime_identity_path" ] || { echo "runtime identity not found" >&2; exit 2; }
 [ -f "$task_metadata_path" ] || { echo "task runtime metadata not found" >&2; exit 2; }
 [ -f "$schedule_path" ] || { echo "schedule not found" >&2; exit 2; }
@@ -65,6 +68,11 @@ clean_python "$script_dir/runtime.py" validate-bootstrap \
 image_identity_sha256=$(
   clean_python -c \
     'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); print(d["dataset"]["imageIdentityLedgerSha256"])' \
+    "$runtime_identity_path"
+)
+image_recovery_sha256=$(
+  clean_python -c \
+    'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); print(d["dataset"]["imageRecoveryManifestSha256"])' \
     "$runtime_identity_path"
 )
 task_metadata_sha256=$(
@@ -168,6 +176,8 @@ set -- run \
   --environment-kwarg runtime_tree_sha256="$runtime_tree_sha256" \
   --environment-kwarg image_identity_path="$image_identity_path" \
   --environment-kwarg image_identity_sha256="$image_identity_sha256" \
+  --environment-kwarg image_recovery_path="$image_recovery_path" \
+  --environment-kwarg image_recovery_sha256="$image_recovery_sha256" \
   --environment-kwarg expected_task_id="$task_id" \
   --environment-kwarg expected_base_commit="$expected_base_commit" \
   --environment-kwarg execution_mode="$mode" \
