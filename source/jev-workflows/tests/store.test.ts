@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, writeFile, symlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile, symlink, stat, utimes } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { dataDirectory, FileStore } from '../src/store.js';
 
@@ -28,6 +28,7 @@ test('file budgets are shared across instances and never overspend on concurrent
     assert.equal(await new FileStore(dir, 3, 300).reserve(1), false);
     const usage = JSON.parse(await readFile(join(dir, `budget-${new Date().toISOString().slice(0, 10)}.json`), 'utf8'));
     assert.deepEqual(usage, {calls: 3, bytes: 300});
+    await assert.rejects(() => stat(join(dir, `budget-${new Date().toISOString().slice(0, 10)}.json.lock`)), {code: 'ENOENT'});
     const receiptId = '12345678-1234-1234-1234-123456789abc';
     await stores[0]!.save({receiptId, status: 'assessed'});
     assert.equal(JSON.parse(await readFile(join(dir, 'receipts', `${receiptId}.json`), 'utf8')).receiptId, receiptId);
@@ -63,4 +64,32 @@ test('unlimited stores retain usage past the former default caps', async () => {
     const usage = JSON.parse(await readFile(join(dir, `budget-${new Date().toISOString().slice(0, 10)}.json`), 'utf8'));
     assert.deepEqual(usage, {calls: 65, bytes: 65});
   } finally { await rm(dir, {recursive: true}); }
+});
+
+test('rejects invalid reservation byte sizes before touching shared state', async () => {
+  const parent = resolve('../../work/jev-build');
+  await mkdir(parent, {recursive: true});
+  const dir = await mkdtemp(join(parent, 'store-test-'));
+  try {
+    const store = new FileStore(dir, null, null);
+    await assert.rejects(() => store.reserve(-1), {name: 'TypeError', message: 'invalid_reservation_bytes'});
+    await assert.rejects(() => store.reserve(Number.NaN), {name: 'TypeError', message: 'invalid_reservation_bytes'});
+    await assert.rejects(() => store.reserve(Number.MAX_SAFE_INTEGER + 1), {name: 'TypeError', message: 'invalid_reservation_bytes'});
+    await assert.rejects(() => stat(join(dir, `budget-${new Date().toISOString().slice(0, 10)}.json`)), {code: 'ENOENT'});
+  } finally { await rm(dir, {recursive: true, force: true}); }
+});
+
+test('reclaims only an old lock whose recorded writer is definitely gone', async () => {
+  const parent = resolve('../../work/jev-build');
+  await mkdir(parent, {recursive: true});
+  const dir = await mkdtemp(join(parent, 'store-test-'));
+  const path = join(dir, `budget-${new Date().toISOString().slice(0, 10)}.json`);
+  const lock = `${path}.lock`;
+  try {
+    await writeFile(lock, JSON.stringify({pid: 99999999, token: '12345678-1234-4234-8234-123456789abc', createdAt: '2020-01-01T00:00:00.000Z'}));
+    const old = new Date(Date.now() - 120_000);
+    await utimes(lock, old, old);
+    assert.equal(await new FileStore(dir, 1, 10).reserve(1), true);
+    assert.deepEqual(JSON.parse(await readFile(path, 'utf8')), {calls: 1, bytes: 1});
+  } finally { await rm(dir, {recursive: true, force: true}); }
 });

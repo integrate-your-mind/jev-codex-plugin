@@ -43,6 +43,10 @@ Map a usable workflow ID to a concrete next step such as `inspect_service`, `ins
 
 If the tool abstains, times out, lacks configured access, returns malformed data, or reports insufficient evidence, continue with ordinary Codex diagnosis. Preserve the original failure and collect new evidence before editing when the result does not distinguish the cause.
 
+For a diagnosis that needs several independent signals over the same bounded failure record, the full MCP plugin also exposes `evaluate_decisions`. Keep the questions typed and separate: use Choice for candidate workflows, Noul for a bounded fact such as whether the command reached an assertion, and Score only with an explicit ordinal rubric. Conservative policy may abstain; ranking policy preserves distributions for caller-side prioritization. Do not let a batch result replace direct inspection of the command, exit status, or complete error tail.
+
+If the failure spans multiple turns, `update_task_context` can retain the scoped objective, current step, constraints, corrections, evidence references, and candidate catalogs. `continue` extends the diagnosis, `replace` records an explicit new objective, and `reset` clears stale context. A later `record_decision_outcome` entry may link what the caller reports after a diagnostic action to its receipt and evidence IDs; it does not independently verify the fix.
+
 ## Boundaries
 
 This workflow may recommend inspection or validation. It cannot grant permissions, approve credentials, authorize spending, merge or publish changes, certify a test, or mark a task complete. A high confidence value is a property of the returned distribution, not an independently verified probability of correctness. Never infer that a test passed from a successful command wrapper, a provider status, or an absent error; inspect the actual test result and expected behavior.

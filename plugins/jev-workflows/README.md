@@ -1,16 +1,19 @@
 # Jev Workflows
 
-A portable Codex plugin that consults Jev for tool, model, task, skill, context, strategy, outcome, and custom classification decisions. It includes five MCP tools, three independently usable skills, bundled JavaScript entrypoints, and scoped lifecycle hooks.
+A portable Codex plugin that consults Jev for tool, model, task, skill, context, strategy, result, outcome, and custom classification decisions. The current source package is version 0.4.0. It includes eight MCP surfaces, three independently usable skills, bundled JavaScript entrypoints, and scoped lifecycle hooks.
 
 ## Capabilities
 
 | Tool | Purpose |
 | --- | --- |
-| `classify_decision` | Choose among 2–12 caller-supplied candidates for any classification. |
+| `classify_decision` | Choose among 1–12 caller-supplied candidates for any classification. |
 | `classify_failure` | Diagnose a completed failed command from selected evidence. |
 | `check_completion` | Assess whether evidence supports a completion claim. |
 | `jev_status` | Read local readiness, limits, versions, and automation policy. |
 | `configure_automation` | Enable, scope, or disable local automatic consultation. |
+| `evaluate_decisions` | Evaluate independent typed Choice, Noul, and Score questions against one selected structured state. |
+| `update_task_context` | Maintain bounded context scoped to a workspace, session, and agent. |
+| `record_decision_outcome` | Link a caller-reported observation to an existing local receipt and evidence IDs. |
 
 The `classify-decision` skill applies throughout a task. Supply actual available tools, model/effort pairs, tasks or categories, constraints in `context`, and relevant evidence. Jev returns a validated candidate ID or abstention. Codex applies advice through ordinary tools and existing authorization; Jev never grants permission, edits files, changes models, or certifies execution by itself.
 
@@ -29,6 +32,16 @@ The `classify-decision` skill applies throughout a task. Supply actual available
 ```
 
 `preview` is the default and makes no network request. `evaluate` sends selected redacted question, context, candidates and evidence to TypeSafe in a billable provider API request. A user request to use Jev, or enabled scoped automation, authorizes relevant evaluations without repeated questions. Do not send whole transcripts, credentials, environment dumps, or unrelated files. Redaction is defense in depth.
+
+### Typed batch questions, context, and outcomes
+
+`evaluate_decisions` evaluates independent questions together against one bounded structured `state`. Each question is typed as `choice`, `noul`, or `score` and carries its own instructions, criteria or candidates, optional domain, and optional policy. Choice questions use one to twelve caller-supplied candidates plus a service-owned non-action insufficient_evidence option; Noul questions return a bounded signal; Score questions use an explicit ordered rubric. Questions share state but must be independently answerable; combine their answers in caller code rather than asking one question to depend on another answer.
+
+The policy is resolved per question. `conservative` is the default and applies the configured confidence and probability floors where relevant; a low-confidence Choice or Score is reported as abstained. `ranking` preserves the provider distribution for caller-side ranking and reports a ranking disposition instead of a recommendation. Policies carry a version and are marked `not_locally_calibrated`; neither disposition grants permission or proves an outcome.
+
+`update_task_context` stores bounded redacted context locally for an explicit workspace, session, and optional agent scope. `continue` adds current facts, `replace` starts a new root objective and replaces the accumulated constraints and criteria, and `reset` writes a fresh empty record for that scope. Items and evidence references retain source, timestamps, operation, and other bounded provenance; scope identifiers are stored as hashes. Context is advisory input and does not change Codex settings or permissions.
+
+`record_decision_outcome` stores references from an actual action to an existing local receipt and evidence IDs. It records what the caller reports (`supported`, `contradicted`, or `unknown`) and derives any provider request ID from that receipt, but it does not copy evidence or claim independent verification, billing, authorization, deployment, or acceptance.
 
 ## Automatic consultation
 
@@ -60,7 +73,7 @@ The generated variant retains `.codex-plugin/plugin.json`, `.mcp.json`, skills, 
 
 ## Standalone skills and CLI
 
-Each skill includes a prebuilt `scripts/jev.mjs`. When its MCP tool is available, the skill uses it; otherwise it can invoke that local CLI with Node.js 22 or later. No npm install or MCP server is needed. The standalone path supports decision classification, failure diagnosis, and completion assessment. It does not install automatic hooks or expose `configure_automation`.
+Each skill includes a prebuilt `scripts/jev.mjs`. When its MCP tool is available, the skill uses it; otherwise it can invoke that local CLI with Node.js 22 or later. No npm install or MCP server is needed. The standalone path supports decision classification, failure diagnosis, completion assessment, and typed batches through evaluate-decisions. It does not install automatic hooks or expose `configure_automation`.
 
 ```sh
 node dist/cli.mjs status
@@ -76,11 +89,11 @@ The public repository and Git marketplace are available distribution routes. Ope
 
 ## Limits and evidence
 
-The endpoint is fixed to `https://api.typesafe.ai/v1/systemone` and the model to `jev-1.13.0`. The plugin applies local safety ceilings of 48,000 bytes to each serialized request and 64 KiB to each response; these are byte limits in this adapter, not TypeSafe's token context limit. TypeSafe documents a 64k-token request context for Jev 1.13, including a 32k-token state-plus-longest-question limit. Explicit evaluations time out after ten seconds. Hook consultations use a five-second host deadline, a four-second adapter deadline, and a three-second provider deadline, with shorter lifecycle paths; they do not retry automatically. Both chosen-option probability and confidence must reach 0.6, otherwise the result abstains. These are provisional operating thresholds, not correctness guarantees.
+The endpoint is fixed to `https://api.typesafe.ai/v1/systemone` and the model to `jev-1.13.0`. The plugin applies local safety ceilings of 48,000 bytes to each serialized request and 64 KiB to each response; these are byte limits in this adapter, not TypeSafe's token context limit. TypeSafe documents a 64k-token request context for Jev 1.13, including a 32k-token state-plus-longest-question limit. Explicit evaluations time out after ten seconds. Hook consultations use a five-second host deadline, a four-second adapter deadline, and a three-second provider deadline, with shorter lifecycle paths; they do not retry automatically. Conservative per-question policy defaults to 0.6 confidence and 0.6 selected probability where those signals apply; ranking policy preserves distributions and does not force a recommendation. These are provisional operating thresholds, not correctness guarantees.
 
 There is no plugin-imposed daily call, daily byte, or per-session call cap by default (`null` means unlimited). Jev's own API rate limits still apply; rate-limit and overload responses fail open without immediate retries. Usage accounting remains enabled and is never reset when settings change. Optional user-chosen caps can be configured through policy or `JEV_MAX_CALLS_PER_DAY` / `JEV_MAX_BYTES_PER_DAY`; explicit environment values take precedence and accept `unlimited`. An existing persisted numeric policy remains in force until it is explicitly changed to `null`; changing the defaults does not erase prior policy state. `jev_status` labels local reserved attempts separately from retained response evidence, nullable remaining configured caps, and UTC accounting rollover. A reservation is recorded before dispatch and is never a successful-request or billing count. Assessed and abstained responses can both carry provider-reported token usage. New receipts retain observed HTTP status, timestamps, provider request IDs when supplied, and a nonsecret credential fingerprint; historical receipts cannot be retroactively attributed. See [accounting](docs/accounting.md). Repeated unchanged requests can reuse the MCP cache, event IDs deduplicate hook delivery, and `JEV_ENABLED=0` disables provider requests.
 
-Private state lives in host `PLUGIN_DATA` for portable clients; generated Codex compatibility packages use shared user state. Otherwise it lives in `$XDG_STATE_HOME/jev-workflows` or `~/.local/state/jev-workflows`. Compact receipts preserve digests, evidence IDs, validated answers, versions, timing and usage; they contain no raw request or provider error body. Automatic hooks retain only bounded redacted task context with expiry and compact invocation records. They never read or transmit `transcript_path`.
+Private state lives in host `PLUGIN_DATA` for portable clients; generated Codex compatibility packages use shared user state. Otherwise it lives in `$XDG_STATE_HOME/jev-workflows` or `~/.local/state/jev-workflows`. Compact receipts preserve digests, evidence IDs, validated answers, versions, timing and usage; they contain no raw request or provider error body. Automatic hooks retain bounded redacted scoped task context until reset or local deletion; older prompt caches expire after two hours. Invocation records contain compact metadata. They never read or transmit `transcript_path`.
 
 ## Build and verify
 

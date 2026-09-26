@@ -4,7 +4,7 @@
 
 An open-source Codex plugin for consulting [TypeSafe Jev](https://docs.typesafe.ai/) about tools, models, tasks, skills, context, strategies, and custom decisions. It also diagnoses failed commands and checks completion claims against evidence.
 
-**[0.3.0-rc.1](https://github.com/integrate-your-mind/jev-codex-plugin/releases/tag/v0.3.0-rc.1)** includes the full MCP plugin, twelve lifecycle adapters, and three standalone skills that work without MCP. See [verification results](VERIFICATION.md) for tests and independent agent QA. This community Git marketplace is publicly installable; OpenAI Directory review is separate.
+The current source package is version **0.4.0**. It includes the full MCP plugin, eight MCP tools, twelve lifecycle adapters, and three standalone skills that work without MCP. See [verification results](VERIFICATION.md) for tests and independent agent QA. This community Git marketplace is publicly installable; OpenAI Directory review is separate.
 
 ## Install
 
@@ -23,9 +23,11 @@ There is no plugin-imposed daily, byte, or session quota by default. TypeSafe's 
 
 For hosts that run local skill scripts, download and extract one or more skill ZIPs into a supported skill directory. Each includes instructions and a prebuilt Node.js CLI; no npm install or MCP server is required. Keep the entire extracted folder together. Use the full plugin when you want automatic hooks.
 
-- [Decision classification](https://github.com/integrate-your-mind/jev-codex-plugin/releases/download/v0.3.0-rc.1/classify-decision.zip)
-- [Failure diagnosis](https://github.com/integrate-your-mind/jev-codex-plugin/releases/download/v0.3.0-rc.1/diagnose-failure.zip)
-- [Completion evidence review](https://github.com/integrate-your-mind/jev-codex-plugin/releases/download/v0.3.0-rc.1/check-completion.zip)
+The download links below contain the version 0.4.0 standalone skills. The Git marketplace includes all eight MCP tools and the lifecycle hooks.
+
+- [Decision classification](https://github.com/integrate-your-mind/jev-codex-plugin/releases/download/v0.4.0/classify-decision.zip)
+- [Failure diagnosis](https://github.com/integrate-your-mind/jev-codex-plugin/releases/download/v0.4.0/diagnose-failure.zip)
+- [Completion evidence review](https://github.com/integrate-your-mind/jev-codex-plugin/releases/download/v0.4.0/check-completion.zip)
 
 The CLI defaults to a local preview. Authorized evaluation requires `--evaluate` and your TypeSafe key in the environment. Read its JSON status; an abstention or unavailable result does not stop ordinary work. [Usage and boundaries](source/jev-workflows/README.md#standalone-skills-and-cli).
 
@@ -34,10 +36,17 @@ The CLI defaults to a local preview. Authorized evaluation requires `--evaluate`
 - `classify_decision`: compare your actual available candidates across eight domains or any custom taxonomy.
 - `classify_failure`: diagnose a failed command using selected evidence.
 - `check_completion`: assess whether evidence supports a claim.
+- `evaluate_decisions`: evaluate independent typed Choice, Noul, and Score questions against one shared structured state.
+- `update_task_context`: maintain bounded, provenance-bearing context for one workspace, session, and agent, with explicit continue, replace, and reset operations.
+- `record_decision_outcome`: link a caller-reported observation to an existing local receipt and evidence IDs without treating it as independent verification.
 - `jev_status` and `configure_automation`: inspect and control local operation.
 - Three skills include prebuilt CLI fallbacks, and twelve Codex lifecycle adapters provide consultation during work, where the host exposes events.
 
 Jev returns a candidate or an abstention. It does not execute a decision, grant permissions, switch models automatically, or prove deployment. Hook coverage depends on the host; hidden reasoning and tools that bypass hooks are not observable.
+
+The batch interface sends independent questions together over one selected, bounded state. Choice questions rank supplied candidates, Noul questions provide a bounded signal, and Score questions use an explicit ordinal rubric. Conservative policy can abstain when the applicable confidence or probability threshold is not met; ranking policy preserves the returned distributions for caller-side ranking. These outputs remain advisory and do not authorize actions.
+
+Task context is local and scoped to the actual workspace, session, and agent. `continue` adds current facts, `replace` starts an explicit new objective, and `reset` clears that scope. Updates retain bounded provenance, evidence references, corrections, criteria, and candidate catalogs. Outcome records link local receipts and evidence IDs to what the caller reports happened; they are never independent proof of success, billing, permission, deployment, or acceptance.
 
 ## Source, releases, and verification
 

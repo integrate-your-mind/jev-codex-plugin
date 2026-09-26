@@ -6,12 +6,13 @@ import { readPolicy, type HookPolicy } from './policy.js';
 /** Maximum bytes accepted from stdin, checked before JSON parsing. */
 export const MAX_STDIN_BYTES = 128 * 1024;
 
-export type Command = 'status' | 'classify-decision' | 'classify-failure' | 'check-completion';
+export type Command = 'status' | 'evaluate-decisions' | 'classify-decision' | 'classify-failure' | 'check-completion';
 export type ParsedArgs = {command: Command; evaluate: boolean; help: boolean};
 
 export interface CliService {
   status(policy?: HookPolicy): Record<string, unknown>;
   classifyDecision(input: unknown): Promise<Assessment>;
+  evaluateDecisions(input: unknown): Promise<Assessment>;
   classifyFailure(input: unknown): Promise<Assessment>;
   checkCompletion(input: unknown): Promise<Assessment>;
 }
@@ -22,7 +23,7 @@ class CliError extends Error {
   constructor(readonly code: string) { super(code); }
 }
 
-const commands = new Set<Command>(['status', 'classify-decision', 'classify-failure', 'check-completion']);
+const commands = new Set<Command>(['status', 'evaluate-decisions', 'classify-decision', 'classify-failure', 'check-completion']);
 
 export function parseArgs(argv: readonly string[]): ParsedArgs {
   let command: Command | undefined;
@@ -99,7 +100,7 @@ export async function dispatch(
   service: CliService | undefined = undefined,
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<CliResult> {
-  if (args.help) return {exitCode: 0, value: {usage: 'jev <status|classify-decision|classify-failure|check-completion> [--evaluate]'}};
+  if (args.help) return {exitCode: 0, value: {usage: 'jev <status|evaluate-decisions|classify-decision|classify-failure|check-completion> [--evaluate]'}};
   service ??= createService({env});
   if (args.command === 'status') return {exitCode: 0, value: publicStatus(service.status(await readPolicy(env)))};
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new CliError('invalid_input');
@@ -113,7 +114,9 @@ export async function dispatch(
   payload.mode = args.evaluate ? 'evaluate' : requestedMode ?? 'preview';
   let result: Assessment;
   try {
-    result = args.command === 'classify-decision'
+    result = args.command === 'evaluate-decisions'
+      ? await service.evaluateDecisions(payload)
+      : args.command === 'classify-decision'
       ? await service.classifyDecision(payload)
       : args.command === 'classify-failure'
         ? await service.classifyFailure(payload)

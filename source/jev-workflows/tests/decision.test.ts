@@ -131,6 +131,13 @@ describe('decision input and preview boundaries', () => {
     assert.equal(fetchCalls, 0);
   });
 
+  it('rejects an empty caller candidate catalog before egress', async () => {
+    let fetchCalls = 0;
+    const result = await service({fetchFn: async () => { fetchCalls += 1; throw new Error('must not call'); }}).classifyDecision(decision({candidates: []}));
+    assert.deepEqual(result, {status: 'skipped', reasonCode: 'invalid_input'});
+    assert.equal(fetchCalls, 0);
+  });
+
   it('abstains with zero egress when every candidate is unavailable', async () => {
     let fetchCalls = 0;
     const result = await service({fetchFn: async () => { fetchCalls += 1; throw new Error('must not call'); }}).classifyDecision(decision({
@@ -139,7 +146,11 @@ describe('decision input and preview boundaries', () => {
         {id: 'offline-b', description: 'Unavailable B', available: false},
       ],
     }));
-    assert.deepEqual(result, {status: 'abstained', reasonCode: 'no_available_candidates', domain: 'general'});
+    assert.equal(result.status, 'abstained');
+    assert.equal(result.reasonCode, 'insufficient_available_candidates');
+    assert.equal(result.domain, 'general');
+    assert.equal(result.policy?.minConfidence, 0.6);
+    assert.equal(result.authority, 'advisory_only');
     assert.equal(fetchCalls, 0);
   });
 });
@@ -150,27 +161,50 @@ describe('decision evaluation semantics', () => {
     const result = await service({fetchFn: fetchChoice('offline', calls)}).classifyDecision(decision({
       candidates: [
         {id: 'online', description: 'Available option'},
+        {id: 'other-online', description: 'Another available option'},
         {id: 'offline', description: 'Unavailable option', available: false},
       ],
     }));
     assert.equal(result.status, 'unavailable');
     assert.equal(result.reasonCode, 'invalid_response');
     const criteria = (calls[0]?.questions as {decision: {criteria: Record<string, string>}}).decision.criteria;
-    assert.deepEqual(Object.keys(criteria).sort(), ['insufficient_evidence', 'online']);
+    assert.deepEqual(Object.keys(criteria).sort(), ['insufficient_evidence', 'online', 'other-online']);
+    const sentCandidates = (calls[0]?.state as {candidates: Candidate[]}).candidates;
+    assert.deepEqual(sentCandidates.map(candidate => candidate.id), ['online', 'other-online']);
   });
 
-  it('abstains for low confidence and for the provider insufficient-evidence choice', async () => {
+  it('abstains for low confidence while preserving the provider best candidate', async () => {
     const low = await service({fetchFn: fetchChoice('alpha', [], 0.59)}).classifyDecision(decision());
     assert.equal(low.status, 'abstained');
     assert.equal(low.reasonCode, 'low_confidence');
+    assert.equal(low.bestCandidate, 'alpha');
+    assert.equal(low.recommendation, undefined);
+    assert.equal(low.disposition, 'abstained');
+  });
 
-    const insufficient = await service({fetchFn: async (_input, init) => {
-      const payload = JSON.parse(String(init?.body)) as {questions: {decision: {criteria: Record<string, string>}}};
-      return providerResponse('insufficient_evidence', payload.questions.decision.criteria);
-    }}).classifyDecision(decision());
-    assert.equal(insufficient.status, 'abstained');
-    assert.equal(insufficient.choice, 'insufficient_evidence');
-    assert.equal(insufficient.reasonCode, 'insufficient_evidence');
+  it('lets the provider abstain on missing distinctions while retaining the best actual candidate separately', async () => {
+    const result = await service({fetchFn: fetchChoice('insufficient_evidence', [], 0.94, 0.9)}).classifyDecision(decision({
+      context: 'The state contains no measurements that distinguish the candidates.',
+      evidence: [],
+    }));
+    assert.equal(result.status, 'abstained');
+    assert.equal(result.reasonCode, 'insufficient_evidence');
+    assert.equal(result.choice, 'insufficient_evidence');
+    assert.equal(result.providerChoice, 'insufficient_evidence');
+    assert.equal(result.bestCandidate, 'alpha');
+    assert.equal(result.recommendation, undefined);
+    assert.equal(result.disposition, 'abstained');
+  });
+
+  it('evaluates one caller candidate against the evidence abstention option', async () => {
+    const calls: Array<Record<string, unknown>> = [];
+    const result = await service({fetchFn: fetchChoice('online', calls)}).classifyDecision(decision({candidates: [
+      {id: 'online', description: 'The only available candidate.'},
+    ]}));
+    assert.equal(result.status, 'assessed');
+    assert.equal(result.choice, 'online');
+    assert.equal(result.recommendation, 'online');
+    assert.deepEqual(Object.keys((calls[0]?.questions as any).decision.criteria), ['online', 'insufficient_evidence']);
   });
 
   it('abstains when confidence is high but the selected probability is below the floor', async () => {
@@ -179,6 +213,22 @@ describe('decision evaluation semantics', () => {
     assert.equal(result.confidence, 0.95);
     assert.equal(result.probabilities?.alpha, 0.5);
     assert.equal(result.reasonCode, 'low_confidence');
+  });
+
+  it('supports explicit reversible ranking without presenting it as authority', async () => {
+    const result = await service({fetchFn: fetchChoice('alpha', [], 0.2, 0.5)}).classifyDecision(decision({
+      policy: {mode: 'ranking', minConfidence: 0.99, minProbability: 0.99},
+      origin: {source: 'service', chatId: 'chat:ranking'},
+      correlation: {requestId: 'request:ranking'},
+    } as Partial<DecisionInput>));
+    assert.equal(result.status, 'assessed');
+    assert.equal(result.bestCandidate, 'alpha');
+    assert.equal(result.recommendation, 'alpha');
+    assert.equal(result.disposition, 'ranking');
+    assert.equal(result.authority, 'advisory_only');
+    assert.equal(result.policy?.mode, 'ranking');
+    assert.equal(result.policy?.calibration, 'not_locally_calibrated');
+    assert.deepEqual(result.origin, {source: 'service', chatId: 'chat:ranking'});
   });
 
   it('honors an explicit context constraint without imposing a hidden least-cost choice rule', async () => {
@@ -242,7 +292,9 @@ describe('decision evaluation semantics', () => {
       evidence: Array.from({length: 12}, (_, index) => ({id: `large:${index}`, text: 'x'.repeat(12000)})),
     }));
     assert.deepEqual(invalid, {status: 'skipped', reasonCode: 'invalid_input'});
-    assert.deepEqual(oversized, {status: 'skipped', reasonCode: 'payload_too_large'});
+    assert.equal(oversized.status, 'skipped');
+    assert.equal(oversized.reasonCode, 'payload_too_large');
+    assert.equal(oversized.authority, undefined);
     assert.equal(fetchCalls, 0);
   });
 

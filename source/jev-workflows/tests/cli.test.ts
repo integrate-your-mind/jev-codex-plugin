@@ -12,6 +12,7 @@ const failureInput = {
 function stub(result: Assessment): CliService {
   return {
     status: () => ({version: '0.2.2', provider: 'TypeSafe', model: 'jev-1.13.0', credentialConfigured: true, credentialFingerprint: 'secret', stateDirectory: '/private'}),
+    evaluateDecisions: async () => result,
     classifyDecision: async () => result,
     classifyFailure: async () => result,
     checkCompletion: async () => result,
@@ -21,6 +22,7 @@ function stub(result: Assessment): CliService {
 describe('standalone CLI', () => {
   it('parses commands and rejects malformed arguments', () => {
     assert.deepEqual(parseArgs(['classify-failure', '--evaluate']), {command: 'classify-failure', evaluate: true, help: false});
+    assert.deepEqual(parseArgs(['evaluate-decisions', '--evaluate']), {command: 'evaluate-decisions', evaluate: true, help: false});
     assert.throws(() => parseArgs(['classify-failure', '--unknown']), /invalid_argument/);
     assert.throws(() => parseArgs([]), /missing_command/);
   });
@@ -75,6 +77,19 @@ describe('standalone CLI', () => {
     const completionUnavailable = await dispatch(parseArgs(['check-completion', '--evaluate']), completion, service);
     assert.equal((completionUnavailable.value as Assessment).reasonCode, 'missing_api_key');
     assert.equal(calls, 0);
+  });
+
+  it('dispatches the generic typed batch command with explicit evaluation gating', async () => {
+    let received: unknown;
+    const service = stub({status: 'assessed'});
+    service.evaluateDecisions = async input => { received = input; return {status: 'preview'}; };
+    const batch = {state: {item: 'example'}, questions: {
+      relevant: {type: 'noul', instructions: 'Is `item` relevant?'},
+    }};
+    const preview = await dispatch(parseArgs(['evaluate-decisions']), batch, service);
+    assert.equal((preview.value as Assessment).status, 'preview');
+    assert.equal((received as Record<string, unknown>).mode, 'preview');
+    await assert.rejects(dispatch(parseArgs(['evaluate-decisions']), {...batch, mode: 'evaluate'}, service), /evaluation_requires_flag/);
   });
 
   it('sanitizes service and transport exceptions', async () => {

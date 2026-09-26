@@ -1,0 +1,65 @@
+{
+  "verificationDate": "2026-09-26",
+  "packageVersion": "0.4.0",
+  "scope": "Focused independent retest using fresh stdio and attached native MCP checks.",
+  "runtimeVersion": "0.4.0",
+  "providerModel": "jev-1.13.0",
+  "assertions": {
+    "native": true,
+    "freshProcess": true,
+    "nativeOutcomeReadbackMatched": true,
+    "nativeRubricUptakeVerified": true,
+    "unlimitedPolicyUnchanged": true,
+    "initialArtifactsUnchanged": true
+  },
+  "rubrics": {
+    "decision": "decision-2026-09-26.2",
+    "batch": "batch-2026-09-26.2"
+  },
+  "focusedLiveEvaluations": {
+    "native": 3,
+    "freshProcess": 3,
+    "total": 6,
+    "http200Validated": 6,
+    "distinctProviderRequestIds": 6,
+    "providerRequestIdsOmitted": true
+  },
+  "initialQALiveEvaluations": {
+    "successful": 15,
+    "http200Validated": 15,
+    "separateFromFocusedRetest": true,
+    "note": "The initial count is retained separately; no combined correctness claim is made across the two runs."
+  },
+  "behaviorObserved": {
+    "underdeterminedChoice": "abstained with an insufficient-evidence disposition",
+    "singleAvailableChoice": "preview accepted; live classification recommended the available choice",
+    "unavailableOnlyChoices": "abstained or skipped with an insufficient-available-candidates disposition; no provider transport for the unavailable-only classifier case",
+    "mixedTypedBatch": "Choice passed, Noul returned 0.99 in the tested direction, and Score selected level 2 from three explicit ordinal levels",
+    "outcomeValidation": "callerReported false and a mismatched provider identifier were rejected; a legitimate linked outcome was read back with callerReported true and independentlyVerified false"
+  },
+  "limits": {
+    "requestPayloadBytes": 48000,
+    "responseBytes": 65536,
+    "serviceDefaultProviderTimeoutSeconds": 10,
+    "decisionHookHostTimeoutSecondsByEvent": {
+      "default": 5,
+      "interrupt": 3,
+      "sessionEnd": 3
+    },
+    "decisionHookInternalTimeoutSeconds": 4,
+    "decisionHookProviderTimeoutSeconds": 3,
+    "decisionHookShortEventProviderTimeoutSeconds": 1.8,
+    "failureHookProviderTimeoutSeconds": 2,
+    "defaultDailyCallCap": null,
+    "defaultDailyByteCap": null,
+    "defaultSessionHookCap": null,
+    "unlimitedDefaultsPreserved": true
+  },
+  "status": "focused independent QA passed",
+  "limitations": [
+    "This is focused QA evidence, not exhaustive release acceptance or a model-quality benchmark.",
+    "Latency and token observations are run estimates rather than billing measurements.",
+    "Incidental automatic-hook authentication failures were observed early in the turn; later explicit native and fresh-process checks succeeded, and the cause was not investigated.",
+    "The evidence does not establish hosted CI, provider billing reconciliation, production deployment, global automation reconfiguration, or official directory approval."
+  ]
+}

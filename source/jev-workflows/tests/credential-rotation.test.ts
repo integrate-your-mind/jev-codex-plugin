@@ -64,30 +64,62 @@ test('credential file accepts one private literal assignment and rejects unsafe 
   assert.equal(readCredentialFile(join(root, 'missing.env')), null);
 });
 
-test('invalid configured source fails closed without the captured environment key or secret leakage', async t => {
+test('invalid configured source permits redacted local preview while evaluation fails closed', async t => {
   const {path, write} = fixture(t);
   write(FILE_KEY_SECRET);
   let calls = 0;
+  let reservations = 0;
+  const receipts: Receipt[] = [];
+  const store: Store = {
+    reserve: async () => { reservations++; return true; },
+    save: async receipt => { receipts.push(receipt); },
+  };
   const env = {TYPESAFE_API_KEY: 'synthetic-stale-secret', JEV_API_KEY_FILE: path, JEV_ENABLED: '1'};
-  const service = createService({env, fetchFn: async () => {calls++; throw new Error('unexpected egress');}});
+  const service = createService({env, store, fetchFn: async () => {calls++; throw new Error('unexpected egress');}});
   assert.equal(service.status().credentialConfigured, true);
   const preview = await service.classifyFailure({...failure('preview'), output: `${FILE_KEY_SECRET} and synthetic-stale-secret`});
   assert.equal(preview.status, 'preview');
   assert.equal(JSON.stringify(preview).includes(FILE_KEY_SECRET), false);
   assert.equal(JSON.stringify(preview).includes('synthetic-stale-secret'), false);
+
+  chmodSync(path, 0o644);
+  const unreadablePreview = await service.classifyFailure({...failure('preview'), output: 'api_key=plain-pattern-secret synthetic-stale-secret'});
+  assert.equal(unreadablePreview.status, 'preview');
+  assert.equal(JSON.stringify(unreadablePreview).includes('plain-pattern-secret'), false);
+  assert.equal(JSON.stringify(unreadablePreview).includes('synthetic-stale-secret'), false);
+  assert.deepEqual(await service.classifyFailure(failure()), {status: 'unavailable', reasonCode: 'credential_source_unavailable'});
+
+  chmodSync(path, 0o600);
   writeFileSync(path, 'malformed', {mode: 0o600});
   assert.equal(service.status().credentialConfigured, false);
   assert.equal(service.status().credentialFingerprint, null);
-  for (const mode of ['preview', 'evaluate'] as const) {
-    const result = await service.classifyFailure(failure(mode));
-    assert.deepEqual(result, {status: 'unavailable', reasonCode: 'credential_source_unavailable'});
-    assert.equal(JSON.stringify(result).includes(path), false);
-  }
+  const malformedPreview = await service.classifyFailure({...failure('preview'), output: 'Bearer sk-abcdefghijklmnop and synthetic-stale-secret'});
+  assert.equal(malformedPreview.status, 'preview');
+  assert.equal(JSON.stringify(malformedPreview).includes('sk-abcdefghijklmnop'), false);
+  assert.equal(JSON.stringify(malformedPreview).includes('synthetic-stale-secret'), false);
+  const malformedEvaluation = await service.classifyFailure(failure('evaluate'));
+  assert.deepEqual(malformedEvaluation, {status: 'unavailable', reasonCode: 'credential_source_unavailable'});
+  assert.equal(JSON.stringify(malformedEvaluation).includes(path), false);
+
+  const batchInput = {
+    state: {summary: 'api_key=batch-pattern-secret synthetic-stale-secret'},
+    questions: {decision: {type: 'choice' as const, instructions: 'Choose only with support.', candidates: [{id: 'actual', description: 'Actual candidate'}]}},
+  };
+  const batchPreview = await service.evaluateDecisions({...batchInput, mode: 'preview'});
+  assert.equal(batchPreview.status, 'preview');
+  assert.equal(JSON.stringify(batchPreview).includes('batch-pattern-secret'), false);
+  assert.equal(JSON.stringify(batchPreview).includes('synthetic-stale-secret'), false);
+  assert.deepEqual(await service.evaluateDecisions({...batchInput, mode: 'evaluate'}),
+    {status: 'unavailable', reasonCode: 'credential_source_unavailable'});
+
   rmSync(path);
   assert.equal(service.status().credentialConfigured, false);
+  assert.equal((await service.classifyFailure(failure('preview'))).status, 'preview');
   assert.deepEqual(await service.classifyFailure(failure()),
     {status: 'unavailable', reasonCode: 'credential_source_unavailable'});
   assert.equal(calls, 0);
+  assert.equal(reservations, 0);
+  assert.equal(receipts.length, 0);
   const explicit = createService({apiKey: 'explicit-key', env,
     store: {reserve: async () => true, save: async () => {}},
     fetchFn: async () => {calls++; return validResponse();}});

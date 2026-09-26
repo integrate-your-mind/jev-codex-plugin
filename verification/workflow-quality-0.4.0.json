@@ -1,0 +1,134 @@
+{
+  "release": "0.4.0",
+  "date": "2026-09-26",
+  "scope": "Synthetic fixtures only. Labels were fixed before provider requests. v1 was used to repair a discovered issue; only v2 was fresh after that repair. These are local evaluation results, not model calibration or provider billing.",
+  "runs": [
+    {
+      "role": "initial candidate; discovered abstention defect",
+      "summary": {
+        "schemaVersion": "workflow-quality-evaluation-v1",
+        "fixtureHash": "0df6d9164d572491d72d93e2affca439c0cdd616cad92bfd4b4a0347dd76f4f9",
+        "rubricVersion": "decision-2026-09-26.1",
+        "model": "jev-1.13.0",
+        "split": "all",
+        "splitFrozenBeforeProviderResults": true,
+        "mode": "live",
+        "totalCases": 16,
+        "scoredCases": 16,
+        "independentLabelCorrect": 13,
+        "independentLabelAccuracy": 0.8125,
+        "falseConfidentDecisionCount": 2,
+        "abstentionCount": 3,
+        "unavailableCount": 0,
+        "skippedCount": 0,
+        "requestEvidence": {
+          "attempted": 13,
+          "responsesReceived": 13,
+          "validatedResponses": 13,
+          "providerRequestIdCount": 13
+        },
+        "latencyEstimateMs": {
+          "count": 13,
+          "total": 2884,
+          "mean": 221.85
+        },
+        "tokenEstimates": {
+          "count": 13,
+          "input": 9828,
+          "output": 487,
+          "note": "Provider usage fields are retained estimates for this run, not billing."
+        },
+        "note": "Accuracy is computed only against the independently labelled fixture cases. Latency and token values are run estimates, not billing or general model performance claims."
+      }
+    },
+    {
+      "role": "known-case regression after repair",
+      "summary": {
+        "schemaVersion": "workflow-quality-evaluation-v1",
+        "fixtureHash": "0df6d9164d572491d72d93e2affca439c0cdd616cad92bfd4b4a0347dd76f4f9",
+        "labelPolicyVersion": "independent-choice-v1",
+        "rubricVersion": "decision-2026-09-26.2",
+        "model": "jev-1.13.0",
+        "split": "all",
+        "splitFrozenBeforeProviderResults": true,
+        "mode": "live",
+        "totalCases": 16,
+        "scoredCases": 16,
+        "independentLabelCorrect": 14,
+        "independentLabelAccuracy": 0.875,
+        "falseConfidentDecisionCount": 0,
+        "abstentionCount": 6,
+        "unavailableCount": 0,
+        "skippedCount": 0,
+        "requestEvidence": {
+          "attempted": 14,
+          "responsesReceived": 14,
+          "validatedResponses": 14,
+          "providerRequestIdCount": 14
+        },
+        "latencyEstimateMs": {
+          "count": 14,
+          "total": 2686,
+          "mean": 191.86
+        },
+        "tokenEstimates": {
+          "count": 14,
+          "input": 11220,
+          "output": 715,
+          "note": "Provider usage fields are retained estimates for this run, not billing."
+        },
+        "note": "Accuracy is computed only against the independently labelled fixture cases. Latency and token values are run estimates, not billing or general model performance claims."
+      }
+    },
+    {
+      "role": "fresh independently labelled set",
+      "summary": {
+        "schemaVersion": "workflow-quality-evaluation-v1",
+        "fixtureHash": "3188bb87fc68f1ba70a77f28b858cd6e82285aaebc112ba39cac44fa731abcde",
+        "labelPolicyVersion": "independent-choice-v2",
+        "rubricVersion": "decision-2026-09-26.2",
+        "model": "jev-1.13.0",
+        "split": "all",
+        "splitFrozenBeforeProviderResults": true,
+        "mode": "live",
+        "totalCases": 16,
+        "scoredCases": 16,
+        "independentLabelCorrect": 14,
+        "independentLabelAccuracy": 0.875,
+        "falseConfidentDecisionCount": 0,
+        "abstentionCount": 6,
+        "unavailableCount": 0,
+        "skippedCount": 0,
+        "requestEvidence": {
+          "attempted": 16,
+          "responsesReceived": 16,
+          "validatedResponses": 16,
+          "providerRequestIdCount": 16
+        },
+        "latencyEstimateMs": {
+          "count": 16,
+          "total": 3173,
+          "mean": 198.31
+        },
+        "tokenEstimates": {
+          "count": 16,
+          "input": 12642,
+          "output": 853,
+          "note": "Provider usage fields are retained estimates for this run, not billing."
+        },
+        "note": "Accuracy is computed only against the independently labelled fixture cases. Latency and token values are run estimates, not billing or general model performance claims."
+      }
+    }
+  ],
+  "mixedBatch": {
+    "httpStatus": 200,
+    "validatedResponses": 1,
+    "providerRequestIdsRetainedPrivately": 1,
+    "checks": [
+      "supported Choice",
+      "underdetermined Choice abstains",
+      "Noul direction",
+      "Score ordinal direction"
+    ]
+  }
+}

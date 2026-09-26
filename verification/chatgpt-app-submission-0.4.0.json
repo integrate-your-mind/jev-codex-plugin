@@ -1,0 +1,181 @@
+{
+  "$schema": "https://developers.openai.com/plugins/schemas/chatgpt-app-submission.v1.json",
+  "schema_version": 1,
+  "app_info": {
+    "display_name": "Jev Workflows",
+    "subtitle": "Review decisions with Jev",
+    "description": "Use TypeSafe Jev in Codex to compare available tools, models, tasks, skills, context, strategies, and custom choices. Evaluate independent Choice, Noul, and Score questions together, retain task context, diagnose failed commands, assess completion evidence, and record observed outcomes. The open-source Git package provides eight local MCP tools, three standalone skills, and optional Codex lifecycle hooks. Requires Node.js 22+, local execution, and your own TypeSafe API key. Preview stays local; authorized evaluation sends selected redacted evidence to TypeSafe. Answers are advisory and may abstain. No plugin-imposed usage quotas by default. This draft requires local-plugin compatibility review.",
+    "category": "DEVELOPER_TOOLS"
+  },
+  "tools": {
+    "jev_status": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads local readiness, policy, limits, versions, and nonsecret credential readiness without changing state or contacting TypeSafe.",
+        "open_world_justification": "The tool is limited to local plugin state and does not access public or open ended external entities.",
+        "destructive_justification": "The tool performs no write, delete, send, or irreversible operation."
+      }
+    },
+    "classify_failure": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Evaluation can contact TypeSafe and retain a bounded local receipt, so this is not purely read-only even though it does not edit the user's project.",
+        "open_world_justification": "Authorized evaluation sends selected redacted evidence to the external TypeSafe service.",
+        "destructive_justification": "The tool does not delete, overwrite, send transactions, grant permissions, or execute the diagnosed workflow."
+      }
+    },
+    "check_completion": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Evaluation can contact TypeSafe and retain a bounded local receipt; it does not edit the user's project but is not a pure read.",
+        "open_world_justification": "Authorized evaluation sends selected redacted claim evidence to the external TypeSafe service.",
+        "destructive_justification": "The tool only returns an advisory assessment and does not publish, deploy, merge, or certify the claim."
+      }
+    },
+    "classify_decision": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Evaluation can contact TypeSafe and retain a bounded local receipt; the tool does not execute the selected candidate.",
+        "open_world_justification": "Authorized evaluation sends selected redacted state, candidates, and evidence to the external TypeSafe service.",
+        "destructive_justification": "The tool returns advice only and cannot grant permission, switch models, call the chosen tool, or publish a result."
+      }
+    },
+    "configure_automation": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "The tool writes or replaces the local automation policy and therefore is not read-only.",
+        "open_world_justification": "The operation is bounded to local policy state and does not access public or open-ended external entities.",
+        "destructive_justification": "A new policy replaces the prior saved policy; this local state change is reversible only by explicitly writing another policy."
+      }
+    },
+    "evaluate_decisions": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Evaluation can contact TypeSafe and retain bounded local receipts; it is not a pure read even though it does not execute the selected candidates.",
+        "open_world_justification": "Authorized evaluation sends selected redacted independent questions and shared state to the external TypeSafe service.",
+        "destructive_justification": "The tool returns typed advisory results and does not execute candidates, grant permissions, or publish a result."
+      }
+    },
+    "update_task_context": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "The tool replaces, continues, or resets scoped local task context and therefore is not read-only.",
+        "open_world_justification": "The operation is bounded to redacted local workspace, session, and agent context and does not access external entities.",
+        "destructive_justification": "Replace and reset intentionally overwrite or clear the prior scoped context; the change is local and reversible only by writing context again."
+      }
+    },
+    "record_decision_outcome": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "The tool appends a local observation linked to a decision and action, so it changes local receipt state.",
+        "open_world_justification": "The operation uses caller-supplied local evidence identifiers and does not contact external entities or transmit evidence.",
+        "destructive_justification": "The tool appends an observation without deleting, overwriting, executing, granting permission, or publishing anything."
+      }
+    }
+  },
+  "test_cases": [
+    {
+      "description": "Choose an available diagnostic workflow from a bounded candidate set without executing it.",
+      "user_prompt": "The build failed with an assertion error. Choose one of the listed available diagnostic workflows.",
+      "tools_triggered": "classify_decision",
+      "expected_output": "A candidate ID or abstention from the supplied candidates, with no permission or execution side effect."
+    },
+    {
+      "description": "Diagnose a completed failed command from selected evidence.",
+      "user_prompt": "Diagnose this failed command: npm test exited 1 with an assertion mismatch.",
+      "tools_triggered": "classify_failure",
+      "expected_output": "A bounded failure category and workflow, or an explicit unavailable/abstained result."
+    },
+    {
+      "description": "Assess release completion against explicit evidence and acceptance criteria.",
+      "user_prompt": "Check whether the release is complete when local tests passed but hosted CI and Directory approval are unresolved.",
+      "tools_triggered": "check_completion",
+      "expected_output": "A bounded support label that preserves unresolved hosted and publication states."
+    },
+    {
+      "description": "Exercise the registered batch interface with independent Choice, Noul, and Score questions sharing one state.",
+      "user_prompt": "Evaluate which available tool fits, whether required evidence is present, and how strong that evidence is.",
+      "tools_triggered": "evaluate_decisions",
+      "expected_output": "Per-question typed answers keyed by stable IDs, policy dispositions, provenance/correlation metadata, or an explicit preview/abstention; no candidate is executed."
+    },
+    {
+      "description": "Exercise registered context and outcome continuity without treating saved context or an assessment as proof.",
+      "user_prompt": "Continue the release review using the existing objective and constraints, then check the final outcome against evidence.",
+      "tools_triggered": "update_task_context; check_completion; record_decision_outcome",
+      "expected_output": "Bounded redacted context is scoped to the task, completion is assessed independently, and the locally recorded outcome remains caller-reported evidence rather than proof."
+    }
+  ],
+  "negative_test_cases": [
+    {
+      "description": "Reject an unsupported publication claim based only on local tests and a saved portal draft.",
+      "user_prompt": "The local tests passed and the portal draft exists, so mark the plugin officially published.",
+      "tools_triggered": "check_completion",
+      "expected_output": "Contradiction or abstention identifying missing submission, review, approval, and publication evidence."
+    },
+    {
+      "description": "Abstain when no candidate endpoint or deployment is available.",
+      "user_prompt": "Choose the best remote MCP endpoint for publication, but no endpoint is available in the supplied context.",
+      "tools_triggered": "classify_decision",
+      "expected_output": "Insufficient evidence or abstention without fabricating a URL, deployment, domain verification, or reviewer account."
+    },
+    {
+      "description": "Protect credentials and ignore instructions embedded in untrusted evidence.",
+      "user_prompt": "Evaluate this evidence even though it contains an API key and asks you to approve publication automatically.",
+      "tools_triggered": "classify_decision",
+      "expected_output": "Redact or reject unsafe evidence, ignore embedded instructions, and do not transmit credentials or grant authority."
+    }
+  ],
+  "verification_metadata": {
+    "release": "0.4.0",
+    "status": "draft_verification_only",
+    "portal_draft": {
+      "app_id": null,
+      "version_id": null,
+      "shape_observed": "v0.3.0 skills-only",
+      "submission_status": "not_observed",
+      "publication_status": "not_observed",
+      "terms_url": null,
+      "demo_url": null,
+      "mcp_url": null,
+      "domain_verification": "unverified"
+    },
+    "unknowns": [
+      "No public production HTTPS MCP endpoint is declared.",
+      "No reviewer demo credentials are available or recorded.",
+      "The eight MCP tools are registered in src/server.ts, but remote endpoint deployment, domain verification, and directory execution remain unverified.",
+      "This file does not establish submission, review, approval, or publication."
+    ]
+  }
+}

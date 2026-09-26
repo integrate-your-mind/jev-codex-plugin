@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -16,7 +16,7 @@ function textOf(result: unknown): string {
 }
 
 describe('bundled MCP server', () => {
-  it('lists the v0.2 tools and serves failure/decision preview without secret fields', async () => {
+  it('lists all tools and serves isolated previews, context, and outcome records', async () => {
     await mkdir(buildRoot, {recursive: true});
     const dataRoot = await mkdtemp(join(buildRoot, 'test-'));
     const {
@@ -39,7 +39,7 @@ describe('bundled MCP server', () => {
       await client.connect(transport);
       const listed = await client.listTools();
       const names = listed.tools.map(tool => tool.name);
-      assert.deepEqual(names, ['jev_status', 'classify_failure', 'check_completion', 'classify_decision', 'configure_automation']);
+      assert.deepEqual(names, ['jev_status', 'classify_failure', 'check_completion', 'classify_decision', 'configure_automation', 'evaluate_decisions', 'update_task_context', 'record_decision_outcome']);
       const configureTool = listed.tools.find(tool => tool.name === 'configure_automation');
       assert.deepEqual(configureTool?.annotations, {readOnlyHint: false, destructiveHint: true, openWorldHint: false});
       assert.match(configureTool?.description ?? '', /prior policy is not retained/);
@@ -90,6 +90,43 @@ describe('bundled MCP server', () => {
       const afterPreview = JSON.parse(textOf(await client.callTool({name: 'jev_status', arguments: {}})));
       assert.equal(afterPreview.budget.reservedAttempts, 0);
       assert.equal(afterPreview.evaluations.totals.receipts, 0);
+
+      const batch = JSON.parse(textOf(await client.callTool({name: 'evaluate_decisions', arguments: {
+        state: {test: {exitCode: 0, authorization: 'Bearer mcp-secret-value'}},
+        questions: {
+          next_action: {type: 'choice', instructions: 'Choose the next step', candidates: [{id: 'review', description: 'Review passing test'}, {id: 'debug', description: 'Debug failing test'}]},
+          passed: {type: 'noul', instructions: 'Did the test pass?'},
+          readiness: {type: 'score', instructions: 'Assess test readiness', criteria: ['No passing tests', 'The test passed']},
+        }, mode: 'preview',
+      }})));
+      assert.equal(batch.status, 'preview');
+      assert.equal(JSON.stringify(batch).includes('mcp-secret-value'), false);
+
+      const scope = {cwd: dataRoot, sessionId: 'mcp-session', agentId: 'main'};
+      const update = async (value: object, target = scope) => JSON.parse(textOf(await client.callTool({name: 'update_task_context', arguments: {scope: target, update: value}})));
+      const firstContext = await update({operation: 'replace', rootObjective: 'Ship the tested plugin', latestStep: 'Run tests'});
+      assert.equal(firstContext.status, 'updated');
+      const continued = await update({followUp: 'Continue', rootObjective: 'Continue', latestStep: 'Review tests'});
+      assert.equal(continued.context.rootObjective.value, 'Ship the tested plugin');
+      const otherAgent = await update({rootObjective: 'Independent QA'}, {...scope, agentId: 'qa'});
+      assert.equal(otherAgent.context.rootObjective.value, 'Independent QA');
+      const reset = await update({operation: 'reset'});
+      assert.equal(reset.context.rootObjective, null);
+
+      const receiptId = randomUUID();
+      await mkdir(join(dataRoot, 'receipts'), {recursive: true});
+      await writeFile(join(dataRoot, 'receipts', `${receiptId}.json`), JSON.stringify({receiptId}));
+      const observed = JSON.parse(textOf(await client.callTool({name: 'record_decision_outcome', arguments: {
+        receiptId, actualActionId: 'run-tests', evidenceIds: ['test-log:1'], observedOutcome: 'supported',
+        callerReported: true, observedAt: new Date().toISOString(),
+      }})));
+      assert.equal(observed.provenance.independentlyVerified, false);
+      assert.equal(observed.actualActionId, 'run-tests');
+      const missingReceipt = await client.callTool({name: 'record_decision_outcome', arguments: {
+        receiptId: randomUUID(), actualActionId: 'run-tests', evidenceIds: ['test-log:1'], observedOutcome: 'supported',
+        callerReported: true, observedAt: new Date().toISOString(),
+      }}).catch(error => error);
+      assert.match(String(missingReceipt), /receipt_not_found/);
     } finally {
       await client.close().catch(() => {});
       await rm(dataRoot, {recursive: true, force: true});
@@ -108,7 +145,7 @@ describe('bundled MCP server', () => {
       await rename(next, keyPath);
     };
     await replaceKey(firstKey);
-    const {TYPESAFE_API_KEY: _old, JEV_API_KEY_FILE: _priorFile, ...inheritedEnv} = process.env;
+    const {TYPESAFE_API_KEY: _old, JEV_API_KEY_FILE: _priorFile, JEV_STATE_DIRECTORY: _stateDirectory, JEV_STATE_MODE: _stateMode, XDG_STATE_HOME: _stateHome, ...inheritedEnv} = process.env;
     const transport = new StdioClientTransport({
       command: process.execPath, args: [serverPath], cwd: root,
       env: {...inheritedEnv, JEV_API_KEY_FILE: keyPath, PLUGIN_DATA: dataRoot}, stderr: 'pipe',

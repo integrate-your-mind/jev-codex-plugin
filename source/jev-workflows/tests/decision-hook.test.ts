@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, readFile, writeFile, readdir, rename } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, readFile, writeFile, readdir, rename, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { renameSync } from 'node:fs';
 import { join } from 'node:path';
@@ -455,7 +455,7 @@ describe('decision hook', () => {
     assert.equal(authorization, `Bearer ${firstKey}`);
     assert.equal(outbound.includes(firstKey), false);
     assert.match(outbound, /\[REDACTED\]/);
-    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /status=unavailable; reason=authentication_failed/);
+    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /status=unavailable; reason=request_forbidden/);
   });
 
   it('deduplicates each SubagentStop agent independently within a shared turn', async () => {
@@ -485,6 +485,111 @@ describe('decision hook', () => {
     assert.ok(Date.now() - started < 500);
   });
 
+  it('clips hook context on UTF-8 boundaries while retaining the tail', async () => {
+    const environment = env(join(root, 'utf8-context'));
+    await enabledPolicy(environment);
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    const service = fakeService(calls);
+    await runDecisionHook(JSON.stringify(toolEvent({
+      hook_event_name: 'UserPromptSubmit', tool_name: undefined, tool_use_id: undefined,
+      turn_id: 'utf8-turn', prompt: `${'é'.repeat(1_000)}HOOK_UTF8_TAIL_KEEP`,
+    })), {env: environment, service});
+    assert.equal(calls.count, 1);
+    assert.doesNotMatch(calls.inputs[0]?.context ?? '', /\uFFFD/);
+    assert.match(calls.inputs[0]?.context ?? '', /HOOK_UTF8_TAIL_KEEP/);
+  });
+
+  it('uses a supplied single candidate instead of inventing a fallback catalog', async () => {
+    const environment = env(join(root, 'single-candidate'));
+    await enabledPolicy(environment);
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    const service = fakeService(calls);
+    await runDecisionHook(JSON.stringify(toolEvent({
+      task_context: {candidateCatalog: {tool: [{id: 'read_thread', description: 'Read the supplied thread.'}]}},
+    })), {env: environment, service});
+    assert.deepEqual(calls.inputs[0]?.candidates.map(candidate => candidate.id), ['read_thread']);
+    assert.match(calls.inputs[0]?.context ?? '', /"provided":true/);
+  });
+
+  it('does not call the provider after a contended context lock consumes the hook budget', async () => {
+    const environment = env(join(root, 'context-lock-timeout'));
+    await enabledPolicy(environment);
+    const sessionId = 'context-lock-session';
+    const contextDirectory = join(environment.PLUGIN_DATA!, 'task-context-v1', digest(process.cwd()), digest(sessionId), digest('root'));
+    const lockPath = join(contextDirectory, '.context.lock');
+    await mkdir(contextDirectory, {recursive: true});
+    await writeFile(lockPath, JSON.stringify({pid: process.pid, token: 'context-lock-test', createdAt: new Date().toISOString()}));
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    try {
+      const result = await runDecisionHook(JSON.stringify(toolEvent({
+        session_id: sessionId, hook_event_name: 'UserPromptSubmit', tool_name: undefined, tool_use_id: undefined,
+        turn_id: 'context-lock-turn', prompt: 'update the task context',
+      })), {env: environment, service: fakeService(calls), hookTimeoutMs: 30});
+      assert.match(result.hookSpecificOutput?.additionalContext ?? '', /status=unavailable; reason=hook_timeout/);
+      assert.equal(calls.count, 0);
+    } finally {
+      await unlink(lockPath).catch(() => {});
+    }
+  });
+
+  it('preserves structured argument values, task context, and an explicit candidate catalog', async () => {
+    const environment = env(join(root, 'structured-context'));
+    await enabledPolicy(environment);
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    const service = fakeService(calls);
+    await runDecisionHook(JSON.stringify(toolEvent({
+      hook_event_name: 'UserPromptSubmit', tool_name: undefined, tool_use_id: undefined, turn_id: 'context-turn',
+      prompt: 'Build the adapter and retain TAIL_CONSTRAINT_KEEP_UNLIMITED',
+    })), {env: environment, service});
+    await runDecisionHook(JSON.stringify(toolEvent({
+      tool_use_id: 'catalog-tool', tool_input: {threadId: 'thread-123', turnLimit: 3, nested: {mode: 'review'}},
+      task_context: {candidateCatalog: {tool: [
+        {id: 'read_thread', description: 'Read the supplied thread.', metadata: {scope: 'current'}},
+        {id: 'run_tests', description: 'Run the focused tests.', available: true},
+      ]}},
+    })), {env: environment, service});
+    const input = calls.inputs.at(-1)!;
+    assert.deepEqual(input.candidates.map(candidate => candidate.id), ['read_thread', 'run_tests']);
+    assert.match(input.context, /thread-123/);
+    assert.match(input.context, /"turnLimit":3/);
+    assert.match(input.context, /Build the adapter/);
+    assert.match(input.context, /TAIL_CONSTRAINT_KEEP_UNLIMITED/);
+    assert.match(input.context, /"provided":true/);
+    assert.doesNotMatch(input.context, /dummy-key/);
+  });
+
+  it('skips pure Jev wrappers while retaining mixed real work for evaluation', async () => {
+    const environment = env(join(root, 'mixed-wrapper'));
+    await enabledPolicy(environment);
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    const service = fakeService(calls);
+    const pure = await runDecisionHook(JSON.stringify(toolEvent({
+      tool_name: 'functions.exec', tool_use_id: 'pure-wrapper',
+      tool_input: {code: 'await tools.mcp__jev_workflows__classify_decision({domain:"tool"});'},
+    })), {env: environment, service});
+    assert.deepEqual(pure, {});
+    await runDecisionHook(JSON.stringify(toolEvent({
+      tool_name: 'functions.exec', tool_use_id: 'mixed-wrapper',
+      tool_input: {code: 'await tools.mcp__jev_workflows__classify_decision({domain:"tool"}); await tools.exec_command({cmd:"printf real-work"});'},
+    })), {env: environment, service});
+    assert.equal(calls.count, 1);
+  });
+
+  it('records invocation origin, timestamp, correlation, and candidate digest', async () => {
+    const environment = env(join(root, 'receipt-attribution'));
+    await enabledPolicy(environment);
+    const service: DecisionService = {classifyDecision: async () => ({status: 'abstained', choice: 'reconsider', confidence: 0.2})};
+    await runDecisionHook(JSON.stringify(toolEvent({source: 'codex-host', event_id: 'event-receipt'})), {env: environment, service});
+    const receiptPath = join(environment.PLUGIN_DATA!, 'decision-hook-v1', digest(process.cwd()), digest('session-1'), 'invocations', `${digest('PreToolUse\0session-1\0event-receipt')}.json`);
+    const receipt = JSON.parse(await readFile(receiptPath, 'utf8')) as Record<string, unknown>;
+    assert.equal(typeof receipt.timestamp, 'string');
+    assert.equal(typeof receipt.correlationId, 'string');
+    assert.equal(typeof receipt.candidateDigest, 'string');
+    assert.equal((receipt.origin as Record<string, unknown>).source, 'codex-host');
+    assert.equal(receipt.providerChoice, 'reconsider');
+    assert.equal(receipt.classification, 'unavailable');
+  });
+
   it('reports service errors and fixed receipt-backed abstention details', async () => {
     const errorEnvironment = env(join(root, 'service-error'));
     await enabledPolicy(errorEnvironment);
@@ -501,6 +606,6 @@ describe('decision hook', () => {
     })};
     const abstain = await runDecisionHook(JSON.stringify(toolEvent()), {env: abstainEnvironment, service: abstainService});
     assert.equal(abstain.hookSpecificOutput?.additionalContext,
-      'JEV advisory: status=abstained; decision=gather_evidence; confidence=0.37; reason=low_confidence; receipt=11111111-1111-1111-1111-111111111111; continue ordinary reasoning and gather authorized evidence if useful.');
+      'JEV advisory: status=abstained; confidence=0.37; reason=low_confidence; receipt=11111111-1111-1111-1111-111111111111; continue ordinary reasoning and gather authorized evidence if useful.');
   });
 });

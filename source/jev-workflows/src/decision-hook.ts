@@ -9,6 +9,7 @@ import { redactText } from './redact.js';
 import { readCredentialFile } from './credential.js';
 import { dataDirectory } from './store.js';
 import { readPolicy, workspaceAllowed, type HookPolicy } from './policy.js';
+import { loadTaskContext, updateTaskContext, type TaskContextRecord, type TaskContextScope } from './task-context.js';
 
 const MAX_STDIN_BYTES = 128 * 1024;
 const MAX_SEMANTIC_BYTES = 1_500;
@@ -96,7 +97,18 @@ function boundedWithEnv(value: unknown, maxBytes: number, env: NodeJS.ProcessEnv
     .replace(/(?<![A-Za-z0-9._-])[A-Za-z0-9._-]{80,}(?![A-Za-z0-9._-])/g,
       token => new Set(token).size >= 12 ? '[REDACTED OPAQUE TOKEN]' : token);
   if (Buffer.byteLength(redacted) <= maxBytes) return redacted;
-  return Buffer.from(redacted).subarray(0, maxBytes).toString('utf8');
+  const marker = '\n...[truncated]...\n';
+  const available = Math.max(2, maxBytes - Buffer.byteLength(marker));
+  const headBytes = Math.ceil(available * 0.6);
+  const tailBytes = available - headBytes;
+  const bytes = Buffer.from(redacted);
+  let headEnd = Math.min(headBytes, bytes.length);
+  while (headEnd > 0 && ((bytes[headEnd] ?? 0) & 0xc0) === 0x80) headEnd--;
+  let tailStart = Math.max(0, bytes.length - tailBytes);
+  while (tailStart < bytes.length && ((bytes[tailStart] ?? 0) & 0xc0) === 0x80) tailStart++;
+  const head = bytes.subarray(0, headEnd).toString('utf8');
+  const tail = bytes.subarray(tailStart).toString('utf8');
+  return `${head}${marker}${tail}`;
 }
 
 function safeId(value: string): string {
@@ -153,28 +165,107 @@ function isInternal(event: NormalizedEvent, env: NodeJS.ProcessEnv): boolean {
     const command = boundedWithEnv(event.raw.tool_input.command, 4_000, env) ?? '';
     if (command.includes('dist/decision-hook.mjs') || command.includes('dist/hook.mjs')) return true;
   }
+  if (name === 'functions.exec' && isRecord(event.raw.tool_input)) {
+    const code = boundedWithEnv(event.raw.tool_input.code, 4_000, env) ?? '';
+    const jevCalls = code.match(/(?:tools\.)?mcp__jev(?:_|-)workflows(?:_|-)[a-zA-Z0-9_:-]+/g) ?? [];
+    // A wrapper containing only Jev plumbing is internal. Keep mixed scripts
+    // visible so real work in the same tool invocation is still evaluated.
+    const mixedWork = code.replace(/(?:tools\.)?mcp__jev(?:_|-)workflows(?:_|-)[a-zA-Z0-9_:-]+/g, '')
+      .match(/(?:exec_command|write_stdin|read_thread|fetch\s*\(|mcp__(?!jev(?:_|-)workflows)|tools\.(?!mcp__jev))/i);
+    if (jevCalls.length > 0 && !mixedWork) return true;
+  }
   return false;
 }
 
-function semanticArguments(event: NormalizedEvent, env: NodeJS.ProcessEnv): {keys: string[]; values: Record<string, string>} {
+type ArgumentProjection = {
+  keys: string[];
+  values: Record<string, unknown>;
+  omitted: {count: number; paths: string[]};
+  truncated: boolean;
+  tailRetained: boolean;
+};
+
+const SENSITIVE_ARGUMENT_KEY = /(?:token|password|secret|authorization|cookie|credential|private[_-]?key|api[_-]?key|base64|file[_-]?uri|download[_-]?url|(?:^|[_-])key$)/i;
+
+function projectArgumentValue(value: unknown, env: NodeJS.ProcessEnv, state: {bytes: number; omitted: number; paths: string[]; truncated: boolean; tailRetained: boolean}, path: string, depth = 0): unknown {
+  if (depth > 4) {
+    state.omitted += 1;
+    if (state.paths.length < 16) state.paths.push(path);
+    return '[OMITTED_MAX_DEPTH]';
+  }
+  if (state.bytes >= MAX_SEMANTIC_BYTES) {
+    state.omitted += 1;
+    state.truncated = true;
+    if (state.paths.length < 16) state.paths.push(path);
+    return '[OMITTED_BUDGET]';
+  }
+  if (typeof value === 'string') {
+    const projected = boundedWithEnv(value, Math.min(800, MAX_SEMANTIC_BYTES - state.bytes), env) ?? '';
+    state.bytes += Buffer.byteLength(projected);
+    if (projected.includes('...[truncated]...')) {
+      state.truncated = true;
+      state.tailRetained = true;
+    }
+    return projected;
+  }
+  if (value === null || typeof value === 'number' || typeof value === 'boolean') {
+    const encoded = JSON.stringify(value);
+    state.bytes += Buffer.byteLength(encoded);
+    return value;
+  }
+  if (Array.isArray(value)) {
+    const projected: unknown[] = [];
+    for (const [index, child] of value.slice(0, 16).entries()) projected.push(projectArgumentValue(child, env, state, `${path}[${index}]`, depth + 1));
+    if (value.length > 16) {
+      state.omitted += value.length - 16;
+      state.truncated = true;
+      if (state.paths.length < 16) state.paths.push(`${path}[*]`);
+    }
+    return projected;
+  }
+  if (isRecord(value)) {
+    const projected: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value).slice(0, 32)) {
+      const safeKey = SENSITIVE_ARGUMENT_KEY.test(key) ? '[REDACTED]' : boundedWithEnv(key, 80, env) ?? '[OMITTED_KEY]';
+      if (SENSITIVE_ARGUMENT_KEY.test(key)) {
+        projected[safeKey] = '[REDACTED_FIELD]';
+        state.omitted += 1;
+        if (state.paths.length < 16) state.paths.push(`${path}.${safeKey}`);
+      } else {
+        projected[safeKey] = projectArgumentValue(child, env, state, `${path}.${safeKey}`, depth + 1);
+      }
+    }
+    if (Object.keys(value).length > 32) {
+      state.omitted += Object.keys(value).length - 32;
+      state.truncated = true;
+      if (state.paths.length < 16) state.paths.push(`${path}.*`);
+    }
+    return projected;
+  }
+  state.omitted += 1;
+  if (state.paths.length < 16) state.paths.push(path);
+  return '[OMITTED_UNSUPPORTED]';
+}
+
+function semanticArguments(event: NormalizedEvent, env: NodeJS.ProcessEnv): ArgumentProjection {
+  const state = {bytes: 0, omitted: 0, paths: [] as string[], truncated: false, tailRetained: false};
   if (typeof event.raw.tool_input === 'string') {
     const value = boundedWithEnv(event.raw.tool_input, MAX_SEMANTIC_BYTES, env);
-    return value ? {keys: ['$value'], values: {$value: value}} : {keys: ['$value'], values: {}};
+    return {keys: ['$value'], values: value ? {$value: value} : {}, omitted: {count: 0, paths: []}, truncated: Boolean(value?.includes('...[truncated]...')), tailRetained: Boolean(value?.includes('...[truncated]...'))};
   }
-  if (!isRecord(event.raw.tool_input)) return {keys: [], values: {}};
+  if (!isRecord(event.raw.tool_input)) return {keys: [], values: {}, omitted: {count: 0, paths: []}, truncated: false, tailRetained: false};
   const keys = Object.keys(event.raw.tool_input).slice(0, 32).map(key => boundedWithEnv(key, 80, env) ?? '');
-  const values: Record<string, string> = {};
-  const allow = new Set(['command', 'cmd', 'code', 'query', 'task', 'prompt']);
-  let used = 0;
-  for (const key of keys) {
-    if (!allow.has(key)) continue;
-    const value = boundedWithEnv(event.raw.tool_input[key], Math.min(MAX_SEMANTIC_BYTES - used, 1_500), env);
-    if (!value) continue;
-    values[key] = value;
-    used += Buffer.byteLength(value);
-    if (used >= MAX_SEMANTIC_BYTES) break;
+  const values: Record<string, unknown> = {};
+  for (const key of Object.keys(event.raw.tool_input).slice(0, 32)) {
+    const safeKey = SENSITIVE_ARGUMENT_KEY.test(key) ? '[REDACTED]' : boundedWithEnv(key, 80, env) ?? '[OMITTED_KEY]';
+    values[safeKey] = projectArgumentValue(event.raw.tool_input[key], env, state, safeKey);
   }
-  return {keys, values};
+  if (Object.keys(event.raw.tool_input).length > 32) {
+    state.omitted += Object.keys(event.raw.tool_input).length - 32;
+    state.truncated = true;
+    state.paths.push('root.*');
+  }
+  return {keys, values, omitted: {count: state.omitted, paths: state.paths}, truncated: state.truncated, tailRetained: state.tailRetained};
 }
 
 type SemanticResponse = {status?: string; exitCode?: number; isError?: boolean; resultExcerpt?: string; failureExcerpt?: string};
@@ -432,6 +523,107 @@ function actionCandidates(event: NormalizedEvent): DecisionInput['candidates'] {
   return ACTION_CANDIDATES.map(candidate => ({...candidate}));
 }
 
+type CandidateCatalog = {
+  candidates: DecisionInput['candidates'];
+  provided: boolean;
+  source: string;
+  domain: DecisionInput['domain'];
+};
+
+function taskContextScope(event: NormalizedEvent): TaskContextScope {
+  return {cwd: event.cwd, sessionId: event.sessionId, ...(event.agentId ? {agentId: event.agentId} : {})};
+}
+
+function renderTaskContext(value: TaskContextRecord | undefined): string | undefined {
+  if (!value) return undefined;
+  const compact = {
+    version: value.version,
+    rootObjective: value.rootObjective?.value ?? null,
+    latestStep: value.latestStep?.value ?? null,
+    followUps: value.followUps.map(entry => entry.value),
+    constraints: value.constraints.map(entry => entry.value),
+    criteria: value.criteria.map(entry => entry.value),
+    corrections: value.corrections.map(entry => entry.value),
+    evidenceRefs: value.evidenceRefs.map(ref => ({id: ref.id, source: ref.source, summary: ref.summary})),
+    candidateCatalogs: value.candidateCatalogs,
+    history: value.history.map(entry => entry.value),
+    updatedAt: value.updatedAt,
+    scope: value.scope,
+  };
+  return JSON.stringify(compact);
+}
+
+function promptContextUpdate(event: NormalizedEvent, prior: TaskContextRecord | undefined, env: NodeJS.ProcessEnv): Parameters<typeof updateTaskContext>[1] | undefined {
+  const prompt = boundedWithEnv(event.prompt, MAX_PROMPT_BYTES, env);
+  if (!prompt) return undefined;
+  const continuation = /^(?:continue|keep\s+going|proceed|go\s+on|resume)\.?$/i.test(prompt.trim());
+  return {
+    operation: 'continue',
+    ...(prior?.rootObjective ? {} : {rootObjective: prompt}),
+    latestStep: prompt,
+    ...(continuation ? {followUp: prompt} : {}),
+    provenance: {
+      source: 'user_prompt',
+      eventId: event.eventId || undefined,
+      turnId: event.turnId || undefined,
+      agentId: event.agentId || undefined,
+    },
+  };
+}
+
+function candidateFromUnknown(value: unknown, env: NodeJS.ProcessEnv): DecisionInput['candidates'][number] | undefined {
+  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.description !== 'string') return undefined;
+  const id = boundedWithEnv(value.id, 80, env);
+  const description = boundedWithEnv(value.description, 1_600, env);
+  if (!id || !description || id === 'insufficient_evidence' || !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/.test(id)) return undefined;
+  const metadata: Record<string, string | number | boolean> = {};
+  if (isRecord(value.metadata)) {
+    for (const [key, item] of Object.entries(value.metadata).slice(0, 16)) {
+      if (!/^[a-zA-Z0-9_.-]{1,40}$/.test(key) || SENSITIVE_ARGUMENT_KEY.test(key)) continue;
+      if (typeof item === 'string') metadata[key] = boundedWithEnv(item, 500, env) ?? '';
+      else if (typeof item === 'number' && Number.isFinite(item)) metadata[key] = item;
+      else if (typeof item === 'boolean') metadata[key] = item;
+    }
+  }
+  return {id, description, available: value.available !== false, ...(Object.keys(metadata).length ? {metadata} : {})};
+}
+
+function candidateCatalog(event: NormalizedEvent, domain: DecisionInput['domain'], env: NodeJS.ProcessEnv, taskContext?: TaskContextRecord): CandidateCatalog {
+  const context = isRecord(event.raw.task_context) ? event.raw.task_context : isRecord(event.raw.taskContext) ? event.raw.taskContext : undefined;
+  const catalogs = context && (isRecord(context.candidateCatalog) ? context.candidateCatalog : isRecord(context.candidate_catalog) ? context.candidate_catalog : undefined);
+  const explicit = (domain === 'general' ? undefined : taskContext?.candidateCatalogs?.[domain]) ?? catalogs?.[domain] ?? (domain === 'tool' ? context?.availableCandidates ?? context?.available_candidates : undefined) ?? (isRecord(event.raw.candidate_catalog) ? event.raw.candidate_catalog[domain] : undefined) ?? event.raw.available_candidates;
+  const list = Array.isArray(explicit) ? explicit.map(item => candidateFromUnknown(item, env)).filter((item): item is DecisionInput['candidates'][number] => item !== undefined) : [];
+  const unique = [...new Map(list.map(item => [item.id, item])).values()];
+  if (unique.length >= 1) return {candidates: unique.slice(0, 12), provided: true, source: 'host.task_context', domain};
+  return {candidates: actionCandidates(event), provided: false, source: explicit === undefined ? 'fallback:no_catalog' : 'fallback:invalid_or_insufficient_catalog', domain};
+}
+
+function taskContextExcerpt(value: unknown, env: NodeJS.ProcessEnv, maxBytes: number): string | undefined {
+  if (typeof value !== 'string' && !isRecord(value)) return undefined;
+  let parsed: unknown = value;
+  if (typeof value === 'string') {
+    try { parsed = JSON.parse(value) as unknown; } catch { return boundedWithEnv(value, maxBytes, env); }
+  }
+  if (!isRecord(parsed)) return boundedWithEnv(String(parsed), maxBytes, env);
+  const rootBudget = Math.max(128, Math.floor(maxBytes * 0.65));
+  const latestBudget = Math.max(64, Math.floor(maxBytes * 0.2));
+  const excerpt: RecordValue = {version: parsed.version};
+  if (typeof parsed.rootObjective === 'string') excerpt.rootObjective = boundedWithEnv(parsed.rootObjective, rootBudget, env);
+  if (typeof parsed.latestStep === 'string') excerpt.latestStep = boundedWithEnv(parsed.latestStep, latestBudget, env);
+  if (Array.isArray(parsed.followUps)) excerpt.followUps = parsed.followUps.slice(-2).map(item => typeof item === 'string' ? boundedWithEnv(item, 120, env) : undefined).filter(Boolean);
+  if (Array.isArray(parsed.constraints)) excerpt.constraints = parsed.constraints.slice(-2).map(item => typeof item === 'string' ? boundedWithEnv(item, 120, env) : undefined).filter(Boolean);
+  const encoded = JSON.stringify(excerpt);
+  if (Buffer.byteLength(encoded) <= maxBytes) return encoded;
+  // Root and latest step carry the goal semantics. Keep those fields and
+  // shrink only their individual values before applying a final safe clip.
+  const priority = JSON.stringify({
+    version: parsed.version,
+    rootObjective: typeof parsed.rootObjective === 'string' ? boundedWithEnv(parsed.rootObjective, Math.floor(maxBytes * 0.72), env) : undefined,
+    latestStep: typeof parsed.latestStep === 'string' ? boundedWithEnv(parsed.latestStep, Math.floor(maxBytes * 0.2), env) : undefined,
+  });
+  return Buffer.byteLength(priority) <= maxBytes ? priority : boundedWithEnv(priority, maxBytes, env);
+}
+
 function contextText(value: RecordValue, env: NodeJS.ProcessEnv): string {
   const complete = JSON.stringify({...value, contextTruncated: false});
   if (Buffer.byteLength(complete) <= MAX_CONTEXT_BYTES) return complete;
@@ -448,13 +640,17 @@ function contextText(value: RecordValue, env: NodeJS.ProcessEnv): string {
     agentType: value.agentType,
     argumentKeys: value.argumentKeys,
     arguments: boundedWithEnv(JSON.stringify(value.arguments ?? {}), 700, env),
+    argumentProjection: value.argumentProjection,
     response: {
       status: response.status,
       exitCode: response.exitCode,
       isError: response.isError,
       resultExcerpt: boundedWithEnv(response.failureExcerpt ?? response.resultExcerpt, 700, env),
     },
-    taskPrompt: boundedWithEnv(value.taskPrompt, 700, env),
+    taskPrompt: taskContextExcerpt(value.taskPrompt, env, 700),
+    taskContext: taskContextExcerpt(value.taskContext, env, 1_000),
+    candidateCatalog: value.candidateCatalog,
+    truncation: value.truncation,
     finalMessage: boundedWithEnv(value.finalMessage, 700, env),
     turnResults: turnResults ? {status: turnResults.status, resultCount: Array.isArray(turnResults.results) ? turnResults.results.length : 0} : undefined,
     contextTruncated: true,
@@ -462,10 +658,14 @@ function contextText(value: RecordValue, env: NodeJS.ProcessEnv): string {
   return JSON.stringify(compact);
 }
 
-function decisionInput(event: NormalizedEvent, env: NodeJS.ProcessEnv, taskPrompt?: string, turnResults?: TurnResultContext): DecisionInput {
+function decisionInput(event: NormalizedEvent, env: NodeJS.ProcessEnv, taskPrompt?: string, taskContext?: TaskContextRecord, turnResults?: TurnResultContext): DecisionInput {
   const args = semanticArguments(event, env);
   const response = semanticResponse(event, env);
   const message = finalMessage(event, env);
+  const domain = event.name === 'UserPromptSubmit' || event.name === 'SubagentStart' ? 'task'
+    : event.name === 'PreToolUse' || event.name === 'PermissionRequest' ? 'tool'
+    : event.name === 'PreCompact' || event.name === 'PostCompact' ? 'context' : 'result';
+  const catalog = candidateCatalog(event, domain, env, taskContext);
   const context = contextText({
     event: event.name,
     toolName: boundedWithEnv(event.toolName, 128, env),
@@ -477,8 +677,16 @@ function decisionInput(event: NormalizedEvent, env: NodeJS.ProcessEnv, taskPromp
     agentType: boundedWithEnv(event.agentType, 128, env),
     argumentKeys: args.keys,
     arguments: args.values,
+    argumentProjection: {omitted: args.omitted, truncated: args.truncated, tailRetained: args.tailRetained},
     response,
     taskPrompt,
+    taskContext: taskContext ? JSON.parse(renderTaskContext(taskContext) ?? '{}') : undefined,
+    candidateCatalog: {provided: catalog.provided, source: catalog.source, domain: catalog.domain, count: catalog.candidates.length},
+    truncation: {
+      taskPrompt: Boolean(taskPrompt?.includes('...[truncated]...')),
+      arguments: args.truncated,
+      tailRetained: args.tailRetained || Boolean(taskPrompt?.includes('...[truncated]...')),
+    },
     finalMessage: message,
     turnResults,
   }, env);
@@ -504,10 +712,7 @@ function decisionInput(event: NormalizedEvent, env: NodeJS.ProcessEnv, taskPromp
           : event.name === 'SubagentStart'
             ? 'Does this subagent start fit the current task, or should the workflow be reconsidered or gather evidence?'
       : 'Should this task result proceed, be reconsidered, or gather evidence?';
-  const domain = event.name === 'UserPromptSubmit' || event.name === 'SubagentStart' ? 'task'
-    : event.name === 'PreToolUse' || event.name === 'PermissionRequest' ? 'tool'
-    : event.name === 'PreCompact' || event.name === 'PostCompact' ? 'context' : 'result';
-  return {domain, question, context, candidates: actionCandidates(event), evidence, mode: 'evaluate'};
+  return {domain, question, context, candidates: catalog.candidates, evidence, mode: 'evaluate'};
 }
 
 function eventKey(event: NormalizedEvent): string {
@@ -522,6 +727,27 @@ function eventKey(event: NormalizedEvent): string {
   else if (event.name === 'UserPromptSubmit' || event.name === 'Stop' || event.name === 'Interrupt') identity = `${event.sessionId}\0${promptIdentity}`;
   else identity = `${event.sessionId}\0${event.turnId}\0${event.toolUseId}`;
   return hash(`${event.name}\0${identity}`);
+}
+
+type DeadlineResult<T> = {expired: true} | {expired: false; value: T};
+
+/** Await bounded prework without allowing a contended local lock to consume
+ * the entire hook budget. The underlying local operation may finish later,
+ * but no provider call is made after this deadline. */
+async function withinHookDeadline<T>(deadline: number, work: () => Promise<T>): Promise<DeadlineResult<T>> {
+  const remaining = deadline - Date.now();
+  if (remaining <= 0) return {expired: true};
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expired = Symbol('hook_deadline_expired');
+  try {
+    const result = await Promise.race([
+      work(),
+      new Promise<typeof expired>(resolve => { timer = setTimeout(() => resolve(expired), remaining); }),
+    ]);
+    return result === expired ? {expired: true} : {expired: false, value: result};
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
 }
 
 async function claimEvent(event: NormalizedEvent, policy: HookPolicy, env: NodeJS.ProcessEnv): Promise<boolean> {
@@ -582,7 +808,9 @@ function decisionOutput(event: NormalizedEvent, result: DecisionAssessment): Hoo
   const status = typeof result.status === 'string' && ['assessed', 'abstained', 'unavailable', 'skipped', 'preview'].includes(result.status)
     ? result.status : 'unavailable';
   const fields = [`status=${status}`];
-  if (typeof result.choice === 'string' && ACTION_CHOICES.has(result.choice)) fields.push(`decision=${result.choice}`);
+  // An abstention is intentionally neutral. The provider choice remains in
+  // the private receipt for diagnosis, but must not nudge the host workflow.
+  if (status === 'assessed' && typeof result.choice === 'string' && ACTION_CHOICES.has(result.choice)) fields.push(`decision=${result.choice}`);
   if (typeof result.confidence === 'number' && Number.isFinite(result.confidence) && result.confidence >= 0 && result.confidence <= 1) {
     fields.push(`confidence=${result.confidence.toFixed(2)}`);
   }
@@ -629,9 +857,20 @@ async function writeInvocationReceipt(event: NormalizedEvent, env: NodeJS.Proces
       }),
       referenceReceiptId: result?.receiptPersisted === true && typeof result?.receiptId === 'string' && /^[a-f0-9-]{1,80}$/.test(result.receiptId) ? result.receiptId : undefined,
       classification: resultStatus(result),
+      providerChoice: typeof result?.choice === 'string' && ACTION_CHOICES.has(result.choice) ? result.choice : undefined,
       assessmentStatus: result?.status && ['assessed','abstained','unavailable','skipped','preview'].includes(result.status) ? result.status : 'unavailable',
       confidence: typeof result?.confidence === 'number' && Number.isFinite(result.confidence) && result.confidence >= 0 && result.confidence <= 1 ? result.confidence : undefined,
       reasonCode: result?.reasonCode && /^[a-z_]{1,80}$/.test(result.reasonCode) ? result.reasonCode : undefined,
+      timestamp: new Date().toISOString(),
+      origin: {
+        source: event.source ?? 'hook',
+        event: event.name,
+        eventId: event.eventId || undefined,
+        turnId: event.turnId || undefined,
+        agentId: event.agentId || undefined,
+      },
+      correlationId: eventKey(event),
+      candidateDigest: hash(JSON.stringify(input.candidates.map(candidate => candidate.id))),
     };
     const contents = JSON.stringify(receipt) + '\n';
     const handle = await open(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
@@ -645,6 +884,7 @@ function defaultService(env: NodeJS.ProcessEnv, timeoutMs = PROVIDER_TIMEOUT_MS,
 }
 
 export async function runDecisionHook(raw: string | Uint8Array | unknown, options: {env?: NodeJS.ProcessEnv; service?: DecisionService; hookTimeoutMs?: number; fetchFn?: typeof fetch} = {}): Promise<HookResult> {
+  const startedAt = Date.now();
   try {
     const env = {...(options.env ?? process.env)} as HookEnv;
     // Snapshot before the first await. Redaction, cache writes and provider
@@ -652,9 +892,18 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
     if (env.JEV_API_KEY_FILE !== undefined) {
       env[credentialSnapshot] = readCredentialFile(env.JEV_API_KEY_FILE);
       if (!env[credentialSnapshot]) return {};
+      // Share the entry-time value with the local task-context writer. A file
+      // can rotate while an event is queued; this keeps saved context and the
+      // provider payload on the same credential snapshot.
+      env.TYPESAFE_API_KEY = env[credentialSnapshot];
     }
-    const policy = await readPolicy(env);
-    if (!policy.enabled || env.JEV_ENABLED === '0') return {};
+    // Read policy before parsing oversized input so disabled automation remains
+    // a cheap fail-open path. This provisional budget is replaced with the
+    // event-specific deadline as soon as the native event is normalized.
+    const initialTimeoutMs = options.hookTimeoutMs === undefined ? HOOK_TIMEOUT_MS : Math.min(Math.max(options.hookTimeoutMs, 1), HOOK_TIMEOUT_MS);
+    const policyResult = await withinHookDeadline(startedAt + initialTimeoutMs, () => readPolicy(env));
+    if (policyResult.expired || !policyResult.value.enabled || env.JEV_ENABLED === '0') return {};
+    const policy = policyResult.value;
     let parsed: unknown = raw;
     if (typeof raw === 'string' || raw instanceof Uint8Array) {
       if (Buffer.byteLength(raw) > MAX_STDIN_BYTES) {
@@ -663,31 +912,65 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
       parsed = JSON.parse(typeof raw === 'string' ? raw : Buffer.from(raw).toString('utf8')) as unknown;
     }
     const event = normalizeDecisionEvent(parsed);
-    if (!event || !(await workspaceAllowed(policy, event.cwd)) || isInternal(event, env)) return {};
-    if (event.name === 'SessionStart') {
-      if (!(await claimEvent(event, policy, env))) return {};
-      return instructionOutput(event);
-    }
-    const taskPrompt = event.name === 'UserPromptSubmit'
-      ? await updatePromptCache(event, env)
-      : await readPromptCache(event, env);
-    if (!(await claimEvent(event, policy, env))) return {};
-    const response = semanticResponse(event, env);
-    if (event.name === 'PostToolUse') await updateTurnResultCache(event, response, env);
-    const turnResults = event.name === 'Stop' || event.name === 'SubagentStop' || event.name === 'Interrupt'
-      ? await readTurnResultCache(event, env) : undefined;
+    if (!event) return {};
     const shortEvent = event.name === 'SessionEnd' || event.name === 'Interrupt';
-    const service = options.service ?? defaultService(env, shortEvent ? SHORT_EVENT_PROVIDER_TIMEOUT_MS : PROVIDER_TIMEOUT_MS, options.fetchFn);
-    const controller = new AbortController();
     const eventTimeoutMs = shortEvent ? SHORT_EVENT_HOOK_TIMEOUT_MS : HOOK_TIMEOUT_MS;
     const timeoutMs = options.hookTimeoutMs === undefined ? eventTimeoutMs : Math.min(Math.max(options.hookTimeoutMs, 1), eventTimeoutMs);
+    const deadline = startedAt + timeoutMs;
+    const timeoutAssessment: DecisionAssessment = {status: 'unavailable', reasonCode: 'hook_timeout'};
+    const timedOut = (): HookResult => decisionOutput(event, timeoutAssessment);
+    if (Date.now() >= deadline) return timedOut();
+    const allowedResult = await withinHookDeadline(deadline, () => workspaceAllowed(policy, event.cwd));
+    if (allowedResult.expired) return timedOut();
+    if (!allowedResult.value || isInternal(event, env)) return {};
+    if (event.name === 'SessionStart') {
+      const claimed = await withinHookDeadline(deadline, () => claimEvent(event, policy, env));
+      if (claimed.expired) return timedOut();
+      if (!claimed.value) return {};
+      return instructionOutput(event);
+    }
+    const scope = taskContextScope(event);
+    const loadedContext = await withinHookDeadline(deadline, () => loadTaskContext(scope, {env}));
+    if (loadedContext.expired) return timedOut();
+    let taskContext = loadedContext.value;
+    if (event.name === 'UserPromptSubmit') {
+      const update = promptContextUpdate(event, taskContext, env);
+      if (update) {
+        const updatedContext = await withinHookDeadline(deadline, () => updateTaskContext(scope, update, {env}));
+        if (updatedContext.expired) return timedOut();
+        taskContext = updatedContext.value ?? taskContext;
+      }
+    }
+    const cachedPromptResult = await withinHookDeadline(deadline, () => event.name === 'UserPromptSubmit' ? updatePromptCache(event, env) : readPromptCache(event, env));
+    if (cachedPromptResult.expired) return timedOut();
+    const cachedPrompt = cachedPromptResult.value;
+    const taskPrompt = renderTaskContext(taskContext) ?? cachedPrompt;
+    const claimed = await withinHookDeadline(deadline, () => claimEvent(event, policy, env));
+    if (claimed.expired) return timedOut();
+    if (!claimed.value) return {};
+    const response = semanticResponse(event, env);
+    if (event.name === 'PostToolUse') {
+      const turnCache = await withinHookDeadline(deadline, () => updateTurnResultCache(event, response, env));
+      if (turnCache.expired) return timedOut();
+    }
+    let turnResults: TurnResultContext | undefined;
+    if (event.name === 'Stop' || event.name === 'SubagentStop' || event.name === 'Interrupt') {
+      const turnCache = await withinHookDeadline(deadline, () => readTurnResultCache(event, env));
+      if (turnCache.expired) return timedOut();
+      turnResults = turnCache.value;
+    }
+    const input = decisionInput(event, env, taskPrompt, taskContext, turnResults);
+    if (Date.now() >= deadline) return timedOut();
+    const remainingMs = deadline - Date.now();
+    const providerTimeoutMs = Math.min(shortEvent ? SHORT_EVENT_PROVIDER_TIMEOUT_MS : PROVIDER_TIMEOUT_MS, Math.max(1, remainingMs));
+    const service = options.service ?? defaultService(env, providerTimeoutMs, options.fetchFn);
+    const controller = new AbortController();
     let timeoutResolve: ((value: DecisionAssessment) => void) | undefined;
     const timeout = new Promise<DecisionAssessment>(resolve => { timeoutResolve = resolve; });
     const timer = setTimeout(() => {
       controller.abort();
       timeoutResolve?.({status: 'unavailable', reasonCode: 'hook_timeout'});
-    }, timeoutMs);
-    const input = decisionInput(event, env, taskPrompt, turnResults);
+    }, remainingMs);
     let result: DecisionAssessment;
     try {
       result = await Promise.race([service.classifyDecision(input, controller.signal), timeout]);
@@ -696,7 +979,9 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
     } finally {
       clearTimeout(timer);
     }
-    await writeInvocationReceipt(event, env, input, response, result);
+    if (Date.now() >= deadline) result = timeoutAssessment;
+    const receipt = await withinHookDeadline(deadline, () => writeInvocationReceipt(event, env, input, response, result));
+    if (receipt.expired || Date.now() >= deadline) return timedOut();
     return decisionOutput(event, result);
   } catch {
     return {};

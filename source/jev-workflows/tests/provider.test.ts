@@ -32,6 +32,7 @@ const observedTransport: ProviderTransport = {
   validatedResponse: false,
   providerRequestId: 'req_validation_test',
   providerRequestIdHeader: 'x-typesafe-request-id',
+  retryAfter: null,
   credentialFingerprint: 'f'.repeat(64),
 };
 
@@ -112,6 +113,79 @@ describe('provider response validation', () => {
     };
     assertValidationFailure(notArgmax, 'choice_not_argmax');
   });
+
+  it('validates structured Score legends, distributions, and weighted values exactly', () => {
+    const questions: Record<string, Question> = {
+      severity: {type: 'score', instructions: {question: 'Rate severity'}, criteria: [
+        {label: 'low'}, {label: 'medium'}, {label: 'high'},
+      ]},
+    };
+    const valid = {model: 'jev-1.13.0', answers: {severity: {
+      type: 'score', score: 1.6,
+      legend: {'0': {label: 'low'}, '1': {label: 'medium'}, '2': {label: 'high'}},
+      probabilities: {'0': 0.1, '1': 0.2, '2': 0.7}, confidence: 0.8,
+    }}, usage: {input_tokens: 4, output_tokens: 8}};
+    assert.equal(validateEvaluation(valid, questions).answers.severity?.type, 'score');
+
+    const wrongLegend = structuredClone(valid);
+    (wrongLegend.answers.severity.legend['2'] as {label: string}).label = 'provider-controlled';
+    assertValidationFailure(wrongLegend, 'score_legend_mismatch', questions);
+
+    const wrongScore = structuredClone(valid);
+    wrongScore.answers.severity.score = 0.2;
+    assertValidationFailure(wrongScore, 'score_value_invalid', questions);
+  });
+
+  it('accepts semantically equal Score legends when nested object keys are reordered', () => {
+    const questions: Record<string, Question> = {
+      quality: {type: 'score', instructions: 'Rate quality', criteria: [
+        {label: 'low', details: {coverage: 'partial', checks: ['schema', 'transport']}},
+        {label: 'high', details: {coverage: 'complete', checks: ['schema', 'transport']}},
+      ]},
+    };
+    const reordered = {model: 'jev-1.13.0', answers: {quality: {
+      type: 'score', score: 0.8,
+      legend: {
+        '0': {details: {checks: ['schema', 'transport'], coverage: 'partial'}, label: 'low'},
+        '1': {details: {checks: ['schema', 'transport'], coverage: 'complete'}, label: 'high'},
+      },
+      probabilities: {'0': 0.2, '1': 0.8}, confidence: 0.9,
+    }}, usage: {input_tokens: 4, output_tokens: 8}};
+    assert.equal(validateEvaluation(reordered, questions).answers.quality?.type, 'score');
+
+    const mismatched = structuredClone(reordered);
+    mismatched.answers.quality.legend['1'].details.coverage = 'partial';
+    assertValidationFailure(mismatched, 'score_legend_mismatch', questions);
+  });
+
+  it('records bounded numeric diagnostics for inconsistent distributions and argmax choices', () => {
+    const malformed = validEvaluation();
+    const category = (malformed.answers as Record<string, any>).category;
+    category.probabilities = {
+      compile_error: 0.1, assertion_failure: 0.2, missing_dependency: 0.1,
+      unavailable_service: 0.1, permission_failure: 0.1, insufficient_evidence: 0.1,
+    };
+    assert.throws(() => validateEvaluation(malformed, failureQuestions, observedTransport), error => {
+      assertProviderError(error, 'invalid_response');
+      assert.deepEqual(error.transport?.responseValidationDiagnostic, {
+        questionId: 'category', sum: 0.7, deviation: 0.30000000000000004,
+      });
+      return true;
+    });
+
+    const notArgmax = validEvaluation();
+    const answer = (notArgmax.answers as Record<string, any>).category;
+    answer.choice = 'compile_error';
+    answer.probabilities = {
+      compile_error: 0.1, assertion_failure: 0.85, missing_dependency: 0.01,
+      unavailable_service: 0.01, permission_failure: 0.01, insufficient_evidence: 0.02,
+    };
+    assert.throws(() => validateEvaluation(notArgmax, failureQuestions, observedTransport), error => {
+      assertProviderError(error, 'invalid_response');
+      assert.deepEqual(error.transport?.responseValidationDiagnostic, {questionId: 'category', selected: 0.1, max: 0.85});
+      return true;
+    });
+  });
 });
 
 describe('provider transport', () => {
@@ -172,8 +246,24 @@ describe('provider transport', () => {
     assert.equal(JSON.stringify(unsafe).includes('provider-key'), false);
   });
 
+  it('captures only bounded Retry-After values without retrying', async () => {
+    let calls = 0;
+    await assert.rejects(() => evaluateProvider({
+      state: {}, questions: failureQuestions, apiKey: 'key', timeoutMs: 1000,
+      fetchFn: async () => { calls += 1; return new Response('', {status: 429, headers: {
+        'x-typesafe-request-id': 'req_rate_123', 'retry-after': '12',
+      }}); },
+    }), error => {
+      assertProviderError(error, 'rate_limited');
+      assert.equal(error.transport?.providerRequestId, 'req_rate_123');
+      assert.equal(error.transport?.retryAfter, '12');
+      return true;
+    });
+    assert.equal(calls, 1);
+  });
+
   it('maps HTTP failures to sanitized provider codes without echoing provider bodies', async () => {
-    for (const [status, code] of [[401, 'authentication_failed'], [403, 'authentication_failed'], [422, 'invalid_request'], [429, 'rate_limited'], [529, 'provider_overloaded'], [500, 'provider_error']] as const) {
+    for (const [status, code] of [[401, 'authentication_failed'], [403, 'request_forbidden'], [422, 'invalid_request'], [429, 'rate_limited'], [529, 'provider_overloaded'], [500, 'provider_error']] as const) {
       const body = 'provider secret body must never escape';
       await assert.rejects(() => evaluateProvider({
         state: {}, questions: failureQuestions, apiKey: 'key', timeoutMs: 1000,
@@ -184,6 +274,35 @@ describe('provider transport', () => {
         assert.equal(error.transport?.responseStatus, status);
         assert.equal(error.transport?.validatedResponse, false);
         assert.match(error.transport?.responseReceivedAt ?? '', /^\d{4}-\d{2}-\d{2}T/);
+        return true;
+      });
+    }
+  });
+
+  it('retains only recognized Codex network-policy block codes from 403 responses', async () => {
+    const recognized = ['blocked-by-allowlist', 'blocked-by-denylist', 'blocked-by-method-policy', 'blocked-by-policy'] as const;
+    for (const policyError of recognized) {
+      await assert.rejects(() => evaluateProvider({
+        state: {}, questions: failureQuestions, apiKey: 'provider-key', timeoutMs: 1000,
+        fetchFn: async () => new Response('private proxy body', {status: 403, headers: {'x-proxy-error': policyError}}),
+      }), error => {
+        assertProviderError(error, 'network_policy_blocked');
+        assert.equal(error.transport?.networkPolicyError, policyError);
+        assert.equal(JSON.stringify(error).includes('private proxy body'), false);
+        assert.equal(JSON.stringify(error).includes('provider-key'), false);
+        return true;
+      });
+    }
+
+    for (const header of [undefined, 'unknown-policy-code', 'blocked-by-policy provider-key']) {
+      await assert.rejects(() => evaluateProvider({
+        state: {}, questions: failureQuestions, apiKey: 'provider-key', timeoutMs: 1000,
+        fetchFn: async () => new Response('private proxy body', {status: 403, ...(header ? {headers: {'x-proxy-error': header}} : {})}),
+      }), error => {
+        assertProviderError(error, 'request_forbidden');
+        assert.equal(Object.hasOwn(error.transport ?? {}, 'networkPolicyError'), false);
+        assert.equal(JSON.stringify(error).includes('unknown-policy-code'), false);
+        assert.equal(JSON.stringify(error).includes('provider-key'), false);
         return true;
       });
     }

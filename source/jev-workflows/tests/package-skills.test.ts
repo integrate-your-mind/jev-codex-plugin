@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 const execFileAsync = promisify(execFile);
 const script = fileURLToPath(new URL('../scripts/package-skills.mjs', import.meta.url));
 const names = ['classify-decision', 'diagnose-failure', 'check-completion'];
+const runtimeVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
 
 function runNode(args: string[], env: NodeJS.ProcessEnv, input = ''): Promise<{stdout: string; stderr: string; code: number}> {
   return new Promise((resolve, reject) => {
@@ -102,7 +103,7 @@ describe('standalone skill packaging', () => {
         const cli = join(extracted, name, 'scripts/jev.mjs');
         const state = await mkdtemp(join(tmpdir(), 'jev-package-state-'));
         try {
-          const env = {...process.env, JEV_ENABLED: '1', TYPESAFE_API_KEY: '', JEV_API_KEY: undefined, JEV_STATE_MODE: undefined, PLUGIN_DATA: undefined, JEV_STATE_DIRECTORY: state};
+          const env = {...process.env, JEV_ENABLED: '1', TYPESAFE_API_KEY: '', JEV_API_KEY: undefined, JEV_API_KEY_FILE: undefined, JEV_STATE_MODE: undefined, PLUGIN_DATA: undefined, JEV_STATE_DIRECTORY: state};
           const statusRun = await runNode([cli, 'status'], env);
           const status = JSON.parse(statusRun.stdout);
           const input = JSON.stringify(inputs[name]);
@@ -113,7 +114,7 @@ describe('standalone skill packaging', () => {
           const unavailable = JSON.parse(unavailableRun.stdout);
           assert.equal(statusRun.code, 0);
           assert.equal(statusRun.stderr, '');
-          assert.equal(status.version, '0.3.0');
+          assert.equal(status.version, runtimeVersion);
           assert.equal(status.credentialConfigured, false);
           assert.equal(previewRun.code, 0);
           assert.equal(previewRun.stderr, '');
