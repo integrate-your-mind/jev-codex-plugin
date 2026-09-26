@@ -6,6 +6,8 @@ An open-source Codex plugin for consulting [TypeSafe Jev](https://docs.typesafe.
 
 The current source package is version **0.4.0**. It includes the full MCP plugin, eight MCP tools, twelve lifecycle adapters, and three standalone skills that work without MCP. See [verification results](VERIFICATION.md) for tests and independent agent QA. This community Git marketplace is publicly installable; OpenAI Directory review is separate.
 
+**Official catalog status:** the catalog contribution is [prepared in a public fork](https://github.com/openai/plugins/compare/main...integrate-your-mind:codex-official-plugins:jev-workflows-marketplace-entry), but OpenAI restricts upstream PR creation to repository collaborators. No official store listing is live. The separate directory draft also needs local-plugin compatibility review; [publication requirements](source/jev-workflows/docs/publication.md) record the remaining dependencies.
+
 ## Install
 
 Requires Node.js 22+ and your own `TYPESAFE_API_KEY` in the Codex host environment.

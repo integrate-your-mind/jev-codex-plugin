@@ -16,7 +16,7 @@ approval, or publication.
 ## Current portal state
 
 A private authenticated portal read now shows the Jev Workflows App Info at
-version 0.4.0 preparation state. Terms and release notes are filled, and the
+version 0.4.0 draft state. Terms and release notes are filled, and the
 portal UI accepted the exact JSON import with the App Info, five positive test
 cases, and three negative test cases. The UI states that tool justifications
 will be applied after an MCP server URL is entered and tools are scanned; that
@@ -33,11 +33,16 @@ status is claimed from this portal state.
 The OpenAI Git-backed Codex catalog contribution is prepared as a proposed
 external `git-subdir` entry for the public Jev repository's
 `plugins/jev-workflows` package. It is separate from the universal Directory
-portal flow. The proposal is pending maintainer review; no pull request has been
-created, and it is not submitted until the final public release URL or commit is
-set by the release owner.
+portal flow. The proposal could not be submitted: GitHub rejected PR creation,
+and the repository UI confirmed that only collaborators may open pull requests.
+The [prepared contribution](https://github.com/openai/plugins/compare/main...integrate-your-mind:codex-official-plugins:jev-workflows-marketplace-entry)
+is public in the contributor fork. An OpenAI collaborator must accept the
+contribution or provide an eligible submission route. No upstream PR or official
+listing exists from this attempt.
 
-The source package is public MIT 0.4.0 preparation. The catalog proposal does
+The [0.4.0 release](https://github.com/integrate-your-mind/jev-codex-plugin/releases/tag/v0.4.0)
+is public under MIT, with eight release assets verified by download and checksum
+readback. The catalog proposal does
 not copy the generated runtime into OpenAI's repository and does not claim a
 universal Directory approval.
 
