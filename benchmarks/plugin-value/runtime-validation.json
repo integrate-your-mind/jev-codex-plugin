@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "plugin-value-runtime-validation-v1",
+  "generatedAt": "2026-09-26T18:54:01Z",
+  "status": "blocked-runtime-setup",
+  "controlsPassed": false,
+  "readyForScored": false,
+  "calls": {
+    "scoredModel": 0,
+    "preflightModel": 0,
+    "jevProviderPreflight": 0
+  },
+  "identities": {
+    "scheduleSha256": "58a1cc48ce1fa705b593edeeee9a3c307f88ffbe4833d0a356734e76d43608dd",
+    "pluginSourceRevision": "7dfe432d7463bab7186a8dacf50924af282f9a20",
+    "installedPluginVersion": "0.4.0+codex.20260926072321",
+    "codexCliVersion": "0.155.0",
+    "model": "gpt-6-astra",
+    "reasoningEffort": "medium",
+    "deepSweCommit": "0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
+    "firstTask": "ipython-session-bundle-replay",
+    "firstImageDigest": "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
+    "runtimeFiles": {
+      "host-runner.mjs": "d2e74c1d0b048ac343f30c087168cb4ae824b491aa20ae942e5c31bfe56939ff",
+      "runtime.py": "87be38d31de05aa4c23c6bc9c891fd811a829988306701fa9fbadffaf8f37106",
+      "run-one.sh": "397c12a29f7aed8ce845aa0810ae0d0d435c385396616e034dd99fccc0c22554",
+      "pier-main.py": "49634bc47391198c8e5c45a94d1eb72185ffc10668c27dfdde6ac682707de20a"
+    }
+  },
+  "staticChecks": {
+    "status": "passed",
+    "nodeTests": "4/4",
+    "pythonTests": "3/3",
+    "nodeSyntax": "passed",
+    "pythonSyntax": "passed"
+  },
+  "docker": {
+    "daemonStatus": "stopped",
+    "daemonVersion": "29.8.0",
+    "storageDriver": "overlayfs",
+    "firstImagePresent": true,
+    "firstImagePresence": "verified before the daemon was stopped",
+    "firstImageArchitecture": "amd64",
+    "firstImageSizeBytes": 3856016466
+  },
+  "controls": {
+    "baselinePreflight": "failed-before-app-server",
+    "treatmentPreflight": "not-run",
+    "noopVerifier": "not-run",
+    "oracleVerifier": "not-run"
+  },
+  "priorAttempts": [
+    {
+      "id": "deepswe-ipython-baseline-preflight-v2",
+      "status": "failed-before-agent",
+      "failure": "CancelledError during Docker environment setup; later missing-main-container error was cleanup fallout"
+    },
+    {
+      "id": "deepswe-ipython-baseline-preflight-v3",
+      "status": "orphaned",
+      "failure": "stale running metadata with no live process, no trial result, and empty logs"
+    },
+    {
+      "id": "deepswe-ipython-baseline-preflight-v4",
+      "status": "failed-before-agent",
+      "failure": "The pinned Codex derivative image build completed, then host storage exhaustion caused Docker API failures before app-server, model, Jev, or verifier execution.",
+      "build": {
+        "completed": true,
+        "buildRef": "ya8i51apwdq630nwqzisruepz",
+        "codexVersionObserved": "codex-cli 0.155.0"
+      },
+      "cleanup": {
+        "containerRemoved": true,
+        "derivativeImageRemoved": true,
+        "privateCache": {
+          "id": "55e7wqvx6lthfocl3gttf73gf",
+          "size": "1.16GB",
+          "shared": false,
+          "inUse": false,
+          "removal": "pending because Docker Desktop could not create its host log under ENOSPC"
+        }
+      },
+      "appServerStarted": false,
+      "modelCalls": 0,
+      "jevProviderCalls": 0,
+      "verifierStarted": false
+    }
+  ],
+  "blocker": {
+    "kind": "host-storage",
+    "observedFailure": "Docker Desktop could not create its host log and the daemon never became reachable.",
+    "daemonStopped": true
+  },
+  "nextRequiredControl": "Remove only the proven private unused cache record after Docker can start, install the shared pinned runtime mount, then run fresh baseline, treatment, noop-verifier, and oracle-verifier controls on the recorded runtime bytes."
+}

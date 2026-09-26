@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "requirements": {
+    "candidate-propagation":"dynamic_candidate_is_reflected_in_advice",
+    "generic-fallback":"fallback_candidates_present",
+    "missing-evidence-abstention":"abstention_neutral",
+    "failed-command":"failed_evidence_preserved",
+    "latest-user-constraints":"latest_prompt_visible",
+    "objective-replacement":"replacement_objective_visible",
+    "large-context-schema":"provider_accepts_max_size_valid_context",
+    "redaction-critical-survival":"secret_redacted_critical_preserved",
+    "duplicate-changed-semantics":"duplicate_is_deduplicated",
+    "completion-claim":"claim_has_evidence_boundary",
+    "invalid-event":"ignored",
+    "provider-unavailable":"unavailable_neutral",
+    "provider-invalid-choice":"invalid_choice_filtered",
+    "candidate-schema":"invalid_candidate_omitted",
+    "successful-result-evidence":"success_evidence_preserved",
+    "concrete-candidate-advice":"selected_concrete_candidate_is_emitted_exactly"
+  }
+}

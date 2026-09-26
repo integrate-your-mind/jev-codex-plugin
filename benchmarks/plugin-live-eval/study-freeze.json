@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "plugin-live-eval-study-v1",
+  "frozenAt": "2026-09-26T17:11:09.061303+00:00",
+  "plannedAttempts": 72,
+  "baselineSourceSha256": "7b805b1784720cf18748c4b0c6d727134eb76713c4b0ebe96fa96cc49b9348e8",
+  "repairSourceSha256": "26958051bf006c7ba490847f21dffa5f9e9f3eb5d1840a4899b9d00485816a3c",
+  "nodeVersion": "22.23.2",
+  "providerModel": "jev-1.13.0",
+  "retries": 0,
+  "interpretation": "Decision-level authored diagnostics; no Codex task-quality outcome; bundled repair, no single-component causal attribution.",
+  "files": {
+    "run.mjs": "074fe5c09987af1385c40757cedebbe4b9900bd1448c443b08b50160eda129b0",
+    "compat-loader.mjs": "966aa5a03ec6e219f2da22f780d53f9bfa1585da1db1b1453ed15999e476a6ed",
+    "freeze.mjs": "c2db131eafd1536afc07c1287003eae03262ac2ab99e53cc76cfbc9ac5718f28",
+    "episodes.json": "8ce6871dabef2705adc6f2d0edb12c30aa6d52f55f90632a70753f2cf5a529a5",
+    "oracle.json": "ef9f0d190d46c5df503a13719757927e100e2028ebed431ccce3aa75dca863e2",
+    "provider-inputs.json": "8a7ac0a32595c774778a9a7477270167cc29cd37443f96cf388fad6a56d87c1f",
+    "freeze.json": "342df418f05c9e36ebd948960d9d855b36c3cab6a8dcf1cb53a912638e2690b9"
+  }
+}

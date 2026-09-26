@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "plugin-value-runtime-identity-v1",
+  "agent": {
+    "cli": "codex-cli 0.155.0",
+    "model": "gpt-6-astra",
+    "reasoningEffort": "medium"
+  },
+  "dataset": {
+    "deepSweCommit": "0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
+    "firstTask": "ipython-session-bundle-replay",
+    "firstImage": "public.ecr.aws/d3j8x8q7/swe-bench-202605@sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
+    "firstImageCompressedBytes": 852416609,
+    "firstImagePlatform": "linux/amd64"
+  },
+  "plugin": {
+    "id": "jev-workflows@personal",
+    "version": "0.4.0+codex.20260926072321",
+    "sourceRevision": "7dfe432d7463bab7186a8dacf50924af282f9a20",
+    "sourceHashes": {
+      ".codex-plugin/plugin.json": "0c09fb93dd0115a6fbb4aa14c80daabf5671033a2aac31619a9769dd90b37263",
+      ".mcp.json": "4aa483173c3f385e529d3d3592f4ec37c29d54049401fa58bb9184753282f108",
+      "hooks/hooks.json": "ae764c24df9f35917f5a8b0728f66d19e333399963e66faf738733167e2b8592",
+      "dist/decision-hook.mjs": "cbbe3150a0996b18737526a284c3d979430315ce4e459e89edcc17618439c10f",
+      "dist/server.mjs": "88913f614e6bbf0da4637877fb1aef6f5d6cb9bbbbdecaed1f3566a280438064"
+    }
+  },
+  "runner": {
+    "pierVersion": "0.3.1",
+    "pierRevision": "4f3441fb3e7c21ce8a4ed0b6155a8d9a176a645a",
+    "harborVersion": "0.20.0",
+    "containerNetwork": "none",
+    "transport": "host app-server to container exec-server over env -i docker exec -i stdio",
+    "taskCredentials": "none",
+    "hostArchitecture": "darwin/arm64",
+    "taskArchitecture": "linux/amd64 (emulated)"
+  }
+}
+
