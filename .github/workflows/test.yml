@@ -26,3 +26,6 @@ jobs:
       - name: Test distribution drift detection
         working-directory: .
         run: node --test scripts/verify-distribution.test.mjs
+      - name: Test reusable benchmark contracts
+        working-directory: .
+        run: node --test benchmarks/cross-agent/tests/*.test.mjs

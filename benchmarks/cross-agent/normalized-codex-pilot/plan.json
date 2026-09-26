@@ -1,0 +1,288 @@
+{
+  "schemaVersion": "jev-cross-agent-comparison-plan-v1",
+  "comparison": {
+    "factor": "treatment",
+    "cohortId": "2026-09-26-paired-v1",
+    "armOrder": [
+      "control",
+      "treatment"
+    ],
+    "timingMetric": "agent_turn_sum_ms"
+  },
+  "cohort": {
+    "datasetFingerprint": "sha256:e517029eb95b7c9915544b42edc9d8e853810d54047a2bf11a8815a642b4ba43",
+    "harnessFingerprint": "sha256:30137d3e8c5cb8fd6a5246510cd8a01e16de21251724a033fc59169b2833a503",
+    "imageFingerprint": null,
+    "environmentMode": "native_shared",
+    "timeBudget": {
+      "basis": "per_turn",
+      "valueMs": 180000
+    },
+    "resourceBudget": {
+      "cpuMs": null,
+      "memoryBytes": null,
+      "diskBytes": null
+    },
+    "networkPolicy": {
+      "mode": "workspace-write-network-enabled-both-arms"
+    }
+  },
+  "trials": [
+    {
+      "trialId": "retry-repair.r1.baseline",
+      "taskId": "retry-repair",
+      "inputHash": "sha256:383d8874ca9a9ca793ec84dcd47e79fefb97c352e08a6909f59e3155d119ca52",
+      "repetition": 1,
+      "arm": "control",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": false,
+        "pluginVersion": null
+      }
+    },
+    {
+      "trialId": "retry-repair.r1.treatment",
+      "taskId": "retry-repair",
+      "inputHash": "sha256:383d8874ca9a9ca793ec84dcd47e79fefb97c352e08a6909f59e3155d119ca52",
+      "repetition": 1,
+      "arm": "treatment",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": true,
+        "pluginVersion": "0.4.0+codex.20260926072321"
+      }
+    },
+    {
+      "trialId": "interval-repair.r2.treatment",
+      "taskId": "interval-repair",
+      "inputHash": "sha256:9a4139288e804cf3a41241d2358caa03e3919a0cd50cb44fa121fe932f7e2344",
+      "repetition": 2,
+      "arm": "treatment",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": true,
+        "pluginVersion": "0.4.0+codex.20260926072321"
+      }
+    },
+    {
+      "trialId": "interval-repair.r2.baseline",
+      "taskId": "interval-repair",
+      "inputHash": "sha256:9a4139288e804cf3a41241d2358caa03e3919a0cd50cb44fa121fe932f7e2344",
+      "repetition": 2,
+      "arm": "control",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": false,
+        "pluginVersion": null
+      }
+    },
+    {
+      "trialId": "csv-parser.r2.baseline",
+      "taskId": "csv-parser",
+      "inputHash": "sha256:ccce30b874701e59ae84f58431a26072cb51fdcccafcba9d40164e231cc7a5ea",
+      "repetition": 2,
+      "arm": "control",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": false,
+        "pluginVersion": null
+      }
+    },
+    {
+      "trialId": "csv-parser.r2.treatment",
+      "taskId": "csv-parser",
+      "inputHash": "sha256:ccce30b874701e59ae84f58431a26072cb51fdcccafcba9d40164e231cc7a5ea",
+      "repetition": 2,
+      "arm": "treatment",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": true,
+        "pluginVersion": "0.4.0+codex.20260926072321"
+      }
+    },
+    {
+      "trialId": "retry-repair.r2.treatment",
+      "taskId": "retry-repair",
+      "inputHash": "sha256:383d8874ca9a9ca793ec84dcd47e79fefb97c352e08a6909f59e3155d119ca52",
+      "repetition": 2,
+      "arm": "treatment",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": true,
+        "pluginVersion": "0.4.0+codex.20260926072321"
+      }
+    },
+    {
+      "trialId": "retry-repair.r2.baseline",
+      "taskId": "retry-repair",
+      "inputHash": "sha256:383d8874ca9a9ca793ec84dcd47e79fefb97c352e08a6909f59e3155d119ca52",
+      "repetition": 2,
+      "arm": "control",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": false,
+        "pluginVersion": null
+      }
+    },
+    {
+      "trialId": "changed-route.r2.baseline",
+      "taskId": "changed-route",
+      "inputHash": "sha256:4af05a2497ebdda98cca1accbba9d0b6b4a18e840cc53286e1343e081b23961a",
+      "repetition": 2,
+      "arm": "control",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": false,
+        "pluginVersion": null
+      }
+    },
+    {
+      "trialId": "changed-route.r2.treatment",
+      "taskId": "changed-route",
+      "inputHash": "sha256:4af05a2497ebdda98cca1accbba9d0b6b4a18e840cc53286e1343e081b23961a",
+      "repetition": 2,
+      "arm": "treatment",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": true,
+        "pluginVersion": "0.4.0+codex.20260926072321"
+      }
+    },
+    {
+      "trialId": "csv-parser.r1.treatment",
+      "taskId": "csv-parser",
+      "inputHash": "sha256:ccce30b874701e59ae84f58431a26072cb51fdcccafcba9d40164e231cc7a5ea",
+      "repetition": 1,
+      "arm": "treatment",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": true,
+        "pluginVersion": "0.4.0+codex.20260926072321"
+      }
+    },
+    {
+      "trialId": "csv-parser.r1.baseline",
+      "taskId": "csv-parser",
+      "inputHash": "sha256:ccce30b874701e59ae84f58431a26072cb51fdcccafcba9d40164e231cc7a5ea",
+      "repetition": 1,
+      "arm": "control",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": false,
+        "pluginVersion": null
+      }
+    },
+    {
+      "trialId": "changed-route.r1.baseline",
+      "taskId": "changed-route",
+      "inputHash": "sha256:4af05a2497ebdda98cca1accbba9d0b6b4a18e840cc53286e1343e081b23961a",
+      "repetition": 1,
+      "arm": "control",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": false,
+        "pluginVersion": null
+      }
+    },
+    {
+      "trialId": "changed-route.r1.treatment",
+      "taskId": "changed-route",
+      "inputHash": "sha256:4af05a2497ebdda98cca1accbba9d0b6b4a18e840cc53286e1343e081b23961a",
+      "repetition": 1,
+      "arm": "treatment",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": true,
+        "pluginVersion": "0.4.0+codex.20260926072321"
+      }
+    },
+    {
+      "trialId": "interval-repair.r1.treatment",
+      "taskId": "interval-repair",
+      "inputHash": "sha256:9a4139288e804cf3a41241d2358caa03e3919a0cd50cb44fa121fe932f7e2344",
+      "repetition": 1,
+      "arm": "treatment",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": true,
+        "pluginVersion": "0.4.0+codex.20260926072321"
+      }
+    },
+    {
+      "trialId": "interval-repair.r1.baseline",
+      "taskId": "interval-repair",
+      "inputHash": "sha256:9a4139288e804cf3a41241d2358caa03e3919a0cd50cb44fa121fe932f7e2344",
+      "repetition": 1,
+      "arm": "control",
+      "plannedIdentity": {
+        "agent": "codex-app-server",
+        "agentVersion": "codex-cli 0.155.0",
+        "model": "gpt-6-astra",
+        "effort": "medium",
+        "provider": "codex-default-unresolved",
+        "pluginEnabled": false,
+        "pluginVersion": null
+      }
+    }
+  ]
+}

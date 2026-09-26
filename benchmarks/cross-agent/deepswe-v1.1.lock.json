@@ -1,0 +1,408 @@
+{
+  "schemaVersion": "deepswe-v1.1-lock-v1",
+  "immutable": true,
+  "benchmark": "DeepSWE v1.1",
+  "selection": {
+    "seed": "jev-cross-agent-v1",
+    "algorithm": "sha256(seed + taskId), ascending hash, taskId tie-breaker",
+    "availableTaskCount": 113,
+    "count": 20,
+    "attemptsPerTask": 1,
+    "orderedTaskIds": [
+      "ipython-session-bundle-replay",
+      "testem-bail-on-test-failure",
+      "skrub-duration-encoding",
+      "fd-deterministic-multi-key-sorting",
+      "expr-try-catch-errors",
+      "katex-multicolumn-array-spans",
+      "kgateway-consistent-hash-policy",
+      "sql-formatter-bigquery-pipe-formatting",
+      "koota-entity-snapshot-rollback",
+      "geo-shapeindex-serialization",
+      "task-task-graph-export",
+      "query-persist-restored-query-state",
+      "oxvg-structural-selector-preservation",
+      "kea-atomic-signal-selectors",
+      "csstree-shorthand-expansion-compression",
+      "yaegi-go-embed-directives",
+      "anko-default-function-arguments",
+      "mashumaro-flattened-dataclass-fields",
+      "obsidian-linter-link-format-conversion",
+      "adaptix-name-mapping-aliases"
+    ],
+    "orderedSelectionHashes": [
+      {
+        "taskId": "ipython-session-bundle-replay",
+        "sha256": "0147133684d403df3bb92368eb24c7dbc04a42e893f46f8982e594fc944f8bf5"
+      },
+      {
+        "taskId": "testem-bail-on-test-failure",
+        "sha256": "03f636879c01bfc4df16b4b875d19fcf199920137ed9062bdc6119a92814dda6"
+      },
+      {
+        "taskId": "skrub-duration-encoding",
+        "sha256": "05286081241572bf16e477ee9b63b26aad566adc2accb1871b59e9b3de3de4c7"
+      },
+      {
+        "taskId": "fd-deterministic-multi-key-sorting",
+        "sha256": "054feba02d556793d00198a803f9d13e05a222e1103f7c29d839595aaf51297b"
+      },
+      {
+        "taskId": "expr-try-catch-errors",
+        "sha256": "075dc83380e8eec8a5466e9de1205ae5b948cd05c1e7213777bfb15a5c6229d6"
+      },
+      {
+        "taskId": "katex-multicolumn-array-spans",
+        "sha256": "0d08c1522fb4d69fe1a1501728a2dd9998891db0e5759773a3bfafe01d81e2f0"
+      },
+      {
+        "taskId": "kgateway-consistent-hash-policy",
+        "sha256": "0ef016d3fabb5fcbb293b09cd1d93314a8305b4522e21d24e953b0e2b679edeb"
+      },
+      {
+        "taskId": "sql-formatter-bigquery-pipe-formatting",
+        "sha256": "1107ba487f08b15d6ab8d5eceae89b63a0e89291134b1a8f780e52fd66de30be"
+      },
+      {
+        "taskId": "koota-entity-snapshot-rollback",
+        "sha256": "11a01e2d6745fd1a2828983a368f5886ce837b614891a2938bb36b3ca3d86155"
+      },
+      {
+        "taskId": "geo-shapeindex-serialization",
+        "sha256": "124fbd05aa57c13c75974438df40f7d17b5f1cf37e07bd2315220725dd11ca94"
+      },
+      {
+        "taskId": "task-task-graph-export",
+        "sha256": "12a903f260883785f11729137ead7a1ed0af78d0dd80f1fbe491d036ffa01f8d"
+      },
+      {
+        "taskId": "query-persist-restored-query-state",
+        "sha256": "14a47301a0c2df07653ea81e8d34aacb546c268aeff226325f6a5fee60109ce4"
+      },
+      {
+        "taskId": "oxvg-structural-selector-preservation",
+        "sha256": "169ea68e86b61b01d335844f7ba8e5fa6037c8656b8e4066e96ac7456643b554"
+      },
+      {
+        "taskId": "kea-atomic-signal-selectors",
+        "sha256": "170429fa18bdfb8abf035eb458a3303630392a482db7d19b05d85165970d25f4"
+      },
+      {
+        "taskId": "csstree-shorthand-expansion-compression",
+        "sha256": "1b0fe6885d378b60bc66d165474bf77082dffe499370add3df29b0a8b786d770"
+      },
+      {
+        "taskId": "yaegi-go-embed-directives",
+        "sha256": "1befbfc2ee42146ed48e105ddb98a953da3793f57c271a3e90e86afec8a4c267"
+      },
+      {
+        "taskId": "anko-default-function-arguments",
+        "sha256": "27337f26a0428d723eaefe7ed20a9193d62177ea90661be4be6d8bcaba69df88"
+      },
+      {
+        "taskId": "mashumaro-flattened-dataclass-fields",
+        "sha256": "2767dda9205d9d570668dcf9d3ec60c4f582c50865180e4e10d09ce5392e9efe"
+      },
+      {
+        "taskId": "obsidian-linter-link-format-conversion",
+        "sha256": "28931caeebfefd020f0a2cf2842f7f9eb132069fcdf8008dbfe86db9d5099a88"
+      },
+      {
+        "taskId": "adaptix-name-mapping-aliases",
+        "sha256": "2a9d8a84def07e1478f46250b05d45fe1d1df4b044957a2f3ec18d00ccdebe2f"
+      }
+    ]
+  },
+  "upstream": {
+    "provider": "local-git-checkout",
+    "repository": "https://github.com/datacurve-ai/deep-swe",
+    "commit": "0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
+    "commitUrl": "https://github.com/datacurve-ai/deep-swe/tree/0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
+    "rootTree": "ac0b50d102a97f07f962354a6a67e22d09d83a79",
+    "tasksPath": "tasks/*",
+    "catalogSha256": "73a4869046c4ac96202bc539b036b38d427281eb3735556f63bc1701abda99b7",
+    "pierCommit": "4f3441fb3e7c21ce8a4ed0b6155a8d9a176a645a"
+  },
+  "tasks": [
+    {
+      "id": "ipython-session-bundle-replay",
+      "selectionSha256": "0147133684d403df3bb92368eb24c7dbc04a42e893f46f8982e594fc944f8bf5",
+      "source": {
+        "gitTree": "a3faa5059604de625d7fc9bed6547aea4a696fc1",
+        "taskTomlBlob": "6c5c997e4f97425b75bdea8222a1cebdf61468f3",
+        "taskTomlSha256": "eaf41b8bf1a7965f6d050b6b4c3799a919871461a29dab6fc681852eba9a5417"
+      },
+      "metadata": {
+        "language": "python",
+        "repositoryUrl": "https://github.com/ipython/ipython",
+        "baseCommitHash": "0bb317d10fdcb3aa13beb1031d5f10e5b821203b"
+      }
+    },
+    {
+      "id": "testem-bail-on-test-failure",
+      "selectionSha256": "03f636879c01bfc4df16b4b875d19fcf199920137ed9062bdc6119a92814dda6",
+      "source": {
+        "gitTree": "e6867a55906559fb534f43f1ed4f7d76d605c708",
+        "taskTomlBlob": "5e477ca7fdd21eb23545bf4c9bb1a62dec418d3b",
+        "taskTomlSha256": "9db9b51eb7966062c7f069ba8bb78128da8efe6070dc6a57301fe6e54e10a690"
+      },
+      "metadata": {
+        "language": "javascript",
+        "repositoryUrl": "https://github.com/testem/testem",
+        "baseCommitHash": "06a1adb7a70e85e7322d8cfae3181508785de95d"
+      }
+    },
+    {
+      "id": "skrub-duration-encoding",
+      "selectionSha256": "05286081241572bf16e477ee9b63b26aad566adc2accb1871b59e9b3de3de4c7",
+      "source": {
+        "gitTree": "6de127c86332a3f76ef8ba2e5623298f7483590c",
+        "taskTomlBlob": "43b1fc10664e637aae20d6eb95f3acbd912be446",
+        "taskTomlSha256": "34e4539b4a1dad2374e5b4f1292295224b7e1002ce0754f5d7b47c69d8e1dc2e"
+      },
+      "metadata": {
+        "language": "python",
+        "repositoryUrl": "https://github.com/skrub-data/skrub",
+        "baseCommitHash": "24c4466fea94f551fb73d21eba54038dc5b346d3"
+      }
+    },
+    {
+      "id": "fd-deterministic-multi-key-sorting",
+      "selectionSha256": "054feba02d556793d00198a803f9d13e05a222e1103f7c29d839595aaf51297b",
+      "source": {
+        "gitTree": "11d2597a1f50bc94b9c47d4725f3bb22d6fef5a1",
+        "taskTomlBlob": "fda4f3d446a0815b2985512eed62bf678a485dec",
+        "taskTomlSha256": "85ed92e88c27e6b9d789cd35d05a17ba92c1cefbd93cea6800e256889fdf0714"
+      },
+      "metadata": {
+        "language": "rust",
+        "repositoryUrl": "https://github.com/sharkdp/fd",
+        "baseCommitHash": "227883606023d62275fb48701aeac90f2b604143"
+      }
+    },
+    {
+      "id": "expr-try-catch-errors",
+      "selectionSha256": "075dc83380e8eec8a5466e9de1205ae5b948cd05c1e7213777bfb15a5c6229d6",
+      "source": {
+        "gitTree": "535aba628f06eb008eb84d5b7e5fb9a35c279bf6",
+        "taskTomlBlob": "e75ae4394e9c443a537687fa45e3e37fbd0e376c",
+        "taskTomlSha256": "1206c54353bb7982f44be6473f2bc2837fb2826cc674d1a672612648160ede54"
+      },
+      "metadata": {
+        "language": "go",
+        "repositoryUrl": "https://github.com/expr-lang/expr",
+        "baseCommitHash": "851b241a301f7c74646e65e4009c69cf290993a8"
+      }
+    },
+    {
+      "id": "katex-multicolumn-array-spans",
+      "selectionSha256": "0d08c1522fb4d69fe1a1501728a2dd9998891db0e5759773a3bfafe01d81e2f0",
+      "source": {
+        "gitTree": "5a01e82a429bfc51efc081d9f4bd4d04538c3d00",
+        "taskTomlBlob": "d61c05f23a4db57b02aad337a44a522523ed534b",
+        "taskTomlSha256": "cd0d93fd52c3755d8ab44b7709253aca2b31d6eedcf7a33e15f856e5a35975b6"
+      },
+      "metadata": {
+        "language": "javascript",
+        "repositoryUrl": "https://github.com/KaTeX/KaTeX",
+        "baseCommitHash": "89bede495dc2c85e1c57ba627a18526f71d57396"
+      }
+    },
+    {
+      "id": "kgateway-consistent-hash-policy",
+      "selectionSha256": "0ef016d3fabb5fcbb293b09cd1d93314a8305b4522e21d24e953b0e2b679edeb",
+      "source": {
+        "gitTree": "d5b06bf9be994b5e98fa1dfeb2f9afb2e75d2974",
+        "taskTomlBlob": "4a2deed86d3f05fd19a4b4b1417e827d274fb750",
+        "taskTomlSha256": "7994028e8d6a5de468af7a97b9a4ede8a0dc5a9280eabac18406a2735e85fd68"
+      },
+      "metadata": {
+        "language": "go",
+        "repositoryUrl": "https://github.com/kgateway-dev/kgateway",
+        "baseCommitHash": "7abc5278782e3280fec8292b39807ec1b537eaf4"
+      }
+    },
+    {
+      "id": "sql-formatter-bigquery-pipe-formatting",
+      "selectionSha256": "1107ba487f08b15d6ab8d5eceae89b63a0e89291134b1a8f780e52fd66de30be",
+      "source": {
+        "gitTree": "de94558dc78b4a96aeb424dd218ed2a821c6806c",
+        "taskTomlBlob": "20752f3dd199cedc94e87080857821adfa627e5a",
+        "taskTomlSha256": "5aa151a7f56927d3c69f3bd03cb874330352ba3ae4eaa84f3df2da968602e774"
+      },
+      "metadata": {
+        "language": "typescript",
+        "repositoryUrl": "https://github.com/sql-formatter-org/sql-formatter",
+        "baseCommitHash": "954e5a474b9e3d45ca58f02a3a4eac8e1947acc5"
+      }
+    },
+    {
+      "id": "koota-entity-snapshot-rollback",
+      "selectionSha256": "11a01e2d6745fd1a2828983a368f5886ce837b614891a2938bb36b3ca3d86155",
+      "source": {
+        "gitTree": "00fdaf76153e3256f0f92fcbdb3086e5bbb022ee",
+        "taskTomlBlob": "e290a79944e6a2dece881820818a01cf4b34be60",
+        "taskTomlSha256": "11444ab835894c82a89dce7232632d74cc2ec15cc23047c045dfb931b22d50b1"
+      },
+      "metadata": {
+        "language": "python",
+        "repositoryUrl": "https://github.com/pmndrs/koota",
+        "baseCommitHash": "72ebef44b8e024d877250f055eea60cdfaa4506"
+      }
+    },
+    {
+      "id": "geo-shapeindex-serialization",
+      "selectionSha256": "124fbd05aa57c13c75974438df40f7d17b5f1cf37e07bd2315220725dd11ca94",
+      "source": {
+        "gitTree": "36bee278fef3aa81401ba8c9f502534691b91f04",
+        "taskTomlBlob": "6d7b5bd930e18e5c836e0f1d2986f4ca26014445",
+        "taskTomlSha256": "a95140adb066b732b69b8485392576cf89e0cf22a0d7028ad5d9d08f37c08f29"
+      },
+      "metadata": {
+        "language": "go",
+        "repositoryUrl": "https://github.com/golang/geo",
+        "baseCommitHash": "87f5a40ea07a4ea629ee5623c72660f3d1b217fa"
+      }
+    },
+    {
+      "id": "task-task-graph-export",
+      "selectionSha256": "12a903f260883785f11729137ead7a1ed0af78d0dd80f1fbe491d036ffa01f8d",
+      "source": {
+        "gitTree": "9e189394b9b158622b52ede13e06d6ed84d5ca32",
+        "taskTomlBlob": "81f0ab2e923a0045a207244236d4b4bbc7109884",
+        "taskTomlSha256": "3106648b50c675cb687294f72254ffe8d29e14be0db12b2e19a331aa1a219fc4"
+      },
+      "metadata": {
+        "language": "go",
+        "repositoryUrl": "https://github.com/go-task/task",
+        "baseCommitHash": "54bdcba369357b47e19066b57badfb216a4c8d95"
+      }
+    },
+    {
+      "id": "query-persist-restored-query-state",
+      "selectionSha256": "14a47301a0c2df07653ea81e8d34aacb546c268aeff226325f6a5fee60109ce4",
+      "source": {
+        "gitTree": "313cb7186249737cbcf89f90cc1389641acd905d",
+        "taskTomlBlob": "1764225c9887e5b3c834d9c4425a37f9f812540a",
+        "taskTomlSha256": "d3ffb5325266363d392750f96eb2ad9a453a8252ba6dac2d4cbd9538b16d9276"
+      },
+      "metadata": {
+        "language": "typescript",
+        "repositoryUrl": "https://github.com/TanStack/query",
+        "baseCommitHash": "1047cdc393fac7c98822c993d70c28f58833c63d"
+      }
+    },
+    {
+      "id": "oxvg-structural-selector-preservation",
+      "selectionSha256": "169ea68e86b61b01d335844f7ba8e5fa6037c8656b8e4066e96ac7456643b554",
+      "source": {
+        "gitTree": "fc2b3534940a4318eebb952fb01ce44bd15ddd44",
+        "taskTomlBlob": "f736711271776139f215b20600fa4127c881ac3e",
+        "taskTomlSha256": "06e000bb4c397b72fcbf523d95923b73be636e8eb398b60842ab4f0e2ce57d23"
+      },
+      "metadata": {
+        "language": "rust",
+        "repositoryUrl": "https://github.com/noahbald/oxvg",
+        "baseCommitHash": "1fd7fab851ecc975e008be0e3e279568ce4e2b51"
+      }
+    },
+    {
+      "id": "kea-atomic-signal-selectors",
+      "selectionSha256": "170429fa18bdfb8abf035eb458a3303630392a482db7d19b05d85165970d25f4",
+      "source": {
+        "gitTree": "04e28b134e42de3fc10327cede7a60ee477e85dc",
+        "taskTomlBlob": "c27707555bda70c7d4497e93ee49d5892564bb62",
+        "taskTomlSha256": "e348f26d469643cf8bfd535e9d9f86c8c20f7e7169aeda515223874a9dea271c"
+      },
+      "metadata": {
+        "language": "typescript",
+        "repositoryUrl": "https://github.com/keajs/kea.git",
+        "baseCommitHash": "6c7ebba57821989733a11d6f3888816658584d97"
+      }
+    },
+    {
+      "id": "csstree-shorthand-expansion-compression",
+      "selectionSha256": "1b0fe6885d378b60bc66d165474bf77082dffe499370add3df29b0a8b786d770",
+      "source": {
+        "gitTree": "739455f841b8ee41708cd02fd258f32f761242b3",
+        "taskTomlBlob": "756e9fbdc5d83580ebb3e3f39560d05fc7ab261a",
+        "taskTomlSha256": "461fbe15ef2afa084f988e225fab1bfafeb02d7f34114b55e01fefbd66ee31e6"
+      },
+      "metadata": {
+        "language": "javascript",
+        "repositoryUrl": "https://github.com/csstree/csstree",
+        "baseCommitHash": "88e3d965c0b1628642a30a841745b410d6835052"
+      }
+    },
+    {
+      "id": "yaegi-go-embed-directives",
+      "selectionSha256": "1befbfc2ee42146ed48e105ddb98a953da3793f57c271a3e90e86afec8a4c267",
+      "source": {
+        "gitTree": "8f10b2eeea80dbba1f33da2ba9b7822d814d9376",
+        "taskTomlBlob": "3555bdd5292edbc9808f231105b283af58675b39",
+        "taskTomlSha256": "86cb84cb6954f1816674cb7d206cb3b68a43eadc3a45c2eb5e8cfd07f5b431b5"
+      },
+      "metadata": {
+        "language": "go",
+        "repositoryUrl": "https://github.com/traefik/yaegi",
+        "baseCommitHash": "fcb76d1ece0c3edc2548c39aa5b170475d2261bb"
+      }
+    },
+    {
+      "id": "anko-default-function-arguments",
+      "selectionSha256": "27337f26a0428d723eaefe7ed20a9193d62177ea90661be4be6d8bcaba69df88",
+      "source": {
+        "gitTree": "97ee8faf04939427f56741694b02b5b1201d7f84",
+        "taskTomlBlob": "fcc62bb3a3b2884ee8212c5cae5f41295e498c48",
+        "taskTomlSha256": "aabbd5deb2aad2e820ba7592883cc9ccbe7a7f73c87e03eac903164fe3d03bd0"
+      },
+      "metadata": {
+        "language": "go",
+        "repositoryUrl": "https://github.com/mattn/anko",
+        "baseCommitHash": "9d2d84bb1564e9513287998c56ccf16c01c19008"
+      }
+    },
+    {
+      "id": "mashumaro-flattened-dataclass-fields",
+      "selectionSha256": "2767dda9205d9d570668dcf9d3ec60c4f582c50865180e4e10d09ce5392e9efe",
+      "source": {
+        "gitTree": "e7b7b449f2156c9bd2301ec003bc437f4b65f092",
+        "taskTomlBlob": "f62fef47bcc0225537e32a56e68b272fd60a1960",
+        "taskTomlSha256": "a8ee6657fb49de52915f2ae4bd5f00e5ebc92bb776a56c528248d29ba46273fc"
+      },
+      "metadata": {
+        "language": "python",
+        "repositoryUrl": "https://github.com/Fatal1ty/mashumaro",
+        "baseCommitHash": "de139fd51c4d347666d109a8aea9d25451d908f6"
+      }
+    },
+    {
+      "id": "obsidian-linter-link-format-conversion",
+      "selectionSha256": "28931caeebfefd020f0a2cf2842f7f9eb132069fcdf8008dbfe86db9d5099a88",
+      "source": {
+        "gitTree": "17ee6ee57d0c4dcd6332fab5cdeab61ba5480d9d",
+        "taskTomlBlob": "b30a6e944f18a56f5ca3c522dcd6bd6f4161e217",
+        "taskTomlSha256": "52a326cb1d708909e778398b71920e0c43f86ef533f14f01a8f5d117e2dc7951"
+      },
+      "metadata": {
+        "language": "typescript",
+        "repositoryUrl": "https://github.com/platers/obsidian-linter",
+        "baseCommitHash": "6393b3ab32a2ace1fc24d4b0f5e0f13a179c874f"
+      }
+    },
+    {
+      "id": "adaptix-name-mapping-aliases",
+      "selectionSha256": "2a9d8a84def07e1478f46250b05d45fe1d1df4b044957a2f3ec18d00ccdebe2f",
+      "source": {
+        "gitTree": "89b4649c05577494857b71143e3bd63fcd624f98",
+        "taskTomlBlob": "74237d4d00170a25999a9b0853c9bbbbff9b2749",
+        "taskTomlSha256": "ec03c8bc5fd8ba4d86188d4b92681c4454bb90376ac4af1fdfda6353f9201b3f"
+      },
+      "metadata": {
+        "language": "python",
+        "repositoryUrl": "https://github.com/reagento/adaptix",
+        "baseCommitHash": "a691069fcadf9131e5f7a5a130a022dc678f3e1d"
+      }
+    }
+  ]
+}

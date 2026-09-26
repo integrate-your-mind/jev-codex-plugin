@@ -1,0 +1,415 @@
+{
+  "schemaVersion": "jev-cross-agent-comparison-summary-v1",
+  "comparedFactor": "treatment",
+  "claim": "fixed_model_plugin_delta",
+  "cohortId": "2026-09-26-paired-v1",
+  "timingMetric": "agent_turn_sum_ms: sum of per-turn wall-clock durations from dispatch to completion; startup, verifier, and cleanup are excluded.",
+  "denominators": {
+    "plannedTrials": 16,
+    "observedTrials": 16,
+    "pairs": 8,
+    "infrastructureErrors": 0,
+    "artifactOutcomes": {
+      "passed": 16,
+      "failed": 0,
+      "not_run": 0,
+      "error": 0
+    },
+    "agentCompletionOutcomes": {
+      "completed": 16,
+      "failed": 0,
+      "timeout": 0,
+      "cancelled": 0,
+      "not_run": 0,
+      "error": 0
+    }
+  },
+  "byArm": {
+    "control": {
+      "plannedTrials": 8,
+      "observedTrials": 8,
+      "infrastructureErrors": 0,
+      "artifact": {
+        "denominator": 8,
+        "passed": 8,
+        "failed": 0,
+        "notRun": 0,
+        "errors": 0,
+        "passRate": 1
+      },
+      "agentCompletion": {
+        "denominator": 8,
+        "completed": 8,
+        "incomplete": 0,
+        "completionRate": 1
+      },
+      "timing": {
+        "metric": "agent_turn_sum_ms",
+        "denominator": 8,
+        "measured": 8,
+        "unknown": 0,
+        "observedSubtotalMs": 397607.3739140001,
+        "totalMs": 397607.3739140001,
+        "medianMs": 46891.471729
+      },
+      "tokens": {
+        "denominator": 8,
+        "observed": 8,
+        "input": {
+          "known": 8,
+          "unknown": 0,
+          "observedSubtotal": 715434,
+          "total": 715434
+        },
+        "cachedInput": {
+          "known": 8,
+          "unknown": 0,
+          "observedSubtotal": 572160,
+          "total": 572160
+        },
+        "output": {
+          "known": 8,
+          "unknown": 0,
+          "observedSubtotal": 9750,
+          "total": 9750
+        },
+        "definition": "cachedInput is a subset of input; it is reported separately and never added to input."
+      },
+      "billing": {
+        "denominator": 8,
+        "known": 0,
+        "unknown": 8,
+        "observedSubtotalUsd": null,
+        "totalUsd": null,
+        "source": "unknown"
+      }
+    },
+    "treatment": {
+      "plannedTrials": 8,
+      "observedTrials": 8,
+      "infrastructureErrors": 0,
+      "artifact": {
+        "denominator": 8,
+        "passed": 8,
+        "failed": 0,
+        "notRun": 0,
+        "errors": 0,
+        "passRate": 1
+      },
+      "agentCompletion": {
+        "denominator": 8,
+        "completed": 8,
+        "incomplete": 0,
+        "completionRate": 1
+      },
+      "timing": {
+        "metric": "agent_turn_sum_ms",
+        "denominator": 8,
+        "measured": 8,
+        "unknown": 0,
+        "observedSubtotalMs": 465059.593707,
+        "totalMs": 465059.593707,
+        "medianMs": 55098.44445849999
+      },
+      "tokens": {
+        "denominator": 8,
+        "observed": 8,
+        "input": {
+          "known": 8,
+          "unknown": 0,
+          "observedSubtotal": 857264,
+          "total": 857264
+        },
+        "cachedInput": {
+          "known": 8,
+          "unknown": 0,
+          "observedSubtotal": 715392,
+          "total": 715392
+        },
+        "output": {
+          "known": 8,
+          "unknown": 0,
+          "observedSubtotal": 11021,
+          "total": 11021
+        },
+        "definition": "cachedInput is a subset of input; it is reported separately and never added to input."
+      },
+      "billing": {
+        "denominator": 8,
+        "known": 0,
+        "unknown": 8,
+        "observedSubtotalUsd": null,
+        "totalUsd": null,
+        "source": "unknown"
+      }
+    }
+  },
+  "pairs": [
+    {
+      "taskId": "retry-repair",
+      "inputHash": "sha256:383d8874ca9a9ca793ec84dcd47e79fefb97c352e08a6909f59e3155d119ca52",
+      "repetition": 1,
+      "arms": [
+        "control",
+        "treatment"
+      ],
+      "observations": {
+        "control": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 57029.413375000004
+        },
+        "treatment": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 60496.265792
+        }
+      },
+      "deltas": {
+        "timingMs": 3466.8524169999946,
+        "artifactPass": 0,
+        "agentCompletion": 0,
+        "inputTokens": 1798,
+        "cachedInputTokens": 1280,
+        "outputTokens": 109,
+        "actualBilledUsd": null
+      },
+      "limitations": [
+        "Pair order follows comparison.armOrder; deltas are second arm minus first arm."
+      ]
+    },
+    {
+      "taskId": "interval-repair",
+      "inputHash": "sha256:9a4139288e804cf3a41241d2358caa03e3919a0cd50cb44fa121fe932f7e2344",
+      "repetition": 2,
+      "arms": [
+        "control",
+        "treatment"
+      ],
+      "observations": {
+        "control": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 47201.126415999985
+        },
+        "treatment": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 51256.68562500001
+        }
+      },
+      "deltas": {
+        "timingMs": 4055.559209000028,
+        "artifactPass": 0,
+        "agentCompletion": 0,
+        "inputTokens": 22048,
+        "cachedInputTokens": 28544,
+        "outputTokens": 119,
+        "actualBilledUsd": null
+      },
+      "limitations": [
+        "Pair order follows comparison.armOrder; deltas are second arm minus first arm."
+      ]
+    },
+    {
+      "taskId": "csv-parser",
+      "inputHash": "sha256:ccce30b874701e59ae84f58431a26072cb51fdcccafcba9d40164e231cc7a5ea",
+      "repetition": 2,
+      "arms": [
+        "control",
+        "treatment"
+      ],
+      "observations": {
+        "control": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 41083.946375
+        },
+        "treatment": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 52867.26041699998
+        }
+      },
+      "deltas": {
+        "timingMs": 11783.314041999984,
+        "artifactPass": 0,
+        "agentCompletion": 0,
+        "inputTokens": 17776,
+        "cachedInputTokens": 24192,
+        "outputTokens": 166,
+        "actualBilledUsd": null
+      },
+      "limitations": [
+        "Pair order follows comparison.armOrder; deltas are second arm minus first arm."
+      ]
+    },
+    {
+      "taskId": "retry-repair",
+      "inputHash": "sha256:383d8874ca9a9ca793ec84dcd47e79fefb97c352e08a6909f59e3155d119ca52",
+      "repetition": 2,
+      "arms": [
+        "control",
+        "treatment"
+      ],
+      "observations": {
+        "control": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 46581.81704200001
+        },
+        "treatment": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 57329.62849999999
+        }
+      },
+      "deltas": {
+        "timingMs": 10747.811457999982,
+        "artifactPass": 0,
+        "agentCompletion": 0,
+        "inputTokens": 17656,
+        "cachedInputTokens": 12800,
+        "outputTokens": 237,
+        "actualBilledUsd": null
+      },
+      "limitations": [
+        "Pair order follows comparison.armOrder; deltas are second arm minus first arm."
+      ]
+    },
+    {
+      "taskId": "changed-route",
+      "inputHash": "sha256:4af05a2497ebdda98cca1accbba9d0b6b4a18e840cc53286e1343e081b23961a",
+      "repetition": 2,
+      "arms": [
+        "control",
+        "treatment"
+      ],
+      "observations": {
+        "control": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 56759.85145699995
+        },
+        "treatment": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 70000.91491599998
+        }
+      },
+      "deltas": {
+        "timingMs": 13241.063459000026,
+        "artifactPass": 0,
+        "agentCompletion": 0,
+        "inputTokens": 12615,
+        "cachedInputTokens": 25344,
+        "outputTokens": 133,
+        "actualBilledUsd": null
+      },
+      "limitations": [
+        "Pair order follows comparison.armOrder; deltas are second arm minus first arm."
+      ]
+    },
+    {
+      "taskId": "csv-parser",
+      "inputHash": "sha256:ccce30b874701e59ae84f58431a26072cb51fdcccafcba9d40164e231cc7a5ea",
+      "repetition": 1,
+      "arms": [
+        "control",
+        "treatment"
+      ],
+      "observations": {
+        "control": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 41947.07366600004
+        },
+        "treatment": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 51970.62962500006
+        }
+      },
+      "deltas": {
+        "timingMs": 10023.55595900002,
+        "artifactPass": 0,
+        "agentCompletion": 0,
+        "inputTokens": 17680,
+        "cachedInputTokens": 24192,
+        "outputTokens": 105,
+        "actualBilledUsd": null
+      },
+      "limitations": [
+        "Pair order follows comparison.armOrder; deltas are second arm minus first arm."
+      ]
+    },
+    {
+      "taskId": "changed-route",
+      "inputHash": "sha256:4af05a2497ebdda98cca1accbba9d0b6b4a18e840cc53286e1343e081b23961a",
+      "repetition": 1,
+      "arms": [
+        "control",
+        "treatment"
+      ],
+      "observations": {
+        "control": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 62267.43445800012
+        },
+        "treatment": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 69992.83291600004
+        }
+      },
+      "deltas": {
+        "timingMs": 7725.398457999923,
+        "artifactPass": 0,
+        "agentCompletion": 0,
+        "inputTokens": 12726,
+        "cachedInputTokens": 14080,
+        "outputTokens": 218,
+        "actualBilledUsd": null
+      },
+      "limitations": [
+        "Pair order follows comparison.armOrder; deltas are second arm minus first arm."
+      ]
+    },
+    {
+      "taskId": "interval-repair",
+      "inputHash": "sha256:9a4139288e804cf3a41241d2358caa03e3919a0cd50cb44fa121fe932f7e2344",
+      "repetition": 1,
+      "arms": [
+        "control",
+        "treatment"
+      ],
+      "observations": {
+        "control": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 44736.71112500003
+        },
+        "treatment": {
+          "artifactPassed": true,
+          "agentCompleted": true,
+          "timingMs": 51145.37591599999
+        }
+      },
+      "deltas": {
+        "timingMs": 6408.664790999959,
+        "artifactPass": 0,
+        "agentCompletion": 0,
+        "inputTokens": 39531,
+        "cachedInputTokens": 12800,
+        "outputTokens": 184,
+        "actualBilledUsd": null
+      },
+      "limitations": [
+        "Pair order follows comparison.armOrder; deltas are second arm minus first arm."
+      ]
+    }
+  ],
+  "interpretation": "Descriptive fixed-agent/model treatment comparison. The treatment claim is limited to the plugin delta under this frozen cohort; it does not establish general productivity or model superiority.",
+  "inference": "No significance test, confidence interval, causal estimate, or fabricated cost is produced by this reducer."
+}
