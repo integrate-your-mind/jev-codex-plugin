@@ -113,6 +113,13 @@ corrected in the docs; runtime behavior was unchanged.
 
 ## Hosted CI
 
+The [0.4.0 GitHub Actions run](https://github.com/integrate-your-mind/jev-codex-plugin/actions/runs/36225421255)
+for revision `913bb7fbea73efbdb37535d02debae7a0b28485c` was blocked before
+any test step executed: GitHub reported that the account is locked due to a
+billing issue. Hosted CI is **not passed**. The workflow is enabled and can be
+run manually after the account restriction is resolved. Local Node 22 tests,
+native runtime checks, and independent QA are separate evidence.
+
 The [initial GitHub Actions run](https://github.com/integrate-your-mind/jev-codex-plugin/actions/runs/35360672909)
 was blocked by the hosting account before any test step executed. Hosted CI is
 **not passed**. The local results above are separate evidence.
