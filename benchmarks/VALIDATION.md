@@ -45,3 +45,11 @@ The prospective typed-batch component harness passed 10 offline regressions, inc
 For checkpoint 46dd949bc9292c22ceb0c5593d3f87f4670bd14a, [hosted CI](https://github.com/integrate-your-mind/jev-codex-plugin/actions/runs/36264657304) again did not start; GitHub explicitly reported an account billing lock. No hosted test steps ran.
 
 A later evidence-retention audit found that the frozen 72-call transcript stores provider-ID presence rather than actual provider IDs, and the runner removed temporary native receipt files after checking them. Receipt parity and HTTP/validation observations remain recorded, but individual provider billing cannot be reconciled from this artifact alone. This limitation does not turn attempt reservations into successful calls; billing remains unknown. The completed study was not rerun or rewritten.
+
+## Receipt and restart recovery checkpoint
+
+The typed-batch runner now retains actual provider IDs in a private fsynced journal and verifies corresponding response, receipt and service-result representations. Credential fingerprints are stripped. Seventeen offline regressions passed. The [completed 32-request cohort](results/2026-09-26-typed-batch-v1/README.md) was independently regraded: 32 HTTP 200 responses, 31 validated responses, and 32 persisted receipts with actual IDs. One rejected serial Score answer remains in the denominator; costs remain unknown.
+
+The independent [restart recovery candidate](plugin-development/restart/README.md) was rebuilt and passed all 179 plugin tests, typecheck and manifests. It preserves immutable claim generations, rejects stale replay, and separates persisted advice from unknown delivery. It is a source-only experimental patch, not an installed update or selected treatment.
+
+At public checkpoint 682990cdafe562699ac539bef204e4def6e7e39a, [GitHub CI](https://github.com/integrate-your-mind/jev-codex-plugin/actions/runs/36267097415) again did not start because of the account billing lock. No hosted test steps ran.
