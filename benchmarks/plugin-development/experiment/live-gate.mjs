@@ -54,4 +54,3 @@ export async function requireReviewedManifest({
   await verifyCredentialBoundary(env);
   return {...verified, manifestPath: absolute, manifestSha256: actualSha256};
 }
-

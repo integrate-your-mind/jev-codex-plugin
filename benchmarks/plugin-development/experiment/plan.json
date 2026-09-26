@@ -19,7 +19,8 @@
     "componentAttribution": "bundled-only",
     "invocationScope": "All four cases are normalized through runDecisionHook as PreToolUse with a supplied catalog; original surface labels are provenance only.",
     "providerCallsAuthorized": true,
-    "liveStatus": "reviewed-frozen-not-yet-invoked"
+    "liveStatus": "reviewed-frozen-not-yet-invoked",
+    "activeFrozenManifest": "frozen-live-v2.json"
   },
   "layers": [
     "request",

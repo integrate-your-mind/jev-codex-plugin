@@ -20,4 +20,3 @@ test('both complete source trees reproduce from the exact Git base and patch', a
     assert.equal((await lstat(tree.path.startsWith('/') ? tree.path : new URL(`../../../${tree.path}`, import.meta.url))).isSymbolicLink(), false);
   }
 });
-

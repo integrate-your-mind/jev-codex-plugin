@@ -1,0 +1,2 @@
+# Preserve the byte-locked patch, including unified-diff blank context markers.
+benchmarks/plugin-development/experiment/variants/repair-bundled/repair-source.patch -whitespace

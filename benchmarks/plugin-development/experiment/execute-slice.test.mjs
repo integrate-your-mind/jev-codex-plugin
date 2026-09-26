@@ -27,4 +27,3 @@ test('offline plumbing executes every frozen row without provider identity claim
   assert.ok(control.every(row => row.action === 'not_attempted'));
   assert.ok(control.every(row => row.postcondition === 'unknown'));
 });
-
