@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "jev-runtime-builder-validation-v1",
+  "builder": {
+    "path": "build-shared-runtime.py",
+    "sha256": "c01e82d6513a157e671064520c4f04c14f8e0d29ac1398440ab1e95f9a0df7ad"
+  },
+  "tests": {
+    "path": "build-shared-runtime.test.py",
+    "sha256": "09fe2f867eb343f15cae60f198a66e0e1f0da1fb7392fb40e8f6ddbf5a668cdf",
+    "command": [
+      "python3",
+      "-B",
+      "build-shared-runtime.test.py",
+      "-v"
+    ],
+    "exitCode": 0,
+    "testCount": 9,
+    "kind": "offline synthetic archive fixtures; complete build exercised with fixture pins"
+  },
+  "contract": {
+    "path": "../runtime.py",
+    "prefixSha256": "24aeb7a5f37aa024a0d0655f4126fddc6c7c58ebe42137c80d40cfac40db8fe1",
+    "method": "standard-library prefix through validate_shared_runtime, stopping before image identity loader"
+  },
+  "existingArtifactsValidatedReadonly": {
+    "linux-amd64": {
+      "manifestSha256": "3bbe7a7d949de4a0486cbd3ea690deded51808b7d278d03758e181ec98402d56",
+      "treeSha256": "ea6cce9be5260bc30e20b4188809695fcefdc06f9a1b4ef820fca0ee17d4581e",
+      "fileCount": 5
+    },
+    "linux-amd64-sandbox": {
+      "manifestSha256": "a3a4b16d095d901fd0bbcfc6153c1fa9bd6777a077edb361e57cba16187cab36",
+      "treeSha256": "32225cab4ec5d69ec0e54ef484b73357398ea23238cfb65f8860d5900bbaf175",
+      "fileCount": 6
+    }
+  },
+  "publishedMetadataMatchesPins": true,
+  "sourceReview": "harbor_readonly independently reported no correctness blocker in replacement builder",
+  "limits": [
+    "Full official archive rebuild not run by this repaired source; archives were previously verified and removed.",
+    "No downloads, Docker calls, native controls, model requests, policy changes, or runtime artifact writes performed in this validation."
+  ],
+  "privateOriginalReceiptSha256": "c03fa962efb2c28f78947347ff390d50600f60995e423e9fd9661656dd419a9a",
+  "rootVerification": {
+    "python": "3.12.13",
+    "testsPassed": 9,
+    "testsFailed": 0,
+    "downloads": 0,
+    "fullOfficialArchiveRebuild": false
+  }
+}

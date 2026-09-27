@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "plugin-development-candidate-delivery-schedule-v1",
+  "caseIds": [
+    "candidate-normal",
+    "candidate-conflict",
+    "candidate-stale",
+    "candidate-adversarial"
+  ],
+  "repeats": 2,
+  "arms": [
+    "control-released",
+    "candidate-bundled-repair"
+  ],
+  "attempts": [
+    {"row": 1, "attemptId": "candidate-normal.r1.control-released", "caseId": "candidate-normal", "repeat": 1, "arm": "control-released"},
+    {"row": 2, "attemptId": "candidate-normal.r1.candidate-bundled-repair", "caseId": "candidate-normal", "repeat": 1, "arm": "candidate-bundled-repair"},
+    {"row": 3, "attemptId": "candidate-conflict.r1.candidate-bundled-repair", "caseId": "candidate-conflict", "repeat": 1, "arm": "candidate-bundled-repair"},
+    {"row": 4, "attemptId": "candidate-conflict.r1.control-released", "caseId": "candidate-conflict", "repeat": 1, "arm": "control-released"},
+    {"row": 5, "attemptId": "candidate-stale.r1.control-released", "caseId": "candidate-stale", "repeat": 1, "arm": "control-released"},
+    {"row": 6, "attemptId": "candidate-stale.r1.candidate-bundled-repair", "caseId": "candidate-stale", "repeat": 1, "arm": "candidate-bundled-repair"},
+    {"row": 7, "attemptId": "candidate-adversarial.r1.candidate-bundled-repair", "caseId": "candidate-adversarial", "repeat": 1, "arm": "candidate-bundled-repair"},
+    {"row": 8, "attemptId": "candidate-adversarial.r1.control-released", "caseId": "candidate-adversarial", "repeat": 1, "arm": "control-released"},
+    {"row": 9, "attemptId": "candidate-normal.r2.candidate-bundled-repair", "caseId": "candidate-normal", "repeat": 2, "arm": "candidate-bundled-repair"},
+    {"row": 10, "attemptId": "candidate-normal.r2.control-released", "caseId": "candidate-normal", "repeat": 2, "arm": "control-released"},
+    {"row": 11, "attemptId": "candidate-conflict.r2.control-released", "caseId": "candidate-conflict", "repeat": 2, "arm": "control-released"},
+    {"row": 12, "attemptId": "candidate-conflict.r2.candidate-bundled-repair", "caseId": "candidate-conflict", "repeat": 2, "arm": "candidate-bundled-repair"},
+    {"row": 13, "attemptId": "candidate-stale.r2.candidate-bundled-repair", "caseId": "candidate-stale", "repeat": 2, "arm": "candidate-bundled-repair"},
+    {"row": 14, "attemptId": "candidate-stale.r2.control-released", "caseId": "candidate-stale", "repeat": 2, "arm": "control-released"},
+    {"row": 15, "attemptId": "candidate-adversarial.r2.control-released", "caseId": "candidate-adversarial", "repeat": 2, "arm": "control-released"},
+    {"row": 16, "attemptId": "candidate-adversarial.r2.candidate-bundled-repair", "caseId": "candidate-adversarial", "repeat": 2, "arm": "candidate-bundled-repair"}
+  ],
+  "counterbalance": "Arm order alternates by case within repeat and reverses for repeat two."
+}

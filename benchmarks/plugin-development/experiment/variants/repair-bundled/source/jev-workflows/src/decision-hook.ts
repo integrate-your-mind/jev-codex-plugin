@@ -1,0 +1,1126 @@
+import { createHash } from 'node:crypto';
+import { constants } from 'node:fs';
+import { mkdir, open, realpath, readdir, unlink, lstat, rename } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { isAbsolute, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { createService } from './service.js';
+import { redactText } from './redact.js';
+import { readCredentialFile } from './credential.js';
+import { dataDirectory } from './store.js';
+import { readPolicy, workspaceAllowed, type HookPolicy } from './policy.js';
+import { loadTaskContext, updateTaskContext, type TaskContextRecord, type TaskContextScope } from './task-context.js';
+
+const MAX_STDIN_BYTES = 128 * 1024;
+const MAX_SEMANTIC_BYTES = 1_500;
+const MAX_CONTEXT_BYTES = 5_000;
+const MAX_FAILURE_EXCERPT_BYTES = 600;
+const MAX_RESULT_EXCERPT_BYTES = 1_500;
+const HOST_TIMEOUT_MS = 5_000;
+const PROVIDER_TIMEOUT_MS = 3_000;
+const HOOK_TIMEOUT_MS = HOST_TIMEOUT_MS - 1_000;
+const SHORT_EVENT_PROVIDER_TIMEOUT_MS = 1_800;
+const SHORT_EVENT_HOOK_TIMEOUT_MS = 2_500;
+const EVENT_DIRECTORY = 'decision-hook-v1';
+const PROMPT_TTL_MS = 24 * 60 * 60 * 1000;
+const MAX_PROMPT_BYTES = 1_500;
+const TURN_RESULT_TTL_MS = 2 * 60 * 60 * 1000;
+const MAX_TURN_RESULTS = 8;
+const MAX_CACHED_RESULT_BYTES = 500;
+const MAX_TURN_RESULT_FILE_BYTES = 12 * 1024;
+const TURN_RESULT_DIRECTORY = 'turn-results';
+const INVOCATION_DIRECTORY = 'invocations';
+const LOCAL_INSTRUCTION = 'Before choosing a tool, model, effort, task, skill, context, or strategy, consult classify_decision when this automation policy permits it. Treat its answer as advisory and continue ordinary reasoning when it is unavailable or inconclusive.';
+const ACTION_CANDIDATES = [
+  {id: 'proceed', description: 'Continue with the ordinary workflow.', available: true},
+  {id: 'reconsider', description: 'Reconsider the current action using the available evidence.', available: true},
+  {id: 'gather_evidence', description: 'Gather authorized evidence before choosing the next action.', available: true},
+] as const;
+const CANDIDATE_ID = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/;
+const RESERVED_CANDIDATE_IDS = new Set(['insufficient_evidence', '__proto__', 'constructor', 'prototype']);
+const SUPPORTED_EVENTS = new Set([
+  'SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PermissionRequest', 'PostToolUse',
+  'PreCompact', 'PostCompact', 'SubagentStart', 'SubagentStop', 'Stop', 'Interrupt',
+]);
+const EVENTS_WITHOUT_STABLE_NATIVE_ID = new Set(['SessionStart', 'SessionEnd', 'PermissionRequest', 'PreCompact', 'PostCompact', 'Interrupt']);
+const INTERNAL_TOOL_NAMES = new Set(['classify_decision', 'classify_failure', 'check_completion', 'jev_status', 'configure_automation']);
+const credentialSnapshot = Symbol('credentialSnapshot');
+type HookEnv = NodeJS.ProcessEnv & {[credentialSnapshot]?: string | null};
+
+type RecordValue = Record<string, unknown>;
+export type DecisionInput = {
+  domain: 'tool' | 'model' | 'task' | 'skill' | 'context' | 'strategy' | 'result' | 'general';
+  question: string;
+  context: string;
+  candidates: Array<{id: string; description: string; available?: boolean; metadata?: Record<string, string | number | boolean>}>;
+  evidence: Array<{id: string; text: string; source?: string}>;
+  mode: 'preview' | 'evaluate';
+};
+export type DecisionAssessment = {status?: string; choice?: string; confidence?: number; receiptId?: string; receiptPersisted?: boolean; reasonCode?: string};
+export type DecisionService = {
+  classifyDecision(input: DecisionInput, signal?: AbortSignal): Promise<DecisionAssessment>;
+};
+type HookResult = {
+  hookSpecificOutput?: {hookEventName: string; additionalContext: string};
+  systemMessage?: string;
+};
+type NormalizedEvent = {
+  name: string;
+  eventId: string;
+  cwd: string;
+  sessionId: string;
+  turnId: string;
+  toolUseId: string;
+  agentId: string;
+  agentType?: string;
+  toolName?: string;
+  model?: string;
+  permissionMode?: string;
+  source?: string;
+  trigger?: string;
+  reason?: string;
+  prompt?: string;
+  finalMessage?: string;
+  raw: RecordValue;
+};
+
+function isRecord(value: unknown): value is RecordValue {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isSafeCandidateId(value: unknown): value is string {
+  return typeof value === 'string' && CANDIDATE_ID.test(value) && !RESERVED_CANDIDATE_IDS.has(value);
+}
+
+function boundedWithEnv(value: unknown, maxBytes: number, env: NodeJS.ProcessEnv): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const fileKey = (env as HookEnv)[credentialSnapshot];
+  const redacted = redactText(value, [env.TYPESAFE_API_KEY ?? '', fileKey ?? ''].filter(Boolean))
+    // A queued tool event can contain a retired credential after rotation. The
+    // previous value is no longer in the file, so suppress long opaque tokens
+    // before storing or sending hook context even when exact redaction misses.
+    .replace(/(?<![A-Za-z0-9._-])[A-Za-z0-9._-]{80,}(?![A-Za-z0-9._-])/g,
+      token => new Set(token).size >= 12 ? '[REDACTED OPAQUE TOKEN]' : token);
+  if (Buffer.byteLength(redacted) <= maxBytes) return redacted;
+  const marker = '\n...[truncated]...\n';
+  const available = Math.max(2, maxBytes - Buffer.byteLength(marker));
+  const headBytes = Math.ceil(available * 0.6);
+  const tailBytes = available - headBytes;
+  const bytes = Buffer.from(redacted);
+  let headEnd = Math.min(headBytes, bytes.length);
+  while (headEnd > 0 && ((bytes[headEnd] ?? 0) & 0xc0) === 0x80) headEnd--;
+  let tailStart = Math.max(0, bytes.length - tailBytes);
+  while (tailStart < bytes.length && ((bytes[tailStart] ?? 0) & 0xc0) === 0x80) tailStart++;
+  const head = bytes.subarray(0, headEnd).toString('utf8');
+  const tail = bytes.subarray(tailStart).toString('utf8');
+  return `${head}${marker}${tail}`;
+}
+
+function safeId(value: string): string {
+  return /^[a-zA-Z0-9._:-]{1,80}$/.test(value) ? value : `evidence-${hash(value).slice(0, 20)}`;
+}
+
+function hash(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+export function normalizeDecisionEvent(raw: unknown): NormalizedEvent | undefined {
+  if (!isRecord(raw) || typeof raw.hook_event_name !== 'string' || !SUPPORTED_EVENTS.has(raw.hook_event_name)) return undefined;
+  if (typeof raw.cwd !== 'string' || typeof raw.session_id !== 'string') return undefined;
+  const turnId = typeof raw.turn_id === 'string' ? raw.turn_id : '';
+  const toolUseId = typeof raw.tool_use_id === 'string' ? raw.tool_use_id : '';
+  const agentId = typeof raw.agent_id === 'string' ? raw.agent_id : '';
+  const toolName = typeof raw.tool_name === 'string' ? raw.tool_name : undefined;
+  if ((raw.hook_event_name === 'PreToolUse' || raw.hook_event_name === 'PostToolUse') && (!toolName || !toolUseId)) return undefined;
+  if (raw.hook_event_name === 'PermissionRequest' && (!toolName || !turnId)) return undefined;
+  // Some hosted runtimes omit turn_id on UserPromptSubmit. Keep that valid and
+  // derive its deduplication identity from the prompt/event id below.
+  if (['PreCompact', 'PostCompact', 'SubagentStart', 'SubagentStop', 'Stop', 'Interrupt'].includes(raw.hook_event_name) && !turnId) return undefined;
+  if ((raw.hook_event_name === 'SubagentStart' || raw.hook_event_name === 'SubagentStop') && !agentId) return undefined;
+  if ((raw.hook_event_name === 'SubagentStart' || raw.hook_event_name === 'SubagentStop') && typeof raw.agent_type !== 'string') return undefined;
+  if ((raw.hook_event_name === 'PreCompact' || raw.hook_event_name === 'PostCompact') && typeof raw.trigger !== 'string') return undefined;
+  if (raw.hook_event_name === 'SessionEnd' && typeof raw.reason !== 'string') return undefined;
+  if ((raw.hook_event_name === 'Stop' || raw.hook_event_name === 'SubagentStop') && raw.stop_hook_active === true) return undefined;
+  return {
+    name: raw.hook_event_name,
+    eventId: typeof raw.event_id === 'string' ? raw.event_id : EVENTS_WITHOUT_STABLE_NATIVE_ID.has(raw.hook_event_name) ? randomUUID() : '',
+    cwd: raw.cwd,
+    sessionId: raw.session_id,
+    turnId,
+    toolUseId,
+    agentId,
+    agentType: typeof raw.agent_type === 'string' ? raw.agent_type : undefined,
+    toolName,
+    model: typeof raw.model === 'string' ? raw.model : undefined,
+    permissionMode: typeof raw.permission_mode === 'string' ? raw.permission_mode : undefined,
+    source: typeof raw.source === 'string' ? raw.source : undefined,
+    trigger: typeof raw.trigger === 'string' ? raw.trigger : undefined,
+    reason: typeof raw.reason === 'string' ? raw.reason : undefined,
+    prompt: typeof raw.prompt === 'string' ? raw.prompt : undefined,
+    finalMessage: typeof raw.last_assistant_message === 'string' ? raw.last_assistant_message : undefined,
+    raw,
+  };
+}
+
+function isInternal(event: NormalizedEvent, env: NodeJS.ProcessEnv): boolean {
+  const name = event.toolName ?? '';
+  if (INTERNAL_TOOL_NAMES.has(name) || name.startsWith('mcp__jev_workflows__') || name.startsWith('mcp__jev-workflows__')) return true;
+  if (name.startsWith('mcp__jev_workflows_') || name.startsWith('mcp__jev-workflows_')) return true;
+  if (name === 'Bash' && isRecord(event.raw.tool_input)) {
+    const command = boundedWithEnv(event.raw.tool_input.command, 4_000, env) ?? '';
+    if (command.includes('dist/decision-hook.mjs') || command.includes('dist/hook.mjs')) return true;
+  }
+  if (name === 'functions.exec' && isRecord(event.raw.tool_input)) {
+    const code = boundedWithEnv(event.raw.tool_input.code, 4_000, env) ?? '';
+    const jevCalls = code.match(/(?:tools\.)?mcp__jev(?:_|-)workflows(?:_|-)[a-zA-Z0-9_:-]+/g) ?? [];
+    // A wrapper containing only Jev plumbing is internal. Keep mixed scripts
+    // visible so real work in the same tool invocation is still evaluated.
+    const mixedWork = code.replace(/(?:tools\.)?mcp__jev(?:_|-)workflows(?:_|-)[a-zA-Z0-9_:-]+/g, '')
+      .match(/(?:exec_command|write_stdin|read_thread|fetch\s*\(|mcp__(?!jev(?:_|-)workflows)|tools\.(?!mcp__jev))/i);
+    if (jevCalls.length > 0 && !mixedWork) return true;
+  }
+  return false;
+}
+
+type ArgumentProjection = {
+  keys: string[];
+  values: Record<string, unknown>;
+  omitted: {count: number; paths: string[]};
+  truncated: boolean;
+  tailRetained: boolean;
+};
+
+const SENSITIVE_ARGUMENT_KEY = /(?:token|password|secret|authorization|cookie|credential|private[_-]?key|api[_-]?key|base64|file[_-]?uri|download[_-]?url|(?:^|[_-])key$)/i;
+
+function projectArgumentValue(value: unknown, env: NodeJS.ProcessEnv, state: {bytes: number; omitted: number; paths: string[]; truncated: boolean; tailRetained: boolean}, path: string, depth = 0): unknown {
+  if (depth > 4) {
+    state.omitted += 1;
+    if (state.paths.length < 16) state.paths.push(path);
+    return '[OMITTED_MAX_DEPTH]';
+  }
+  if (state.bytes >= MAX_SEMANTIC_BYTES) {
+    state.omitted += 1;
+    state.truncated = true;
+    if (state.paths.length < 16) state.paths.push(path);
+    return '[OMITTED_BUDGET]';
+  }
+  if (typeof value === 'string') {
+    const projected = boundedWithEnv(value, Math.min(800, MAX_SEMANTIC_BYTES - state.bytes), env) ?? '';
+    state.bytes += Buffer.byteLength(projected);
+    if (projected.includes('...[truncated]...')) {
+      state.truncated = true;
+      state.tailRetained = true;
+    }
+    return projected;
+  }
+  if (value === null || typeof value === 'number' || typeof value === 'boolean') {
+    const encoded = JSON.stringify(value);
+    state.bytes += Buffer.byteLength(encoded);
+    return value;
+  }
+  if (Array.isArray(value)) {
+    const projected: unknown[] = [];
+    for (const [index, child] of value.slice(0, 16).entries()) projected.push(projectArgumentValue(child, env, state, `${path}[${index}]`, depth + 1));
+    if (value.length > 16) {
+      state.omitted += value.length - 16;
+      state.truncated = true;
+      if (state.paths.length < 16) state.paths.push(`${path}[*]`);
+    }
+    return projected;
+  }
+  if (isRecord(value)) {
+    const projected: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value).slice(0, 32)) {
+      const safeKey = SENSITIVE_ARGUMENT_KEY.test(key) ? '[REDACTED]' : boundedWithEnv(key, 80, env) ?? '[OMITTED_KEY]';
+      if (SENSITIVE_ARGUMENT_KEY.test(key)) {
+        projected[safeKey] = '[REDACTED_FIELD]';
+        state.omitted += 1;
+        if (state.paths.length < 16) state.paths.push(`${path}.${safeKey}`);
+      } else {
+        projected[safeKey] = projectArgumentValue(child, env, state, `${path}.${safeKey}`, depth + 1);
+      }
+    }
+    if (Object.keys(value).length > 32) {
+      state.omitted += Object.keys(value).length - 32;
+      state.truncated = true;
+      if (state.paths.length < 16) state.paths.push(`${path}.*`);
+    }
+    return projected;
+  }
+  state.omitted += 1;
+  if (state.paths.length < 16) state.paths.push(path);
+  return '[OMITTED_UNSUPPORTED]';
+}
+
+function semanticArguments(event: NormalizedEvent, env: NodeJS.ProcessEnv): ArgumentProjection {
+  const state = {bytes: 0, omitted: 0, paths: [] as string[], truncated: false, tailRetained: false};
+  if (typeof event.raw.tool_input === 'string') {
+    const value = boundedWithEnv(event.raw.tool_input, MAX_SEMANTIC_BYTES, env);
+    return {keys: ['$value'], values: value ? {$value: value} : {}, omitted: {count: 0, paths: []}, truncated: Boolean(value?.includes('...[truncated]...')), tailRetained: Boolean(value?.includes('...[truncated]...'))};
+  }
+  if (!isRecord(event.raw.tool_input)) return {keys: [], values: {}, omitted: {count: 0, paths: []}, truncated: false, tailRetained: false};
+  const keys = Object.keys(event.raw.tool_input).slice(0, 32).map(key => boundedWithEnv(key, 80, env) ?? '');
+  const values: Record<string, unknown> = {};
+  for (const key of Object.keys(event.raw.tool_input).slice(0, 32)) {
+    const safeKey = SENSITIVE_ARGUMENT_KEY.test(key) ? '[REDACTED]' : boundedWithEnv(key, 80, env) ?? '[OMITTED_KEY]';
+    values[safeKey] = projectArgumentValue(event.raw.tool_input[key], env, state, safeKey);
+  }
+  if (Object.keys(event.raw.tool_input).length > 32) {
+    state.omitted += Object.keys(event.raw.tool_input).length - 32;
+    state.truncated = true;
+    state.paths.push('root.*');
+  }
+  return {keys, values, omitted: {count: state.omitted, paths: state.paths}, truncated: state.truncated, tailRetained: state.tailRetained};
+}
+
+type SemanticResponse = {status?: string; exitCode?: number; isError?: boolean; resultExcerpt?: string; failureExcerpt?: string};
+type CachedToolResult = {toolName?: string; status?: string; exitCode?: number; isError?: boolean; resultExcerpt?: string};
+type TurnResultContext = {status: 'available' | 'missing' | 'stale' | 'out_of_turn' | 'unsupported_agent_scope'; results: CachedToolResult[]};
+
+function responseExcerpt(value: unknown, env: NodeJS.ProcessEnv): string | undefined {
+  if (typeof value === 'string') return boundedWithEnv(value, MAX_RESULT_EXCERPT_BYTES, env);
+  if (!isRecord(value) && !Array.isArray(value)) return undefined;
+  try {
+    const serialized = JSON.stringify(value, (key, nested) => {
+      if (/(?:token|password|secret|authorization|cookie|credential|private[_-]?key|api[_-]?key|base64[_-]?string|file[_-]?uri|download[_-]?url)/i.test(key)) {
+        return '[REDACTED_FIELD]';
+      }
+      if (typeof nested === 'string') {
+        const redacted = boundedWithEnv(nested, 800, env) ?? '';
+        if (/^(?:data|blob|bytes|base64|image|audio|video)$/i.test(key) && Buffer.byteLength(redacted) > 160) {
+          return `[OMITTED_BINARY:${Buffer.byteLength(redacted)} bytes]`;
+        }
+        return redacted;
+      }
+      return nested;
+    });
+    return boundedWithEnv(serialized, MAX_RESULT_EXCERPT_BYTES, env);
+  } catch {
+    return undefined;
+  }
+}
+
+function semanticResponse(event: NormalizedEvent, env: NodeJS.ProcessEnv): SemanticResponse {
+  const response = event.raw.tool_response;
+  const result: SemanticResponse = {};
+  if (isRecord(response)) {
+    if (typeof response.status === 'string') result.status = response.status.slice(0, 80);
+    const exitCode = response.exit_code ?? response.exitCode;
+    if (typeof exitCode === 'number' && Number.isSafeInteger(exitCode)) result.exitCode = exitCode;
+    const isError = response.isError ?? response.is_error;
+    if (typeof isError === 'boolean') result.isError = isError;
+    if (result.exitCode === undefined && (typeof response.session_id === 'string' || typeof response.session_id === 'number' || typeof response.cell_id === 'string')) {
+      result.status = 'running';
+    }
+    result.resultExcerpt = responseExcerpt(response, env);
+    const failed = result.isError === true || (result.exitCode !== undefined && result.exitCode !== 0) || /fail|error/i.test(result.status ?? '');
+    if (failed) {
+      for (const key of ['output', 'stderr', 'stdout', 'error', 'message']) {
+        const excerpt = boundedWithEnv(response[key], MAX_FAILURE_EXCERPT_BYTES, env);
+        if (excerpt) { result.failureExcerpt = excerpt; break; }
+      }
+    }
+  } else if (typeof response === 'string') {
+    result.resultExcerpt = responseExcerpt(response, env);
+    if (/Script running with (?:session|cell) ID|process is still running/i.test(response)) result.status = 'running';
+    const exit = response.match(/Process\s+(?:exited\s+with\s+code|exit\s+code:)\s*(-?\d+)/);
+    if (exit) result.exitCode = Number(exit[1]);
+    const output = response.match(/\bOutput\s*:\s*([\s\S]*)/);
+    if (result.exitCode !== undefined && result.exitCode !== 0 && output) result.failureExcerpt = boundedWithEnv(output[1], MAX_FAILURE_EXCERPT_BYTES, env);
+  }
+  return result;
+}
+
+function cachedToolResult(event: NormalizedEvent, response: SemanticResponse, env: NodeJS.ProcessEnv): CachedToolResult {
+  return {
+    toolName: boundedWithEnv(event.toolName, 128, env),
+    status: boundedWithEnv(response.status, 80, env),
+    exitCode: response.exitCode,
+    isError: response.isError,
+    resultExcerpt: boundedWithEnv(response.failureExcerpt ?? response.resultExcerpt, MAX_CACHED_RESULT_BYTES, env),
+  };
+}
+
+function privateSessionDirectory(event: NormalizedEvent, env: NodeJS.ProcessEnv, create = false): Promise<string | undefined> {
+  return (async () => {
+    const directory = dataDirectory(env);
+    if (!isAbsolute(directory) || directory.includes('\0')) return undefined;
+    try {
+      const workspace = await realpath(event.cwd);
+      const sessionDirectory = join(directory, EVENT_DIRECTORY, hash(workspace), hash(event.sessionId));
+      if (create) await mkdir(sessionDirectory, {recursive: true, mode: 0o700});
+      return sessionDirectory;
+    } catch {
+      return undefined;
+    }
+  })();
+}
+
+async function readPromptCache(event: NormalizedEvent, env: NodeJS.ProcessEnv): Promise<string | undefined> {
+  const directory = await privateSessionDirectory(event, env);
+  if (!directory) return undefined;
+  const path = join(directory, 'prompt.json');
+  try {
+    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try {
+      const info = await handle.stat();
+      if (!info.isFile() || info.size > 4 * 1024) return undefined;
+      const value = JSON.parse(await handle.readFile('utf8')) as RecordValue;
+      const updatedAt = value.updatedAt;
+      if (typeof value.prompt !== 'string' || typeof updatedAt !== 'number' || !Number.isSafeInteger(updatedAt)) return undefined;
+      if (Date.now() - updatedAt > PROMPT_TTL_MS || updatedAt > Date.now() + 60_000) {
+        await unlink(path).catch(() => {});
+        return undefined;
+      }
+      return boundedWithEnv(value.prompt, MAX_PROMPT_BYTES, env);
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return undefined;
+  }
+}
+
+async function updatePromptCache(event: NormalizedEvent, env: NodeJS.ProcessEnv): Promise<string | undefined> {
+  const directory = await privateSessionDirectory(event, env, true);
+  if (!directory) return undefined;
+  const lockPath = join(directory, '.prompt.lock');
+  let lock;
+  try {
+    lock = await open(lockPath, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+  } catch {
+    return readPromptCache(event, env);
+  }
+  const path = join(directory, 'prompt.json');
+  try {
+    const prompt = boundedWithEnv(event.prompt, MAX_PROMPT_BYTES, env);
+    if (!prompt) {
+      try {
+        const existing = await lstat(path);
+        if (existing.isFile()) await unlink(path);
+      } catch { /* absent or unsafe state */ }
+      return undefined;
+    }
+    const temporary = join(directory, `.prompt-${randomUUID()}.tmp`);
+    const contents = JSON.stringify({prompt, updatedAt: Date.now()}) + '\n';
+    const handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+    try { await handle.writeFile(contents, 'utf8'); } finally { await handle.close(); }
+    try {
+      try {
+        const existing = await lstat(path);
+        if (existing.isSymbolicLink() || !existing.isFile()) throw new Error('unsafe_prompt_cache');
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
+      await rename(temporary, path);
+    } finally { await unlink(temporary).catch(() => {}); }
+    return prompt;
+  } catch {
+    return readPromptCache(event, env);
+  } finally {
+    await lock.close().catch(() => {});
+    await unlink(lockPath).catch(() => {});
+  }
+}
+
+async function updateTurnResultCache(event: NormalizedEvent, response: SemanticResponse, env: NodeJS.ProcessEnv): Promise<void> {
+  if (event.name !== 'PostToolUse' || !event.turnId) return;
+  const sessionDirectory = await privateSessionDirectory(event, env, true);
+  if (!sessionDirectory) return;
+  const directory = join(sessionDirectory, TURN_RESULT_DIRECTORY);
+  await mkdir(directory, {recursive: true, mode: 0o700}).catch(() => {});
+  const turnHash = hash(event.turnId);
+  const path = join(directory, `${turnHash}.json`);
+  const lockPath = join(directory, `.${turnHash}.lock`);
+  let lock;
+  try {
+    lock = await open(lockPath, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+  } catch {
+    return;
+  }
+  try {
+    let results: CachedToolResult[] = [];
+    try {
+      const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+      try {
+        const info = await handle.stat();
+        if (info.isFile() && info.size <= MAX_TURN_RESULT_FILE_BYTES) {
+          const prior = JSON.parse(await handle.readFile('utf8')) as RecordValue;
+          if (prior.turnHash === turnHash && typeof prior.updatedAt === 'number' && Number.isSafeInteger(prior.updatedAt) &&
+              Date.now() - prior.updatedAt <= TURN_RESULT_TTL_MS && prior.updatedAt <= Date.now() + 60_000 && Array.isArray(prior.results)) {
+            results = prior.results.filter(isRecord).slice(-MAX_TURN_RESULTS) as CachedToolResult[];
+          }
+        }
+      } finally { await handle.close(); }
+    } catch { /* absent or invalid cache starts a fresh current-turn record */ }
+    results.push(cachedToolResult(event, response, env));
+    results = results.slice(-MAX_TURN_RESULTS);
+    const temporary = join(directory, `.${turnHash}-${randomUUID()}.tmp`);
+    const contents = JSON.stringify({turnHash, updatedAt: Date.now(), results}) + '\n';
+    const handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+    try { await handle.writeFile(contents, 'utf8'); } finally { await handle.close(); }
+    try { await rename(temporary, path); } finally { await unlink(temporary).catch(() => {}); }
+  } catch { /* task-result context is advisory and never affects host behavior */ }
+  finally {
+    await lock.close().catch(() => {});
+    await unlink(lockPath).catch(() => {});
+  }
+}
+
+async function readTurnResultCache(event: NormalizedEvent, env: NodeJS.ProcessEnv): Promise<TurnResultContext> {
+  if (event.name === 'SubagentStop') return {status: 'unsupported_agent_scope', results: []};
+  if ((event.name !== 'Stop' && event.name !== 'Interrupt') || !event.turnId) return {status: 'missing', results: []};
+  const sessionDirectory = await privateSessionDirectory(event, env);
+  if (!sessionDirectory) return {status: 'missing', results: []};
+  const directory = join(sessionDirectory, TURN_RESULT_DIRECTORY);
+  const turnHash = hash(event.turnId);
+  const path = join(directory, `${turnHash}.json`);
+  try {
+    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try {
+      const info = await handle.stat();
+      if (!info.isFile() || info.size > MAX_TURN_RESULT_FILE_BYTES) return {status: 'stale', results: []};
+      const value = JSON.parse(await handle.readFile('utf8')) as RecordValue;
+      if (value.turnHash !== turnHash || typeof value.updatedAt !== 'number' || !Number.isSafeInteger(value.updatedAt) || !Array.isArray(value.results)) {
+        return {status: 'stale', results: []};
+      }
+      if (Date.now() - value.updatedAt > TURN_RESULT_TTL_MS || value.updatedAt > Date.now() + 60_000) {
+        await unlink(path).catch(() => {});
+        return {status: 'stale', results: []};
+      }
+      const results = value.results.filter(isRecord).slice(-MAX_TURN_RESULTS) as CachedToolResult[];
+      return results.length ? {status: 'available', results} : {status: 'missing', results: []};
+    } finally { await handle.close(); }
+  } catch {
+    try {
+      const entries = await readdir(directory, {withFileTypes: true});
+      if (entries.some(entry => entry.isFile() && /^[a-f0-9]{64}\.json$/.test(entry.name))) return {status: 'out_of_turn', results: []};
+    } catch { /* no result directory */ }
+    return {status: 'missing', results: []};
+  }
+}
+
+function finalMessage(event: NormalizedEvent, env: NodeJS.ProcessEnv): string | undefined {
+  return boundedWithEnv(event.finalMessage, MAX_PROMPT_BYTES, env);
+}
+
+function actionCandidates(event: NormalizedEvent): DecisionInput['candidates'] {
+  if (event.name === 'PostToolUse') return [
+    {id: 'proceed', description: 'The observed tool result supports continuing the authorized workflow.', available: true},
+    {id: 'reconsider', description: 'The observed tool result contradicts expectations or reveals a substantive issue that should change the next action.', available: true},
+    {id: 'gather_evidence', description: 'The observed tool result is incomplete or ambiguous, so more authorized evidence is needed before the next action.', available: true},
+  ];
+  if (event.name === 'Stop' || event.name === 'SubagentStop') return [
+    {id: 'proceed', description: 'The available final message and same-scope result evidence support ending this task flow.', available: true},
+    {id: 'reconsider', description: 'The available final message or result evidence contains a contradiction, failure, or unsupported outcome that should be revisited.', available: true},
+    {id: 'gather_evidence', description: 'The available result evidence is incomplete or missing, so more authorized verification is needed.', available: true},
+  ];
+  if (event.name === 'PreToolUse') return [
+    {id: 'proceed', description: 'The proposed tool action fits the current authorized task and available evidence.', available: true},
+    {id: 'reconsider', description: 'The proposed tool action conflicts with the task, constraints, or available evidence.', available: true},
+    {id: 'gather_evidence', description: 'The proposed tool action depends on missing context that should be gathered first.', available: true},
+  ];
+  if (event.name === 'PermissionRequest') return [
+    {id: 'proceed', description: 'The approval request is coherent with the authorized task; leave the actual approval decision to the host and user.', available: true},
+    {id: 'reconsider', description: 'The approval request appears inconsistent with the task or constraints and should be reconsidered before the host asks the user.', available: true},
+    {id: 'gather_evidence', description: 'The approval request lacks context needed for useful advisory feedback; gather authorized evidence without granting or denying permission.', available: true},
+  ];
+  return ACTION_CANDIDATES.map(candidate => ({...candidate}));
+}
+
+type CandidateCatalog = {
+  candidates: DecisionInput['candidates'];
+  provided: boolean;
+  source: string;
+  domain: DecisionInput['domain'];
+};
+
+function taskContextScope(event: NormalizedEvent): TaskContextScope {
+  return {cwd: event.cwd, sessionId: event.sessionId, ...(event.agentId ? {agentId: event.agentId} : {})};
+}
+
+function taskContextView(value: TaskContextRecord | undefined): RecordValue | undefined {
+  if (!value) return undefined;
+  return {
+    version: value.version,
+    rootObjective: value.rootObjective?.value ?? null,
+    latestStep: value.latestStep?.value ?? null,
+    followUps: value.followUps.map(entry => entry.value),
+    constraints: value.constraints.map(entry => entry.value),
+    criteria: value.criteria.map(entry => entry.value),
+    corrections: value.corrections.map(entry => entry.value),
+    evidenceRefs: value.evidenceRefs.map(ref => ({id: ref.id, source: ref.source, summary: ref.summary})),
+    updatedAt: value.updatedAt,
+  };
+}
+
+function promptContextUpdate(event: NormalizedEvent, prior: TaskContextRecord | undefined, env: NodeJS.ProcessEnv): Parameters<typeof updateTaskContext>[1] | undefined {
+  const prompt = boundedWithEnv(event.prompt, MAX_PROMPT_BYTES, env);
+  if (!prompt) return undefined;
+  const continuation = /^(?:continue|keep\s+going|proceed|go\s+on|resume)\.?$/i.test(prompt.trim());
+  return {
+    operation: 'continue',
+    ...(prior?.rootObjective ? {} : {rootObjective: prompt}),
+    latestStep: prompt,
+    ...(continuation ? {followUp: prompt} : {}),
+    provenance: {
+      source: 'user_prompt',
+      eventId: event.eventId || undefined,
+      turnId: event.turnId || undefined,
+      agentId: event.agentId || undefined,
+    },
+  };
+}
+
+function candidateFromUnknown(value: unknown, env: NodeJS.ProcessEnv): DecisionInput['candidates'][number] | undefined {
+  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.description !== 'string') return undefined;
+  if (value.available !== undefined && typeof value.available !== 'boolean') return undefined;
+  const id = boundedWithEnv(value.id, 80, env);
+  const description = boundedWithEnv(value.description, 1_600, env);
+  if (!isSafeCandidateId(id) || !description) return undefined;
+  const metadata: Record<string, string | number | boolean> = {};
+  if (isRecord(value.metadata)) {
+    for (const [key, item] of Object.entries(value.metadata).slice(0, 16)) {
+      if (!/^[a-zA-Z0-9_.-]{1,40}$/.test(key) || SENSITIVE_ARGUMENT_KEY.test(key)) continue;
+      if (typeof item === 'string') metadata[key] = boundedWithEnv(item, 500, env) ?? '';
+      else if (typeof item === 'number' && Number.isFinite(item)) metadata[key] = item;
+      else if (typeof item === 'boolean') metadata[key] = item;
+    }
+  }
+  return {id, description, available: value.available ?? true, ...(Object.keys(metadata).length ? {metadata} : {})};
+}
+
+function candidateCatalog(event: NormalizedEvent, domain: DecisionInput['domain'], env: NodeJS.ProcessEnv, taskContext?: TaskContextRecord): CandidateCatalog {
+  const context = isRecord(event.raw.task_context) ? event.raw.task_context : isRecord(event.raw.taskContext) ? event.raw.taskContext : undefined;
+  const catalogs = context && (isRecord(context.candidateCatalog) ? context.candidateCatalog : isRecord(context.candidate_catalog) ? context.candidate_catalog : undefined);
+  const eventCatalog = isRecord(event.raw.candidate_catalog) ? event.raw.candidate_catalog[domain] : undefined;
+  const sources = [
+    {value: catalogs?.[domain], source: 'host.event.task_context'},
+    {value: domain === 'tool' ? context?.availableCandidates ?? context?.available_candidates : undefined, source: 'host.event.available_candidates'},
+    {value: eventCatalog, source: 'host.event.candidate_catalog'},
+    {value: event.raw.available_candidates, source: 'host.event.available_candidates'},
+    {value: domain === 'general' ? undefined : taskContext?.candidateCatalogs?.[domain], source: 'saved.task_context'},
+  ];
+  const selected = sources.find(item => item.value !== undefined);
+  const explicit = selected?.value;
+  const list = Array.isArray(explicit) ? explicit.map(item => candidateFromUnknown(item, env)).filter((item): item is DecisionInput['candidates'][number] => item !== undefined) : [];
+  const duplicateIds = new Set(list.map(item => item.id)).size !== list.length;
+  if (list.length >= 1 && !duplicateIds) return {candidates: list.slice(0, 12), provided: true, source: selected?.source ?? 'host.event', domain};
+  return {candidates: actionCandidates(event), provided: false, source: explicit === undefined ? 'fallback:no_catalog' : 'fallback:invalid_or_insufficient_catalog', domain};
+}
+
+function taskContextExcerpt(value: unknown, env: NodeJS.ProcessEnv, maxBytes: number): RecordValue | undefined {
+  if (!isRecord(value)) return undefined;
+  const strings = (items: unknown): string[] => Array.isArray(items) ? items.filter((item): item is string => typeof item === 'string') : [];
+  const followUps = strings(value.followUps);
+  const constraints = strings(value.constraints);
+  const criteria = strings(value.criteria);
+  const corrections = strings(value.corrections);
+  const detailed = maxBytes >= 1_000;
+  const retained = {
+    followUps: detailed ? Math.min(1, followUps.length) : 0,
+    constraints: Math.min(detailed ? 2 : 1, constraints.length),
+    criteria: Math.min(1, criteria.length),
+    corrections: Math.min(1, corrections.length),
+  };
+  const omitted = {
+    followUps: Math.max(0, followUps.length - retained.followUps),
+    constraints: Math.max(0, constraints.length - retained.constraints),
+    criteria: Math.max(0, criteria.length - retained.criteria),
+    corrections: Math.max(0, corrections.length - retained.corrections),
+    evidenceRefs: Array.isArray(value.evidenceRefs) ? value.evidenceRefs.length : 0,
+  };
+  const excerpt: RecordValue = {
+    version: typeof value.version === 'number' && Number.isFinite(value.version) ? value.version : undefined,
+    rootObjective: typeof value.rootObjective === 'string' ? '' : null,
+    latestStep: typeof value.latestStep === 'string' ? '' : null,
+    ...(retained.followUps ? {followUps: Array(retained.followUps).fill('')} : {}),
+    ...(retained.constraints ? {constraints: Array(retained.constraints).fill('')} : {}),
+    ...(retained.criteria ? {criteria: Array(retained.criteria).fill('')} : {}),
+    ...(retained.corrections ? {corrections: Array(retained.corrections).fill('')} : {}),
+    ...(detailed && typeof value.updatedAt === 'string' ? {updatedAt: ''} : {}),
+    truncation: {taskContext: true, compacted: true, omitted},
+  };
+  type Slot = {value: string; weight: number; assign: (text: string) => void};
+  const slots: Slot[] = [];
+  if (typeof value.rootObjective === 'string') slots.push({value: value.rootObjective, weight: 5, assign: text => { excerpt.rootObjective = text; }});
+  if (typeof value.latestStep === 'string') slots.push({value: value.latestStep, weight: 4, assign: text => { excerpt.latestStep = text; }});
+  const addTail = (key: 'followUps' | 'constraints' | 'criteria' | 'corrections', items: string[], count: number, weights: number[]): void => {
+    if (!count) return;
+    const target = excerpt[key] as string[];
+    for (const [index, item] of items.slice(-count).entries()) {
+      slots.push({value: item, weight: weights[index] ?? weights.at(-1) ?? 1, assign: text => { target[index] = text; }});
+    }
+  };
+  addTail('followUps', followUps, retained.followUps, [2]);
+  addTail('constraints', constraints, retained.constraints, retained.constraints > 1 ? [2, 4] : [4]);
+  addTail('criteria', criteria, retained.criteria, [2]);
+  addTail('corrections', corrections, retained.corrections, [4]);
+  if (detailed && typeof value.updatedAt === 'string') slots.push({value: value.updatedAt, weight: 1, assign: text => { excerpt.updatedAt = text; }});
+
+  const encodedContentBytes = (text: string): number => Buffer.byteLength(JSON.stringify(text)) - 2;
+  const clipForJson = (text: string, budget: number): string => {
+    const redacted = (boundedWithEnv(text, MAX_SEMANTIC_BYTES, env) ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ');
+    if (encodedContentBytes(redacted) <= budget) return redacted;
+    const marker = '…';
+    if (encodedContentBytes(marker) > budget) return '';
+    const points = Array.from(redacted);
+    for (let retainedPoints = Math.min(points.length - 1, budget); retainedPoints >= 0; retainedPoints--) {
+      const head = Math.ceil(retainedPoints * 0.6);
+      const clipped = `${points.slice(0, head).join('')}${marker}${points.slice(points.length - (retainedPoints - head)).join('')}`;
+      if (encodedContentBytes(clipped) <= budget) return clipped;
+    }
+    return marker;
+  };
+  const overhead = Buffer.byteLength(JSON.stringify(excerpt));
+  const available = Math.max(0, maxBytes - overhead);
+  const minimum = available >= slots.length * 3 ? 3 : 0;
+  const distributable = Math.max(0, available - minimum * slots.length);
+  const weightTotal = slots.reduce((total, slot) => total + slot.weight, 0);
+  for (const slot of slots) {
+    const budget = minimum + Math.floor(distributable * slot.weight / Math.max(1, weightTotal));
+    slot.assign(clipForJson(slot.value, budget));
+  }
+  if (Buffer.byteLength(JSON.stringify(excerpt)) <= maxBytes) return excerpt;
+  const dropped = {
+    truncation: {
+      taskContext: true,
+      compacted: true,
+      excerptDropped: 'budget_exceeded',
+      omitted,
+      droppedFields: ['rootObjective', 'latestStep', 'followUps', 'constraints', 'criteria', 'corrections'],
+    },
+  };
+  return Buffer.byteLength(JSON.stringify(dropped)) <= maxBytes ? dropped : undefined;
+}
+
+function contextText(value: RecordValue, env: NodeJS.ProcessEnv): string {
+  const complete = JSON.stringify({...value, contextTruncated: false});
+  if (Buffer.byteLength(complete) <= MAX_CONTEXT_BYTES) return complete;
+  const response = isRecord(value.response) ? value.response : {};
+  const turnResults = isRecord(value.turnResults) ? value.turnResults : undefined;
+  const existingTruncation = isRecord(value.truncation) ? value.truncation : {};
+  const compact = {
+    event: value.event,
+    toolName: value.toolName,
+    model: value.model,
+    permissionMode: value.permissionMode,
+    source: value.source,
+    trigger: value.trigger,
+    reason: value.reason,
+    agentType: value.agentType,
+    argumentKeys: value.argumentKeys,
+    arguments: boundedWithEnv(JSON.stringify(value.arguments ?? {}), 700, env),
+    argumentProjection: value.argumentProjection,
+    response: {
+      status: response.status,
+      exitCode: response.exitCode,
+      isError: response.isError,
+      resultExcerpt: boundedWithEnv(response.failureExcerpt ?? response.resultExcerpt, 700, env),
+    },
+    currentPrompt: boundedWithEnv(value.currentPrompt, 500, env),
+    taskContext: taskContextExcerpt(value.taskContext, env, 1_400),
+    candidateCatalog: value.candidateCatalog,
+    truncation: {...existingTruncation, context: true, taskContext: value.taskContext !== undefined},
+    finalMessage: boundedWithEnv(value.finalMessage, 700, env),
+    turnResults: turnResults ? {status: turnResults.status, resultCount: Array.isArray(turnResults.results) ? turnResults.results.length : 0} : undefined,
+    contextTruncated: true,
+  };
+  const encoded = JSON.stringify(compact);
+  if (Buffer.byteLength(encoded) <= MAX_CONTEXT_BYTES) return encoded;
+  return JSON.stringify({
+    event: value.event,
+    toolName: value.toolName,
+    response: {status: response.status, exitCode: response.exitCode, isError: response.isError},
+    currentPrompt: boundedWithEnv(value.currentPrompt, 300, env),
+    taskContext: taskContextExcerpt(value.taskContext, env, 700),
+    candidateCatalog: value.candidateCatalog,
+    truncation: {...existingTruncation, context: true, taskContext: value.taskContext !== undefined},
+    turnResults: turnResults ? {status: turnResults.status, resultCount: Array.isArray(turnResults.results) ? turnResults.results.length : 0} : undefined,
+    contextTruncated: true,
+  });
+}
+
+function concreteCandidateQuestion(event: NormalizedEvent, catalog: CandidateCatalog): string {
+  const subject = catalog.domain === 'context' ? 'context-handling'
+    : catalog.domain === 'result' ? 'result-handling'
+      : catalog.domain;
+  return `Which available ${subject} candidate best fits the current authorized task, constraints, and evidence for this ${event.name} event?`;
+}
+
+function decisionInput(event: NormalizedEvent, env: NodeJS.ProcessEnv, currentPrompt?: string, taskContext?: TaskContextRecord, turnResults?: TurnResultContext): DecisionInput {
+  const args = semanticArguments(event, env);
+  const response = semanticResponse(event, env);
+  const message = finalMessage(event, env);
+  const domain = event.name === 'UserPromptSubmit' || event.name === 'SubagentStart' ? 'task'
+    : event.name === 'PreToolUse' || event.name === 'PermissionRequest' ? 'tool'
+    : event.name === 'PreCompact' || event.name === 'PostCompact' ? 'context' : 'result';
+  const catalog = candidateCatalog(event, domain, env, taskContext);
+  const taskContextState = taskContextView(taskContext);
+  const taskContextWasClipped = taskContextState ? JSON.stringify(taskContextState).includes('...[truncated]...') : false;
+  const context = contextText({
+    event: event.name,
+    toolName: boundedWithEnv(event.toolName, 128, env),
+    model: boundedWithEnv(event.model, 128, env),
+    permissionMode: boundedWithEnv(event.permissionMode, 80, env),
+    source: boundedWithEnv(event.source, 80, env),
+    trigger: boundedWithEnv(event.trigger, 80, env),
+    reason: boundedWithEnv(event.reason, 80, env),
+    agentType: boundedWithEnv(event.agentType, 128, env),
+    argumentKeys: args.keys,
+    arguments: args.values,
+    argumentProjection: {omitted: args.omitted, truncated: args.truncated, tailRetained: args.tailRetained},
+    response,
+    currentPrompt: taskContextState ? undefined : currentPrompt,
+    taskContext: taskContextState,
+    candidateCatalog: {provided: catalog.provided, source: catalog.source, domain: catalog.domain, count: catalog.candidates.length},
+    truncation: {
+      currentPrompt: Boolean(currentPrompt?.includes('...[truncated]...')),
+      taskContext: taskContextWasClipped,
+      arguments: args.truncated,
+      tailRetained: args.tailRetained || Boolean(currentPrompt?.includes('...[truncated]...')) || taskContextWasClipped,
+    },
+    finalMessage: message,
+    turnResults,
+  }, env);
+  const evidence: Array<{id: string; text: string; source?: string}> = [];
+  const promptEvidence = event.name === 'UserPromptSubmit' ? boundedWithEnv(event.prompt, MAX_PROMPT_BYTES, env) : undefined;
+  if (promptEvidence) evidence.push({id: safeId('task.prompt'), text: promptEvidence, source: 'prompt'});
+  if (response.failureExcerpt) evidence.push({id: safeId('tool.failure'), text: response.failureExcerpt, source: 'hook'});
+  else if (event.name === 'PostToolUse' && response.resultExcerpt) evidence.push({id: safeId('tool.result'), text: response.resultExcerpt, source: 'hook'});
+  if (message) evidence.push({id: safeId('result.message'), text: message, source: 'assistant'});
+  if (turnResults?.status === 'available') {
+    const text = boundedWithEnv(JSON.stringify(turnResults.results), MAX_CONTEXT_BYTES, env);
+    if (text) evidence.push({id: safeId('result.tool_summaries'), text, source: 'hook'});
+  }
+  const question = catalog.provided ? concreteCandidateQuestion(event, catalog) : event.name === 'UserPromptSubmit'
+    ? 'Does the current user prompt support proceeding with the ordinary workflow, reconsidering direction, or gathering evidence first?'
+    : event.name === 'PreToolUse'
+    ? 'Should this tool action proceed, be reconsidered, or gather evidence?'
+    : event.name === 'PostToolUse'
+      ? 'After this tool result, should the next step proceed, be reconsidered, or gather evidence?'
+      : event.name === 'PermissionRequest'
+        ? 'What advisory feedback best fits this approval request without granting or denying it?'
+        : event.name === 'PreCompact' || event.name === 'PostCompact'
+          ? 'Does this context-compaction lifecycle point support proceeding, reconsidering, or gathering evidence?'
+          : event.name === 'SubagentStart'
+            ? 'Does this subagent start fit the current task, or should the workflow be reconsidered or gather evidence?'
+      : 'Should this task result proceed, be reconsidered, or gather evidence?';
+  return {domain, question, context, candidates: catalog.candidates, evidence, mode: 'evaluate'};
+}
+
+function eventKey(event: NormalizedEvent): string {
+  const promptIdentity = event.turnId || (typeof event.raw.event_id === 'string' ? event.raw.event_id : hash(event.prompt ?? 'prompt'));
+  let identity: string;
+  if (event.eventId) identity = `${event.sessionId}\0${event.eventId}`;
+  else if (event.name === 'SessionStart') identity = `${event.sessionId}\0${event.source ?? 'unknown'}\0${event.turnId}`;
+  else if (event.name === 'SessionEnd') identity = `${event.sessionId}\0${event.reason ?? 'other'}`;
+  else if (event.name === 'SubagentStart' || event.name === 'SubagentStop') identity = `${event.sessionId}\0${event.turnId}\0${event.agentId}`;
+  else if (event.name === 'PermissionRequest') identity = `${event.sessionId}\0${event.turnId}\0${event.toolName ?? ''}\0${hash(JSON.stringify(event.raw.tool_input ?? null))}`;
+  else if (event.name === 'PreCompact' || event.name === 'PostCompact') identity = `${event.sessionId}\0${event.turnId}\0${event.trigger ?? ''}`;
+  else if (event.name === 'UserPromptSubmit' || event.name === 'Stop' || event.name === 'Interrupt') identity = `${event.sessionId}\0${promptIdentity}`;
+  else identity = `${event.sessionId}\0${event.turnId}\0${event.toolUseId}`;
+  return hash(`${event.name}\0${identity}`);
+}
+
+type DeadlineResult<T> = {expired: true} | {expired: false; value: T};
+
+/** Await bounded prework without allowing a contended local lock to consume
+ * the entire hook budget. The underlying local operation may finish later,
+ * but no provider call is made after this deadline. */
+async function withinHookDeadline<T>(deadline: number, work: () => Promise<T>): Promise<DeadlineResult<T>> {
+  const remaining = deadline - Date.now();
+  if (remaining <= 0) return {expired: true};
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expired = Symbol('hook_deadline_expired');
+  try {
+    const result = await Promise.race([
+      work(),
+      new Promise<typeof expired>(resolve => { timer = setTimeout(() => resolve(expired), remaining); }),
+    ]);
+    return result === expired ? {expired: true} : {expired: false, value: result};
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+async function claimEvent(event: NormalizedEvent, policy: HookPolicy, env: NodeJS.ProcessEnv): Promise<boolean> {
+  if (policy.maxHookCallsPerSession !== null && policy.maxHookCallsPerSession <= 0) return false;
+  const directory = dataDirectory(env);
+  if (!isAbsolute(directory) || directory.includes('\0')) return false;
+  let workspace: string;
+  try {
+    await mkdir(directory, {recursive: true, mode: 0o700});
+    workspace = await realpath(event.cwd);
+  } catch {
+    return false;
+  }
+  const sessionDirectory = join(directory, EVENT_DIRECTORY, hash(workspace), hash(event.sessionId));
+  await mkdir(sessionDirectory, {recursive: true, mode: 0o700}).catch(() => {});
+  const eventName = eventKey(event);
+  if (policy.maxHookCallsPerSession === null) {
+    try {
+      const marker = await open(join(sessionDirectory, eventName), constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+      await marker.close();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  const lockPath = join(sessionDirectory, '.lock');
+  let lock;
+  try {
+    lock = await open(lockPath, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+  } catch {
+    return false;
+  }
+  try {
+    const entries = await readdir(sessionDirectory, {withFileTypes: true});
+    if (entries.some(entry => entry.isFile() && entry.name === eventName)) return false;
+    const count = entries.filter(entry => entry.isFile() && /^[a-f0-9]{64}$/.test(entry.name)).length;
+    if (policy.maxHookCallsPerSession !== null && count >= policy.maxHookCallsPerSession) return false;
+    const marker = await open(join(sessionDirectory, eventName), constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+    await marker.close();
+    return true;
+  } catch {
+    return false;
+  } finally {
+    await lock.close().catch(() => {});
+    await unlink(lockPath).catch(() => {});
+  }
+}
+
+function instructionOutput(event: NormalizedEvent): HookResult {
+  return {hookSpecificOutput: {hookEventName: event.name, additionalContext: LOCAL_INSTRUCTION}};
+}
+
+function validatedCandidateChoice(input: DecisionInput | undefined, result: DecisionAssessment | undefined): string | undefined {
+  if (!input || !isSafeCandidateId(result?.choice)) return undefined;
+  const candidate = input.candidates.find(item => item.id === result.choice);
+  return candidate && candidate.available !== false ? candidate.id : undefined;
+}
+
+function validatedProviderChoice(input: DecisionInput, result: DecisionAssessment | undefined): string | undefined {
+  if (result?.status === 'abstained' && result.choice === 'insufficient_evidence') return result.choice;
+  return validatedCandidateChoice(input, result);
+}
+
+function normalizeDecisionAssessment(input: DecisionInput, result: DecisionAssessment): DecisionAssessment {
+  if (result.status !== 'assessed' || validatedCandidateChoice(input, result)) return result;
+  return {
+    status: 'unavailable',
+    reasonCode: 'invalid_choice',
+    ...(result.receiptPersisted === true && typeof result.receiptId === 'string'
+      ? {receiptPersisted: true, receiptId: result.receiptId}
+      : {}),
+  };
+}
+
+function decisionOutput(event: NormalizedEvent, result: DecisionAssessment, input?: DecisionInput): HookResult {
+  const prefix = event.name === 'UserPromptSubmit' ? `${LOCAL_INSTRUCTION} ` : '';
+  const emit = (message: string): HookResult => ['Stop', 'SubagentStop', 'PermissionRequest', 'Interrupt', 'SessionEnd', 'PreCompact', 'PostCompact'].includes(event.name)
+    ? {systemMessage: message}
+    : {hookSpecificOutput: {hookEventName: event.name, additionalContext: message}};
+  const status = typeof result.status === 'string' && ['assessed', 'abstained', 'unavailable', 'skipped', 'preview'].includes(result.status)
+    ? result.status : 'unavailable';
+  const fields = [`status=${status}`];
+  // An abstention is intentionally neutral. The provider choice remains in
+  // the private receipt for diagnosis, but must not nudge the host workflow.
+  const choice = status === 'assessed' ? validatedCandidateChoice(input, result) : undefined;
+  if (choice) fields.push(`decision=${choice}`);
+  if (typeof result.confidence === 'number' && Number.isFinite(result.confidence) && result.confidence >= 0 && result.confidence <= 1) {
+    fields.push(`confidence=${result.confidence.toFixed(2)}`);
+  }
+  if (typeof result.reasonCode === 'string' && /^[a-z_]{1,80}$/.test(result.reasonCode)) fields.push(`reason=${result.reasonCode}`);
+  if (result.receiptPersisted === true && typeof result.receiptId === 'string' && /^[a-f0-9-]{1,80}$/.test(result.receiptId)) fields.push(`receipt=${result.receiptId}`);
+  const suffix = status === 'assessed'
+    ? 'advisory only, continue ordinary reasoning.'
+    : 'continue ordinary reasoning and gather authorized evidence if useful.';
+  return emit(`${prefix}JEV advisory: ${fields.join('; ')}; ${suffix}`);
+}
+
+function resultStatus(input: DecisionInput, result: DecisionAssessment | undefined): string {
+  const choice = result?.status === 'assessed' ? validatedCandidateChoice(input, result) : undefined;
+  if (choice) return choice;
+  return 'unavailable';
+}
+
+async function writeInvocationReceipt(event: NormalizedEvent, env: NodeJS.ProcessEnv, input: DecisionInput, response: ReturnType<typeof semanticResponse>, result: DecisionAssessment | undefined): Promise<void> {
+  const sessionDirectory = await privateSessionDirectory(event, env, true);
+  if (!sessionDirectory) return;
+  const directory = join(sessionDirectory, INVOCATION_DIRECTORY);
+  const path = join(directory, `${eventKey(event)}.json`);
+  try {
+    await mkdir(directory, {recursive: true, mode: 0o700});
+    const receipt: RecordValue = {
+      event: event.name,
+      sessionHash: hash(event.sessionId),
+      toolIdHash: hash(event.toolUseId || event.agentId || event.turnId || 'none'),
+      output: {
+        status: typeof response.status === 'string' ? response.status : undefined,
+        exitCode: response.exitCode,
+        isError: response.isError,
+        resultExcerptBytes: response.resultExcerpt === undefined ? undefined : Buffer.byteLength(response.resultExcerpt),
+        resultExcerptDigest: response.resultExcerpt === undefined ? undefined : hash(response.resultExcerpt),
+      },
+      inputDigest: hash(JSON.stringify(input)),
+      evidenceIds: input.evidence.map(item => item.id),
+      contextBytes: Buffer.byteLength(input.context),
+      contextTruncated: input.context.includes('"contextTruncated":true'),
+      evidenceTruncated: input.evidence.some(item => {
+        const bytes = Buffer.byteLength(item.text);
+        if (item.id === 'tool.failure') return bytes >= MAX_FAILURE_EXCERPT_BYTES;
+        if (item.id === 'result.tool_summaries') return bytes >= MAX_CONTEXT_BYTES;
+        return bytes >= MAX_RESULT_EXCERPT_BYTES;
+      }),
+      referenceReceiptId: result?.receiptPersisted === true && typeof result?.receiptId === 'string' && /^[a-f0-9-]{1,80}$/.test(result.receiptId) ? result.receiptId : undefined,
+      classification: resultStatus(input, result),
+      providerChoice: validatedProviderChoice(input, result),
+      assessmentStatus: result?.status && ['assessed','abstained','unavailable','skipped','preview'].includes(result.status) ? result.status : 'unavailable',
+      confidence: typeof result?.confidence === 'number' && Number.isFinite(result.confidence) && result.confidence >= 0 && result.confidence <= 1 ? result.confidence : undefined,
+      reasonCode: result?.reasonCode && /^[a-z_]{1,80}$/.test(result.reasonCode) ? result.reasonCode : undefined,
+      timestamp: new Date().toISOString(),
+      origin: {
+        source: event.source ?? 'hook',
+        event: event.name,
+        eventId: event.eventId || undefined,
+        turnId: event.turnId || undefined,
+        agentId: event.agentId || undefined,
+      },
+      correlationId: eventKey(event),
+      candidateDigest: hash(JSON.stringify(input.candidates.map(candidate => candidate.id))),
+    };
+    const contents = JSON.stringify(receipt) + '\n';
+    const handle = await open(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+    try { await handle.writeFile(contents, 'utf8'); } finally { await handle.close(); }
+  } catch { /* receipts are private proof and never affect hook behavior */ }
+}
+
+function defaultService(env: NodeJS.ProcessEnv, timeoutMs = PROVIDER_TIMEOUT_MS, fetchFn?: typeof fetch): DecisionService {
+  const snapshot = (env as HookEnv)[credentialSnapshot];
+  return createService({timeoutMs, env, fetchFn, ...(env.JEV_API_KEY_FILE === undefined ? {} : {apiKey: snapshot ?? ''})}) as unknown as DecisionService;
+}
+
+export async function runDecisionHook(raw: string | Uint8Array | unknown, options: {env?: NodeJS.ProcessEnv; service?: DecisionService; hookTimeoutMs?: number; fetchFn?: typeof fetch} = {}): Promise<HookResult> {
+  const startedAt = Date.now();
+  try {
+    const env = {...(options.env ?? process.env)} as HookEnv;
+    // Snapshot before the first await. Redaction, cache writes and provider
+    // authentication must all use the same credential for this invocation.
+    if (env.JEV_API_KEY_FILE !== undefined) {
+      env[credentialSnapshot] = readCredentialFile(env.JEV_API_KEY_FILE);
+      if (!env[credentialSnapshot]) return {};
+      // Share the entry-time value with the local task-context writer. A file
+      // can rotate while an event is queued; this keeps saved context and the
+      // provider payload on the same credential snapshot.
+      env.TYPESAFE_API_KEY = env[credentialSnapshot];
+    }
+    // Read policy before parsing oversized input so disabled automation remains
+    // a cheap fail-open path. This provisional budget is replaced with the
+    // event-specific deadline as soon as the native event is normalized.
+    const initialTimeoutMs = options.hookTimeoutMs === undefined ? HOOK_TIMEOUT_MS : Math.min(Math.max(options.hookTimeoutMs, 1), HOOK_TIMEOUT_MS);
+    const policyResult = await withinHookDeadline(startedAt + initialTimeoutMs, () => readPolicy(env));
+    if (policyResult.expired || !policyResult.value.enabled || env.JEV_ENABLED === '0') return {};
+    const policy = policyResult.value;
+    let parsed: unknown = raw;
+    if (typeof raw === 'string' || raw instanceof Uint8Array) {
+      if (Buffer.byteLength(raw) > MAX_STDIN_BYTES) {
+        return {systemMessage: 'JEV advisory: status=skipped; reason=hook_input_too_large; continue ordinary reasoning and gather authorized evidence if useful.'};
+      }
+      parsed = JSON.parse(typeof raw === 'string' ? raw : Buffer.from(raw).toString('utf8')) as unknown;
+    }
+    const event = normalizeDecisionEvent(parsed);
+    if (!event) return {};
+    const shortEvent = event.name === 'SessionEnd' || event.name === 'Interrupt';
+    const eventTimeoutMs = shortEvent ? SHORT_EVENT_HOOK_TIMEOUT_MS : HOOK_TIMEOUT_MS;
+    const timeoutMs = options.hookTimeoutMs === undefined ? eventTimeoutMs : Math.min(Math.max(options.hookTimeoutMs, 1), eventTimeoutMs);
+    const deadline = startedAt + timeoutMs;
+    const timeoutAssessment: DecisionAssessment = {status: 'unavailable', reasonCode: 'hook_timeout'};
+    const timedOut = (): HookResult => decisionOutput(event, timeoutAssessment);
+    if (Date.now() >= deadline) return timedOut();
+    const allowedResult = await withinHookDeadline(deadline, () => workspaceAllowed(policy, event.cwd));
+    if (allowedResult.expired) return timedOut();
+    if (!allowedResult.value || isInternal(event, env)) return {};
+    if (event.name === 'SessionStart') {
+      const claimed = await withinHookDeadline(deadline, () => claimEvent(event, policy, env));
+      if (claimed.expired) return timedOut();
+      if (!claimed.value) return {};
+      return instructionOutput(event);
+    }
+    const scope = taskContextScope(event);
+    const loadedContext = await withinHookDeadline(deadline, () => loadTaskContext(scope, {env}));
+    if (loadedContext.expired) return timedOut();
+    let taskContext = loadedContext.value;
+    if (event.name === 'UserPromptSubmit') {
+      const update = promptContextUpdate(event, taskContext, env);
+      if (update) {
+        const updatedContext = await withinHookDeadline(deadline, () => updateTaskContext(scope, update, {env}));
+        if (updatedContext.expired) return timedOut();
+        taskContext = updatedContext.value ?? taskContext;
+      }
+    }
+    const cachedPromptResult = await withinHookDeadline(deadline, () => event.name === 'UserPromptSubmit' ? updatePromptCache(event, env) : readPromptCache(event, env));
+    if (cachedPromptResult.expired) return timedOut();
+    const cachedPrompt = cachedPromptResult.value;
+    const claimed = await withinHookDeadline(deadline, () => claimEvent(event, policy, env));
+    if (claimed.expired) return timedOut();
+    if (!claimed.value) return {};
+    const response = semanticResponse(event, env);
+    if (event.name === 'PostToolUse') {
+      const turnCache = await withinHookDeadline(deadline, () => updateTurnResultCache(event, response, env));
+      if (turnCache.expired) return timedOut();
+    }
+    let turnResults: TurnResultContext | undefined;
+    if (event.name === 'Stop' || event.name === 'SubagentStop' || event.name === 'Interrupt') {
+      const turnCache = await withinHookDeadline(deadline, () => readTurnResultCache(event, env));
+      if (turnCache.expired) return timedOut();
+      turnResults = turnCache.value;
+    }
+    const input = decisionInput(event, env, cachedPrompt, taskContext, turnResults);
+    if (Date.now() >= deadline) return timedOut();
+    const remainingMs = deadline - Date.now();
+    const providerTimeoutMs = Math.min(shortEvent ? SHORT_EVENT_PROVIDER_TIMEOUT_MS : PROVIDER_TIMEOUT_MS, Math.max(1, remainingMs));
+    const service = options.service ?? defaultService(env, providerTimeoutMs, options.fetchFn);
+    const controller = new AbortController();
+    let timeoutResolve: ((value: DecisionAssessment) => void) | undefined;
+    const timeout = new Promise<DecisionAssessment>(resolve => { timeoutResolve = resolve; });
+    const timer = setTimeout(() => {
+      controller.abort();
+      timeoutResolve?.({status: 'unavailable', reasonCode: 'hook_timeout'});
+    }, remainingMs);
+    let result: DecisionAssessment;
+    try {
+      result = await Promise.race([service.classifyDecision(input, controller.signal), timeout]);
+    } catch {
+      result = {status: 'unavailable', reasonCode: 'service_error'};
+    } finally {
+      clearTimeout(timer);
+    }
+    if (Date.now() >= deadline) result = timeoutAssessment;
+    else result = normalizeDecisionAssessment(input, result);
+    const receipt = await withinHookDeadline(deadline, () => writeInvocationReceipt(event, env, input, response, result));
+    if (receipt.expired || Date.now() >= deadline) return timedOut();
+    return decisionOutput(event, result, input);
+  } catch {
+    return {};
+  }
+}
+
+async function readStdin(): Promise<Uint8Array> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of process.stdin) {
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += bytes.byteLength;
+    if (total > MAX_STDIN_BYTES) return new Uint8Array(MAX_STDIN_BYTES + 1);
+    chunks.push(bytes);
+  }
+  return Buffer.concat(chunks);
+}
+
+async function main(): Promise<void> {
+  const result = await runDecisionHook(await readStdin());
+  process.stdout.write(JSON.stringify(result));
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(await realpath(process.argv[1])).href) void main().catch(() => process.stdout.write('{}'));

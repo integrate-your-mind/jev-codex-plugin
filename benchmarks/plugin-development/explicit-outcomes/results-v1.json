@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "jev-explicit-outcomes-public-result-v1",
+  "scope": "Deterministic direct storage API and authored fixture contract, not live Jev or Codex task quality.",
+  "startedAt": "2026-09-26T23:32:57.851Z",
+  "finishedAt": "2026-09-26T23:32:58.155Z",
+  "privateReceiptSha256": "9be5bd6013be15bd3defbb4900c2c9ab787d261ff81a46179656c895c0498e28",
+  "freezeSha256": "9b1e72a34c8b504229dd73d21be593dd417640848f5f8419345df7e00d6fe097",
+  "summary": {
+    "plannedCases": 4,
+    "completedCases": 4,
+    "excludedCases": 0,
+    "callerSupportedObservations": 4,
+    "independentHarnessActions": 4,
+    "independentHarnessOraclePasses": 4,
+    "independentAssessmentCounts": {
+      "supported": 1,
+      "unknown": 1,
+      "unsupported": 1,
+      "contradicted": 1
+    },
+    "callerHarnessDivergences": 3,
+    "apiCallsAttempted": 8,
+    "apiCallsStored": 6,
+    "apiCallsRejected": 2,
+    "storedRecordReadbacks": 6,
+    "storedRecordReadbackMatches": 6
+  },
+  "denominators": {
+    "cases": 4,
+    "callerSupportedObservations": 4,
+    "independentHarnessActions": 4,
+    "expectedHarnessAssessments": {
+      "supported": 1,
+      "unknown": 1,
+      "unsupported": 1,
+      "contradicted": 1
+    },
+    "expectedCallerHarnessDivergences": 3,
+    "schemaValidPayloads": 1,
+    "schemaInvalidPayloads": 10,
+    "missingReceiptCalls": 1,
+    "invalidPersistedReceiptCalls": 1,
+    "duplicateObservationCalls": 2,
+    "totalApiCalls": 8,
+    "expectedStoredRecords": 6
+  },
+  "cases": [
+    {
+      "caseId": "outcome-normal",
+      "storedCallerObservation": "supported",
+      "independentlyVerified": false,
+      "harnessAssessment": "supported"
+    },
+    {
+      "caseId": "outcome-conflict",
+      "storedCallerObservation": "supported",
+      "independentlyVerified": false,
+      "harnessAssessment": "unknown"
+    },
+    {
+      "caseId": "outcome-stale",
+      "storedCallerObservation": "supported",
+      "independentlyVerified": false,
+      "harnessAssessment": "unsupported"
+    },
+    {
+      "caseId": "outcome-adversarial",
+      "storedCallerObservation": "supported",
+      "independentlyVerified": false,
+      "harnessAssessment": "contradicted"
+    }
+  ],
+  "validation": {
+    "independentRootTestsPassed": 10,
+    "network": "denied",
+    "providerCalls": 0,
+    "modelCalls": 0,
+    "temporaryStateRemoved": true
+  },
+  "interpretation": "Three caller claims diverge from independent evidence. All four oracle passes mean the expected assessment was produced; only one case has supported action success. Outcome records are not independently verified success counts. Identical observations append two records; no deduplication or effect idempotency is established.",
+  "excludedClaims": [
+    "MCP transport integration",
+    "provider delivery or billing",
+    "effect execution caused by Jev",
+    "Codex completion improvement",
+    "held-out task generalization"
+  ]
+}

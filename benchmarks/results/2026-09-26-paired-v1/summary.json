@@ -1,0 +1,635 @@
+{
+  "schemaVersion": "paired-codex-summary-v1",
+  "publicArtifactVersion": "2026-09-26-paired-v1",
+  "sourceSha256": "2b20ae3da5325936384978e16938af0d2f197aa3e2b56cfc49ccc8e8255d0ff4",
+  "armMapping": {
+    "baseline": "codex_only",
+    "treatment": "codex_jev"
+  },
+  "primaryMetric": "artifactPassed",
+  "timeMetric": "sum of turn durations; excludes startup, oracle and cleanup",
+  "byArm": {
+    "baseline": {
+      "trials": 8,
+      "passed": 8,
+      "medianTurnMs": 46891.471729,
+      "totalTurnMs": 397607.3739140001,
+      "measuredTurnTrials": 8,
+      "tokenObservedTrials": 8,
+      "inputTokens": 715434,
+      "cachedInputTokens": 572160,
+      "outputTokens": 9750,
+      "reasoningOutputTokens": 255,
+      "commands": 30,
+      "mcpCalls": 0,
+      "hooks": 0,
+      "hookDurationSumMs": 0
+    },
+    "treatment": {
+      "trials": 8,
+      "passed": 8,
+      "medianTurnMs": 55098.44445849999,
+      "totalTurnMs": 465059.593707,
+      "measuredTurnTrials": 8,
+      "tokenObservedTrials": 8,
+      "inputTokens": 857264,
+      "cachedInputTokens": 715392,
+      "outputTokens": 11021,
+      "reasoningOutputTokens": 261,
+      "commands": 30,
+      "mcpCalls": 7,
+      "hooks": 122,
+      "hookDurationSumMs": 36668
+    }
+  },
+  "pairs": [
+    {
+      "taskId": "retry-repair",
+      "repeat": 1,
+      "baselinePassed": true,
+      "treatmentPassed": true,
+      "baselineMs": 57029.413375000004,
+      "treatmentMs": 60496.265792,
+      "deltaMs": 3466.8524169999946,
+      "timeRatio": 1.0607906028105798
+    },
+    {
+      "taskId": "interval-repair",
+      "repeat": 2,
+      "baselinePassed": true,
+      "treatmentPassed": true,
+      "baselineMs": 47201.126415999985,
+      "treatmentMs": 51256.68562500001,
+      "deltaMs": 4055.559209000028,
+      "timeRatio": 1.0859208141190735
+    },
+    {
+      "taskId": "csv-parser",
+      "repeat": 2,
+      "baselinePassed": true,
+      "treatmentPassed": true,
+      "baselineMs": 41083.946375,
+      "treatmentMs": 52867.26041699998,
+      "deltaMs": 11783.314041999984,
+      "timeRatio": 1.2868106664935735
+    },
+    {
+      "taskId": "retry-repair",
+      "repeat": 2,
+      "baselinePassed": true,
+      "treatmentPassed": true,
+      "baselineMs": 46581.81704200001,
+      "treatmentMs": 57329.62849999999,
+      "deltaMs": 10747.811457999982,
+      "timeRatio": 1.2307297598182856
+    },
+    {
+      "taskId": "changed-route",
+      "repeat": 2,
+      "baselinePassed": true,
+      "treatmentPassed": true,
+      "baselineMs": 56759.85145699995,
+      "treatmentMs": 70000.91491599998,
+      "deltaMs": 13241.063459000026,
+      "timeRatio": 1.2332822077420547
+    },
+    {
+      "taskId": "csv-parser",
+      "repeat": 1,
+      "baselinePassed": true,
+      "treatmentPassed": true,
+      "baselineMs": 41947.07366600004,
+      "treatmentMs": 51970.62962500006,
+      "deltaMs": 10023.55595900002,
+      "timeRatio": 1.2389572163915823
+    },
+    {
+      "taskId": "changed-route",
+      "repeat": 1,
+      "baselinePassed": true,
+      "treatmentPassed": true,
+      "baselineMs": 62267.43445800012,
+      "treatmentMs": 69992.83291600004,
+      "deltaMs": 7725.398457999923,
+      "timeRatio": 1.1240680385380382
+    },
+    {
+      "taskId": "interval-repair",
+      "repeat": 1,
+      "baselinePassed": true,
+      "treatmentPassed": true,
+      "baselineMs": 44736.71112500003,
+      "treatmentMs": 51145.37591599999,
+      "deltaMs": 6408.664790999959,
+      "timeRatio": 1.1432529265080158
+    }
+  ],
+  "trials": [
+    {
+      "trialId": "retry-repair.r1.baseline",
+      "taskId": "retry-repair",
+      "repeat": 1,
+      "arm": "baseline",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 57029.413375000004,
+      "turnStatuses": [
+        "completed"
+      ],
+      "startupMs": 61.08491700000013,
+      "commandCount": 4,
+      "failedCommandCount": 0,
+      "mcpCallCount": 0,
+      "hookCount": 0,
+      "hookDurationSumMs": 0,
+      "usage": {
+        "totalTokens": 84923,
+        "inputTokens": 83441,
+        "cachedInputTokens": 60544,
+        "outputTokens": 1482,
+        "reasoningOutputTokens": 177
+      },
+      "failure": null
+    },
+    {
+      "trialId": "retry-repair.r1.treatment",
+      "taskId": "retry-repair",
+      "repeat": 1,
+      "arm": "treatment",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 60496.265792,
+      "turnStatuses": [
+        "completed"
+      ],
+      "startupMs": 3456.0650839999944,
+      "commandCount": 3,
+      "failedCommandCount": 0,
+      "mcpCallCount": 1,
+      "hookCount": 13,
+      "hookDurationSumMs": 3701,
+      "usage": {
+        "totalTokens": 86830,
+        "inputTokens": 85239,
+        "cachedInputTokens": 61824,
+        "outputTokens": 1591,
+        "reasoningOutputTokens": 120
+      },
+      "failure": null
+    },
+    {
+      "trialId": "interval-repair.r2.treatment",
+      "taskId": "interval-repair",
+      "repeat": 2,
+      "arm": "treatment",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 51256.68562500001,
+      "turnStatuses": [
+        "completed"
+      ],
+      "startupMs": 3206.680582999994,
+      "commandCount": 4,
+      "failedCommandCount": 0,
+      "mcpCallCount": 1,
+      "hookCount": 15,
+      "hookDurationSumMs": 4284,
+      "usage": {
+        "totalTokens": 107175,
+        "inputTokens": 106026,
+        "cachedInputTokens": 94208,
+        "outputTokens": 1149,
+        "reasoningOutputTokens": 0
+      },
+      "failure": null
+    },
+    {
+      "trialId": "interval-repair.r2.baseline",
+      "taskId": "interval-repair",
+      "repeat": 2,
+      "arm": "baseline",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 47201.126415999985,
+      "turnStatuses": [
+        "completed"
+      ],
+      "startupMs": 52.99258300001384,
+      "commandCount": 4,
+      "failedCommandCount": 0,
+      "mcpCallCount": 0,
+      "hookCount": 0,
+      "hookDurationSumMs": 0,
+      "usage": {
+        "totalTokens": 85008,
+        "inputTokens": 83978,
+        "cachedInputTokens": 65664,
+        "outputTokens": 1030,
+        "reasoningOutputTokens": 0
+      },
+      "failure": null
+    },
+    {
+      "trialId": "csv-parser.r2.baseline",
+      "taskId": "csv-parser",
+      "repeat": 2,
+      "arm": "baseline",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 41083.946375,
+      "turnStatuses": [
+        "completed"
+      ],
+      "startupMs": 46.568209000019124,
+      "commandCount": 3,
+      "failedCommandCount": 1,
+      "mcpCallCount": 0,
+      "hookCount": 0,
+      "hookDurationSumMs": 0,
+      "usage": {
+        "totalTokens": 67878,
+        "inputTokens": 66811,
+        "cachedInputTokens": 48768,
+        "outputTokens": 1067,
+        "reasoningOutputTokens": 0
+      },
+      "failure": null
+    },
+    {
+      "trialId": "csv-parser.r2.treatment",
+      "taskId": "csv-parser",
+      "repeat": 2,
+      "arm": "treatment",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 52867.26041699998,
+      "turnStatuses": [
+        "completed"
+      ],
+      "startupMs": 2944.393665999989,
+      "commandCount": 3,
+      "failedCommandCount": 0,
+      "mcpCallCount": 1,
+      "hookCount": 13,
+      "hookDurationSumMs": 3765,
+      "usage": {
+        "totalTokens": 85820,
+        "inputTokens": 84587,
+        "cachedInputTokens": 72960,
+        "outputTokens": 1233,
+        "reasoningOutputTokens": 0
+      },
+      "failure": null
+    },
+    {
+      "trialId": "retry-repair.r2.treatment",
+      "taskId": "retry-repair",
+      "repeat": 2,
+      "arm": "treatment",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 57329.62849999999,
+      "turnStatuses": [
+        "completed"
+      ],
+      "startupMs": 3277.6449169999687,
+      "commandCount": 3,
+      "failedCommandCount": 0,
+      "mcpCallCount": 1,
+      "hookCount": 13,
+      "hookDurationSumMs": 3820,
+      "usage": {
+        "totalTokens": 86558,
+        "inputTokens": 85075,
+        "cachedInputTokens": 61696,
+        "outputTokens": 1483,
+        "reasoningOutputTokens": 141
+      },
+      "failure": null
+    },
+    {
+      "trialId": "retry-repair.r2.baseline",
+      "taskId": "retry-repair",
+      "repeat": 2,
+      "arm": "baseline",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 46581.81704200001,
+      "turnStatuses": [
+        "completed"
+      ],
+      "startupMs": 54.30962499999441,
+      "commandCount": 3,
+      "failedCommandCount": 0,
+      "mcpCallCount": 0,
+      "hookCount": 0,
+      "hookDurationSumMs": 0,
+      "usage": {
+        "totalTokens": 68665,
+        "inputTokens": 67419,
+        "cachedInputTokens": 48896,
+        "outputTokens": 1246,
+        "reasoningOutputTokens": 78
+      },
+      "failure": null
+    },
+    {
+      "trialId": "changed-route.r2.baseline",
+      "taskId": "changed-route",
+      "repeat": 2,
+      "arm": "baseline",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 56759.85145699995,
+      "turnStatuses": [
+        "completed",
+        "completed"
+      ],
+      "startupMs": 50.61945800000103,
+      "commandCount": 5,
+      "failedCommandCount": 0,
+      "mcpCallCount": 0,
+      "hookCount": 0,
+      "hookDurationSumMs": 0,
+      "usage": {
+        "totalTokens": 141163,
+        "inputTokens": 139760,
+        "cachedInputTokens": 113792,
+        "outputTokens": 1403,
+        "reasoningOutputTokens": 0
+      },
+      "failure": null
+    },
+    {
+      "trialId": "changed-route.r2.treatment",
+      "taskId": "changed-route",
+      "repeat": 2,
+      "arm": "treatment",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 70000.91491599998,
+      "turnStatuses": [
+        "completed",
+        "completed"
+      ],
+      "startupMs": 3333.2055830000318,
+      "commandCount": 5,
+      "failedCommandCount": 0,
+      "mcpCallCount": 0,
+      "hookCount": 19,
+      "hookDurationSumMs": 6294,
+      "usage": {
+        "totalTokens": 153911,
+        "inputTokens": 152375,
+        "cachedInputTokens": 139136,
+        "outputTokens": 1536,
+        "reasoningOutputTokens": 0
+      },
+      "failure": null
+    },
+    {
+      "trialId": "csv-parser.r1.treatment",
+      "taskId": "csv-parser",
+      "repeat": 1,
+      "arm": "treatment",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 51970.62962500006,
+      "turnStatuses": [
+        "completed"
+      ],
+      "startupMs": 3292.5754590000724,
+      "commandCount": 3,
+      "failedCommandCount": 0,
+      "mcpCallCount": 1,
+      "hookCount": 13,
+      "hookDurationSumMs": 3755,
+      "usage": {
+        "totalTokens": 85647,
+        "inputTokens": 84468,
+        "cachedInputTokens": 72960,
+        "outputTokens": 1179,
+        "reasoningOutputTokens": 0
+      },
+      "failure": null
+    },
+    {
+      "trialId": "csv-parser.r1.baseline",
+      "taskId": "csv-parser",
+      "repeat": 1,
+      "arm": "baseline",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 41947.07366600004,
+      "turnStatuses": [
+        "completed"
+      ],
+      "startupMs": 48.95454200007953,
+      "commandCount": 3,
+      "failedCommandCount": 0,
+      "mcpCallCount": 0,
+      "hookCount": 0,
+      "hookDurationSumMs": 0,
+      "usage": {
+        "totalTokens": 67862,
+        "inputTokens": 66788,
+        "cachedInputTokens": 48768,
+        "outputTokens": 1074,
+        "reasoningOutputTokens": 0
+      },
+      "failure": null
+    },
+    {
+      "trialId": "changed-route.r1.baseline",
+      "taskId": "changed-route",
+      "repeat": 1,
+      "arm": "baseline",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 62267.43445800012,
+      "turnStatuses": [
+        "completed",
+        "completed"
+      ],
+      "startupMs": 51.538874999969266,
+      "commandCount": 5,
+      "failedCommandCount": 0,
+      "mcpCallCount": 0,
+      "hookCount": 0,
+      "hookDurationSumMs": 0,
+      "usage": {
+        "totalTokens": 141787,
+        "inputTokens": 140329,
+        "cachedInputTokens": 125568,
+        "outputTokens": 1458,
+        "reasoningOutputTokens": 0
+      },
+      "failure": null
+    },
+    {
+      "trialId": "changed-route.r1.treatment",
+      "taskId": "changed-route",
+      "repeat": 1,
+      "arm": "treatment",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 69992.83291600004,
+      "turnStatuses": [
+        "completed",
+        "completed"
+      ],
+      "startupMs": 3403.381000000052,
+      "commandCount": 5,
+      "failedCommandCount": 0,
+      "mcpCallCount": 1,
+      "hookCount": 21,
+      "hookDurationSumMs": 6694,
+      "usage": {
+        "totalTokens": 154731,
+        "inputTokens": 153055,
+        "cachedInputTokens": 139648,
+        "outputTokens": 1676,
+        "reasoningOutputTokens": 0
+      },
+      "failure": null
+    },
+    {
+      "trialId": "interval-repair.r1.treatment",
+      "taskId": "interval-repair",
+      "repeat": 1,
+      "arm": "treatment",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 51145.37591599999,
+      "turnStatuses": [
+        "completed"
+      ],
+      "startupMs": 3071.3285419999156,
+      "commandCount": 4,
+      "failedCommandCount": 0,
+      "mcpCallCount": 1,
+      "hookCount": 15,
+      "hookDurationSumMs": 4355,
+      "usage": {
+        "totalTokens": 107613,
+        "inputTokens": 106439,
+        "cachedInputTokens": 72960,
+        "outputTokens": 1174,
+        "reasoningOutputTokens": 0
+      },
+      "failure": null
+    },
+    {
+      "trialId": "interval-repair.r1.baseline",
+      "taskId": "interval-repair",
+      "repeat": 1,
+      "arm": "baseline",
+      "model": "gpt-6-astra",
+      "effort": "medium",
+      "passed": true,
+      "completedAndPassed": true,
+      "artifactPassed": true,
+      "agentTurnSuccess": true,
+      "turnMs": 44736.71112500003,
+      "turnStatuses": [
+        "completed"
+      ],
+      "startupMs": 52.72170900006313,
+      "commandCount": 3,
+      "failedCommandCount": 0,
+      "mcpCallCount": 0,
+      "hookCount": 0,
+      "hookDurationSumMs": 0,
+      "usage": {
+        "totalTokens": 67898,
+        "inputTokens": 66908,
+        "cachedInputTokens": 60160,
+        "outputTokens": 990,
+        "reasoningOutputTokens": 0
+      },
+      "failure": null
+    }
+  ],
+  "pairedMedianDeltaMs": 8874.477208499971,
+  "pairedMedianTimeRatio": 1.1869913431631507,
+  "billing": "Not measured or reconciled. Codex subscription tokens are not dollar costs.",
+  "interpretation": "Descriptive synthetic pilot only; four task clusters, repeated trials, no general improvement or significance claim.",
+  "publicDisclosure": {
+    "localFrozenPlan": true,
+    "externalPreregistration": false,
+    "plannedTrials": 16,
+    "fourTaskClusters": true,
+    "repeatedRunsAreNotIndependentTaskSamples": true,
+    "excludedEarlierAttempts": 2,
+    "cacheWarmingPossible": true,
+    "result": "negative_for_observed_quality_gain; both_arms_passed_all_artifact_graders"
+  },
+  "provenance": {
+    "runnerSha256": "30137d3e8c5cb8fd6a5246510cd8a01e16de21251724a033fc59169b2833a503",
+    "tasksSha256": "e517029eb95b7c9915544b42edc9d8e853810d54047a2bf11a8815a642b4ba43",
+    "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94",
+    "installedVersion": "0.4.0+codex.20260926072321",
+    "installedManifestFiles": 31,
+    "installedManifestHashesMatched": 31
+  }
+}

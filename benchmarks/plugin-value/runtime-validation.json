@@ -1,0 +1,409 @@
+{
+  "schemaVersion": "plugin-value-runtime-validation-v1",
+  "generatedAt": "2026-09-26T22:39:56.602675+00:00",
+  "status": "native-baseline-and-treatment-passed-original-verifier-local-snapshot-corruption",
+  "controlsPassed": false,
+  "readyForScored": false,
+  "calls": {
+    "scoredModel": 0,
+    "preflightModel": null,
+    "knownCompletedSyntheticModelTurns": 5,
+    "preflightModelAccounting": "Counts here are completed model turns, not HTTP requests. Baseline v1 activity is unknown after ENOSPC; known completed turns are a lower bound. Every synthetic attempt remains outside the scored denominator.",
+    "jevProviderPreflight": null,
+    "jevProviderPreflightAccounting": "Unknown across all controls; no total inferred from preview calls, missing traces, tool catalog availability or hook completion."
+  },
+  "identities": {
+    "scheduleSha256": "58a1cc48ce1fa705b593edeeee9a3c307f88ffbe4833d0a356734e76d43608dd",
+    "pluginSourceRevision": "7dfe432d7463bab7186a8dacf50924af282f9a20",
+    "installedPluginVersion": "0.4.0+codex.20260926072321",
+    "codexCliVersion": "0.155.0",
+    "model": "gpt-6-astra",
+    "reasoningEffort": "medium",
+    "deepSweCommit": "0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
+    "firstTask": "ipython-session-bundle-replay",
+    "firstImageDigest": "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
+    "runtimeFilesScope": "retained v4 failed-attempt identity; preserved for failure provenance",
+    "runtimeFiles": {
+      "host-runner.mjs": "d2e74c1d0b048ac343f30c087168cb4ae824b491aa20ae942e5c31bfe56939ff",
+      "runtime.py": "87be38d31de05aa4c23c6bc9c891fd811a829988306701fa9fbadffaf8f37106",
+      "run-one.sh": "397c12a29f7aed8ce845aa0810ae0d0d435c385396616e034dd99fccc0c22554",
+      "pier-main.py": "49634bc47391198c8e5c45a94d1eb72185ffc10668c27dfdde6ac682707de20a"
+    },
+    "pendingSharedRuntimeFiles": {
+      "runtime.py": "b32a77e550a46c18e7fd5986b57d911f3ffd9f8326aec4c61b845a57fdefe5ad",
+      "run-one.sh": "196b8d8334acc825555da5efd009a8c1ba1360c6d1adda6365d27460c63bced3",
+      "runtime-identity.json": "1522229fbc3c2f72375b5ac3c7812f5566b653653237c634af553a222ca01695",
+      "tests/runtime_test.py": "83cb70e5ecbdefbd883ed41696368309008981569ef183ea21384e139172e82b",
+      "host-runner.mjs": "da87ff002dfa849719032453ac807d82eb41604ceccf66022ec362ea821a94b9",
+      "pier-main.py": "e4a8c929804939b61fb3178d1e1d667aaaed9f6c523c07322028644a11423391",
+      "image-identities.json": "3ec2e7b2a732720f43c76f03735057b44968afc4e2f7089862a7ab88694ea819",
+      "tests/host-runner.test.mjs": "e6ebdeb2c1467f160aaad48edb94da5a3bbdddcfc7006d2b717a2fc196bbafd0",
+      "synthetic-native-control.mjs": "4c6d6deb1542285b27972bc46b14515e43151cc4d5521a55cae4fb7988bff2cc",
+      "tests/synthetic-native-control.test.mjs": "ae9994dfa0a5964251c28460e672b94fa1499360a54d3fb9794c06187edd5c69",
+      "task-runtime-metadata.json": "be07a30172faf2ac3213c920c7f8036881f1127707d5f7fc70610820aaef85ff",
+      "runtime-amendment-2026-09-26.md": "c25e74edc6a283596e7592c233381be8ab35d1415e97981d435987fe5bca30ce"
+    },
+    "sharedRuntime": {
+      "manifestSha256": "a3a4b16d095d901fd0bbcfc6153c1fa9bd6777a077edb361e57cba16187cab36",
+      "treeSha256": "32225cab4ec5d69ec0e54ef484b73357398ea23238cfb65f8860d5900bbaf175",
+      "nodeVersion": "22.23.2",
+      "codexVersion": "0.155.0",
+      "sandboxResource": "bundled bwrap"
+    }
+  },
+  "staticChecks": {
+    "status": "passed",
+    "nodeTests": "17/17 passed",
+    "pythonTests": "34/34 passed",
+    "nodeSyntax": "passed",
+    "pythonSyntax": "passed",
+    "shellSyntax": "passed",
+    "realPinnedBootstrap": "passed",
+    "installedPluginInventory": "30/30 hash-verified files",
+    "sharedRuntimeOfflineBootstrap": "passed with non-temporary CODEX_HOME; native workspace-write sandbox remains unpassed",
+    "syntheticDriverInputIdentity": "passed against identity 1522229fbc3c2f72375b5ac3c7812f5566b653653237c634af553a222ca01695 without Docker, network, model, or provider calls",
+    "scope": "Retained earlier source checkpoint; not a claim for currently edited verifier source."
+  },
+  "pendingSharedRuntimeRevision": {
+    "validatedAt": "2026-09-26T21:28:00Z",
+    "status": "source-validated after pinned CommandExecutionSource correction; corrected baseline and treatment controls pending",
+    "sourceOnly": true,
+    "pythonTests": "34/34 passed",
+    "nodeTests": "17/17 passed",
+    "realPinnedBootstrap": "passed",
+    "pluginTreeVerification": "30/30 files passed",
+    "pythonSyntax": "passed",
+    "nodeSyntax": "passed",
+    "shellSyntax": "passed",
+    "jsonSyntax": "passed",
+    "dockerCallsByThisSourceValidationPass": 0,
+    "networkCalls": 0,
+    "modelCalls": 0,
+    "jevProviderCalls": 0,
+    "nativeControlsPassed": false,
+    "readyForScored": false,
+    "syntheticDriverInputIdentity": "passed against coherent identity 1522229fbc3c2f72375b5ac3c7812f5566b653653237c634af553a222ca01695",
+    "taskMetadataAmendment": "Koota upstream 39-character commit retained with source blob/hash and repository-resolved 40-character effective commit"
+  },
+  "docker": {
+    "daemonStatus": "running after bounded recovery",
+    "daemonVersion": "29.8.0",
+    "storageDriver": "overlayfs",
+    "firstImagePresent": true,
+    "firstImagePresence": "same digest rematerialized; repair receipt verifies nonempty representative source and Git metadata, expected clean HEAD, and no residual containers",
+    "firstImageArchitecture": "amd64",
+    "firstImageSizeBytes": 3856016466,
+    "repairReceiptSha256": "8aedc5acc77e70ed089a81a7cdb42e8560005c72ac7cb82e8d65975a933b88cf"
+  },
+  "controls": {
+    "baselineRemoteStartup": "passed in real Pier with preflightOnly=true; remote ready at file:///app; baseline hooks and MCP empty; no model/provider call",
+    "baselinePierTrial": "failed after the agent preflight during collect because the retained image git base object was inaccessible",
+    "treatmentPreflight": "not-run on this revision",
+    "sharedRuntimeOfflineBootstrap": "passed",
+    "nativeModelCommandPatch": "passed in baseline v3; synthetic nonce independently verified in a separate offline container",
+    "syntheticBaseline": "v4 passed on frozen cwd mapping identity169debf; independent nonce verification and cleanup passed. Earlier failures preserved.",
+    "syntheticTreatment": "v4 passed:15/15 emitted hooks completed, explicit evaluated Jev response persisted,12/12 retained provider receipts HTTP200 and validated with actual provider request IDs, final artifacts independently verified. One initial shell failure retained.",
+    "noopVerifier": "Original separate verifier built and ran but pytest import failed before any tests executed; reward0 is infrastructure-invalid.",
+    "oracleVerifier": "Reference patch collected (22076 bytes); same pytest/Pygments import failure as nop, zero executed tests. Reward0 is infrastructure-invalid.",
+    "repositoryReadinessGate": "real original-image no-op control passed agent setup and collection before the separate verifier construction failure; all scored tasks still require their own pre-agent integrity check",
+    "taskMetadataAmendment": "source-validated and authenticated; pinned upstream value preserved separately from repository-resolved effective commit",
+    "baselineNativeV2": "failed control: model turn completed with two remote /app commands and one patch, then the driver rejected pinned source unifiedExecStartup; receipt retained and no verifier verdict accepted"
+  },
+  "priorAttempts": [
+    {
+      "id": "deepswe-ipython-baseline-preflight-v2",
+      "status": "failed-before-agent",
+      "failure": "CancelledError during Docker environment setup; later missing-main-container error was cleanup fallout"
+    },
+    {
+      "id": "deepswe-ipython-baseline-preflight-v3",
+      "status": "orphaned",
+      "failure": "stale running metadata with no live process, no trial result, and empty logs"
+    },
+    {
+      "id": "deepswe-ipython-baseline-preflight-v4",
+      "status": "failed-before-agent",
+      "failure": "The pinned Codex derivative image build completed, then host storage exhaustion caused Docker API failures before app-server, model, Jev, or verifier execution.",
+      "build": {
+        "completed": true,
+        "buildRef": "ya8i51apwdq630nwqzisruepz",
+        "codexVersionObserved": "codex-cli 0.155.0"
+      },
+      "cleanup": {
+        "containerRemoved": true,
+        "derivativeImageRemoved": true,
+        "privateCache": {
+          "id": "55e7wqvx6lthfocl3gttf73gf",
+          "size": "1.16GB",
+          "shared": false,
+          "inUse": false,
+          "removal": "completed later by exact cache id after Docker recovery; shared parents preserved",
+          "removalAtAttempt": "pending because Docker Desktop could not create its host log under ENOSPC"
+        }
+      },
+      "appServerStarted": false,
+      "modelCalls": 0,
+      "jevProviderCalls": 0,
+      "verifierStarted": false
+    }
+  ],
+  "blocker": {
+    "kind": "original-verifier-local-snapshot-corruption",
+    "observedFailure": "Native controls pass. Registry Pygments module bytes are healthy, but local base and verifier expose338emptyPythonfiles; pytest cannot run. Initial metadata glob was case-sensitive and cannot establish metadata absence. Verified minimal restoration is in progress before original verifier controls and scoring.",
+    "scoredRunsStarted": false
+  },
+  "nextRequiredControl": "Validate restoration against registry hashes; freeze explicit image recovery amendment; rerun independent original nop/reference verifier controls before any scored row.",
+  "independentReview": {
+    "status": "prior blocker review passed; focused pinned CommandExecutionSource regression passed; fresh native controls pending",
+    "pythonTestsPassed": 34,
+    "nodeTestsPassed": 17,
+    "modelCalls": 0,
+    "providerCalls": 0,
+    "dockerCalls": 0,
+    "threatModel": "Host operator and Python environment trusted; task container untrusted and isolated.",
+    "provenanceLimitation": "Pier archive has42 unlisted __pycache__ .pyc files; Harbor has0 extras. RECORD entries are checked, but this is not complete transitive Python filesystem attestation. Adapter source bytes and a fresh private pycache prefix avoid relying on the adapter's pre-existing bytecode."
+  },
+  "nativeDiagnosticAttempts": [
+    {
+      "id": "default-sandbox-launch",
+      "argv": [
+        "codex",
+        "sandbox",
+        "linux",
+        "--help"
+      ],
+      "exitCode": 1,
+      "result": "bwrap could not create a namespace before child execution",
+      "limitation": "CLI0.155 has no linux subcommand; this did not exercise the intended workspace profile or any file operation.",
+      "privateReceiptSha256": "cfdabcf0bdfa64dbde4d2856d79eac02f56d3e85b0a444eb6b01d04e3188e0b1"
+    },
+    {
+      "id": "named-workspace-legacy-landlock",
+      "argv": [
+        "codex",
+        "-c",
+        "features.use_legacy_landlock=true",
+        "sandbox",
+        "--permission-profile",
+        ":workspace",
+        "--cd",
+        "/app",
+        "--",
+        "SYNTHETIC_CONTROL_COMMAND"
+      ],
+      "exitCode": 101,
+      "result": "permission profiles requiring direct runtime enforcement are incompatible with --use-legacy-landlock",
+      "positiveFileControl": "not-executed",
+      "negativeFileControl": "skipped because positive prerequisite failed",
+      "privateReceiptSha256": "0c496fec17434422fd459e7e37d00c5eee5d2c88b129a09e771930d8b048781b"
+    },
+    {
+      "id": "real-pier-baseline-startup-v8",
+      "status": "remote-startup-passed-pier-collect-failed",
+      "sandboxPolicy": "startup-only thread workspace-write; no turn/model was started",
+      "environment": "deep-swe ready; cwd file:///app; shell bash at /bin/bash",
+      "pluginSurface": "baseline hooks empty; MCP empty",
+      "modelCalls": 0,
+      "providerCalls": 0,
+      "collectionFailure": "git diff could not access the expected base object because retained image repository bytes were unavailable",
+      "privateSummarySha256": "89379926d13ea997c80cda2b1e520b56b6b0357ae99378db2e555c37632f73fd"
+    },
+    {
+      "id": "synthetic-native-baseline-v2",
+      "status": "failed-control-after-completed-model-turn",
+      "scored": false,
+      "modelTurn": "completed",
+      "remoteEvidence": "two completed commandExecution items at /app with exit code 0 and source unifiedExecStartup; one completed fileChange for /app/patch-target.txt",
+      "controlFailure": "driver rejected pinned CommandExecutionSource unifiedExecStartup because it expected agent",
+      "verifierVerdict": "not accepted",
+      "jevProviderCalls": 0,
+      "controlManifestSha256": "7e9209a1a7a097c8c8856b53022a4bc1d7b9a05ba42fddc8a282a4606446a367",
+      "runtimeEvidenceSha256": "bf537528fe460ffd34f91f08a346f8fce5b0f7953e079163d1112e3ef86ede5f"
+    }
+  ],
+  "runtimeChoice": {
+    "turnSandboxPolicy": {
+      "type": "externalSandbox",
+      "networkAccess": "restricted"
+    },
+    "remoteSelection": "include_local=false plus the same sole deep-swe environment on thread/start and turn/start",
+    "evidence": "Pinned Codex 0.155.0 schema supports this shape; real startup transport passed with remote ready, file:///app, and /bin/bash. The exact choice is frozen in runtime-amendment-2026-09-26.md.",
+    "remainingDecision": "none for this cohort; native controls must still pass before scoring",
+    "dangerFullAccessUsed": false,
+    "amendmentSha256": "c25e74edc6a283596e7592c233381be8ab35d1415e97981d435987fe5bca30ce"
+  },
+  "startupEvidence": {
+    "auditReceiptSha256": "3518f20613542e308c77f713e848b1d52f36a110561b38706e09c54759cd0c78",
+    "v8SummarySha256": "89379926d13ea997c80cda2b1e520b56b6b0357ae99378db2e555c37632f73fd",
+    "v8ElapsedSecondsApprox": 16,
+    "v8AgentTransportPassed": true,
+    "v8PierCollectPassed": false,
+    "v8ModelCalls": 0,
+    "v8ProviderCalls": 0,
+    "v8TaskContainerRemoved": true
+  },
+  "nativeControlAudit": {
+    "path": "native-controls-2026-09-26.json",
+    "sha256": "cde5964a3935d7ce39a787230c5fa9d459054640ed9263c9c222704e42b60777"
+  },
+  "latestHostSourceChecks": {
+    "nodeVersion": "22.23.2",
+    "testsPassed": 18,
+    "rootIndependentRun": true,
+    "runtimeIdentitySha256": "f7a40fa05deb6c48c9d04eca0488b226149130a110dc7bdf0c590212419212b2",
+    "nativeTreatmentControl": "failed; see audit"
+  },
+  "currentSourceCheckpoint": {
+    "checkedAt": "2026-09-26T22:08:52.183114+00:00",
+    "scope": "source only; native controls incomplete; no scored inference",
+    "runtimeIdentitySha256": "f82ea58be9a0f50d552b6aebde543cde9f52a70bc16e4ef9389c9000daaca344",
+    "pythonTests": "39/39 root independent pass after Darwin process-group absence repair; narrow independent source review found no blockers",
+    "nodeTests": "19/19 root independent pass on Node22.23.2",
+    "sourceHashes": {
+      "runtime.py": "f33ad3fb4c189610a6edcf037f221d8398668ab8c26b5ae6784a785b1b5250ce",
+      "pier-main.py": "e4a8c929804939b61fb3178d1e1d667aaaed9f6c523c07322028644a11423391",
+      "run-one.sh": "196b8d8334acc825555da5efd009a8c1ba1360c6d1adda6365d27460c63bced3",
+      "host-runner.mjs": "92d5c832be69a5a98a187c098d67947cfb08d2bbe9b1cc8c81a009c77caf7e82",
+      "synthetic-native-control.mjs": "6a3cc8f99104f1166e0dcd381e2be3a3f3ca093e038cb268ba33c62a96ed764e",
+      "tests/runtime_test.py": "ea1fb8836e795bebf5940b8dd61a965bf2fa590d0b86ec3dc39fe6667098a232",
+      "tests/host-runner.test.mjs": "a0d6f398408273d203e990da89668b52e67c26776fb78791383e9722eb1675f0",
+      "tests/synthetic-native-control.test.mjs": "d91d73fc25d774cbf00e4d1ff604944eb61a213260557a174b0bc170d25618e3"
+    },
+    "verifierMetadata": "20/20 selected Dockerfiles match one corresponding frozen image ledger base; no oracle contents output",
+    "preservedFailures": "worker36/37 and root37/38 cancellation checks raised Darwin EPERM after SIGTERM; fixed source uses independent OS process-group absence evidence; prior failures are not erased"
+  },
+  "packageIntegrityDiagnosis": {
+    "status": "registry-bytes-healthy-local-unpacked-files-empty",
+    "probeReceiptSha256": "bcd5aa5b86a6eaf47e7eac6f53ddf3423c77c07fdb9ed86b35cdf6a44ccf6a38",
+    "probeScriptSha256": "9612302ff79f8fdd48d642f35a6d9fc66b48a071783921daafa926d8b2a696ae",
+    "pythonVersion": "3.12.12",
+    "pygmentsPythonFiles": 338,
+    "pygmentsEmptyPythonFiles": 338,
+    "terminalModuleSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "pygmentsDistInfoPresent": null,
+    "pytestImport": "ImportError: cannot import TerminalFormatter from pygments.formatters.terminal",
+    "imagesCompared": [
+      "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
+      "sha256:11adbf248e5f79a96a6fac9faedc3ff7877c51b987088e8f32eb51daace22079"
+    ],
+    "network": "none",
+    "modelCalls": 0,
+    "jevProviderCalls": 0,
+    "ownedProbeContainersRetained": 0,
+    "registryLayerDigest": "sha256:7af86c1121e677d40e31d478434bd24c148439e6f6710f2567a924e9642f4c2f",
+    "registryTerminalModuleBytes": 4626,
+    "registryPackageInitBytes": 2959,
+    "metadataProbeLimitation": "Initial probe searched only capitalized Pygments-*.dist-info; lowercase wheel metadata was not checked, so metadata absence is unproven. A corrected case-insensitive probe is required."
+  },
+  "latestSourceValidation": {
+    "validatedAt": "2026-09-26T22:34:07.660492+00:00",
+    "runtimeIdentitySha256": "169debf30f29baf23484346a419a36139feff75995d4b265055e44fe105a9d82",
+    "pythonTests": {
+      "passed": 39,
+      "failed": 0,
+      "independentlyRunByRoot": true
+    },
+    "focusedNodeTests": {
+      "passed": 20,
+      "failed": 0,
+      "independentlyRunByRoot": true,
+      "nodeVersion": "22.23.2"
+    },
+    "workerAllNodeTests": {
+      "passed": 33,
+      "failed": 0
+    },
+    "diffCheck": "passed",
+    "nativeControls": "both mapped nativev4 controls passed",
+    "readyForScored": false
+  },
+  "selectedImageLocalPreflight": {
+    "observedAt": "2026-09-26T23:11:22.286209+00:00",
+    "privateReceiptSha256": "7d42abce9dd559f496eaf84429739affa144a0780aee9bc16fe9227a7fe3ffd3",
+    "summary": {
+      "allProbeContainersAbsent": true,
+      "availabilityInspectErrors": 0,
+      "exactConfigImagesPresent": 0,
+      "exactManifestImagesPresent": 1,
+      "imagesAbsentByBothExactReferences": 19,
+      "packageStatuses": {
+        "corrupt_or_incomplete": 1,
+        "healthy_for_key_probes": 0,
+        "packages_absent": 0
+      },
+      "probeCleanupVerified": 1,
+      "probeFailures": 0,
+      "probedImages": 1,
+      "repositoryReady": 1,
+      "selectedImages": 20,
+      "sourceStableDuringProbe": true
+    },
+    "claimBoundary": "The one locally present exact manifest has four empty Pygments/Pluggy key files and failed functional imports, while its repository is clean at the expected commit. The other 19 images are absent, not proved corrupt or healthy. No task inference, provider request, image pull, build, or grading ran.",
+    "nextStep": "Use the independently verified package restoration for the affected image; hydrate and preflight the other original digests before scored inference."
+  },
+  "recoveredRuntimeOfflineValidation": {
+    "status": "passed-offline-live-original-verifier-controls-infrastructure-invalid",
+    "runtimeIdentitySha256": "9cbb7e04be5a5ccb9e8c1bab98881535c57f85779ff7dbde230cd33e16136289",
+    "runtimeTests": {
+      "passed": 49,
+      "failed": 0,
+      "python": "3.12.13",
+      "invocation": "base interpreter -I -S -B with explicit pinned Pier site-packages",
+      "sourceSha256": "1763c57414c4062e06456204dcb13370f25a3d6c4a4ecd32c7f7d7663f35bf39",
+      "adapterSha256": "cb1b816df6798a2d94386042e31a6c9e741e463eb5b4a73006096eb2b4bc63f0"
+    },
+    "nativeDriverTests": {
+      "passed": 12,
+      "failed": 0,
+      "driverSha256": "bdbc44061ef3d2ed121b5dc32547ecef73d7cad4efddba4efb40318f5815383f",
+      "testSha256": "43f5f7d8e568cd06a4cb900b39d4d85a6dcb61f835d8044b168c079351892521"
+    },
+    "imageRecoveryManifestSha256": "80d9ad43fdeb51cc9dd03509a0d06aa73499800cae9c650f3039ee74fead8cb1",
+    "restoredFileCount": 706,
+    "scoredTaskAttempts": 0,
+    "operationalFailuresRetained": [
+      "macOS default tempfile ENOSPC; unchanged tests passed in owned RAM-volume temporary directory",
+      "venv site initialization timed out; pinned base Python with explicit site-packages passed all 49 tests",
+      "private source snapshot mkdir ENOSPC; snapshot copied and hash-verified into owner-only RAM volume"
+    ],
+    "executionReady": false,
+    "boundaryChecks": "forbidden credential names, no privilege/capabilities/devices/host namespaces, exact configured mounts, explicit task/session in verifier receipt"
+  },
+  "recoveredOriginalVerifierControls": {
+    "status": "infrastructure-invalid-no-tests-executed",
+    "scoredModelCalls": 0,
+    "prePlatformFix": {
+      "runtimeIdentitySha256": "bb2c2b0607d2220c71e28c211b0ea2740ab5570f126850d51ffb4706225a40e8",
+      "snapshotSha256": "92e57dd2dc5ca79d0df4db012bbbf0019fd86822fbaaecbb60e79dc028ccdd69",
+      "noOpVerifierReward": null,
+      "reason": "BuildKit tried arm64 host platform for local linux/amd64 image"
+    },
+    "afterPlatformFix": {
+      "runtimeIdentitySha256": "921ba98a53bfaa1b17e6c4c51b8183b73790021f12044b682c6019cd536d39c3",
+      "snapshotSha256": "11ecc41341340896ec44700c616932e254802d81f5780e1968c7a76aab84fc64",
+      "runtimeSha256": "a418f383ddac7768c6aa94081d2695273037b33520b5579401aecc1de8d65828",
+      "noOpReportedReward": 0,
+      "referenceReportedReward": 0,
+      "executedTestsPerArm": 0,
+      "missingTestPlaceholdersPerArm": 46,
+      "f2pExpected": 17,
+      "p2pExpected": 29,
+      "referencePatchBytes": 22076,
+      "reason": "ImportError: cannot import name Version from packaging.version; packaging/version.py is zero bytes"
+    },
+    "readOnlyDependencyProbe": {
+      "emptyPythonFiles": 1853,
+      "interpretation": "Empty files can be legitimate; compare complete dependency tree to immutable registry before defining repair set."
+    },
+    "retainedPrivateArchive": {
+      "sha256": "0908d7d191d44f4963cd7f1d56610c5d68ea800c8a1711cc3e66d5efecfac4f4",
+      "bytes": 293846,
+      "members": 175,
+      "mode": "0600",
+      "readbackValidated": true,
+      "includes": "source snapshots and complete failed control receipts; raw hidden-verifier outputs remain private"
+    },
+    "nextRequired": "Full dependency inventory comparison, authenticated repair for demonstrated mismatches, fresh independent no-op/reference and native controls before scoring",
+    "executionReady": false
+  }
+}

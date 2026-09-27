@@ -1,0 +1,187 @@
+{
+  "schemaVersion": "plugin-value-runtime-identity-v1",
+  "status": "dependency-corruption-prevents-scored-execution",
+  "executionReady": false,
+  "agent": {
+    "cli": "codex-cli 0.155.0",
+    "node": "v22.23.2",
+    "model": "gpt-6-astra",
+    "reasoningEffort": "medium"
+  },
+  "dataset": {
+    "deepSweCommit": "0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
+    "scheduleSha256": "58a1cc48ce1fa705b593edeeee9a3c307f88ffbe4833d0a356734e76d43608dd",
+    "taskRuntimeMetadataSha256": "be07a30172faf2ac3213c920c7f8036881f1127707d5f7fc70610820aaef85ff",
+    "taskRuntimeMetadataStatus": "audited same-commit amendment: the pinned upstream Koota task TOML retains its 39-character value while runtime metadata binds the repository-resolved 40-character commit",
+    "taskCount": 20,
+    "imageIdentityLedger": "image-identities.json",
+    "imageIdentityLedgerSha256": "3ec2e7b2a732720f43c76f03735057b44968afc4e2f7089862a7ab88694ea819",
+    "imagePolicy": "Original task tags must match the frozen ledger. Healthy originals use repository@manifest-digest with platform and RepoDigests verification followed by captured local image ID and RootFS verification. The one explicitly recovered image uses the exact separate derivative identity and all 706 restored byte/metadata checks; both arms and the independent verifier share that effective base. No mutable-tag fallback.",
+    "imagePlatform": "linux/amd64",
+    "imageRecoveryManifest": "image-recovery.json",
+    "imageRecoveryManifestSha256": "80d9ad43fdeb51cc9dd03509a0d06aa73499800cae9c650f3039ee74fead8cb1",
+    "recoveryScope": "ipython-session-bundle-replay only; registry-authenticated Pygments 2.19.2 and Pluggy 1.6.0 bytes. No task or verifier source change."
+  },
+  "sharedRuntime": {
+    "schemaVersion": "plugin-value-shared-runtime-v1",
+    "platform": "linux/amd64",
+    "mountTarget": "/opt/jev-codex-runtime",
+    "mountPolicy": "agent-only read-only bind; Pier default log, agent, and artifact mounts retained; never mounted in the separate verifier",
+    "codexVersion": "0.155.0",
+    "nodeVersion": "22.23.2",
+    "manifestSha256": "a3a4b16d095d901fd0bbcfc6153c1fa9bd6777a077edb361e57cba16187cab36",
+    "treeSha256": "32225cab4ec5d69ec0e54ef484b73357398ea23238cfb65f8860d5900bbaf175",
+    "status": "native v4 command/patch/bootstrap passed; recovered-image native controls pending"
+  },
+  "hostRuntime": {
+    "platform": "darwin/arm64",
+    "node": {
+      "version": "v22.23.2",
+      "sha256": "18e387c90ab8a8400183e8bdd396376e1e875b91b4c874b894dcade7b35bf572"
+    },
+    "codex": {
+      "version": "codex-cli 0.155.0",
+      "sha256": "b0b14f9c1901c1ec44671094b2dc18b39e4bd8d36a6dc2302cc9d961a7e2a197"
+    },
+    "docker": {
+      "version": "Docker version 29.7.1",
+      "sha256": "49d98ab806e8678cd6341b09dad6389e5bcd8a46513de7651053bee3d8366e8d"
+    },
+    "runner": {
+      "sha256": "5660ddfa8abe3b0e4def8bef793dc058fc0deff82e14add73a83d019eeb21ab6",
+      "testSha256": "8ee22807a752c41b0df5e6ba21f445337152e1a957f591b5ef45d74aaa40592a"
+    },
+    "pathPolicy": "Operators supply absolute executable paths; content hashes and versions above are enforced before use. App-server hook and MCP PATH resolves node only through a host-control symlink to the pinned Node executable."
+  },
+  "plugin": {
+    "id": "jev-workflows@personal",
+    "version": "0.4.0+codex.20260926072321",
+    "sourceRevision": "7dfe432d7463bab7186a8dacf50924af282f9a20",
+    "sourceHashes": {
+      ".codex-plugin/plugin.json": "0c09fb93dd0115a6fbb4aa14c80daabf5671033a2aac31619a9769dd90b37263",
+      ".gitignore": "14a52462f9c1e71e25845771a0782a0de2a72b7d3798a5d60c865eeb9893679b",
+      ".mcp.json": "4aa483173c3f385e529d3d3592f4ec37c29d54049401fa58bb9184753282f108",
+      "HOST-COMPATIBILITY.json": "9fa57855d3420a9b2be3bb704949924252477c2065f89a22086fa0df599bc8a2",
+      "LICENSE": "90f9b49ccfa673a6952b0b9cfb6a88a0131c2b93d0c4cbfa03f7d5ba35873b26",
+      "README.md": "8290228fd74ae48fef4f35619457cfca8362c8c738753d5ba586b2a3eeaa02b4",
+      "assets/jev-workflows-mark.png": "639eae33a18a096aa844eea13c038eae05b1a324c151632c9ca9e2050ff74087",
+      "assets/jev-workflows-mark.svg": "e0d12092e7456b037793b2f8de8d5a5248ce7825ffd290eee5e527d816096e71",
+      "dist/cli.mjs": "9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db",
+      "hooks/hooks.json": "ae764c24df9f35917f5a8b0728f66d19e333399963e66faf738733167e2b8592",
+      "dist/decision-hook.mjs": "cbbe3150a0996b18737526a284c3d979430315ce4e459e89edcc17618439c10f",
+      "dist/hook.mjs": "205d545ff8437d6d4595e787e04c24d5136db2626e7ad0d3a0b6cbea2720d6bd",
+      "dist/server.mjs": "88913f614e6bbf0da4637877fb1aef6f5d6cb9bbbbdecaed1f3566a280438064",
+      "docs/accounting.md": "7e8abc9e25d5b5842581ca873b4d85e9b50cf222679bf54502a566f5365da35e",
+      "docs/compatibility.md": "51ee43f12595180cd0cc7b9fbb5484e14414e28352d8877f24b5ef207638fd06",
+      "docs/distribution.md": "ad5154e7343a334ac25dfdc73406368b7494ab08cc0792f9d5ffd8f3a769b8c2",
+      "docs/fixture-rationale.md": "5992a01f2a5f67ed198e01bc682fa43c5960fd05cf642994d1a3ced5836b6acf",
+      "docs/privacy.md": "a0a97d77f733997435517be59cf751a8c7d936555836e05e7616388558938887",
+      "docs/publication.md": "b08012ebd39d164ce141836759eb121afa002da6d5a97f99c63c341ff02c096a",
+      "docs/reviewer-cases.md": "03a302151dec2d5aed75fc839bcbcd2fff50452eddbe79227d19dd4cd7489154",
+      "docs/terms.md": "7c4bc559d94a81b69eb6c6e4b7706398b5300a227c98a59948aba27287fbb4ff",
+      "skills/check-completion/SKILL.md": "7a9bc3ac4ed186857a5a5b704398e53a775a37c6b715c8e4856e6af1d9d4caa3",
+      "skills/check-completion/references/standalone.md": "046a2dca022b61d2ad8c17b5d803c018fcfeeb19d9d2d33d9b968606446501f8",
+      "skills/check-completion/scripts/jev.mjs": "9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db",
+      "skills/classify-decision/SKILL.md": "eefa7df798b393173b961e1abc3ff81db85fa5a58d3161d9029620177d86ddd1",
+      "skills/classify-decision/references/standalone.md": "ade260df533c67bfdf8632d338b3805de438433d5fe57c708a034596f761f119",
+      "skills/classify-decision/scripts/jev.mjs": "9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db",
+      "skills/diagnose-failure/SKILL.md": "14b0670514691b6c6922cfdfeadb2eefe8817f6d8cb7b12d9da0fb7de637211e",
+      "skills/diagnose-failure/references/standalone.md": "72c597efa3b0b2ee68e4de4832e09af4510cc2dfc845952f949b4559ef1af099",
+      "skills/diagnose-failure/scripts/jev.mjs": "9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db"
+    },
+    "sourceInventoryPolicy": "The copied treatment tree contains exactly these 30 authenticated regular files; unknown files and symlinks are rejected and Finder metadata is removed before a second full verification."
+  },
+  "runner": {
+    "pierVersion": "0.3.1",
+    "pierRevision": "4f3441fb3e7c21ce8a4ed0b6155a8d9a176a645a",
+    "harborVersion": "0.20.0",
+    "python": {
+      "version": "3.12.13",
+      "sha256": "fe46716a94d8efa4514feb3c39ba3e270deee2187556986f6ddcff54aba7bb9a"
+    },
+    "adapterSha256": "cb1b816df6798a2d94386042e31a6c9e741e463eb5b4a73006096eb2b4bc63f0",
+    "launcherSha256": "e4a8c929804939b61fb3178d1e1d667aaaed9f6c523c07322028644a11423391",
+    "pierDistribution": {
+      "version": "0.3.1",
+      "recordSha256": "45818d9724e3733ca8e2a08f9b2f8661eac9f31c5ab2869faacd41be6627bbd4",
+      "directUrl": {
+        "commit": "4f3441fb3e7c21ce8a4ed0b6155a8d9a176a645a",
+        "sha256": "3b17c72eeba2613ea4d6cbda08978c3f73030f7c9b093704d7a65e1c60cfb818"
+      }
+    },
+    "harborDistribution": {
+      "version": "0.20.0",
+      "recordSha256": "88e01b4007ca519f1781d1fac6a12ba6bb3a9b0c04311899bef836a7270f0a6b"
+    },
+    "containerNetwork": "none",
+    "transport": "host app-server to container exec-server over env -i docker exec -i -w <per-run selected alias> stdio",
+    "taskCredentials": "none",
+    "agentInstallSpec": null,
+    "taskImageExecution": "Manifest-pinned original task image or explicitly authenticated recovery derivative; same effective image in both arms and inherited by the separate verifier.",
+    "verifierRuntimeBundle": "absent",
+    "hostArchitecture": "darwin/arm64",
+    "taskArchitecture": "linux/amd64 (emulated)",
+    "temporaryStorage": {
+      "classification": "operational temporary location excluded from measured study conditions",
+      "policy": "owner-only directory disjoint from jobs, frozen task inputs, the Pier runtime, and the shared task runtime"
+    },
+    "runOneSha256": "337f1be367330b07fb2efe7ad8c098d123f992dea59fac24831e6b171020b0aa",
+    "pythonCachePolicy": "The authenticated adapter is compiled from source bytes; Pier runs with -B and an exclusive empty pycache prefix.",
+    "environmentSelection": {
+      "configuration": "include_local=true registers the host MCP environment while default=deep-swe; thread and turn each select only the explicit deep-swe environment",
+      "selectedWorkingDirectory": "fresh per-run host-control workspace path, mirrored only inside the task container as a symlink to /app",
+      "requiredRemoteIdentity": "ready exec-server canonically reporting file:///app and a target-native absolute shell path while thread and turn retain the exact selected alias"
+    },
+    "turnSandboxPolicy": {
+      "type": "externalSandbox",
+      "networkAccess": "restricted",
+      "status": "passed native v4 command/patch controls under the prior runtime; revalidation on the recovered image remains required",
+      "protocolDisposition": "frozen by runtime-amendment-2026-09-26.md before any synthetic or scored model inference"
+    },
+    "runtimeAmendment": {
+      "path": "runtime-amendment-2026-09-26.md",
+      "sha256": "c25e74edc6a283596e7592c233381be8ab35d1415e97981d435987fe5bca30ce",
+      "status": "frozen before any synthetic native model control or scored inference"
+    },
+    "localMcpAmendment": {
+      "path": "runtime-amendment-local-mcp-2026-09-26.md",
+      "sha256": "19b2e192797714555428f45e80c349d3673f345fdec4356efd22a7c8dba0355f",
+      "status": "supersedes only the earlier include_local registry setting after treatment v2 confirmed the pinned Codex local-stdio failure; frozen before corrected treatment or scored inference"
+    },
+    "repositoryReadiness": {
+      "timing": "after digest-pinned container identity and before agent setup or model inference",
+      "policy": "require exact metadata base commit at HEAD, resolvable commit and tree objects, non-empty tracked content, and clean index, worktree, and untracked state",
+      "status": "original commit/tree and clean workspace remain mandatory before inference; recovered image controls pending"
+    },
+    "verifierBuildAmendment": {
+      "path": "runtime-amendment-verifier-2026-09-26.md",
+      "sha256": "26329e40d96b3615f62b35b8100d241acddb6f373b14f8a1e584a5fb40bef8c4",
+      "status": "frozen before repaired no-model verifier controls and before scoring"
+    },
+    "cwdMappingAmendment": {
+      "path": "runtime-amendment-cwd-mapping-2026-09-26.md",
+      "sha256": "c947194e6b77b03d68ac7c9c9b4d8d121e11e6dea1833dc71dc676a1822310b0",
+      "status": "frozen after a model-free offline alias probe and before corrected native model controls or scored inference"
+    },
+    "imageRecoveryAmendment": {
+      "path": "runtime-amendment-image-recovery-2026-09-26.md",
+      "sha256": "0a50cbc305ce73957802fd73561136cb4d302b00331532a083c9b305a3eb3281",
+      "status": "records platform correction and broader dependency corruption; no valid task-verifier controls yet"
+    },
+    "verifierPlatform": "linux/amd64 for both Compose service and build platforms; live post-build image architecture checked"
+  },
+  "syntheticNativeControl": {
+    "schemaVersion": "plugin-value-synthetic-native-control-v1",
+    "driver": "synthetic-native-control.mjs",
+    "driverSha256": "bdbc44061ef3d2ed121b5dc32547ecef73d7cad4efddba4efb40318f5815383f",
+    "testSha256": "43f5f7d8e568cd06a4cb900b39d4d85a6dcb61f835d8044b168c079351892521",
+    "status": "historical baseline and treatment v4 passed under prior runtime identity; driver now verifies all recovered files by fixed Python program over stdin; new recovery-image baseline and treatment controls pending",
+    "scope": "fresh nonce workspace hides task image /app; no DeepSWE source or solution is mounted",
+    "baseImageTaskIdentity": "ipython-session-bundle-replay",
+    "baseImageDigest": "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
+    "agentBoundary": "offline secretless linux/amd64 explicitly recovered image; shared runtime mounted read-only only in agent",
+    "verifierBoundary": "fresh offline container, submission and hidden oracle read-only, agent runtime absent",
+    "workspaceAliasPolicy": "same per-run logical path on host and in the agent container; container-only owned ancestors are mode 0711, task-user traversal is preflighted, the alias canonicalizes to /app, adds no host mount, and every owned alias path is removed after app-server shutdown",
+    "effectiveImageId": "sha256:e4a23f5337686d21aa9f6c96a145af852c5742920150c1b93dfcbbab9258b027"
+  }
+}

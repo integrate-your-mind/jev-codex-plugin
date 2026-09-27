@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "plugin-live-eval-freeze-v2",
+  "episodeCount": 18,
+  "familyCounts": {
+    "completion-claim-boundary": 3,
+    "concrete-tool-selection": 3,
+    "distractor-truncation": 3,
+    "evidence-missing-abstain": 3,
+    "failure-recovery": 3,
+    "latest-constraint-conflict": 3
+  },
+  "repeats": 2,
+  "plannedAttempts": 72,
+  "fixtureSha256": "501b47356241b357b1d7bc57cc56a8d672c7b51d6e09de701340eea67173f538",
+  "oracleSha256": "a7165b0652007764687f16c9a505e0f6e4cebc700605668299f41667de197db6",
+  "providerInputsSha256": "9011d1cb78318d1e38fe7823252e3e7a1b9301944efc90dff6cf528e5b0c7f3e",
+  "createdAt": "2026-09-26T17:10:33.714Z",
+  "truthBoundary": "Oracle labels are loaded for validation/scoring only and never included in task_context, event payload, service input, or provider transport."
+}

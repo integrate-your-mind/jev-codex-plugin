@@ -1,0 +1,1983 @@
+import asyncio
+import base64
+import csv
+import hashlib
+import importlib.util
+import io
+import json
+import os
+from pathlib import Path
+import py_compile
+import shutil
+import stat
+import subprocess
+import sys
+from tempfile import TemporaryDirectory
+from types import SimpleNamespace
+import unittest
+from unittest import mock
+
+
+PLUGIN_VALUE_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PLUGIN_VALUE_DIR))
+
+try:
+    import pier  # noqa: F401
+except ModuleNotFoundError:
+    if site_packages := os.environ.get("PIER_SITE_PACKAGES"):
+        sys.path.append(site_packages)
+
+from pier.environments.docker.docker import DockerEnvironment
+from pier.models.agent.context import AgentContext
+from pier.models.task.config import EnvironmentConfig
+from pier.models.trial.paths import TrialPaths
+
+from runtime import (
+    IMAGE_RECOVERY_SCHEMA,
+    PINNED_CODEX_VERSION,
+    PINNED_EFFORT,
+    PINNED_MODEL,
+    PINNED_NODE_VERSION,
+    RUNTIME_MANIFEST_NAME,
+    RUNTIME_MANIFEST_SCHEMA,
+    RUNTIME_MOUNT,
+    PluginValueCodex,
+    PluginValueDockerEnvironment,
+    _FROZEN_TASK_IDS,
+    _KOOTA_AUDIT_ISSUE,
+    _KOOTA_COMMIT_API,
+    _KOOTA_EFFECTIVE_BASE_COMMIT,
+    _KOOTA_TASK_ID,
+    _KOOTA_TASK_TOML_BLOB,
+    _KOOTA_TASK_TOML_SHA256,
+    _KOOTA_UPSTREAM_BASE_COMMIT,
+    _load_image_identities,
+    _load_image_recoveries,
+    _load_restored_files,
+    _sha256_file,
+    _tree_sha256,
+    _validate_private_launch_paths,
+    validate_benchmark_inputs,
+    validate_bootstrap_runtime,
+    validate_shared_runtime,
+)
+
+
+IMAGE_LEDGER = PLUGIN_VALUE_DIR / "image-identities.json"
+IMAGE_LEDGER_SHA256 = _sha256_file(IMAGE_LEDGER)
+FIRST_TASK = "ipython-session-bundle-replay"
+FIRST_TAG = (
+    "public.ecr.aws/d3j8x8q7/swe-bench-202605:"
+    "kh75kn07w0t92m4xxd3dy0cgp982jz6m-v1.1"
+)
+FIRST_PINNED = (
+    "public.ecr.aws/d3j8x8q7/swe-bench-202605@"
+    "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1"
+)
+FIRST_CONFIG_DIGEST = "sha256:16f3202367c11789748053c85a4fc47db30d6fb356aa3389f2b84fb61bab4313"
+FIRST_BASE_COMMIT = "0bb317d10fdcb3aa13beb1031d5f10e5b821203b"
+PUBLIC_RECOVERY_MANIFEST = json.loads(
+    (PLUGIN_VALUE_DIR / "image-recovery.json").read_text(encoding="utf-8")
+)
+PUBLIC_RECOVERY_ENTRY = PUBLIC_RECOVERY_MANIFEST["recoveries"][0]
+RECOVERY_REF = PUBLIC_RECOVERY_ENTRY["effectiveImageRef"]
+RECOVERY_IMAGE_ID = PUBLIC_RECOVERY_ENTRY["effectiveImageId"]
+RECOVERY_ROOTFS = tuple(PUBLIC_RECOVERY_ENTRY["effectiveRootfsDiffIds"])
+PYGMENTS_LAYER_DIGEST = (
+    "sha256:7af86c1121e677d40e31d478434bd24c148439e6f6710f2567a924e9642f4c2f"
+)
+PLUGGY_LAYER_DIGEST = (
+    "sha256:d0648bc472c60b4f930117e02bbbe63760a15394251035e234e8db17bb3c1844"
+)
+
+
+class FakeTaskEnvironment:
+    def __init__(self, docker_image=FIRST_TAG, os_name="linux"):
+        self.docker_image = docker_image
+        self.os = os_name
+
+    def model_copy(self, *, deep, update):
+        assert deep is True
+        return FakeTaskEnvironment(
+            docker_image=update.get("docker_image", self.docker_image),
+            os_name=self.os,
+        )
+
+
+class RuntimeFixture(unittest.TestCase):
+    def setUp(self):
+        self.temp = TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+
+    def build_runtime(self):
+        runtime_root = self.root / "runtime"
+        bin_dir = runtime_root / "bin"
+        bin_dir.mkdir(parents=True)
+        codex = bin_dir / "codex"
+        node = bin_dir / "node"
+        codex.write_text("#!/bin/sh\necho codex-cli 0.155.0\n", encoding="utf-8")
+        node.write_text("#!/bin/sh\necho v22.23.2\n", encoding="utf-8")
+        codex.chmod(0o555)
+        node.chmod(0o555)
+        bin_dir.chmod(0o555)
+
+        manifest = {
+            "schemaVersion": RUNTIME_MANIFEST_SCHEMA,
+            "platform": "linux/amd64",
+            "treeSha256": _tree_sha256(runtime_root),
+            "executables": {
+                "codex": {
+                    "path": "bin/codex",
+                    "version": PINNED_CODEX_VERSION,
+                    "sha256": _sha256_file(codex),
+                },
+                "node": {
+                    "path": "bin/node",
+                    "version": PINNED_NODE_VERSION,
+                    "sha256": _sha256_file(node),
+                },
+            },
+        }
+        manifest_path = runtime_root / RUNTIME_MANIFEST_NAME
+        manifest_path.write_text(json.dumps(manifest, sort_keys=True) + "\n", encoding="utf-8")
+        manifest_path.chmod(0o444)
+        runtime_root.chmod(0o555)
+
+        def thaw():
+            for path in sorted(runtime_root.rglob("*"), reverse=True):
+                if not path.is_symlink():
+                    path.chmod(0o755 if path.is_dir() else 0o644)
+            runtime_root.chmod(0o755)
+
+        self.addCleanup(thaw)
+        return runtime_root
+
+    def build_host_executables(self):
+        host = self.root / "host"
+        host.mkdir(exist_ok=True)
+        node = host / "node"
+        codex = host / "codex"
+        docker = host / "docker"
+        for path in (node, codex, docker):
+            if path.exists():
+                path.chmod(0o700)
+        node.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        codex.write_text("#!/bin/sh\necho codex-cli 0.155.0\n", encoding="utf-8")
+        docker.write_text(
+            "#!/bin/sh\necho 'Docker version 29.7.1, build fixture'\n",
+            encoding="utf-8",
+        )
+        node.chmod(0o500)
+        codex.chmod(0o500)
+        docker.chmod(0o500)
+        return node, codex, docker
+
+    def build_image_recovery(self, *, execution_ready=False):
+        shutil.copytree(
+            PLUGIN_VALUE_DIR / "image-recovery-artifacts",
+            self.root / "image-recovery-artifacts",
+            dirs_exist_ok=True,
+        )
+        manifest = self.root / "image-recovery.json"
+        value = json.loads(
+            (PLUGIN_VALUE_DIR / "image-recovery.json").read_text(encoding="utf-8")
+        )
+        value["executionReady"] = execution_ready
+        manifest.write_text(json.dumps(value, sort_keys=True) + "\n", encoding="utf-8")
+        return manifest, _sha256_file(manifest)
+
+    def git(self, repository, *arguments):
+        completed = subprocess.run(
+            ["git", "-C", str(repository), *arguments],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        return completed.stdout.strip()
+
+    def build_frozen_tasks(self):
+        repository = self.root / "deep-swe"
+        tasks = repository / "tasks"
+        tasks.mkdir(parents=True)
+        for task_id in sorted(_FROZEN_TASK_IDS):
+            task = tasks / task_id
+            task.mkdir()
+            (task / "task.toml").write_text(
+                f'[task]\nid = "{task_id}"\n', encoding="utf-8"
+            )
+        self.git(repository, "init", "-q")
+        self.git(repository, "config", "user.email", "benchmark@example.invalid")
+        self.git(repository, "config", "user.name", "Benchmark Fixture")
+        self.git(repository, "add", "tasks")
+        self.git(repository, "commit", "-qm", "fixture")
+        commit = self.git(repository, "rev-parse", "HEAD")
+        metadata_tasks = []
+        for task_id in sorted(_FROZEN_TASK_IDS):
+            task_toml = tasks / task_id / "task.toml"
+            item = {
+                "taskId": task_id,
+                "gitTree": self.git(repository, "rev-parse", f"HEAD:tasks/{task_id}"),
+                "taskTomlBlob": self.git(
+                    repository, "rev-parse", f"HEAD:tasks/{task_id}/task.toml"
+                ),
+                "taskTomlSha256": _sha256_file(task_toml),
+                "metadata": {"baseCommitHash": commit},
+            }
+            if task_id == _KOOTA_TASK_ID:
+                item["taskTomlBlob"] = _KOOTA_TASK_TOML_BLOB
+                item["taskTomlSha256"] = _KOOTA_TASK_TOML_SHA256
+                item["metadata"] = {
+                    "baseCommitHash": _KOOTA_EFFECTIVE_BASE_COMMIT,
+                    "baseCommitHashUpstream": _KOOTA_UPSTREAM_BASE_COMMIT,
+                }
+            metadata_tasks.append(item)
+        metadata = {
+            "schemaVersion": "jev-deepswe-runtime-metadata-v1",
+            "provenance": {
+                "commit": commit,
+                "metadataAmendments": [{
+                    "taskId": _KOOTA_TASK_ID,
+                    "field": "metadata.baseCommitHash",
+                    "kind": "expand-truncated-upstream-commit-id",
+                    "upstreamValue": _KOOTA_UPSTREAM_BASE_COMMIT,
+                    "effectiveValue": _KOOTA_EFFECTIVE_BASE_COMMIT,
+                    "upstreamTaskTomlBlob": _KOOTA_TASK_TOML_BLOB,
+                    "upstreamTaskTomlSha256": _KOOTA_TASK_TOML_SHA256,
+                    "resolution": {
+                        "repositoryCommitApi": _KOOTA_COMMIT_API,
+                        "upstreamAuditIssue": _KOOTA_AUDIT_ISSUE,
+                        "note": (
+                            "The pinned upstream task.toml remains unchanged and contains "
+                            "upstreamValue; GitHub resolves that unique truncated ID to "
+                            "effectiveValue."
+                        ),
+                    },
+                }],
+            },
+            "tasks": metadata_tasks,
+        }
+        metadata_path = self.root / "task-runtime-metadata.json"
+        metadata_path.write_text(json.dumps(metadata) + "\n", encoding="utf-8")
+        trials = []
+        indexed = {item["taskId"]: item for item in metadata_tasks}
+        for pair_index, task_id in enumerate(sorted(_FROZEN_TASK_IDS), 1):
+            for within_pair, arm in enumerate(("baseline", "treatment"), 1):
+                trials.append(
+                    {
+                        "order": len(trials) + 1,
+                        "pairIndex": pair_index,
+                        "withinPairOrder": within_pair,
+                        "trialId": f"{task_id}.r1.{arm}",
+                        "taskId": task_id,
+                        "repetition": 1,
+                        "arm": arm,
+                        "taskTree": indexed[task_id]["gitTree"],
+                        "taskTomlSha256": indexed[task_id]["taskTomlSha256"],
+                    }
+                )
+        schedule = {
+            "schemaVersion": "plugin-value-schedule-v1",
+            "datasetCommit": commit,
+            "taskCount": 20,
+            "scheduledTrials": 40,
+            "fixedAgent": {
+                "agent": "codex",
+                "version": PINNED_CODEX_VERSION,
+                "model": PINNED_MODEL,
+                "effort": PINNED_EFFORT,
+            },
+            "trials": trials,
+        }
+        schedule_path = self.root / "schedule.json"
+        schedule_path.write_text(json.dumps(schedule) + "\n", encoding="utf-8")
+        return tasks, metadata_path, schedule_path
+
+
+class SharedRuntimeTests(RuntimeFixture):
+    def test_valid_bundle_has_fixed_versions_and_digests(self):
+        root = self.build_runtime()
+        identity = validate_shared_runtime(root)
+        self.assertEqual(identity.root, root.resolve())
+        self.assertEqual(identity.codex.version, PINNED_CODEX_VERSION)
+        self.assertEqual(identity.node.version, PINNED_NODE_VERSION)
+        self.assertEqual(identity.tree_sha256, _tree_sha256(root))
+
+    def test_bundle_tampering_fails_closed(self):
+        root = self.build_runtime()
+        codex = root / "bin" / "codex"
+        codex.chmod(0o755)
+        codex.write_text("#!/bin/sh\necho changed\n", encoding="utf-8")
+        codex.chmod(0o555)
+        with self.assertRaisesRegex(ValueError, "sha256 mismatch"):
+            validate_shared_runtime(root)
+
+    def test_writable_bundle_fails_closed(self):
+        root = self.build_runtime()
+        root.chmod(0o755)
+        with self.assertRaisesRegex(ValueError, "writable"):
+            validate_shared_runtime(root)
+
+
+class ImageRecoveryTests(RuntimeFixture):
+    def source_identities(self):
+        return _load_image_identities(
+            IMAGE_LEDGER,
+            expected_sha256=IMAGE_LEDGER_SHA256,
+            require_execution_ready=False,
+        )
+
+    def rewrite_bound_recovery_artifact(self, recovery, artifact_name, mutate):
+        manifest = json.loads(recovery.read_text(encoding="utf-8"))
+        entry = manifest["recoveries"][0]
+        build_path = self.root / entry["buildReceiptArtifact"]
+        build = json.loads(build_path.read_text(encoding="utf-8"))
+        if artifact_name == "recipe":
+            artifact_path = self.root / build["recipeArtifact"]
+            build_sha_key = "recipeArtifactSha256"
+            entry_sha_key = None
+        elif artifact_name == "registry":
+            artifact_path = self.root / build["registryAuditArtifact"]
+            build_sha_key = "registryAuditArtifactSha256"
+            entry_sha_key = "sourceLayerArtifactSha256"
+        elif artifact_name == "build":
+            artifact_path = build_path
+            build_sha_key = None
+            entry_sha_key = None
+        else:
+            raise AssertionError(f"unsupported fixture artifact: {artifact_name}")
+        artifact = build if artifact_name == "build" else json.loads(
+            artifact_path.read_text(encoding="utf-8")
+        )
+        mutate(artifact)
+        artifact_path.write_text(
+            json.dumps(artifact, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        if build_sha_key is not None:
+            artifact_sha256 = _sha256_file(artifact_path)
+            build[build_sha_key] = artifact_sha256
+            if entry_sha_key is not None:
+                entry[entry_sha_key] = artifact_sha256
+            build_path.write_text(
+                json.dumps(build, sort_keys=True) + "\n", encoding="utf-8"
+            )
+        entry["buildReceiptArtifactSha256"] = _sha256_file(build_path)
+        recovery.write_text(
+            json.dumps(manifest, sort_keys=True) + "\n", encoding="utf-8"
+        )
+
+    def test_recovery_resolves_a_distinct_authenticated_image_without_mutating_source(self):
+        ledger_before = IMAGE_LEDGER.read_bytes()
+        recovery, checksum = self.build_image_recovery()
+        first = _load_image_recoveries(
+            recovery,
+            expected_sha256=checksum,
+            source_identities=self.source_identities(),
+            require_execution_ready=False,
+        )
+        second = _load_image_recoveries(
+            recovery,
+            expected_sha256=checksum,
+            source_identities=self.source_identities(),
+            require_execution_ready=False,
+        )
+        resolved = first[FIRST_TASK]
+        self.assertEqual(resolved.source.pinned_image, FIRST_PINNED)
+        self.assertEqual(resolved.source.config_digest, FIRST_CONFIG_DIGEST)
+        self.assertEqual(resolved.effective_reference, RECOVERY_REF)
+        self.assertEqual(resolved.effective_image_id, RECOVERY_IMAGE_ID)
+        self.assertEqual(resolved.expected_rootfs_diff_ids, RECOVERY_ROOTFS)
+        restored_paths = {item.path.as_posix() for item in resolved.restored_files}
+        self.assertEqual(len(restored_paths), 706)
+        self.assertIn(
+            "/usr/local/lib/python3.12/site-packages/pygments/__init__.py",
+            restored_paths,
+        )
+        self.assertIn(
+            "/usr/local/lib/python3.12/site-packages/pluggy/py.typed",
+            restored_paths,
+        )
+        self.assertEqual(
+            next(
+                item.size
+                for item in resolved.restored_files
+                if item.path.as_posix().endswith("/pluggy/py.typed")
+            ),
+            0,
+        )
+        self.assertEqual(dict(resolved.source_layer_digests), {
+            "pluggy": PLUGGY_LAYER_DIGEST,
+            "pygments": PYGMENTS_LAYER_DIGEST,
+        })
+        self.assertEqual(second[FIRST_TASK], resolved)
+        unaffected = first["anko-default-function-arguments"]
+        self.assertEqual(unaffected.effective_reference, unaffected.source.pinned_image)
+        self.assertIsNone(unaffected.effective_image_id)
+        self.assertFalse(unaffected.is_recovered)
+        self.assertEqual(IMAGE_LEDGER.read_bytes(), ledger_before)
+
+    def test_recovery_blocks_score_until_separately_marked_ready(self):
+        recovery, checksum = self.build_image_recovery(execution_ready=False)
+        with self.assertRaisesRegex(ValueError, "not ready for scored execution"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=checksum,
+                source_identities=self.source_identities(),
+                require_execution_ready=True,
+            )
+        recovery, checksum = self.build_image_recovery(execution_ready=True)
+        resolved = _load_image_recoveries(
+            recovery,
+            expected_sha256=checksum,
+            source_identities=self.source_identities(),
+            require_execution_ready=True,
+        )
+        self.assertTrue(resolved[FIRST_TASK].is_recovered)
+
+    def test_recovery_rejects_source_or_artifact_drift(self):
+        recovery, _ = self.build_image_recovery()
+        value = json.loads(recovery.read_text(encoding="utf-8"))
+        value["recoveries"][0]["sourceConfigDigest"] = "sha256:" + "0" * 64
+        recovery.write_text(json.dumps(value, sort_keys=True) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "source config mismatch"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+    def test_recovery_rejects_rehashed_recipe_registry_and_version_tampering(self):
+        recovery, _ = self.build_image_recovery()
+        self.rewrite_bound_recovery_artifact(
+            recovery,
+            "recipe",
+            lambda artifact: artifact["copyPaths"].__setitem__(
+                0, artifact["copyPaths"][0].removeprefix("restored/")
+            ),
+        )
+        with self.assertRaisesRegex(ValueError, "copy paths do not cover"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+        recovery, _ = self.build_image_recovery()
+        self.rewrite_bound_recovery_artifact(
+            recovery,
+            "registry",
+            lambda artifact: artifact["laterLayers"][0].__setitem__(
+                "digestVerified", False
+            ),
+        )
+        with self.assertRaisesRegex(ValueError, "digest evidence"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+        recovery, _ = self.build_image_recovery()
+        self.rewrite_bound_recovery_artifact(
+            recovery,
+            "registry",
+            lambda artifact: artifact["whiteoutRegression"][
+                "usr/share/.wh.unrelated"
+            ].__setitem__("pluggy", True),
+        )
+        with self.assertRaisesRegex(ValueError, "whiteout regression classification"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+        recovery, _ = self.build_image_recovery()
+        self.rewrite_bound_recovery_artifact(
+            recovery,
+            "build",
+            lambda artifact: artifact["versions"].__setitem__("Pygments", "0.0.0"),
+        )
+        with self.assertRaisesRegex(ValueError, "package version"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+        recovery, _ = self.build_image_recovery()
+        value = json.loads(recovery.read_text(encoding="utf-8"))
+        restored = self.root / value["recoveries"][0]["restoredFilesArtifact"]
+        restored.write_text("{}\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "restored-files artifact.*sha256 mismatch"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+    def test_recovery_rejects_unknown_task_and_untrusted_image_reference(self):
+        recovery, _ = self.build_image_recovery()
+        value = json.loads(recovery.read_text(encoding="utf-8"))
+        value["recoveries"][0]["taskId"] = "not-a-frozen-task"
+        recovery.write_text(json.dumps(value, sort_keys=True) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "outside the frozen set"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+        recovery, _ = self.build_image_recovery()
+        value = json.loads(recovery.read_text(encoding="utf-8"))
+        value["recoveries"][0]["effectiveImageRef"] = FIRST_PINNED
+        recovery.write_text(json.dumps(value, sort_keys=True) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "reference is invalid"):
+            _load_image_recoveries(
+                recovery,
+                expected_sha256=_sha256_file(recovery),
+                source_identities=self.source_identities(),
+                require_execution_ready=False,
+            )
+
+    def test_restored_file_allowlist_rejects_workspace_and_undeclared_packages(self):
+        recovery, _ = self.build_image_recovery()
+        manifest = json.loads(recovery.read_text(encoding="utf-8"))
+        artifact_path = self.root / manifest["recoveries"][0]["restoredFilesArtifact"]
+        artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+        artifact["files"][0]["path"] = "/app/credential"
+        artifact_path.write_text(json.dumps(artifact) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "escapes the reviewed"):
+            _load_restored_files(artifact_path)
+
+        artifact["files"][0]["path"] = (
+            "/usr/local/lib/python3.12/site-packages/pytest/__init__.py"
+        )
+        artifact_path.write_text(json.dumps(artifact) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "package allowlist"):
+            _load_restored_files(artifact_path)
+
+class BootstrapIntegrityTests(RuntimeFixture):
+    @staticmethod
+    def _record_hash(content):
+        encoded = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).rstrip(b"=")
+        return "sha256=" + encoded.decode("ascii")
+
+    def _build_distribution(self, site_packages, name, version, package, entrypoints):
+        package_dir = site_packages / package
+        package_dir.mkdir()
+        payload = package_dir / "__init__.py"
+        payload.write_bytes(f'VERSION = "{version}"\n'.encode())
+        dist_info = site_packages / f"{name.replace('-', '_')}-{version}.dist-info"
+        dist_info.mkdir()
+        metadata = dist_info / "METADATA"
+        metadata.write_text(
+            f"Metadata-Version: 2.1\nName: {name}\nVersion: {version}\n",
+            encoding="utf-8",
+        )
+        direct_url = None
+        if name == "datacurve-pier":
+            direct_url = dist_info / "direct_url.json"
+            direct_url.write_text(
+                json.dumps({"vcs_info": {"commit_id": "fixture-commit"}}) + "\n",
+                encoding="utf-8",
+            )
+        rows = []
+        for path in (payload, metadata, direct_url):
+            if path is None:
+                continue
+            content = path.read_bytes()
+            rows.append(
+                [
+                    path.relative_to(site_packages).as_posix(),
+                    self._record_hash(content),
+                    str(len(content)),
+                ]
+            )
+        for relative in entrypoints:
+            rows.append([relative, self._record_hash(b"unused fixture"), "14"])
+        record = dist_info / "RECORD"
+        rows.append([record.relative_to(site_packages).as_posix(), "", ""])
+        buffer = io.StringIO(newline="")
+        csv.writer(buffer, lineterminator="\n").writerows(rows)
+        record.write_text(buffer.getvalue(), encoding="utf-8")
+        identity = {
+            "version": version,
+            "recordSha256": _sha256_file(record),
+        }
+        if direct_url is not None:
+            identity["directUrl"] = {
+                "commit": "fixture-commit",
+                "sha256": _sha256_file(direct_url),
+            }
+        return payload, identity
+
+    def test_real_bootstrap_authenticates_distribution_payloads_and_launchers(self):
+        runtime = self.root / "pier-runtime"
+        site_packages = runtime / "lib" / "python3.12" / "site-packages"
+        (runtime / "bin").mkdir(parents=True)
+        site_packages.mkdir(parents=True)
+        (runtime / "bin" / "python").symlink_to(Path(sys.executable).resolve())
+        pier_payload, pier_identity = self._build_distribution(
+            site_packages,
+            "datacurve-pier",
+            "0.3.1",
+            "pier",
+            ["../../../bin/pier"],
+        )
+        _, harbor_identity = self._build_distribution(
+            site_packages,
+            "harbor",
+            "0.20.0",
+            "harbor",
+            ["../../../bin/harbor", "../../../bin/hb", "../../../bin/hr"],
+        )
+        adapter = self.root / "runtime.py"
+        launcher = self.root / "pier-main.py"
+        run_one = self.root / "run-one.sh"
+        for path, content in (
+            (adapter, "adapter fixture\n"),
+            (launcher, "launcher fixture\n"),
+            (run_one, "run-one fixture\n"),
+        ):
+            path.write_text(content, encoding="utf-8")
+        temporary = self.root / "temporary"
+        jobs = self.root / "jobs"
+        tasks = self.root / "tasks"
+        shared = self.root / "shared"
+        for path in (temporary, jobs, tasks, shared):
+            path.mkdir(mode=0o700)
+        identity = self.root / "runtime-identity.json"
+        identity.write_text(
+            json.dumps(
+                {
+                    "runner": {
+                        "python": {
+                            "version": ".".join(map(str, sys.version_info[:3])),
+                            "sha256": _sha256_file(Path(sys.executable).resolve()),
+                        },
+                        "adapterSha256": _sha256_file(adapter),
+                        "launcherSha256": _sha256_file(launcher),
+                        "runOneSha256": _sha256_file(run_one),
+                        "pierDistribution": pier_identity,
+                        "harborDistribution": harbor_identity,
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        parameters = dict(
+            pier_runtime=runtime,
+            runtime_identity_path=identity,
+            adapter_path=adapter,
+            launcher_path=launcher,
+            run_one_path=run_one,
+            temporary_dir=temporary,
+            jobs_dir=jobs,
+            tasks_dir=tasks,
+            shared_runtime_dir=shared,
+        )
+        old_path = list(sys.path)
+        try:
+            self.assertEqual(
+                validate_bootstrap_runtime(**parameters)["pierVersion"], "0.3.1"
+            )
+            pier_payload.write_text('VERSION = "tampered"\n', encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "installed file (hash|size) drifted"):
+                validate_bootstrap_runtime(**parameters)
+        finally:
+            sys.path[:] = old_path
+
+    def test_launcher_executes_authenticated_source_instead_of_adjacent_pyc(self):
+        site_packages = self.root / "site-packages"
+        site_packages.mkdir()
+        adapter = self.root / "runtime.py"
+        malicious = "VALUE = 'evil'\n"
+        authenticated = "VALUE = 'safe'\n"
+        self.assertEqual(len(malicious), len(authenticated))
+        adapter.write_text(malicious, encoding="utf-8")
+        metadata = adapter.stat()
+        py_compile.compile(str(adapter), doraise=True)
+        adapter.write_text(authenticated, encoding="utf-8")
+        os.utime(adapter, ns=(metadata.st_atime_ns, metadata.st_mtime_ns))
+
+        spec = importlib.util.spec_from_file_location("pyc_control", adapter)
+        assert spec is not None and spec.loader is not None
+        pyc_control = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pyc_control)
+        self.assertEqual(pyc_control.VALUE, "evil")
+
+        namespace = {"__name__": "pinned_launcher_fixture"}
+        launcher = PLUGIN_VALUE_DIR / "pier-main.py"
+        exec(compile(launcher.read_bytes(), str(launcher), "exec"), namespace)
+        with mock.patch.dict(
+            os.environ,
+            {
+                "PLUGIN_VALUE_PINNED_SITE_PACKAGES": str(site_packages),
+                "PLUGIN_VALUE_ADAPTER_PATH": str(adapter),
+            },
+        ):
+            module = namespace["_load_adapter"]()
+        self.assertEqual(module.VALUE, "safe")
+        sys.modules.pop("plugin_value_runtime", None)
+
+    def test_temporary_directory_must_be_private_and_disjoint(self):
+        jobs = self.root / "jobs"
+        tasks = self.root / "tasks"
+        runtime = self.root / "runtime-root"
+        pier = self.root / "pier-runtime"
+        temporary = self.root / "temporary"
+        for path in (jobs, tasks, runtime, pier, temporary):
+            path.mkdir()
+            path.chmod(0o700)
+        _validate_private_launch_paths(
+            pier_runtime=pier,
+            temporary_dir=temporary,
+            jobs_dir=jobs,
+            tasks_dir=tasks,
+            shared_runtime_dir=runtime,
+        )
+        nested = jobs / "tmp"
+        nested.mkdir(mode=0o700)
+        with self.assertRaisesRegex(ValueError, "overlaps jobs directory"):
+            _validate_private_launch_paths(
+                pier_runtime=pier,
+                temporary_dir=nested,
+                jobs_dir=jobs,
+                tasks_dir=tasks,
+                shared_runtime_dir=runtime,
+            )
+        temporary.chmod(0o755)
+        with self.assertRaisesRegex(ValueError, "private owner-only"):
+            _validate_private_launch_paths(
+                pier_runtime=pier,
+                temporary_dir=temporary,
+                jobs_dir=jobs,
+                tasks_dir=tasks,
+                shared_runtime_dir=runtime,
+            )
+
+        jobs.chmod(0o700)
+        frozen_jobs = tasks / "jobs"
+        frozen_jobs.mkdir(mode=0o700)
+        separate_temporary = self.root / "temporary-private"
+        separate_temporary.mkdir(mode=0o700)
+        with self.assertRaisesRegex(ValueError, "jobs directory overlaps DeepSWE tasks"):
+            _validate_private_launch_paths(
+                pier_runtime=pier,
+                temporary_dir=separate_temporary,
+                jobs_dir=frozen_jobs,
+                tasks_dir=tasks,
+                shared_runtime_dir=runtime,
+            )
+
+
+class ImageIdentityTests(unittest.TestCase):
+    def test_full_frozen_ledger_resolves_digest_only_references(self):
+        identities = _load_image_identities(
+            IMAGE_LEDGER,
+            expected_sha256=IMAGE_LEDGER_SHA256,
+            require_execution_ready=False,
+        )
+        self.assertEqual(len(identities), 20)
+        self.assertEqual(identities[FIRST_TASK].pinned_image, FIRST_PINNED)
+        self.assertEqual(identities[FIRST_TASK].config_digest, FIRST_CONFIG_DIGEST)
+        self.assertIn(PYGMENTS_LAYER_DIGEST, identities[FIRST_TASK].layer_digests)
+        self.assertNotIn(":kh", identities[FIRST_TASK].pinned_image)
+
+    def test_ledger_hash_and_readiness_fail_closed(self):
+        with self.assertRaisesRegex(ValueError, "ledger sha256 mismatch"):
+            _load_image_identities(
+                IMAGE_LEDGER,
+                expected_sha256="0" * 64,
+                require_execution_ready=False,
+            )
+        with self.assertRaisesRegex(ValueError, "not ready for scored"):
+            _load_image_identities(
+                IMAGE_LEDGER,
+                expected_sha256=IMAGE_LEDGER_SHA256,
+                require_execution_ready=True,
+            )
+
+
+class BenchmarkInputTests(RuntimeFixture):
+    def test_clean_frozen_task_and_exact_schedule_row_are_required(self):
+        tasks, metadata, schedule = self.build_frozen_tasks()
+        trial_id = f"{FIRST_TASK}.r1.baseline"
+        result = validate_benchmark_inputs(
+            tasks_dir=tasks,
+            task_metadata_path=metadata,
+            task_metadata_sha256=_sha256_file(metadata),
+            task_id=FIRST_TASK,
+            mode="score",
+            arm="baseline",
+            trial_id=trial_id,
+            schedule_path=schedule,
+            schedule_sha256=_sha256_file(schedule),
+        )
+        self.assertEqual(result["taskId"], FIRST_TASK)
+        self.assertEqual(result["baseCommitHash"], self.git(tasks.parent, "rev-parse", "HEAD"))
+        with self.assertRaisesRegex(ValueError, "frozen schedule row"):
+            validate_benchmark_inputs(
+                tasks_dir=tasks,
+                task_metadata_path=metadata,
+                task_metadata_sha256=_sha256_file(metadata),
+                task_id=FIRST_TASK,
+                mode="score",
+                arm="treatment",
+                trial_id=trial_id,
+                schedule_path=schedule,
+                schedule_sha256=_sha256_file(schedule),
+            )
+
+    def test_task_tampering_and_skip_worktree_flags_fail_closed(self):
+        tasks, metadata, schedule = self.build_frozen_tasks()
+        task_toml = tasks / FIRST_TASK / "task.toml"
+        original = task_toml.read_text(encoding="utf-8")
+        task_toml.write_text(original + "# changed\n", encoding="utf-8")
+        arguments = {
+            "tasks_dir": tasks,
+            "task_metadata_path": metadata,
+            "task_metadata_sha256": _sha256_file(metadata),
+            "task_id": FIRST_TASK,
+            "mode": "preflight",
+            "arm": "baseline",
+            "trial_id": "unit-preflight",
+            "schedule_path": schedule,
+            "schedule_sha256": _sha256_file(schedule),
+        }
+        with self.assertRaisesRegex(ValueError, "task.toml"):
+            validate_benchmark_inputs(**arguments)
+        task_toml.write_text(original, encoding="utf-8")
+        self.git(tasks.parent, "update-index", "--skip-worktree", f"tasks/{FIRST_TASK}/task.toml")
+        with self.assertRaisesRegex(ValueError, "skip-worktree"):
+            validate_benchmark_inputs(**arguments)
+
+    def test_trial_id_must_be_a_leaf(self):
+        tasks, metadata, schedule = self.build_frozen_tasks()
+        with self.assertRaisesRegex(ValueError, "normalized leaf"):
+            validate_benchmark_inputs(
+                tasks_dir=tasks,
+                task_metadata_path=metadata,
+                task_metadata_sha256=_sha256_file(metadata),
+                task_id=FIRST_TASK,
+                mode="preflight",
+                arm="baseline",
+                trial_id="../../escape",
+                schedule_path=schedule,
+                schedule_sha256=_sha256_file(schedule),
+            )
+
+    def test_every_task_requires_a_frozen_base_commit(self):
+        tasks, metadata, schedule = self.build_frozen_tasks()
+        value = json.loads(metadata.read_text(encoding="utf-8"))
+        value["tasks"][-1]["metadata"]["baseCommitHash"] = "not-a-commit"
+        metadata.write_text(json.dumps(value) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "base commit"):
+            validate_benchmark_inputs(
+                tasks_dir=tasks,
+                task_metadata_path=metadata,
+                task_metadata_sha256=_sha256_file(metadata),
+                task_id=FIRST_TASK,
+                mode="preflight",
+                arm="baseline",
+                trial_id="unit-preflight",
+                schedule_path=schedule,
+                schedule_sha256=_sha256_file(schedule),
+            )
+
+    def test_upstream_base_commit_amendment_is_exact_and_auditable(self):
+        tasks, metadata, schedule = self.build_frozen_tasks()
+        value = json.loads(metadata.read_text(encoding="utf-8"))
+        value["provenance"]["metadataAmendments"][0]["effectiveValue"] = "0" * 40
+        metadata.write_text(json.dumps(value) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "amendment provenance"):
+            validate_benchmark_inputs(
+                tasks_dir=tasks,
+                task_metadata_path=metadata,
+                task_metadata_sha256=_sha256_file(metadata),
+                task_id=FIRST_TASK,
+                mode="preflight",
+                arm="baseline",
+                trial_id="unit-preflight",
+                schedule_path=schedule,
+                schedule_sha256=_sha256_file(schedule),
+            )
+
+
+class EnvironmentMountTests(RuntimeFixture):
+    def test_stop_preserves_images_and_checks_stopped_containers_before_cleanup(self):
+        for code, stdout, succeeds in ((0, "", True), (0, "stopped-container", False), (1, "", False)):
+            with self.subTest(code=code, stdout=stdout):
+                environment = object.__new__(PluginValueDockerEnvironment)
+                environment._run_docker_compose_command = mock.AsyncMock(
+                    return_value=SimpleNamespace(return_code=code, stdout=stdout)
+                )
+                environment._cleanup_verifier_build_context = mock.Mock()
+                with mock.patch.object(DockerEnvironment, "stop", new_callable=mock.AsyncMock) as stop:
+                    if succeeds:
+                        asyncio.run(environment.stop(delete=True))
+                        environment._cleanup_verifier_build_context.assert_called_once_with()
+                    else:
+                        with self.assertRaisesRegex(RuntimeError, "still has a main container"):
+                            asyncio.run(environment.stop(delete=True))
+                        environment._cleanup_verifier_build_context.assert_not_called()
+                    stop.assert_awaited_once_with(delete=False)
+                environment._run_docker_compose_command.assert_awaited_once_with(
+                    ["ps", "--all", "-q", "main"], check=False, timeout_sec=30
+                )
+
+    @staticmethod
+    def fake_docker_init(
+        instance,
+        *,
+        task_env_config,
+        mounts_json=None,
+        **kwargs,
+    ):
+        del kwargs
+        instance.task_env_config = task_env_config
+        instance._use_prebuilt = False
+        instance._mounts_json = (
+            [
+                {"type": "bind", "source": "/host/verifier", "target": "/logs/verifier"},
+                {"type": "bind", "source": "/host/agent", "target": "/logs/agent"},
+                {"type": "bind", "source": "/host/artifacts", "target": "/logs/artifacts"},
+            ]
+            if mounts_json is None
+            else list(mounts_json)
+        )
+
+    def make_environment(self, runtime_root, task_config, **overrides):
+        _, _, docker = self.build_host_executables()
+        recovery_path, recovery_sha256 = self.build_image_recovery()
+        environment_dir = overrides.pop("environment_dir", self.root / "environment")
+        try:
+            runtime_identity = validate_shared_runtime(runtime_root)
+            manifest_sha256 = runtime_identity.manifest_sha256
+            tree_sha256 = runtime_identity.tree_sha256
+        except ValueError:
+            manifest_sha256 = "0" * 64
+            tree_sha256 = "0" * 64
+        values = {
+            "environment_dir": environment_dir,
+            "environment_name": f"datacurve/{FIRST_TASK}",
+            "session_id": "trial-agent",
+            "trial_paths": object(),
+            "task_env_config": task_config,
+            "shared_runtime_dir": str(runtime_root),
+            "runtime_manifest_sha256": manifest_sha256,
+            "runtime_tree_sha256": tree_sha256,
+            "image_identity_path": str(IMAGE_LEDGER),
+            "image_identity_sha256": IMAGE_LEDGER_SHA256,
+            "image_recovery_path": str(recovery_path),
+            "image_recovery_sha256": recovery_sha256,
+            "expected_task_id": FIRST_TASK,
+            "expected_base_commit": FIRST_BASE_COMMIT,
+            "execution_mode": "preflight",
+            "host_docker_path": str(docker),
+            "host_docker_sha256": _sha256_file(docker),
+            "mounts_json": None,
+        }
+        values.update(overrides)
+        with mock.patch.object(DockerEnvironment, "__init__", self.fake_docker_init):
+            return PluginValueDockerEnvironment(**values)
+
+    def make_verifier_context(self, base_image=FIRST_TAG):
+        context = self.root / "verifier-tests"
+        context.mkdir(parents=True, exist_ok=True)
+        (context / "Dockerfile").write_text(
+            f"FROM {base_image}\nCOPY opaque-test-artifact /tests/artifact\n",
+            encoding="utf-8",
+        )
+        return context
+
+    def test_agent_retains_default_mounts_and_gets_one_read_only_runtime(self):
+        runtime_root = self.build_runtime()
+        original = FakeTaskEnvironment()
+        environment = self.make_environment(runtime_root, original)
+        self.assertEqual(original.docker_image, FIRST_TAG)
+        self.assertEqual(environment.task_env_config.docker_image, RECOVERY_REF)
+        self.assertEqual(len(environment._mounts_json), 4)
+        runtime_mount = environment._mounts_json[-1]
+        self.assertEqual(runtime_mount["target"], str(RUNTIME_MOUNT))
+        self.assertEqual(runtime_mount["source"], str(runtime_root.resolve()))
+        self.assertIs(runtime_mount["read_only"], True)
+        self.assertEqual(runtime_mount["bind"], {"create_host_path": False})
+
+    def test_constructor_matches_pinned_pier_types_without_docker(self):
+        runtime_root = self.build_runtime()
+        _, _, docker = self.build_host_executables()
+        trial_paths = TrialPaths(self.root / "trial")
+        trial_paths.mkdir()
+        environment_dir = self.root / "environment"
+        environment_dir.mkdir()
+        (environment_dir / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
+        recovery_path, recovery_sha256 = self.build_image_recovery()
+        environment = PluginValueDockerEnvironment(
+            environment_dir=environment_dir,
+            environment_name=f"datacurve/{FIRST_TASK}",
+            session_id="actual-pier-agent",
+            trial_paths=trial_paths,
+            task_env_config=EnvironmentConfig(
+                docker_image=FIRST_TAG,
+                os="linux",
+                network_mode="no-network",
+            ),
+            shared_runtime_dir=str(runtime_root),
+            runtime_manifest_sha256=validate_shared_runtime(runtime_root).manifest_sha256,
+            runtime_tree_sha256=validate_shared_runtime(runtime_root).tree_sha256,
+            image_identity_path=str(IMAGE_LEDGER),
+            image_identity_sha256=IMAGE_LEDGER_SHA256,
+            image_recovery_path=str(recovery_path),
+            image_recovery_sha256=recovery_sha256,
+            expected_task_id=FIRST_TASK,
+            expected_base_commit=FIRST_BASE_COMMIT,
+            execution_mode="preflight",
+            host_docker_path=str(docker),
+            host_docker_sha256=_sha256_file(docker),
+            mounts_json=None,
+            agent_install_spec=None,
+        )
+        self.assertEqual(environment.task_env_config.docker_image, RECOVERY_REF)
+        self.assertEqual(len(environment._mounts_json), 4)
+
+    def test_verifier_keeps_only_its_explicit_mount_and_never_mounts_bundle(self):
+        runtime_root = self.build_runtime()
+        verifier_mounts = [
+            {"type": "bind", "source": "/host/verifier", "target": "/logs/verifier"}
+        ]
+        environment = self.make_environment(
+            runtime_root,
+            FakeTaskEnvironment(None),
+            session_id="trial__verifier__trial",
+            mounts_json=verifier_mounts,
+            environment_dir=self.make_verifier_context(),
+        )
+        self.assertEqual(environment._mounts_json, verifier_mounts)
+        self.assertIsNone(environment.task_env_config.docker_image)
+        self.assertEqual(environment._verifier_base_image, FIRST_TAG)
+        self.assertFalse(
+            any(mount.get("target") == str(RUNTIME_MOUNT) for mount in environment._mounts_json)
+        )
+
+    def test_verifier_rejects_runtime_source_alias_and_nested_target_overlay(self):
+        runtime_root = self.build_runtime()
+        verifier_context = self.make_verifier_context()
+        alias = self.root / "runtime-alias"
+        alias.symlink_to(runtime_root, target_is_directory=True)
+        with self.assertRaisesRegex(RuntimeError, "overlaps the shared agent runtime"):
+            self.make_environment(
+                runtime_root,
+                FakeTaskEnvironment(None),
+                session_id="trial__verifier__trial",
+                mounts_json=[
+                    {"type": "bind", "source": str(alias), "target": "/logs/verifier"}
+                ],
+                environment_dir=verifier_context,
+            )
+        with self.assertRaisesRegex(RuntimeError, "target overlaps"):
+            self.make_environment(
+                runtime_root,
+                FakeTaskEnvironment(None),
+                session_id="trial__verifier__trial",
+                mounts_json=[
+                    {"type": "bind", "source": "/host/agent", "target": "/logs/agent"},
+                    {
+                        "type": "bind",
+                        "source": "/host/overlay",
+                        "target": str(RUNTIME_MOUNT / "lib"),
+                    },
+                ],
+                environment_dir=verifier_context,
+            )
+
+    def test_mount_contract_and_source_tag_mismatches_fail_closed(self):
+        runtime_root = self.build_runtime()
+        with self.assertRaisesRegex(RuntimeError, "mount/session contract"):
+            self.make_environment(
+                runtime_root,
+                FakeTaskEnvironment(None),
+                mounts_json=[{"type": "bind", "source": "/x", "target": "/y"}],
+                environment_dir=self.make_verifier_context(),
+            )
+        with self.assertRaisesRegex(ValueError, "does not match its frozen identity"):
+            self.make_environment(runtime_root, FakeTaskEnvironment("example.invalid:latest"))
+        with self.assertRaisesRegex(ValueError, "manifest does not match"):
+            self.make_environment(
+                runtime_root,
+                FakeTaskEnvironment(),
+                runtime_manifest_sha256="0" * 64,
+            )
+        with self.assertRaisesRegex(ValueError, "absent from the image identity ledger"):
+            self.make_environment(
+                runtime_root,
+                FakeTaskEnvironment(),
+                environment_name="datacurve/missing-frozen-task",
+                expected_task_id="missing-frozen-task",
+            )
+
+    def test_separate_verifier_rejects_explicit_image_or_wrong_base(self):
+        runtime_root = self.build_runtime()
+        mounts = [{"type": "bind", "source": "/host/verifier", "target": "/logs/verifier"}]
+        with self.assertRaisesRegex(ValueError, "separate verifier must omit docker_image"):
+            self.make_environment(
+                runtime_root,
+                FakeTaskEnvironment(),
+                session_id="trial__verifier__trial",
+                mounts_json=mounts,
+                environment_dir=self.make_verifier_context(),
+            )
+        with self.assertRaisesRegex(ValueError, "base image does not match"):
+            self.make_environment(
+                runtime_root,
+                FakeTaskEnvironment(None),
+                session_id="trial__verifier__trial",
+                mounts_json=mounts,
+                environment_dir=self.make_verifier_context("example.invalid:wrong"),
+            )
+
+    def test_separate_verifier_rewrites_only_private_context_and_names_build(self):
+        runtime_root = self.build_runtime()
+        source_context = self.make_verifier_context()
+        source_hash = _tree_sha256(source_context)
+        original_dockerfile = (source_context / "Dockerfile").read_text(encoding="utf-8")
+        environment = self.make_environment(
+            runtime_root,
+            FakeTaskEnvironment(None),
+            session_id="trial__verifier__trial",
+            mounts_json=[{"type": "bind", "source": "/host/verifier", "target": "/logs/verifier"}],
+            environment_dir=source_context,
+        )
+        trial_paths = TrialPaths(self.root / "trial")
+        trial_paths.mkdir()
+        environment.trial_paths = trial_paths
+        environment._env_vars = SimpleNamespace(context_dir="", main_image_name="old")
+        environment._verified_effective_image_id = RECOVERY_IMAGE_ID
+
+        environment._prepare_verifier_build_context()
+
+        copied = environment._verifier_build_context
+        self.assertIsNotNone(copied)
+        self.assertNotEqual(copied, source_context)
+        self.assertEqual(_tree_sha256(source_context), source_hash)
+        self.assertIn(RECOVERY_REF, (copied / "Dockerfile").read_text(encoding="utf-8"))
+        self.assertEqual((source_context / "Dockerfile").read_text(encoding="utf-8"), original_dockerfile)
+        self.assertEqual(environment._env_vars.context_dir, copied.resolve().as_posix())
+        self.assertIn(source_hash[:24], environment._env_vars.main_image_name)
+        self.assertIn(RECOVERY_IMAGE_ID.removeprefix("sha256:")[:16], environment._env_vars.main_image_name)
+        self.assertEqual(json.loads(environment._verifier_image_compose_path.read_text()), {
+            "services": {"main": {
+                "image": environment._verifier_build_name,
+                "platform": "linux/amd64",
+                "build": {"platforms": ["linux/amd64"]},
+            }}
+        })
+        with mock.patch.object(DockerEnvironment, "_docker_compose_paths", new_callable=mock.PropertyMock) as paths:
+            paths.return_value = [Path("upstream-compose")]
+            self.assertEqual(environment._docker_compose_paths, [
+                Path("upstream-compose"), environment._verifier_image_compose_path
+            ])
+        environment._cleanup_verifier_build_context()
+        self.assertFalse(copied.exists())
+
+    def test_separate_verifier_rejects_source_context_drift_before_copy(self):
+        runtime_root = self.build_runtime()
+        source_context = self.make_verifier_context()
+        environment = self.make_environment(
+            runtime_root,
+            FakeTaskEnvironment(None),
+            session_id="trial__verifier__trial",
+            mounts_json=[{"type": "bind", "source": "/host/verifier", "target": "/logs/verifier"}],
+            environment_dir=source_context,
+        )
+        trial_paths = TrialPaths(self.root / "drift-trial")
+        trial_paths.mkdir()
+        environment.trial_paths = trial_paths
+        environment._env_vars = SimpleNamespace(context_dir="", main_image_name="old")
+        environment._verified_effective_image_id = RECOVERY_IMAGE_ID
+        (source_context / "drift-marker").write_text("changed", encoding="utf-8")
+        with self.assertRaisesRegex(RuntimeError, "source context changed"):
+            environment._prepare_verifier_build_context()
+
+    def test_environment_name_must_match_the_canonical_datacurve_task_name(self):
+        runtime_root = self.build_runtime()
+        environment = self.make_environment(runtime_root, FakeTaskEnvironment())
+        self.assertEqual(environment.task_env_config.docker_image, RECOVERY_REF)
+        with self.assertRaisesRegex(ValueError, "environment name"):
+            self.make_environment(
+                runtime_root,
+                FakeTaskEnvironment(),
+                environment_name=FIRST_TASK,
+            )
+        with self.assertRaisesRegex(ValueError, "environment name"):
+            self.make_environment(
+                runtime_root,
+                FakeTaskEnvironment(),
+                environment_name="datacurve/anko-default-function-arguments",
+            )
+
+    def test_effective_image_requires_exact_local_id_platform_and_rootfs(self):
+        environment = self.make_environment(self.build_runtime(), FakeTaskEnvironment())
+        environment._pull_source_image = mock.AsyncMock()
+        environment._inspect_image = mock.AsyncMock(
+            return_value={
+                "Id": RECOVERY_IMAGE_ID,
+                "Os": "linux",
+                "Architecture": "amd64",
+                "RootFS": {"Type": "layers", "Layers": list(RECOVERY_ROOTFS)},
+            }
+        )
+        asyncio.run(environment._verify_effective_image())
+        environment._pull_source_image.assert_not_awaited()
+        self.assertTrue(environment._effective_image_verified)
+        self.assertEqual(environment._verified_effective_rootfs, RECOVERY_ROOTFS)
+        environment._inspect_image.return_value["Id"] = "sha256:" + "0" * 64
+        with self.assertRaisesRegex(RuntimeError, "image id"):
+            asyncio.run(environment._verify_effective_image())
+        environment._inspect_image.return_value.update(
+            {
+                "Id": RECOVERY_IMAGE_ID,
+                "RootFS": {
+                    "Type": "layers",
+                    "Layers": ["sha256:" + "1" * 64],
+                },
+            }
+        )
+        with self.assertRaisesRegex(RuntimeError, "rootfs"):
+            asyncio.run(environment._verify_effective_image())
+
+    def test_original_image_is_pulled_by_exact_digest_before_inspection(self):
+        environment = self.make_environment(self.build_runtime(), FakeTaskEnvironment())
+        identities = _load_image_identities(
+            IMAGE_LEDGER,
+            expected_sha256=IMAGE_LEDGER_SHA256,
+            require_execution_ready=False,
+        )
+        recovery_path, recovery_sha256 = self.build_image_recovery()
+        resolved = _load_image_recoveries(
+            recovery_path,
+            expected_sha256=recovery_sha256,
+            source_identities=identities,
+            require_execution_ready=False,
+        )["anko-default-function-arguments"]
+        environment._resolved_task_image = resolved
+        environment._pull_source_image = mock.AsyncMock()
+        observed_image_id = resolved.source.manifest_digest
+        environment._inspect_image = mock.AsyncMock(
+            return_value={
+                "Id": observed_image_id,
+                "Os": "linux",
+                "Architecture": "amd64",
+                "RepoDigests": [resolved.source.pinned_image],
+                "RootFS": {"Type": "layers", "Layers": ["sha256:" + "a" * 64]},
+            }
+        )
+
+        asyncio.run(environment._verify_effective_image())
+
+        environment._pull_source_image.assert_awaited_once_with(resolved.source.pinned_image)
+        environment._inspect_image.assert_awaited_once_with(resolved.source.pinned_image)
+
+        environment._effective_image_verified = False
+        environment._inspect_image.return_value["RepoDigests"] = [
+            resolved.source.pinned_image.rsplit("@", 1)[0] + "@sha256:" + "0" * 64
+        ]
+        with self.assertRaisesRegex(RuntimeError, "frozen registry digest"):
+            asyncio.run(environment._verify_effective_image())
+
+    def test_restored_files_are_metadata_checked_and_hashed_live_before_execution(self):
+        environment = self.make_environment(self.build_runtime(), FakeTaskEnvironment())
+        environment._container_identity_evidence = {
+            "containerId": "a" * 64,
+            "restoredFilesVerified": False,
+        }
+        restored = environment._resolved_task_image.restored_files
+        self.assertEqual(len(restored), 706)
+        empty_file = next(item for item in restored if item.size == 0)
+        pygments_file = next(
+            item for item in restored if "/pygments/" in item.path.as_posix()
+        )
+
+        def metadata_payload(*, change_index=None, field=None, value=None):
+            records = []
+            for index, item in enumerate(restored):
+                values = {
+                    "mode": format(stat.S_IFREG | int(item.mode, 8), "x"),
+                    "uid": item.uid,
+                    "gid": item.gid,
+                    "size": item.size,
+                }
+                if index == change_index:
+                    values[field] = value
+                records.append(
+                    f"{values['mode']}\0{values['uid']}\0{values['gid']}\0"
+                    f"{values['size']}\0{item.path.as_posix()}\0"
+                )
+            return "".join(records).encode()
+
+        metadata = metadata_payload()
+        checksums = "".join(
+            f"{item.sha256}  {item.path.as_posix()}\0" for item in restored
+        )
+        environment._exec_restored_file_identity_command = mock.AsyncMock(
+            side_effect=[metadata, checksums.encode()]
+        )
+        asyncio.run(environment._verify_restored_files())
+        self.assertTrue(environment._restored_files_verified)
+        self.assertTrue(environment._container_identity_evidence["restoredFilesVerified"])
+        calls = environment._exec_restored_file_identity_command.await_args_list
+        self.assertEqual(calls[0].args[1], "/usr/bin/stat")
+        self.assertEqual(calls[1].args[1], "/usr/bin/sha256sum")
+        self.assertIn(empty_file.path.as_posix(), calls[0].args)
+        self.assertIn(pygments_file.path.as_posix(), calls[1].args)
+
+        environment._restored_files_verified = False
+        environment._container_identity_evidence["restoredFilesVerified"] = False
+        bad_metadata = metadata_payload(change_index=0, field="mode", value="a1ff")
+        environment._exec_restored_file_identity_command = mock.AsyncMock(
+            side_effect=[bad_metadata, checksums.encode()]
+        )
+        with self.assertRaisesRegex(RuntimeError, "not regular"):
+            asyncio.run(environment._verify_restored_files())
+
+        for field, value in (
+            ("mode", "81ed"),
+            ("uid", restored[0].uid + 1),
+            ("gid", restored[0].gid + 1),
+            ("size", restored[0].size + 1),
+        ):
+            with self.subTest(field=field):
+                environment._restored_files_verified = False
+                environment._container_identity_evidence["restoredFilesVerified"] = False
+                environment._exec_restored_file_identity_command = mock.AsyncMock(
+                    side_effect=[
+                        metadata_payload(change_index=0, field=field, value=value),
+                        checksums.encode(),
+                    ]
+                )
+                with self.assertRaisesRegex(RuntimeError, "metadata does not match"):
+                    asyncio.run(environment._verify_restored_files())
+
+        environment._restored_files_verified = False
+        environment._container_identity_evidence["restoredFilesVerified"] = False
+        bad_checksums = checksums.replace(restored[0].sha256, "0" * 64, 1)
+        environment._exec_restored_file_identity_command = mock.AsyncMock(
+            side_effect=[metadata, bad_checksums.encode()]
+        )
+        with self.assertRaisesRegex(RuntimeError, "bytes do not match"):
+            asyncio.run(environment._verify_restored_files())
+
+    def test_container_inspection_proves_agent_mount_and_verifier_absence(self):
+        identity = validate_shared_runtime(self.build_runtime())
+        verifier_context = self.make_verifier_context()
+        image_identity = _load_image_identities(
+            IMAGE_LEDGER,
+            expected_sha256=IMAGE_LEDGER_SHA256,
+            require_execution_ready=False,
+        )[FIRST_TASK]
+        recovery_path, recovery_sha256 = self.build_image_recovery()
+        resolved_image = _load_image_recoveries(
+            recovery_path,
+            expected_sha256=recovery_sha256,
+            source_identities={FIRST_TASK: image_identity},
+            require_execution_ready=False,
+        )[FIRST_TASK]
+        environment = object.__new__(PluginValueDockerEnvironment)
+        environment._shared_runtime = identity
+        environment._shared_runtime_source = identity.root
+        environment._task_image_identity = image_identity
+        environment._resolved_task_image = resolved_image
+        environment._effective_image_verified = True
+        environment._verified_effective_image_id = RECOVERY_IMAGE_ID
+        environment._verified_effective_rootfs = RECOVERY_ROOTFS
+        environment._restored_files_verified = False
+        environment._verifier_build_name = "built-verifier-image"
+        environment._verifier_build_context = verifier_context
+        environment._verifier_source_context = verifier_context
+        environment._verifier_context_sha256 = _tree_sha256(environment._verifier_source_context)
+        environment._verifier_base_image = FIRST_TAG
+        environment.session_id = "trial__verifier__trial"
+        environment._mounts_json = [
+            {
+                "type": "bind",
+                "source": str(identity.root),
+                "target": str(RUNTIME_MOUNT),
+                "read_only": True,
+            }
+        ]
+        trial_paths = TrialPaths(self.root / "identity-trial")
+        trial_paths.mkdir()
+        environment.trial_paths = trial_paths
+        environment._container_identity_verified = False
+        environment.benchmark_container_id = mock.AsyncMock(return_value="a" * 64)
+        environment._inspect_container = mock.AsyncMock(
+            return_value={
+                "Config": {"Image": RECOVERY_REF},
+                "Image": RECOVERY_IMAGE_ID,
+                "HostConfig": {"NetworkMode": "none"},
+                "Mounts": [
+                    {
+                        "Type": "bind",
+                        "Source": str(identity.root),
+                        "Destination": str(RUNTIME_MOUNT),
+                        "RW": False,
+                    }
+                ],
+            }
+        )
+        asyncio.run(environment._verify_running_container(expect_runtime=True))
+        environment._restored_files_verified = True
+        environment._container_identity_evidence["restoredFilesVerified"] = True
+        environment._container_identity_verified = True
+        self.assertTrue(environment._container_identity_verified)
+        self.assertEqual(environment.container_identity_evidence["imageId"], RECOVERY_IMAGE_ID)
+        self.assertEqual(environment.container_identity_evidence["runtimeMountCount"], 1)
+
+        environment._container_identity_verified = False
+        environment._restored_files_verified = False
+        environment._mounts_json = []
+        environment._inspect_image = mock.AsyncMock(
+            return_value={
+                "Id": "sha256:" + "b" * 64,
+                "RootFS": {
+                    "Type": "layers",
+                    "Layers": [*RECOVERY_ROOTFS, "sha256:" + "f" * 64],
+                },
+            }
+        )
+        environment._inspect_container = mock.AsyncMock(
+            return_value={
+                "Config": {"Image": "built-verifier-image"},
+                "Image": "sha256:" + "b" * 64,
+                "HostConfig": {"NetworkMode": "none"},
+                "Mounts": [],
+            }
+        )
+        asyncio.run(environment._verify_running_container(expect_runtime=False))
+        environment._restored_files_verified = True
+        environment._container_identity_evidence["restoredFilesVerified"] = True
+        environment._write_verifier_identity_receipt()
+        environment._container_identity_verified = True
+        self.assertTrue(environment._container_identity_verified)
+        self.assertEqual(environment.container_identity_evidence["image"], "built-verifier-image")
+        self.assertEqual(environment.container_identity_evidence["runtimeMountCount"], 0)
+        receipt = trial_paths.trial_dir / "verifier-runtime-identity.json"
+        self.assertTrue(receipt.is_file())
+        receipt_data = json.loads(receipt.read_text(encoding="utf-8"))
+        self.assertEqual(
+            receipt_data["sourceRegistryManifestDigest"],
+            "sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
+        )
+        self.assertEqual(receipt_data["effectiveBaseImageId"], RECOVERY_IMAGE_ID)
+        self.assertEqual(
+            receipt_data["registryLayerEvidenceSha256"],
+            resolved_image.registry_layer_evidence_sha256,
+        )
+        self.assertEqual(
+            receipt_data["restoredFilesArtifactSha256"],
+            resolved_image.restored_files_artifact_sha256,
+        )
+        self.assertEqual(
+            receipt_data["buildReceiptSha256"],
+            resolved_image.build_receipt_sha256,
+        )
+        self.assertEqual(
+            receipt_data["recipeArtifactSha256"],
+            resolved_image.recipe_artifact_sha256,
+        )
+        self.assertTrue(receipt_data["restoredFilesVerified"])
+        self.assertEqual(receipt_data["runtimeMountCount"], 0)
+        self.assertEqual(receipt_data["taskId"], FIRST_TASK)
+        self.assertEqual(receipt_data["sessionId"], "trial__verifier__trial")
+        self.assertNotIn("JEV_API_KEY", json.dumps(receipt_data))
+
+        inspection = environment._inspect_container.return_value
+        environment._container_identity_verified = False
+        inspection["Config"]["Env"] = ["JEV_API_KEY=redacted"]
+        with self.assertRaisesRegex(RuntimeError, "forbidden credential env JEV_API_KEY"):
+            asyncio.run(environment._verify_running_container(expect_runtime=False))
+        inspection["Config"].pop("Env")
+
+        environment._container_identity_verified = False
+        inspection["HostConfig"]["Privileged"] = True
+        with self.assertRaisesRegex(RuntimeError, "privileged"):
+            asyncio.run(environment._verify_running_container(expect_runtime=False))
+        inspection["HostConfig"].pop("Privileged")
+
+        environment._container_identity_verified = False
+        inspection["Mounts"].append(
+            {"Type": "bind", "Source": "/unexpected", "Destination": "/unexpected", "RW": False}
+        )
+        with self.assertRaisesRegex(RuntimeError, "unexpected mount count"):
+            asyncio.run(environment._verify_running_container(expect_runtime=False))
+        inspection["Mounts"].pop()
+
+        environment._container_identity_verified = False
+        environment._mounts_json = [
+            {
+                "type": "bind",
+                "source": "/host/verifier",
+                "target": "/logs/verifier",
+                "read_only": True,
+            }
+        ]
+        inspection["Mounts"] = [
+            {
+                "Type": "bind",
+                "Source": "/host/verifier",
+                "Destination": "/logs/verifier",
+                "RW": True,
+            }
+        ]
+        with self.assertRaisesRegex(RuntimeError, "mount mode"):
+            asyncio.run(environment._verify_running_container(expect_runtime=False))
+        inspection["Mounts"][0]["RW"] = False
+        inspection["Mounts"][0]["Source"] = "/wrong-source"
+        with self.assertRaisesRegex(RuntimeError, "mount source"):
+            asyncio.run(environment._verify_running_container(expect_runtime=False))
+
+        environment._container_identity_verified = False
+        environment._inspect_container = mock.AsyncMock(
+            return_value={
+                "Config": {"Image": "built-verifier-image"},
+                "Image": "sha256:" + "b" * 64,
+                "HostConfig": {"NetworkMode": "bridge"},
+                "Mounts": [],
+            }
+        )
+        with self.assertRaisesRegex(RuntimeError, "network mode"):
+            asyncio.run(environment._verify_running_container(expect_runtime=False))
+
+    def test_verifier_rejects_a_built_image_from_the_wrong_effective_base(self):
+        context = self.make_verifier_context()
+        environment = self.make_environment(
+            self.build_runtime(),
+            FakeTaskEnvironment(None),
+            session_id="trial__verifier__trial",
+            mounts_json=[{"type": "bind", "source": "/host/verifier", "target": "/logs/verifier"}],
+            environment_dir=context,
+        )
+        environment._effective_image_verified = True
+        environment._verified_effective_image_id = RECOVERY_IMAGE_ID
+        environment._verified_effective_rootfs = RECOVERY_ROOTFS
+        environment._verifier_build_name = "built-verifier-image"
+        environment._verifier_build_context = context
+        environment.benchmark_container_id = mock.AsyncMock(return_value="a" * 64)
+        environment._inspect_container = mock.AsyncMock(
+            return_value={
+                "Config": {"Image": "built-verifier-image"},
+                "Image": "sha256:" + "b" * 64,
+                "HostConfig": {"NetworkMode": "none"},
+                "Mounts": [],
+            }
+        )
+        environment._inspect_image = mock.AsyncMock(
+            return_value={
+                "Id": "sha256:" + "b" * 64,
+                "RootFS": {
+                    "Type": "layers",
+                    "Layers": ["sha256:" + "f" * 64],
+                },
+            }
+        )
+        with self.assertRaisesRegex(RuntimeError, "does not inherit"):
+            asyncio.run(environment._verify_running_container(expect_runtime=False))
+
+    def test_repository_readiness_binds_head_tree_and_clean_state(self):
+        environment = object.__new__(PluginValueDockerEnvironment)
+        environment._expected_base_commit = "a" * 40
+        environment._repository_identity_verified = False
+        environment._repository_readiness = None
+        environment.exec = mock.AsyncMock(
+            return_value=SimpleNamespace(
+                return_code=0,
+                stdout=f"{'a' * 40}\n{'b' * 40}\n",
+            )
+        )
+        asyncio.run(environment._verify_repository_ready())
+        self.assertEqual(environment.repository_readiness, {
+            "baseCommitHash": "a" * 40,
+            "headCommit": "a" * 40,
+            "headTree": "b" * 40,
+        })
+        command = environment.exec.await_args.args[0]
+        self.assertIn("diff --quiet --cached", command)
+        self.assertIn("status --porcelain=v1 --untracked-files=all", command)
+        self.assertTrue(environment._repository_identity_verified)
+
+        environment._repository_identity_verified = False
+        environment.exec = mock.AsyncMock(
+            return_value=SimpleNamespace(return_code=1, stdout="")
+        )
+        with self.assertRaisesRegex(RuntimeError, "not clean"):
+            asyncio.run(environment._verify_repository_ready())
+
+        environment.exec = mock.AsyncMock(
+            return_value=SimpleNamespace(
+                return_code=0,
+                stdout=f"{'c' * 40}\n{'b' * 40}\n",
+            )
+        )
+        with self.assertRaisesRegex(RuntimeError, "invalid HEAD"):
+            asyncio.run(environment._verify_repository_ready())
+
+
+class PluginValueCodexTests(RuntimeFixture):
+    def make_agent(self, **overrides):
+        node, codex, docker = self.build_host_executables()
+        host_runner = PLUGIN_VALUE_DIR / "host-runner.mjs"
+        values = {
+            "logs_dir": self.root / "logs",
+            "model_name": PINNED_MODEL,
+            "arm": "baseline",
+            "version": PINNED_CODEX_VERSION,
+            "reasoning_effort": PINNED_EFFORT,
+            "host_node_path": str(node),
+            "host_codex_path": str(codex),
+            "host_docker_path": str(docker),
+            "host_node_sha256": _sha256_file(node),
+            "host_codex_sha256": _sha256_file(codex),
+            "host_docker_sha256": _sha256_file(docker),
+            "host_runner_sha256": _sha256_file(host_runner),
+        }
+        values.update(overrides)
+        return PluginValueCodex(**values)
+
+    def test_task_network_allowlist_is_empty_and_install_is_disabled(self):
+        agent = self.make_agent()
+        self.assertEqual(agent.network_allowlist().domains, [])
+        self.assertIsNone(agent.install_spec())
+
+    def test_fixed_model_and_version_are_enforced(self):
+        with self.assertRaisesRegex(ValueError, "model_name"):
+            self.make_agent(model_name="other")
+        with self.assertRaisesRegex(ValueError, "Codex version"):
+            self.make_agent(version="0.154.0")
+        with self.assertRaisesRegex(ValueError, "reasoning_effort"):
+            self.make_agent(reasoning_effort="high")
+
+    def test_preflight_boolean_is_strict(self):
+        self.assertTrue(self.make_agent(preflight_only="true").preflight_only)
+        with self.assertRaisesRegex(ValueError, "preflight_only"):
+            self.make_agent(preflight_only="sometimes")
+
+    def test_setup_uses_only_verified_mounted_executables(self):
+        identity = validate_shared_runtime(self.build_runtime())
+        environment = object.__new__(PluginValueDockerEnvironment)
+        environment._container_identity_verified = True
+        environment._repository_identity_verified = True
+        environment._shared_runtime = identity
+        environment.default_user = "agent"
+
+        async def execute(command, **kwargs):
+            self.assertEqual(kwargs["user"], "root")
+            if command.endswith("node --version"):
+                return SimpleNamespace(return_code=0, stdout=f"v{PINNED_NODE_VERSION}\n")
+            if "createHash" in command:
+                return SimpleNamespace(
+                    return_code=0,
+                    stdout=f"{identity.codex.sha256}\n{identity.node.sha256}\n",
+                )
+            if command.startswith("mkdir -p"):
+                return SimpleNamespace(return_code=0, stdout="")
+            if command.startswith("umask 077"):
+                self.assertIn("/installed-agent/codex-exec-home", command)
+                return SimpleNamespace(return_code=0, stdout="")
+            if command.endswith("codex --version"):
+                return SimpleNamespace(
+                    return_code=0, stdout=f"codex-cli {PINNED_CODEX_VERSION}\n"
+                )
+            raise AssertionError(f"unexpected setup command: {command}")
+
+        environment.exec = mock.AsyncMock(side_effect=execute)
+        asyncio.run(self.make_agent().setup(environment))
+        self.assertEqual(environment.exec.await_count, 5)
+
+    def test_setup_rejects_an_unverified_task_repository(self):
+        environment = object.__new__(PluginValueDockerEnvironment)
+        environment._container_identity_verified = True
+        environment._repository_identity_verified = False
+        with self.assertRaisesRegex(RuntimeError, "repository identity"):
+            asyncio.run(self.make_agent().setup(environment))
+
+    def test_host_transient_cleanup_removes_only_known_paths(self):
+        host_control = self.root / "host-control"
+        host_control.mkdir()
+        keep = host_control / "runtime-evidence.json"
+        keep.write_text("keep", encoding="utf-8")
+        for name in ("runtime-home", "workspace"):
+            path = host_control / name
+            path.mkdir()
+            (path / "secret").write_text("sensitive", encoding="utf-8")
+        PluginValueCodex._cleanup_host_transients(host_control)
+        self.assertFalse((host_control / "runtime-home").exists())
+        self.assertFalse((host_control / "workspace").exists())
+        self.assertTrue(keep.is_file())
+
+    def test_host_runner_control_files_never_enter_task_visible_agent_logs(self):
+        agent_logs = self.root / "trial" / "agent"
+        agent = self.make_agent(logs_dir=agent_logs)
+        node = agent.host_node_path
+        node.chmod(0o700)
+        node.write_text(
+            "#!/bin/sh\n"
+            "shift\n"
+            "while [ \"$#\" -gt 0 ]; do\n"
+            "  case \"$1\" in\n"
+            "    --request) request=$2; shift 2 ;;\n"
+            "    --result) result=$2; shift 2 ;;\n"
+            "    *) exit 9 ;;\n"
+            "  esac\n"
+            "done\n"
+            "test -f \"$request\" || exit 10\n"
+            "printf '%s\\n' '{\"status\":\"passed\",\"schemaVersion\":\"plugin-value-runtime-v1\"}' > \"$result\"\n",
+            encoding="utf-8",
+        )
+        node.chmod(0o500)
+        agent.host_node_sha256 = _sha256_file(node)
+        environment = object.__new__(PluginValueDockerEnvironment)
+        environment.default_user = "agent"
+        environment.benchmark_container_id = mock.AsyncMock(return_value="a" * 64)
+        asyncio.run(agent.run("repair the repository", environment, AgentContext()))
+        host_control = agent_logs.parent / "host-control"
+        request = json.loads(
+            (host_control / "host-runner-request.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(request["logsDir"], str(host_control.resolve()))
+        self.assertEqual(list(agent_logs.iterdir()), [])
+        self.assertTrue((host_control / "host-runner-result.json").is_file())
+
+    def test_darwin_permission_error_requires_independent_group_absence(self):
+        process = SimpleNamespace(pid=424242, wait=mock.AsyncMock())
+        with mock.patch("runtime.sys.platform", "darwin"), mock.patch(
+            "runtime.os.killpg", side_effect=PermissionError(1, "Operation not permitted")
+        ), mock.patch("runtime.subprocess.run") as ps:
+            ps.return_value = SimpleNamespace(stdout="1\n42\n")
+            asyncio.run(PluginValueCodex._terminate_subprocess(process))
+            process.wait.assert_awaited_once_with()
+            process.wait.reset_mock()
+            ps.return_value = SimpleNamespace(stdout="1\n424242\n")
+            with self.assertRaises(PermissionError):
+                asyncio.run(PluginValueCodex._terminate_subprocess(process))
+            process.wait.assert_not_awaited()
+
+    def test_cancellation_terminates_the_entire_host_process_group(self):
+        agent = self.make_agent()
+
+        async def exercise():
+            process = await asyncio.create_subprocess_exec(
+                "/bin/sh",
+                "-c",
+                "sleep 60 & echo $!; wait",
+                start_new_session=True,
+                stdout=asyncio.subprocess.PIPE,
+            )
+            assert process.stdout is not None
+            child_pid = int((await process.stdout.readline()).decode().strip())
+            await agent._terminate_subprocess(process)
+            for _ in range(20):
+                try:
+                    os.kill(child_pid, 0)
+                except ProcessLookupError:
+                    return
+                await asyncio.sleep(0.05)
+            self.fail("child process survived process-group termination")
+
+        asyncio.run(exercise())
+
+
+class RunOneScriptTests(RuntimeFixture):
+    def build_script_environment(self, runtime_root, capture):
+        node, codex, docker = self.build_host_executables()
+        pier = self.root / "pier"
+        (pier / "bin").mkdir(parents=True)
+        fake_python = pier / "bin" / "python"
+        runtime_identity = validate_shared_runtime(runtime_root)
+        recovery_path, recovery_sha256 = self.build_image_recovery()
+        fake_python.write_text(
+            "#!/bin/sh\n"
+            "while :; do\n"
+            "  case \"${1:-}\" in\n"
+            "    -I|-S|-B) shift ;;\n"
+            "    -X) shift 2 ;;\n"
+            "    *) break ;;\n"
+            "  esac\n"
+            "done\n"
+            "case \"${1:-}\" in\n"
+            "  *runtime.py) exit 0 ;;\n"
+            "  -c)\n"
+            "    code=$2\n"
+            "    case \"$code\" in\n"
+            "      *executionReady*) echo 'runtime identity is not ready for scored execution' >&2; exit 1 ;;\n"
+            f"      *imageIdentityLedgerSha256*) echo {IMAGE_LEDGER_SHA256} ;;\n"
+            f"      *imageRecoveryManifestSha256*) echo {recovery_sha256} ;;\n"
+            f"      *taskRuntimeMetadataSha256*) echo {_sha256_file(PLUGIN_VALUE_DIR / 'task-runtime-metadata.json')} ;;\n"
+            f"      *scheduleSha256*) echo {_sha256_file(PLUGIN_VALUE_DIR / 'schedule.json')} ;;\n"
+            "      *hostRuntime*node*) echo " + "a" * 64 + " ;;\n"
+            "      *hostRuntime*codex*) echo " + "b" * 64 + " ;;\n"
+            "      *hostRuntime*docker*) echo " + "c" * 64 + " ;;\n"
+            "      *hostRuntime*runner*) echo " + "d" * 64 + " ;;\n"
+            f"      *manifestSha256*) echo {runtime_identity.manifest_sha256} ;;\n"
+            f"      *treeSha256*) echo {runtime_identity.tree_sha256} ;;\n"
+            "      *baseCommitHash*) echo eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee ;;\n"
+            "      *) exit 3 ;;\n"
+            "    esac ;;\n"
+            "  *pier-main.py)\n"
+            "    shift\n"
+            "    if [ \"${1:-}\" = validate-inputs ]; then printf '%s\\n' '{\"baseCommitHash\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"}'; exit 0; fi\n"
+            f"    {sys.executable} -c 'import json,os,sys; json.dump(sys.argv[1:], open(os.environ[\"CAPTURE\"], \"w\"))' \"$@\" ;;\n"
+            "  *) exit 4 ;;\n"
+            "esac\n",
+            encoding="utf-8",
+        )
+        fake_python.chmod(0o500)
+        for directory in ("tasks", "jobs", "tmp"):
+            path = self.root / directory
+            path.mkdir(exist_ok=True)
+            path.chmod(0o700)
+        return {
+            **os.environ,
+            "PIER_RUNTIME": str(pier),
+            "DEEPSWE_TASKS": str(self.root / "tasks"),
+            "JOBS_DIR": str(self.root / "jobs"),
+            "PLUGIN_VALUE_RUNTIME_BUNDLE": str(runtime_root),
+            "PLUGIN_VALUE_TMPDIR": str(self.root / "tmp"),
+            "PLUGIN_VALUE_HOST_NODE": str(node),
+            "PLUGIN_VALUE_HOST_CODEX": str(codex),
+            "PLUGIN_VALUE_HOST_DOCKER": str(docker),
+            "PLUGIN_VALUE_IMAGE_RECOVERY_PATH": str(recovery_path),
+            "CAPTURE": str(capture),
+        }
+
+    def test_exact_task_and_runtime_identity_are_passed_to_pier(self):
+        runtime_root = self.build_runtime()
+        runtime_identity = validate_shared_runtime(runtime_root)
+        capture = self.root / "args.json"
+        env = self.build_script_environment(runtime_root, capture)
+        completed = subprocess.run(
+            [
+                "sh",
+                str(PLUGIN_VALUE_DIR / "run-one.sh"),
+                "baseline",
+                "preflight",
+                FIRST_TASK,
+                "unit-preflight",
+            ],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        arguments = json.loads(capture.read_text(encoding="utf-8"))
+        self.assertIn(FIRST_TASK, arguments)
+        self.assertIn("shared_runtime_dir=" + str(runtime_root), arguments)
+        self.assertIn(
+            "runtime_manifest_sha256=" + runtime_identity.manifest_sha256, arguments
+        )
+        self.assertIn("runtime_tree_sha256=" + runtime_identity.tree_sha256, arguments)
+        self.assertIn("image_identity_path=" + str(IMAGE_LEDGER), arguments)
+        self.assertIn("image_identity_sha256=" + IMAGE_LEDGER_SHA256, arguments)
+        self.assertIn(
+            "image_recovery_path=" + env["PLUGIN_VALUE_IMAGE_RECOVERY_PATH"], arguments
+        )
+        recovery_sha256 = _sha256_file(Path(env["PLUGIN_VALUE_IMAGE_RECOVERY_PATH"]))
+        self.assertIn("image_recovery_sha256=" + recovery_sha256, arguments)
+        self.assertIn("expected_task_id=" + FIRST_TASK, arguments)
+        self.assertIn("expected_base_commit=" + "e" * 40, arguments)
+        self.assertIn("execution_mode=preflight", arguments)
+        task_option = arguments.index("--include-task-name")
+        self.assertEqual(arguments[task_option + 1], FIRST_TASK)
+        self.assertEqual(arguments.count("--n-tasks"), 1)
+
+    def test_ambient_path_cannot_replace_shell_helpers(self):
+        runtime_root = self.build_runtime()
+        capture = self.root / "args.json"
+        env = self.build_script_environment(runtime_root, capture)
+        poison = self.root / "poison"
+        poison.mkdir()
+        sentinel = self.root / "poison-used"
+        for name in ("dirname", "env"):
+            helper = poison / name
+            helper.write_text(
+                f"#!/bin/sh\nprintf used > {sentinel}\nexit 99\n",
+                encoding="utf-8",
+            )
+            helper.chmod(0o700)
+        env["PATH"] = f"{poison}:/usr/bin:/bin"
+        completed = subprocess.run(
+            [
+                "/bin/sh",
+                str(PLUGIN_VALUE_DIR / "run-one.sh"),
+                "baseline",
+                "preflight",
+                FIRST_TASK,
+                "unit-path",
+            ],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertFalse(sentinel.exists())
+
+    def test_task_globs_are_rejected_before_execution(self):
+        completed = subprocess.run(
+            ["sh", str(PLUGIN_VALUE_DIR / "run-one.sh"), "baseline", "preflight", "*", "job"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("invalid task id", completed.stderr)
+
+    def test_score_mode_stays_blocked_while_runtime_identity_is_pending(self):
+        runtime_root = self.build_runtime()
+        env = self.build_script_environment(runtime_root, self.root / "unused.json")
+        completed = subprocess.run(
+            [
+                "sh",
+                str(PLUGIN_VALUE_DIR / "run-one.sh"),
+                "baseline",
+                "score",
+                FIRST_TASK,
+                "unit-score",
+            ],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("runtime identity is not ready", completed.stderr)
+
+    def test_job_path_traversal_is_rejected_before_environment_access(self):
+        completed = subprocess.run(
+            [
+                "sh",
+                str(PLUGIN_VALUE_DIR / "run-one.sh"),
+                "baseline",
+                "preflight",
+                FIRST_TASK,
+                "../../escape",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("invalid job name", completed.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()

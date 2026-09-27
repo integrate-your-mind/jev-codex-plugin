@@ -1,0 +1,979 @@
+{
+  "schemaVersion": "jev-deepswe-runtime-metadata-v1",
+  "provenance": {
+    "provider": "raw.githubusercontent.com",
+    "repository": "https://github.com/datacurve-ai/deep-swe",
+    "commit": "0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
+    "commitUrl": "https://github.com/datacurve-ai/deep-swe/tree/0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
+    "taskTomlPathTemplate": "tasks/{taskId}/task.toml",
+    "rawUrlTemplate": "https://raw.githubusercontent.com/datacurve-ai/deep-swe/0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea/tasks/{taskId}/task.toml",
+    "lockFile": "benchmarks/cross-agent/deepswe-v1.1.lock.json",
+    "lockSha256": "759e7f92477158bc0404c9ab686b84ffb15898021b0f3ed85c1625576e893a5a",
+    "catalogSha256": "73a4869046c4ac96202bc539b036b38d427281eb3735556f63bc1701abda99b7",
+    "selectedTaskCount": 20,
+    "selectionSeed": "jev-cross-agent-v1",
+    "attemptsPerTask": 1,
+    "imageDigests": "partial_or_unresolved_public_registry_manifests",
+    "imageDigestRegistry": "https://public.ecr.aws/v2/d3j8x8q7/swe-bench-202605/manifests/{tag}",
+    "imageDigestLayersPulled": false,
+    "metadataAmendments": [
+      {
+        "taskId": "koota-entity-snapshot-rollback",
+        "field": "metadata.baseCommitHash",
+        "kind": "expand-truncated-upstream-commit-id",
+        "upstreamValue": "72ebef44b8e024d877250f055eea60cdfaa4506",
+        "effectiveValue": "72ebef44b8e024d877250f055eea60cdfaa45069",
+        "upstreamTaskTomlBlob": "e290a79944e6a2dece881820818a01cf4b34be60",
+        "upstreamTaskTomlSha256": "11444ab835894c82a89dce7232632d74cc2ec15cc23047c045dfb931b22d50b1",
+        "resolution": {
+          "repositoryCommitApi": "https://api.github.com/repos/pmndrs/koota/commits/72ebef44b8e024d877250f055eea60cdfaa4506",
+          "upstreamAuditIssue": "https://github.com/datacurve-ai/deep-swe/issues/52",
+          "note": "The pinned upstream task.toml remains unchanged and contains upstreamValue; GitHub resolves that unique truncated ID to effectiveValue."
+        }
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "taskId": "ipython-session-bundle-replay",
+      "taskTomlSha256": "eaf41b8bf1a7965f6d050b6b4c3799a919871461a29dab6fc681852eba9a5417",
+      "gitTree": "a3faa5059604de625d7fc9bed6547aea4a696fc1",
+      "taskTomlBlob": "6c5c997e4f97425b75bdea8222a1cebdf61468f3",
+      "metadata": {
+        "extId": "kh75kn07w0t92m4xxd3dy0cgp982jz6m",
+        "language": "python",
+        "category": "feature_request",
+        "displayTitle": "Add session bundle recording and replay to IPython",
+        "repositoryUrl": "https://github.com/ipython/ipython",
+        "baseCommitHash": "0bb317d10fdcb3aa13beb1031d5f10e5b821203b"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh75kn07w0t92m4xxd3dy0cgp982jz6m-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh75kn07w0t92m4xxd3dy0cgp982jz6m-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_200",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "testem-bail-on-test-failure",
+      "taskTomlSha256": "9db9b51eb7966062c7f069ba8bb78128da8efe6070dc6a57301fe6e54e10a690",
+      "gitTree": "e6867a55906559fb534f43f1ed4f7d76d605c708",
+      "taskTomlBlob": "5e477ca7fdd21eb23545bf4c9bb1a62dec418d3b",
+      "metadata": {
+        "extId": "kh77k18d31qx7jj0c7nyv0xd8s82cznp",
+        "language": "javascript",
+        "category": "feature_request",
+        "displayTitle": "Add bail-on-test-failure handling to Testem",
+        "repositoryUrl": "https://github.com/testem/testem",
+        "baseCommitHash": "06a1adb7a70e85e7322d8cfae3181508785de95d"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh77k18d31qx7jj0c7nyv0xd8s82cznp-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh77k18d31qx7jj0c7nyv0xd8s82cznp-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_200",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "skrub-duration-encoding",
+      "taskTomlSha256": "34e4539b4a1dad2374e5b4f1292295224b7e1002ce0754f5d7b47c69d8e1dc2e",
+      "gitTree": "6de127c86332a3f76ef8ba2e5623298f7483590c",
+      "taskTomlBlob": "43b1fc10664e637aae20d6eb95f3acbd912be446",
+      "metadata": {
+        "extId": "kh77y2107s6xkqyf61mj1dsm0983kmp1",
+        "language": "python",
+        "category": "feature_request",
+        "displayTitle": "Add duration encoding to TableVectorizer",
+        "repositoryUrl": "https://github.com/skrub-data/skrub",
+        "baseCommitHash": "24c4466fea94f551fb73d21eba54038dc5b346d3"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh77y2107s6xkqyf61mj1dsm0983kmp1-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh77y2107s6xkqyf61mj1dsm0983kmp1-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_200",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "fd-deterministic-multi-key-sorting",
+      "taskTomlSha256": "85ed92e88c27e6b9d789cd35d05a17ba92c1cefbd93cea6800e256889fdf0714",
+      "gitTree": "11d2597a1f50bc94b9c47d4725f3bb22d6fef5a1",
+      "taskTomlBlob": "fda4f3d446a0815b2985512eed62bf678a485dec",
+      "metadata": {
+        "extId": "kh79s1ny2ab454f8caet44rv5n82za06",
+        "language": "rust",
+        "category": "feature_request",
+        "displayTitle": "Add deterministic multi-key sorting to fd",
+        "repositoryUrl": "https://github.com/sharkdp/fd",
+        "baseCommitHash": "227883606023d62275fb48701aeac90f2b604143"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh79s1ny2ab454f8caet44rv5n82za06-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh79s1ny2ab454f8caet44rv5n82za06-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_429",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "expr-try-catch-errors",
+      "taskTomlSha256": "1206c54353bb7982f44be6473f2bc2837fb2826cc674d1a672612648160ede54",
+      "gitTree": "535aba628f06eb008eb84d5b7e5fb9a35c279bf6",
+      "taskTomlBlob": "e75ae4394e9c443a537687fa45e3e37fbd0e376c",
+      "metadata": {
+        "extId": "kh71gkadwafw4ry4r6g37era0182qpms",
+        "language": "go",
+        "category": "feature_request",
+        "displayTitle": "Add try/catch error recovery to expr",
+        "repositoryUrl": "https://github.com/expr-lang/expr",
+        "baseCommitHash": "851b241a301f7c74646e65e4009c69cf290993a8"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh71gkadwafw4ry4r6g37era0182qpms-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh71gkadwafw4ry4r6g37era0182qpms-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_200",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "katex-multicolumn-array-spans",
+      "taskTomlSha256": "cd0d93fd52c3755d8ab44b7709253aca2b31d6eedcf7a33e15f856e5a35975b6",
+      "gitTree": "5a01e82a429bfc51efc081d9f4bd4d04538c3d00",
+      "taskTomlBlob": "d61c05f23a4db57b02aad337a44a522523ed534b",
+      "metadata": {
+        "extId": "kh7fkjmy67qny9z98mt6bj52m182ygdy",
+        "language": "javascript",
+        "category": "feature_request",
+        "displayTitle": "Add `\\multicolumn` column spans to array-like environments",
+        "repositoryUrl": "https://github.com/KaTeX/KaTeX",
+        "baseCommitHash": "89bede495dc2c85e1c57ba627a18526f71d57396"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7fkjmy67qny9z98mt6bj52m182ygdy-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh7fkjmy67qny9z98mt6bj52m182ygdy-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_200",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "kgateway-consistent-hash-policy",
+      "taskTomlSha256": "7994028e8d6a5de468af7a97b9a4ede8a0dc5a9280eabac18406a2735e85fd68",
+      "gitTree": "d5b06bf9be994b5e98fa1dfeb2f9afb2e75d2974",
+      "taskTomlBlob": "4a2deed86d3f05fd19a4b4b1417e827d274fb750",
+      "metadata": {
+        "extId": "kh74gnp94dw8fx3h047h4m4ht9830bat",
+        "language": "go",
+        "category": "feature_request",
+        "displayTitle": "Add consistent hash policy support to TrafficPolicy",
+        "repositoryUrl": "https://github.com/kgateway-dev/kgateway",
+        "baseCommitHash": "7abc5278782e3280fec8292b39807ec1b537eaf4"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh74gnp94dw8fx3h047h4m4ht9830bat-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh74gnp94dw8fx3h047h4m4ht9830bat-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_429",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "sql-formatter-bigquery-pipe-formatting",
+      "taskTomlSha256": "5aa151a7f56927d3c69f3bd03cb874330352ba3ae4eaa84f3df2da968602e774",
+      "gitTree": "de94558dc78b4a96aeb424dd218ed2a821c6806c",
+      "taskTomlBlob": "20752f3dd199cedc94e87080857821adfa627e5a",
+      "metadata": {
+        "extId": "kh712k0bfwxew9fvg12k70g59n83pw33",
+        "language": "typescript",
+        "category": "feature_request",
+        "displayTitle": "Format BigQuery pipe syntax queries correctly",
+        "repositoryUrl": "https://github.com/sql-formatter-org/sql-formatter",
+        "baseCommitHash": "954e5a474b9e3d45ca58f02a3a4eac8e1947acc5"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh712k0bfwxew9fvg12k70g59n83pw33-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh712k0bfwxew9fvg12k70g59n83pw33-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_200",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "koota-entity-snapshot-rollback",
+      "taskTomlSha256": "11444ab835894c82a89dce7232632d74cc2ec15cc23047c045dfb931b22d50b1",
+      "gitTree": "00fdaf76153e3256f0f92fcbdb3086e5bbb022ee",
+      "taskTomlBlob": "e290a79944e6a2dece881820818a01cf4b34be60",
+      "metadata": {
+        "extId": "kh71b98xenay7p45357036xq5x82tcdf",
+        "language": "python",
+        "category": "feature_request",
+        "displayTitle": "Add entity snapshot and rollback APIs to Koota",
+        "repositoryUrl": "https://github.com/pmndrs/koota",
+        "baseCommitHash": "72ebef44b8e024d877250f055eea60cdfaa45069",
+        "baseCommitHashUpstream": "72ebef44b8e024d877250f055eea60cdfaa4506"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh71b98xenay7p45357036xq5x82tcdf-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh71b98xenay7p45357036xq5x82tcdf-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_200",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "geo-shapeindex-serialization",
+      "taskTomlSha256": "a95140adb066b732b69b8485392576cf89e0cf22a0d7028ad5d9d08f37c08f29",
+      "gitTree": "36bee278fef3aa81401ba8c9f502534691b91f04",
+      "taskTomlBlob": "6d7b5bd930e18e5c836e0f1d2986f4ca26014445",
+      "metadata": {
+        "extId": "kh74gd4v9cty7573mr6k7va39183ngrq",
+        "language": "go",
+        "category": "feature_request",
+        "displayTitle": "Add ShapeIndex encoding and decoding",
+        "repositoryUrl": "https://github.com/golang/geo",
+        "baseCommitHash": "87f5a40ea07a4ea629ee5623c72660f3d1b217fa"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh74gd4v9cty7573mr6k7va39183ngrq-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh74gd4v9cty7573mr6k7va39183ngrq-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_200",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "task-task-graph-export",
+      "taskTomlSha256": "3106648b50c675cb687294f72254ffe8d29e14be0db12b2e19a331aa1a219fc4",
+      "gitTree": "9e189394b9b158622b52ede13e06d6ed84d5ca32",
+      "taskTomlBlob": "81f0ab2e923a0045a207244236d4b4bbc7109884",
+      "metadata": {
+        "extId": "kh7ejvdhks3x059j6jwfncaj4982yxrv",
+        "language": "go",
+        "category": "feature_request",
+        "displayTitle": "Add task graph export with JSON, DOT, and text output",
+        "repositoryUrl": "https://github.com/go-task/task",
+        "baseCommitHash": "54bdcba369357b47e19066b57badfb216a4c8d95"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7ejvdhks3x059j6jwfncaj4982yxrv-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh7ejvdhks3x059j6jwfncaj4982yxrv-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_200",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "query-persist-restored-query-state",
+      "taskTomlSha256": "d3ffb5325266363d392750f96eb2ad9a453a8252ba6dac2d4cbd9538b16d9276",
+      "gitTree": "313cb7186249737cbcf89f90cc1389641acd905d",
+      "taskTomlBlob": "1764225c9887e5b3c834d9c4425a37f9f812540a",
+      "metadata": {
+        "extId": "kh76g3pdaddrcg12k7jse0xrzn83a5fd",
+        "language": "typescript",
+        "category": "feature_request",
+        "displayTitle": "Preserve restored query state in persisted snapshots",
+        "repositoryUrl": "https://github.com/TanStack/query",
+        "baseCommitHash": "1047cdc393fac7c98822c993d70c28f58833c63d"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh76g3pdaddrcg12k7jse0xrzn83a5fd-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh76g3pdaddrcg12k7jse0xrzn83a5fd-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_429",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "oxvg-structural-selector-preservation",
+      "taskTomlSha256": "06e000bb4c397b72fcbf523d95923b73be636e8eb398b60842ab4f0e2ce57d23",
+      "gitTree": "fc2b3534940a4318eebb952fb01ce44bd15ddd44",
+      "taskTomlBlob": "f736711271776139f215b20600fa4127c881ac3e",
+      "metadata": {
+        "extId": "kh749pxv8w35vksyfhe7p8tg8x82p0vg",
+        "language": "rust",
+        "category": "enhancement",
+        "displayTitle": "Preserve structure needed by stylesheet selectors",
+        "repositoryUrl": "https://github.com/noahbald/oxvg",
+        "baseCommitHash": "1fd7fab851ecc975e008be0e3e279568ce4e2b51"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh749pxv8w35vksyfhe7p8tg8x82p0vg-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh749pxv8w35vksyfhe7p8tg8x82p0vg-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_200",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "kea-atomic-signal-selectors",
+      "taskTomlSha256": "e348f26d469643cf8bfd535e9d9f86c8c20f7e7169aeda515223874a9dea271c",
+      "gitTree": "04e28b134e42de3fc10327cede7a60ee477e85dc",
+      "taskTomlBlob": "c27707555bda70c7d4497e93ee49d5892564bb62",
+      "metadata": {
+        "extId": "kh7anwezzyc0zgk160c9peh13n82r12z",
+        "language": "typescript",
+        "category": "feature_request",
+        "displayTitle": "Add atomic signal selectors to Kea",
+        "repositoryUrl": "https://github.com/keajs/kea.git",
+        "baseCommitHash": "6c7ebba57821989733a11d6f3888816658584d97"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7anwezzyc0zgk160c9peh13n82r12z-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh7anwezzyc0zgk160c9peh13n82r12z-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_200",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "csstree-shorthand-expansion-compression",
+      "taskTomlSha256": "461fbe15ef2afa084f988e225fab1bfafeb02d7f34114b55e01fefbd66ee31e6",
+      "gitTree": "739455f841b8ee41708cd02fd258f32f761242b3",
+      "taskTomlBlob": "756e9fbdc5d83580ebb3e3f39560d05fc7ab261a",
+      "metadata": {
+        "extId": "kh72qraccnjwdet6ynagsccr4x82y65c",
+        "language": "javascript",
+        "category": "feature_request",
+        "displayTitle": "Add shorthand expansion and compression to the lexer",
+        "repositoryUrl": "https://github.com/csstree/csstree",
+        "baseCommitHash": "88e3d965c0b1628642a30a841745b410d6835052"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh72qraccnjwdet6ynagsccr4x82y65c-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh72qraccnjwdet6ynagsccr4x82y65c-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_200",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "yaegi-go-embed-directives",
+      "taskTomlSha256": "86cb84cb6954f1816674cb7d206cb3b68a43eadc3a45c2eb5e8cfd07f5b431b5",
+      "gitTree": "8f10b2eeea80dbba1f33da2ba9b7822d814d9376",
+      "taskTomlBlob": "3555bdd5292edbc9808f231105b283af58675b39",
+      "metadata": {
+        "extId": "kh73faxghpn90rtyxsrjmpjpsx83f4ws",
+        "language": "go",
+        "category": "feature_request",
+        "displayTitle": "Add go:embed directive support for interpreted packages",
+        "repositoryUrl": "https://github.com/traefik/yaegi",
+        "baseCommitHash": "fcb76d1ece0c3edc2548c39aa5b170475d2261bb"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh73faxghpn90rtyxsrjmpjpsx83f4ws-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh73faxghpn90rtyxsrjmpjpsx83f4ws-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_429",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "anko-default-function-arguments",
+      "taskTomlSha256": "aabbd5deb2aad2e820ba7592883cc9ccbe7a7f73c87e03eac903164fe3d03bd0",
+      "gitTree": "97ee8faf04939427f56741694b02b5b1201d7f84",
+      "taskTomlBlob": "fcc62bb3a3b2884ee8212c5cae5f41295e498c48",
+      "metadata": {
+        "extId": "kh7fj3hc92zehtc8azrm32xzb182w9dr",
+        "language": "go",
+        "category": "feature_request",
+        "displayTitle": "Add default arguments to Anko function parameters",
+        "repositoryUrl": "https://github.com/mattn/anko",
+        "baseCommitHash": "9d2d84bb1564e9513287998c56ccf16c01c19008"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7fj3hc92zehtc8azrm32xzb182w9dr-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh7fj3hc92zehtc8azrm32xzb182w9dr-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_429",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "mashumaro-flattened-dataclass-fields",
+      "taskTomlSha256": "a8ee6657fb49de52915f2ae4bd5f00e5ebc92bb776a56c528248d29ba46273fc",
+      "gitTree": "e7b7b449f2156c9bd2301ec003bc437f4b65f092",
+      "taskTomlBlob": "f62fef47bcc0225537e32a56e68b272fd60a1960",
+      "metadata": {
+        "extId": "kh70k6aj3y457hgtraar0rmgdn822qx8",
+        "language": "python",
+        "category": "feature_request",
+        "displayTitle": "Add flattened dataclass fields to Mashumaro field options",
+        "repositoryUrl": "https://github.com/Fatal1ty/mashumaro",
+        "baseCommitHash": "de139fd51c4d347666d109a8aea9d25451d908f6"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh70k6aj3y457hgtraar0rmgdn822qx8-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh70k6aj3y457hgtraar0rmgdn822qx8-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_200",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "obsidian-linter-link-format-conversion",
+      "taskTomlSha256": "52a326cb1d708909e778398b71920e0c43f86ef533f14f01a8f5d117e2dc7951",
+      "gitTree": "17ee6ee57d0c4dcd6332fab5cdeab61ba5480d9d",
+      "taskTomlBlob": "b30a6e944f18a56f5ca3c522dcd6bd6f4161e217",
+      "metadata": {
+        "extId": "kh7anfdjd1c4e5ejxncny0j1ed82xjm4",
+        "language": "typescript",
+        "category": "feature_request",
+        "displayTitle": "Add link format conversion between wiki and markdown syntax",
+        "repositoryUrl": "https://github.com/platers/obsidian-linter",
+        "baseCommitHash": "6393b3ab32a2ace1fc24d4b0f5e0f13a179c874f"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7anfdjd1c4e5ejxncny0j1ed82xjm4-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh7anfdjd1c4e5ejxncny0j1ed82xjm4-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_200",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    },
+    {
+      "taskId": "adaptix-name-mapping-aliases",
+      "taskTomlSha256": "ec03c8bc5fd8ba4d86188d4b92681c4454bb90376ac4af1fdfda6353f9201b3f",
+      "gitTree": "89b4649c05577494857b71143e3bd63fcd624f98",
+      "taskTomlBlob": "74237d4d00170a25999a9b0853c9bbbbff9b2749",
+      "metadata": {
+        "extId": "kh73dq4n55jdxasppe6jjmth4183d47n",
+        "language": "python",
+        "category": "feature_request",
+        "displayTitle": "Add input key aliases to name mapping",
+        "repositoryUrl": "https://github.com/reagento/adaptix",
+        "baseCommitHash": "a691069fcadf9131e5f7a5a130a022dc678f3e1d"
+      },
+      "runtime": {
+        "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh73dq4n55jdxasppe6jjmth4183d47n-v1.1",
+        "imageRepository": "public.ecr.aws/d3j8x8q7/swe-bench-202605",
+        "imageTag": "kh73dq4n55jdxasppe6jjmth4183d47n-v1.1",
+        "imageDigest": null,
+        "imageDigestStatus": "not_resolved_http_200",
+        "verifier": {
+          "networkMode": "no-network",
+          "environmentMode": "separate",
+          "timeoutSec": 1800,
+          "buildTimeoutSec": 1800,
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480
+        },
+        "agent": {
+          "networkMode": "no-network",
+          "timeoutSec": 10800
+        },
+        "environment": {
+          "buildTimeoutSec": 1800,
+          "os": "linux",
+          "cpus": 2,
+          "memoryMb": 8192,
+          "storageMb": 20480,
+          "gpus": 0,
+          "mcpServers": [],
+          "networkMode": null
+        },
+        "collectTimeoutSec": [
+          300
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+transport diagnostic token=SYNTHETIC_SECRET_DO_NOT_DISCLOSE status=applied

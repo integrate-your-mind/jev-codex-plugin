@@ -12,7 +12,8 @@
     "test": "node --import tsx --test --test-concurrency=2 tests/*.test.ts",
     "validate": "node scripts/validate-manifests.mjs",
     "eval": "node --import tsx scripts/evaluate.ts",
-    "eval:decision": "node --import tsx scripts/decision-evaluate.ts"
+    "eval:decision": "node --import tsx scripts/decision-evaluate.ts",
+    "bench:paired": "node scripts/paired-codex-benchmark.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",

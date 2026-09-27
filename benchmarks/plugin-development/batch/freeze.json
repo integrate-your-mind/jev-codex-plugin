@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "jev-batch-component-freeze-v1",
+  "cohort": "batch-component-authored-v1",
+  "reviewStatus": "pending_root_review",
+  "liveGate": "Pass --live, set JEV_RUN_LIVE_BATCH_BENCHMARK=1, and pass --reviewed-freeze-sha equal to this freeze file SHA-256.",
+  "caseCount": 4,
+  "questionCount": 12,
+  "repeats": 2,
+  "plannedAttempts": 16,
+  "plannedProviderRequests": {
+    "serial": 24,
+    "batch": 8,
+    "total": 32
+  },
+  "inputSha256": "3ee033b7ccf0c56393fc4ab5d72d3b256ca1e2c1ba553d877374305c177e4030",
+  "oracleSha256": "794cd5ddd1c509b1bfdef2d5949424db75db14365abb22944cc50755f58fe907",
+  "scheduleSha256": "a1d93ba19907a9a7ce741704ab6d0a85b04149bd657a9e6506f28ed508b88246",
+  "providerProjectionSha256": "208fe56be7170f00c6c573558a874acee11eb3548c5f49d65206a0a5436b8cf0",
+  "pluginVersion": "0.4.0",
+  "providerModel": "jev-1.13.0",
+  "requiredNodeVersion": "v22.23.2",
+  "selectionRule": {
+    "path": "benchmarks/plugin-value/development-selection.md",
+    "sha256": "7e6c99fe0d28eaf4d50cd4d94578ea32d65ecb4e630742e672f41efee47a7681"
+  },
+  "sourceRoot": "source/jev-workflows",
+  "sourceFiles": [
+    {
+      "path": "package.json",
+      "bytes": 1014,
+      "sha256": "4c7a8c1560d9f9661fa02dc6a7218e1ac0ca0c08cf9e6b2be5aca6c0f77f4e66"
+    },
+    {
+      "path": "src/service.ts",
+      "bytes": 23609,
+      "sha256": "e1e2faf16da1cd0a367491fcc18f7005d90168594c4d128a74d0cc105af5e79b"
+    },
+    {
+      "path": "src/batch.ts",
+      "bytes": 7537,
+      "sha256": "aff6973404e3f5db6b6fd975954b100a74118bd4bf7f9850297aa040c9643609"
+    },
+    {
+      "path": "src/provider.ts",
+      "bytes": 12399,
+      "sha256": "fede727db8dc3c23fec236a2f77668fb7eabba25e3032e0db109d1ef73792372"
+    },
+    {
+      "path": "src/contracts.ts",
+      "bytes": 7102,
+      "sha256": "c6e095f34db25fdfde7becb8acb7d53920ba316085d409dbbe66207b992fdbc8"
+    },
+    {
+      "path": "src/redact.ts",
+      "bytes": 1950,
+      "sha256": "96c828fe8cc275b1aca002f1b4b3b994753f6cf939c2d2edf6def281cad915e9"
+    },
+    {
+      "path": "src/store.ts",
+      "bytes": 15913,
+      "sha256": "2e61c9282d2b25a145b60f0cd293afba641739622075b62ffa598ad6b82bc293"
+    },
+    {
+      "path": "src/policy.ts",
+      "bytes": 5700,
+      "sha256": "7461651d5d990f6c404ee96d299d3cbf1c0f41f2f03cddc693477ccc978b05e7"
+    },
+    {
+      "path": "src/credential.ts",
+      "bytes": 1512,
+      "sha256": "f86ca09cc996854c6c8ffb15ca9ef2d529267d99205bfd94b9613a79abaf29d3"
+    }
+  ],
+  "sourceCombinedSha256": "3028a20430bfa58bf91fe8a615c059de64c019af256b7926b4b0846efa7d470c",
+  "harnessFiles": [
+    {
+      "path": "freeze.mjs",
+      "bytes": 10133,
+      "sha256": "f3a939583b5f79a4484b9243e30ee35ed19ae9e7c2b71fafbed1f12a785015c6"
+    },
+    {
+      "path": "grader.mjs",
+      "bytes": 22637,
+      "sha256": "27345dcfcaa6a7e2075fd8e456de27e3af24417789a67ae3909f42a11fd81fda"
+    },
+    {
+      "path": "run.mjs",
+      "bytes": 22600,
+      "sha256": "62eec794eee77f43a485c6d19d5f415511b5b0b56727a5d4fc204fe1aa4245ba"
+    }
+  ],
+  "harnessCombinedSha256": "de518abb2de5fd63bd5e77afa32e18d63003df0ff1f6eb0b753bee61239e73fc",
+  "truthBoundary": "Oracle content is used only for freeze validation and post-operation code grading. It is never included in service input or provider transport.",
+  "claimBoundary": "This classifier-only component ablation executes no action and measures no independently verified task/action benefit. It does not test native automatic Codex behavior and cannot by itself support a positive task-quality claim."
+}

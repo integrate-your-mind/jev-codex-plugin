@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "plugin-development-experiment-plan-v2",
+  "firstExecutableSlice": {
+    "caseIds": [
+      "candidate-normal",
+      "candidate-conflict",
+      "candidate-stale",
+      "candidate-adversarial"
+    ],
+    "repeats": 2,
+    "arms": [
+      "control-released",
+      "candidate-bundled-repair"
+    ],
+    "scheduledRows": 16,
+    "schedule": "schedule.json",
+    "controlBaseCommit": "7dfe432d7463bab7186a8dacf50924af282f9a20",
+    "candidatePatchSha256": "f3b3d35a0fec2e62f3b2c2a025fdafe1d4516ee360a21f67e959d24e2fcfd5f2",
+    "componentAttribution": "bundled-only",
+    "invocationScope": "All four cases are normalized through runDecisionHook as PreToolUse with a supplied catalog; original surface labels are provenance only.",
+    "providerCallsAuthorized": true,
+    "liveStatus": "reviewed-frozen-not-yet-invoked",
+    "activeFrozenManifest": "frozen-live-v2.json"
+  },
+  "layers": [
+    "request",
+    "validated-response",
+    "delivery",
+    "action",
+    "independent-postcondition"
+  ],
+  "remainingScope": [
+    {
+      "stratum": "changed-requirements",
+      "status": "unsupported-by-current-real-hook-api"
+    },
+    {
+      "stratum": "restart-recovery",
+      "status": "unsupported-by-current-real-hook-api"
+    },
+    {
+      "stratum": "context-selection",
+      "status": "unsupported-by-current-real-hook-api"
+    },
+    {
+      "stratum": "action-outcome-verification",
+      "status": "unsupported-by-current-real-hook-api"
+    },
+    {
+      "stratum": "shared-state-batching",
+      "status": "separate-existing-cohort"
+    }
+  ],
+  "claimBoundary": "The deterministic Response mode proves runner plumbing only. Live provider execution, MCP invocation, native candidate discovery, native host discovery, component-level causality, and quality improvement remain unproven."
+}

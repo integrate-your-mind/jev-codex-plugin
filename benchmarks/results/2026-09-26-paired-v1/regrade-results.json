@@ -1,0 +1,168 @@
+{
+  "schemaVersion": "paired-v1-public-regrade-1",
+  "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94",
+  "solutionCount": 16,
+  "passed": 16,
+  "results": [
+    {
+      "trialId": "retry-repair.r1.baseline",
+      "taskId": "retry-repair",
+      "repeat": 1,
+      "arm": "baseline",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 28,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "trialId": "retry-repair.r1.treatment",
+      "taskId": "retry-repair",
+      "repeat": 1,
+      "arm": "treatment",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 28,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "trialId": "interval-repair.r2.treatment",
+      "taskId": "interval-repair",
+      "repeat": 2,
+      "arm": "treatment",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 103,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "trialId": "interval-repair.r2.baseline",
+      "taskId": "interval-repair",
+      "repeat": 2,
+      "arm": "baseline",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 103,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "trialId": "csv-parser.r2.baseline",
+      "taskId": "csv-parser",
+      "repeat": 2,
+      "arm": "baseline",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 10,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "trialId": "csv-parser.r2.treatment",
+      "taskId": "csv-parser",
+      "repeat": 2,
+      "arm": "treatment",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 10,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "trialId": "retry-repair.r2.treatment",
+      "taskId": "retry-repair",
+      "repeat": 2,
+      "arm": "treatment",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 28,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "trialId": "retry-repair.r2.baseline",
+      "taskId": "retry-repair",
+      "repeat": 2,
+      "arm": "baseline",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 28,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "trialId": "changed-route.r2.baseline",
+      "taskId": "changed-route",
+      "repeat": 2,
+      "arm": "baseline",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 8,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "trialId": "changed-route.r2.treatment",
+      "taskId": "changed-route",
+      "repeat": 2,
+      "arm": "treatment",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 8,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "trialId": "csv-parser.r1.treatment",
+      "taskId": "csv-parser",
+      "repeat": 1,
+      "arm": "treatment",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 10,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "trialId": "csv-parser.r1.baseline",
+      "taskId": "csv-parser",
+      "repeat": 1,
+      "arm": "baseline",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 10,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "trialId": "changed-route.r1.baseline",
+      "taskId": "changed-route",
+      "repeat": 1,
+      "arm": "baseline",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 8,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "trialId": "changed-route.r1.treatment",
+      "taskId": "changed-route",
+      "repeat": 1,
+      "arm": "treatment",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 8,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "trialId": "interval-repair.r1.treatment",
+      "taskId": "interval-repair",
+      "repeat": 1,
+      "arm": "treatment",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 103,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "trialId": "interval-repair.r1.baseline",
+      "taskId": "interval-repair",
+      "repeat": 1,
+      "arm": "baseline",
+      "exitCode": 0,
+      "passed": true,
+      "checks": 103,
+      "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    }
+  ]
+}

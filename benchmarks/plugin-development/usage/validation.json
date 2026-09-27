@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "jev-usage-retention-validation-v1",
+  "baseRevision": "7dfe432d7463bab7186a8dacf50924af282f9a20",
+  "status": "reviewed-source-experiment-not-installed",
+  "patchSha256": "1b991a631aa6fb51e78705faae7fafeb9852755ff4ded505dc9f484f9e66ae84",
+  "patchBytes": 19307,
+  "sourceHashes": {
+    "source/jev-workflows/src/provider.ts": "9d4bb4f63b8d72b2c2e6b224ae0e0dce66e83345866f487ce2eb8f4d48511ce2",
+    "source/jev-workflows/src/service.ts": "6ef0fa26f77469d53b5e5f66b0280e7da2a188c315e19d73ad1ff3e7a61bb22d",
+    "source/jev-workflows/src/accounting.ts": "930b6a17bc5c180fbdd296526de069c2bca411b26884219f52a79adca890c46e",
+    "source/jev-workflows/tests/usage-retention.test.ts": "d169983ef79ea9b6cf193ab281a2cbe10b89946f4575ce444cc1fbaafd17e7d0"
+  },
+  "runtime": {
+    "node": "v22.23.2",
+    "platform": "darwin/arm64"
+  },
+  "checks": {
+    "fullPluginTests": {
+      "passed": 169,
+      "failed": 0,
+      "skipped": 0,
+      "tapSha256": "5f0b6851f60f9ffea75e241098db3035da906677fe4eb4dee25de2938d853f21"
+    },
+    "focusedWorkerTests": {
+      "passed": 43,
+      "failed": 0
+    },
+    "independentReview": {
+      "status": "no-blocker",
+      "focusedPassed": 6,
+      "focusedFailed": 0
+    },
+    "typecheck": "passed",
+    "build": "passed",
+    "manifestValidation": "passed",
+    "diffCheck": "passed"
+  },
+  "providerCalls": 0,
+  "nativeTaskAttempts": 0,
+  "billingReconciled": false,
+  "frozenCohortsModified": false,
+  "installedDefaultsModified": false,
+  "limitations": [
+    "Only usage from a valid strict response envelope is retained.",
+    "Invalid answers remain unavailable and uncached.",
+    "Reported tokens are not independently reconciled billing.",
+    "No task-completion or performance benefit has been established for this repair."
+  ]
+}

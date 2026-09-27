@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "jev-restart-candidate-validation-v1",
+  "baseCommit": "7dfe432d7463bab7186a8dacf50924af282f9a20",
+  "status": "experimental-source-validated",
+  "patchSha256": "87ab5aaf0cc069cfbdcc07cb95c30a471fb8d3f237d25eca04589d9eb21faa0b",
+  "sourceFiles": {
+    "source/jev-workflows/src/decision-hook.ts": "51a4cd533e3ef8f59fb06690231f9e47c3184bc0bb80340b71ad96c3d68d16bb",
+    "source/jev-workflows/tests/decision-hook.test.ts": "0298ab87d85a7897b45f678de2fc5b56153679da6dd454c5a7e5870c5cebee20",
+    "source/jev-workflows/tests/restart-recovery.test.ts": "c7b2a06c0f096878e2829b0cfd6dd89e73b5a9edaebb587871b4f8068de030f1"
+  },
+  "runtime": {
+    "node": "22.23.2",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "tests": {
+    "focusedPassed": 42,
+    "fullPluginPassed": 179,
+    "failed": 0
+  },
+  "typecheck": "passed",
+  "build": "passed",
+  "manifestValidation": "passed",
+  "independentReview": "root source and regression review accepted within documented limits",
+  "liveProviderCalls": 0,
+  "taskQualityEvidence": false,
+  "installedDefaultChanged": false,
+  "selectedImprovedConfiguration": false,
+  "patchAppliesToPublicationBaseline": true
+}

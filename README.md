@@ -52,6 +52,7 @@ Task context is local and scoped to the actual workspace, session, and agent. `c
 
 ## Source, releases, and verification
 
+- [Reusable coding-agent benchmarks and published results](benchmarks/README.md)
 - [Complete source and development instructions](source/jev-workflows/README.md)
 - [Installable Codex package](plugins/jev-workflows)
 - [Release downloads](https://github.com/integrate-your-mind/jev-codex-plugin/releases)

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "cross-agent-pier-runtime-validation-v1",
+  "status": "pass",
+  "scope": "interval-repair no-op harness smoke",
+  "runtime": {
+    "pierVersion": "0.3.1",
+    "harborVersion": "0.20.0",
+    "pythonVersion": "3.12.13",
+    "modelCalls": 0
+  },
+  "task": {
+    "id": "interval-repair",
+    "schemaVersion": "1.3",
+    "verifierEnvironment": "separate",
+    "networkMode": "no-network",
+    "artifactSource": "/logs/artifacts/solution.mjs",
+    "collectHook": "set -eu; test -f /app/solution.mjs; mkdir -p /logs/artifacts; cp /app/solution.mjs /logs/artifacts/solution.mjs"
+  },
+  "result": {
+    "trials": 1,
+    "completed": 1,
+    "errored": 0,
+    "reward": 0.0,
+    "collectHookCompleted": true,
+    "artifactManifestEntries": 2,
+    "verifierExecuted": true,
+    "expectedNoOpFailure": true
+  },
+  "retainedEvidence": {
+    "directory": "jev-review-2026-09-26/pier-nop-validation-retained",
+    "job": "jobs/jev-smoke-nop-retained",
+    "resultJsonSha256": "f27b7408f777a895f44243a4e5216cd7c01daf4bc25cce31763c0c5b22f46f5d",
+    "taskManifestSha256": "f67c1339ae11568ba08ff161513dc4cb45630bf00fad809f169d6721c25fea3f",
+    "artifactManifestSha256": "ef1a42900330b4728443828a169ead6fa6fceb840e53d78edc4de87ad292a29c",
+    "rawLogsRetained": true,
+    "credentialsRetained": false
+  },
+  "interpretation": "Pinned Pier parsed the generated task, ran the agent environment and separate verifier, transferred the artifact, and parsed reward.txt. The no-op agent intentionally leaves the buggy solution unchanged, so reward 0 is expected.",
+  "limitations": [
+    "No paid inference or positive agent run.",
+    "This receipt contains no private job paths, logs, credentials, or model output."
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "jev-batch-component-review-v1",
+  "status": "accepted_descriptive_component_result",
+  "independentReviewer": "context_hooks read-only regrade/accounting/privacy audit",
+  "freezeSha256": "7190b847d193e36e6d86dd63f73793406fbbb1c489adfe45b770fb0455d87d42",
+  "preRunPublicCommit": "682990cdafe562699ac539bef204e4def6e7e39a",
+  "privateTranscriptSha256": "c0ee4c752dc8e3af0cde601936d6594ccd4e44ed20df195c8396536dcf22297c",
+  "resultsSha256": "dd84ac35455fde0684215fcda6a56d33b62d4ca7d2df7e0fe3224e39c7210909",
+  "requestGroupCorrespondence": {
+    "planned": 32,
+    "starts": 32,
+    "http200": 32,
+    "validResponses": 31,
+    "serviceCompletions": 32,
+    "persistedPrivateReceipts": 32,
+    "actualProviderIdsRetainedPrivately": 32,
+    "missingGroups": 0,
+    "duplicates": 0,
+    "providerIdSetMismatches": 0
+  },
+  "publicIdentifierLeakage": false,
+  "offlineTestsPassed": 17,
+  "reruns": 0,
+  "independentCases": 4,
+  "pairedRepeatedOperations": 8,
+  "medianPairedBatchToSerialOperationRatio": 0.3122927109655817,
+  "allPairedBatchOperationsFaster": true,
+  "selectedForNativeConfiguration": false,
+  "taskQualityEvidence": false,
+  "billingReconciled": false,
+  "invalidResponse": {
+    "attemptId": "normal-targeted-repair.r1.serial",
+    "questionId": "change_risk",
+    "failure": "score_value_invalid",
+    "reportedScore": 0.01,
+    "weightedPublishedProbabilities": 0.0,
+    "pluginTolerance": 0.001,
+    "apiPrecisionToleranceDocumented": false,
+    "retainedInDenominator": true
+  }
+}

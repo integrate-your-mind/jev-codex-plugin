@@ -1,0 +1,5 @@
+[
+  {"id":"east-reliable","region":"us-east","cost":8,"healthy":true},
+  {"id":"west-cheap","region":"us-west","cost":2,"healthy":true},
+  {"id":"east-down","region":"us-east","cost":1,"healthy":false}
+]

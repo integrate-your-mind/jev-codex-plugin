@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "paired-normalization-v1",
+  "status": "posthoc-format-translation-of-original-prefrozen-plan",
+  "sourceHashes": {
+    "plan": "e6e2f6fc63195a1c706671dc1b310bc31b85256d3e989eada3ef2cb28e796eaa",
+    "summary": "df70ca054cb420c981f938d8c6f62893529eb00ae0724b89910de4c24e082b99",
+    "provenance": "00d01005bf081f7f0266aba8cc5bcb45d93770c7e4992accdf85a6695c1b53e8",
+    "tasks": "e517029eb95b7c9915544b42edc9d8e853810d54047a2bf11a8815a642b4ba43",
+    "grader": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94",
+    "normalizer": "6a511cbef0b9ef7a28023cd3ef2542b2cd05fa3525f3c8a2a45fdee793020b4b",
+    "reducer": "24f34cd01cfdc213b38ee56eafcebf79870cce2a2a1f671ed46f49d9c6d08fae"
+  },
+  "files": {
+    "plan.json": "8a2b868f7a9d12329ebe1490a67005c55595a9e48f8d6f1eb7753fd9c0981e31",
+    "trials.jsonl": "d344eae2f9c442822a3aaa3907399edb9d6d97f28ce34526f900356a88225419",
+    "comparison.json": "02f4508b6f71bb3166af2dca9eabd8c0a46638ff41434a8854eb676092ccdc29"
+  },
+  "limitations": [
+    "Provider route is unresolved; codex-default-unresolved is an explicit unknown label, not a verified provider ID.",
+    "The source run used a shared native host without enforced CPU, memory, or disk budgets and no container image.",
+    "This generic format was produced after the run. The original source plan and its timestamp are retained separately.",
+    "Observed model/effort and hook isolation were checked by the source runner; normalization does not rerun those checks.",
+    "No new inference, billing reconciliation, or causal estimate is performed."
+  ]
+}

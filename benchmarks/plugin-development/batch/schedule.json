@@ -1,0 +1,138 @@
+{
+  "schemaVersion": "jev-batch-component-schedule-v1",
+  "repeats": 2,
+  "arms": [
+    "serial",
+    "batch"
+  ],
+  "attempts": [
+    {
+      "attemptId": "normal-targeted-repair.r1.serial",
+      "caseId": "normal-targeted-repair",
+      "cluster": "normal",
+      "repeat": 1,
+      "arm": "serial",
+      "expectedProviderRequests": 3
+    },
+    {
+      "attemptId": "normal-targeted-repair.r1.batch",
+      "caseId": "normal-targeted-repair",
+      "cluster": "normal",
+      "repeat": 1,
+      "arm": "batch",
+      "expectedProviderRequests": 1
+    },
+    {
+      "attemptId": "conflicting-observations.r1.batch",
+      "caseId": "conflicting-observations",
+      "cluster": "conflicting-or-insufficient",
+      "repeat": 1,
+      "arm": "batch",
+      "expectedProviderRequests": 1
+    },
+    {
+      "attemptId": "conflicting-observations.r1.serial",
+      "caseId": "conflicting-observations",
+      "cluster": "conflicting-or-insufficient",
+      "repeat": 1,
+      "arm": "serial",
+      "expectedProviderRequests": 3
+    },
+    {
+      "attemptId": "stale-receipt-after-change.r1.serial",
+      "caseId": "stale-receipt-after-change",
+      "cluster": "stale-invalid",
+      "repeat": 1,
+      "arm": "serial",
+      "expectedProviderRequests": 3
+    },
+    {
+      "attemptId": "stale-receipt-after-change.r1.batch",
+      "caseId": "stale-receipt-after-change",
+      "cluster": "stale-invalid",
+      "repeat": 1,
+      "arm": "batch",
+      "expectedProviderRequests": 1
+    },
+    {
+      "attemptId": "adversarial-prohibited-actions.r1.batch",
+      "caseId": "adversarial-prohibited-actions",
+      "cluster": "adversarial",
+      "repeat": 1,
+      "arm": "batch",
+      "expectedProviderRequests": 1
+    },
+    {
+      "attemptId": "adversarial-prohibited-actions.r1.serial",
+      "caseId": "adversarial-prohibited-actions",
+      "cluster": "adversarial",
+      "repeat": 1,
+      "arm": "serial",
+      "expectedProviderRequests": 3
+    },
+    {
+      "attemptId": "normal-targeted-repair.r2.batch",
+      "caseId": "normal-targeted-repair",
+      "cluster": "normal",
+      "repeat": 2,
+      "arm": "batch",
+      "expectedProviderRequests": 1
+    },
+    {
+      "attemptId": "normal-targeted-repair.r2.serial",
+      "caseId": "normal-targeted-repair",
+      "cluster": "normal",
+      "repeat": 2,
+      "arm": "serial",
+      "expectedProviderRequests": 3
+    },
+    {
+      "attemptId": "conflicting-observations.r2.serial",
+      "caseId": "conflicting-observations",
+      "cluster": "conflicting-or-insufficient",
+      "repeat": 2,
+      "arm": "serial",
+      "expectedProviderRequests": 3
+    },
+    {
+      "attemptId": "conflicting-observations.r2.batch",
+      "caseId": "conflicting-observations",
+      "cluster": "conflicting-or-insufficient",
+      "repeat": 2,
+      "arm": "batch",
+      "expectedProviderRequests": 1
+    },
+    {
+      "attemptId": "stale-receipt-after-change.r2.batch",
+      "caseId": "stale-receipt-after-change",
+      "cluster": "stale-invalid",
+      "repeat": 2,
+      "arm": "batch",
+      "expectedProviderRequests": 1
+    },
+    {
+      "attemptId": "stale-receipt-after-change.r2.serial",
+      "caseId": "stale-receipt-after-change",
+      "cluster": "stale-invalid",
+      "repeat": 2,
+      "arm": "serial",
+      "expectedProviderRequests": 3
+    },
+    {
+      "attemptId": "adversarial-prohibited-actions.r2.serial",
+      "caseId": "adversarial-prohibited-actions",
+      "cluster": "adversarial",
+      "repeat": 2,
+      "arm": "serial",
+      "expectedProviderRequests": 3
+    },
+    {
+      "attemptId": "adversarial-prohibited-actions.r2.batch",
+      "caseId": "adversarial-prohibited-actions",
+      "cluster": "adversarial",
+      "repeat": 2,
+      "arm": "batch",
+      "expectedProviderRequests": 1
+    }
+  ]
+}

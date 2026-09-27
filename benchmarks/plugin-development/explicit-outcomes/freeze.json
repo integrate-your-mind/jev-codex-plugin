@@ -1,0 +1,163 @@
+{
+  "aggregateSha256": "08d52ac5ed42d9c842481fae72b198ddfccf5d020ab3e858b28f1dd9897dda31",
+  "baseCommit": "7dfe432d7463bab7186a8dacf50924af282f9a20",
+  "dependencyVersions": {
+    "tsx": "4.23.13",
+    "zod": "4.6.5"
+  },
+  "fileCount": 32,
+  "files": {
+    "benchmarks/plugin-development/cases/action-worker.mjs": {
+      "sha256": "c05d169b9fafd81ba3acf258862b070349ba52b2aa7b8098e5a39cabd2c399f2",
+      "sizeBytes": 2174
+    },
+    "benchmarks/plugin-development/cases/fixture-engine.mjs": {
+      "sha256": "e798c7b3bf582d95b8099d26a60a4129f13eaa2f4a9333dbc32ef11c322326a6",
+      "sizeBytes": 14866
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-adversarial/source.mjs": {
+      "sha256": "e1135a0e23daf38827813c117b3595d11a250c08720d4e3cadbd8ba2ac133f4f",
+      "sizeBytes": 1553
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-adversarial/test.mjs": {
+      "sha256": "0148a3331aa31e91d3022086b39e17f7cb23d50c0c5d33f986e2a584a718cde4",
+      "sizeBytes": 101
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-adversarial/workspace/evidence/action-receipt.json": {
+      "sha256": "d85494b93f5d93ad0e2cd64fe46c1e576692bca3f846cfb1c84d5bfdd81a7848",
+      "sizeBytes": 130
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-adversarial/workspace/state/current.json": {
+      "sha256": "5d1c5ef8f1591af4e73788cb6ba1c094055ed09cd3537ee6c2ca8895c77c8865",
+      "sizeBytes": 22
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-conflict/source.mjs": {
+      "sha256": "0e29325d55df533622cc6f6fb70b039ed8ec0b98555db6682de8f30dfc8f9454",
+      "sizeBytes": 1723
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-conflict/test.mjs": {
+      "sha256": "9cdd7bdb1aa7686c269c0f752025360d314dcf7861fa1eeb2188bd180d5193aa",
+      "sizeBytes": 98
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-conflict/workspace/evidence/local-receipt.json": {
+      "sha256": "da7d027b0859f10a2b9bfdbd30a9ca16f48eb4b8aaf697587ed8b0f7ee256f2c",
+      "sizeBytes": 106
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-conflict/workspace/state/requirements.json": {
+      "sha256": "0bb0e6e648300c43bcf0be7a809589354212b2641a61d5b08945b9bbe8116bed",
+      "sizeBytes": 60
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-normal/source.mjs": {
+      "sha256": "387a7314d836310c1bf003f4d1eef9c7b8d797f0544ba5118b3f2da58d2d6029",
+      "sizeBytes": 2564
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-normal/test.mjs": {
+      "sha256": "a90fde1db0ca260f07ec8324beea7ff9ca0132fd9717a192ed825061fc3a11b9",
+      "sizeBytes": 96
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-normal/workspace/evidence/action-receipt.json": {
+      "sha256": "996153ac1a0bd83889a219e46393374fa4e38368193741d943d7d3215e71d57b",
+      "sizeBytes": 187
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-normal/workspace/evidence/stdout.txt": {
+      "sha256": "c85b156a78835bc416f6ea4bcf17702c83b232d8bace8603ae04603369b60e32",
+      "sizeBytes": 10
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-normal/workspace/state/current.json": {
+      "sha256": "35688bbf144ce48c061c1a51e43030c9bb424f45dc12d05c323067290d2a3edf",
+      "sizeBytes": 22
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-stale/source.mjs": {
+      "sha256": "9533475dccd97128b5b6300247ce623e102539cc3c4508e735b368ab62d17a55",
+      "sizeBytes": 1761
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-stale/test.mjs": {
+      "sha256": "765d56be2ca101fc27be4b34ea768c45c18baff7d11693cf85a422d5be53e33c",
+      "sizeBytes": 95
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-stale/workspace/evidence/action-receipt.json": {
+      "sha256": "b1c4fb02fd4dce5ccb89776a5c9aa5616678e7bf476ce3245d924b5234bb3e36",
+      "sizeBytes": 97
+    },
+    "benchmarks/plugin-development/cases/fixtures/outcome-stale/workspace/state/current.json": {
+      "sha256": "35688bbf144ce48c061c1a51e43030c9bb424f45dc12d05c323067290d2a3edf",
+      "sizeBytes": 22
+    },
+    "benchmarks/plugin-development/cases/inputs.json": {
+      "sha256": "c48a992b4977181c2ddfc539db7bae6edfef7785f29de230eb5c098b60297db3",
+      "sizeBytes": 20158
+    },
+    "benchmarks/plugin-development/cases/oracle.json": {
+      "sha256": "20e92696862b6b0dd131bda35deba8da7d4d3799e66dbd0c468684aa552d7368",
+      "sizeBytes": 24820
+    },
+    "benchmarks/plugin-development/experiment/variants/baseline/source/src/outcomes.ts": {
+      "sha256": "3b13c11650a9e0cfaac34c2c3826fcd0543c8e4c1a0182f65553164bad423475",
+      "sizeBytes": 7106
+    },
+    "benchmarks/plugin-development/experiment/variants/baseline/source/src/store.ts": {
+      "sha256": "2e61c9282d2b25a145b60f0cd293afba641739622075b62ffa598ad6b82bc293",
+      "sizeBytes": 15913
+    },
+    "benchmarks/plugin-development/explicit-outcomes/check.mjs": {
+      "sha256": "1cf287da6ae3289e1a8b8b7575a9745ea7d8f7b8cf7c8e0add91c704f4d57e56",
+      "sizeBytes": 1816
+    },
+    "benchmarks/plugin-development/explicit-outcomes/experiment.json": {
+      "sha256": "fcf70b51c8bf11750939550733123f267f17ece9ae2e71cbb1d3b5c97290be6a",
+      "sizeBytes": 2967
+    },
+    "benchmarks/plugin-development/explicit-outcomes/package.json": {
+      "sha256": "262246a900713ddecfcda98193e97937e0a23bcd58d5ebe463d6404291811cf9",
+      "sizeBytes": 88
+    },
+    "benchmarks/plugin-development/explicit-outcomes/run.test.ts": {
+      "sha256": "cf11680bbc0a5e5057b7e03c40f503e561b41f584e3cbe6351b1d9226ab80893",
+      "sizeBytes": 6325
+    },
+    "benchmarks/plugin-development/explicit-outcomes/run.ts": {
+      "sha256": "74108098fef0652778769780b6c045c9c068e288e1fc98099a4a39bf0d026cfb",
+      "sizeBytes": 23091
+    },
+    "source/jev-workflows/package-lock.json": {
+      "sha256": "1eb4abee8b775adb2cea33d3bda6d0d91165cddd986b9cf69a96b4a39c25c06e",
+      "sizeBytes": 70847
+    },
+    "source/jev-workflows/package.json": {
+      "sha256": "4c7a8c1560d9f9661fa02dc6a7218e1ac0ca0c08cf9e6b2be5aca6c0f77f4e66",
+      "sizeBytes": 1014
+    },
+    "source/jev-workflows/src/outcomes.ts": {
+      "sha256": "3b13c11650a9e0cfaac34c2c3826fcd0543c8e4c1a0182f65553164bad423475",
+      "sizeBytes": 7106
+    },
+    "source/jev-workflows/src/store.ts": {
+      "sha256": "2e61c9282d2b25a145b60f0cd293afba641739622075b62ffa598ad6b82bc293",
+      "sizeBytes": 15913
+    }
+  },
+  "gitFiles": {
+    "source/jev-workflows/package-lock.json": {
+      "sha256": "1eb4abee8b775adb2cea33d3bda6d0d91165cddd986b9cf69a96b4a39c25c06e",
+      "sizeBytes": 70847
+    },
+    "source/jev-workflows/package.json": {
+      "sha256": "4c7a8c1560d9f9661fa02dc6a7218e1ac0ca0c08cf9e6b2be5aca6c0f77f4e66",
+      "sizeBytes": 1014
+    },
+    "source/jev-workflows/src/outcomes.ts": {
+      "sha256": "3b13c11650a9e0cfaac34c2c3826fcd0543c8e4c1a0182f65553164bad423475",
+      "sizeBytes": 7106
+    },
+    "source/jev-workflows/src/store.ts": {
+      "sha256": "2e61c9282d2b25a145b60f0cd293afba641739622075b62ffa598ad6b82bc293",
+      "sizeBytes": 15913
+    }
+  },
+  "notes": [
+    "The current API, storage helper, package metadata, and lockfile are byte-identical to the frozen Git objects listed here.",
+    "The frozen baseline copies, authored outcome fixtures, shared fixture engine, experiment configuration, runner, and regressions are hash-bound.",
+    "freeze.json cannot self-hash; retained run receipts bind this file by size and SHA-256."
+  ],
+  "schemaVersion": "jev-explicit-outcomes-freeze-v1"
+}

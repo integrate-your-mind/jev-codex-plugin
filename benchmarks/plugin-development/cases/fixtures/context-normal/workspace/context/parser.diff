@@ -1,0 +1,1 @@
+parseRecord now uses input.split('|').

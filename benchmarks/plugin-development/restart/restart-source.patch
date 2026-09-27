@@ -1,0 +1,962 @@
+diff --git a/source/jev-workflows/src/decision-hook.ts b/source/jev-workflows/src/decision-hook.ts
+index b0ed008..b5aa80c 100644
+--- a/source/jev-workflows/src/decision-hook.ts
++++ b/source/jev-workflows/src/decision-hook.ts
+@@ -1,8 +1,8 @@
+ import { createHash } from 'node:crypto';
+ import { constants } from 'node:fs';
+-import { mkdir, open, realpath, readdir, unlink, lstat, rename } from 'node:fs/promises';
++import { mkdir, open, realpath, readdir, unlink, lstat, rename, link } from 'node:fs/promises';
+ import { randomUUID } from 'node:crypto';
+-import { isAbsolute, join } from 'node:path';
++import { basename, dirname, isAbsolute, join } from 'node:path';
+ import { pathToFileURL } from 'node:url';
+ import { createService } from './service.js';
+ import { redactText } from './redact.js';
+@@ -30,6 +30,8 @@ const MAX_CACHED_RESULT_BYTES = 500;
+ const MAX_TURN_RESULT_FILE_BYTES = 12 * 1024;
+ const TURN_RESULT_DIRECTORY = 'turn-results';
+ const INVOCATION_DIRECTORY = 'invocations';
++const EVENT_CLAIM_MAX_BYTES = 4096;
++const EVENT_CLAIM_LEASE_MS = 10_000;
+ const LOCAL_INSTRUCTION = 'Before choosing a tool, model, effort, task, skill, context, or strategy, consult classify_decision when this automation policy permits it. Treat its answer as advisory and continue ordinary reasoning when it is unavailable or inconclusive.';
+ const ACTION_CANDIDATES = [
+   {id: 'proceed', description: 'Continue with the ordinary workflow.', available: true},
+@@ -55,7 +57,7 @@ export type DecisionInput = {
+   evidence: Array<{id: string; text: string; source?: string}>;
+   mode: 'preview' | 'evaluate';
+ };
+-export type DecisionAssessment = {status?: string; choice?: string; confidence?: number; receiptId?: string; receiptPersisted?: boolean; reasonCode?: string};
++export type DecisionAssessment = {status?: string; choice?: string; confidence?: number; receiptId?: string; receiptPersisted?: boolean; reasonCode?: string; replayed?: boolean; delivery?: 'unknown'};
+ export type DecisionService = {
+   classifyDecision(input: DecisionInput, signal?: AbortSignal): Promise<DecisionAssessment>;
+ };
+@@ -750,50 +752,308 @@ async function withinHookDeadline<T>(deadline: number, work: () => Promise<T>):
+   }
+ }
+ 
+-async function claimEvent(event: NormalizedEvent, policy: HookPolicy, env: NodeJS.ProcessEnv): Promise<boolean> {
+-  if (policy.maxHookCallsPerSession !== null && policy.maxHookCallsPerSession <= 0) return false;
++type EventClaimRecord = {
++  version: 1 | 2;
++  status: 'pending' | 'completed';
++  ownerPid: number;
++  ownerToken: string;
++  attemptId: string;
++  claimedAt: number;
++  leaseUntil: number;
++  reservationId?: string;
++  predecessorAttemptId?: string;
++  completedAt?: number;
++  assessmentStatus?: DecisionAssessment['status'];
++  choice?: string;
++  inputDigest?: string;
++  delivery?: 'unknown';
++  admission?: 'finite' | 'unlimited';
++  assessment?: DecisionAssessment;
++  digestVersion?: 'hook-semantic-v1';
++};
++
++type EventClaim = {path: string; rootPath: string; ownerToken: string; attemptId: string; retry: boolean};
++type ReadEventClaim =
++  | {kind: 'missing'}
++  | {kind: 'legacy'}
++  | {kind: 'completed'; record: EventClaimRecord}
++  | {kind: 'pending'; record: EventClaimRecord; dev: number; ino: number};
++type ClaimTail =
++  | {kind: 'completed'; record: EventClaimRecord}
++  | {kind: 'legacy' | 'limit'}
++  | {kind: 'leaf'; path: string; record?: EventClaimRecord; retry: boolean};
++type ClaimResult = {kind: 'owned'; claim: EventClaim} | {kind: 'replay'; record: EventClaimRecord};
++
++const MAX_CLAIM_GENERATIONS = 64;
++
++function isUuid(value: unknown): value is string {
++  return typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value);
++}
++
++function newEventClaimRecord(admission: 'finite' | 'unlimited', predecessorAttemptId?: string): EventClaimRecord {
++  const now = Date.now();
++  return {
++    version: 2,
++    status: 'pending',
++    ownerPid: process.pid,
++    ownerToken: randomUUID(),
++    attemptId: randomUUID(),
++    claimedAt: now,
++    leaseUntil: now + EVENT_CLAIM_LEASE_MS,
++    admission,
++    ...(predecessorAttemptId === undefined ? {} : {predecessorAttemptId}),
++  };
++}
++
++function storedAssessment(value: unknown): DecisionAssessment | undefined {
++  if (!isRecord(value) || !['assessed', 'abstained', 'skipped', 'preview'].includes(String(value.status))) return undefined;
++  if (value.choice !== undefined && (typeof value.choice !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/.test(value.choice))) return undefined;
++  if (value.status === 'assessed' && typeof value.choice !== 'string') return undefined;
++  if (value.confidence !== undefined && (typeof value.confidence !== 'number' || !Number.isFinite(value.confidence) || value.confidence < 0 || value.confidence > 1)) return undefined;
++  if (value.reasonCode !== undefined && (typeof value.reasonCode !== 'string' || !/^[a-z_]{1,80}$/.test(value.reasonCode))) return undefined;
++  if (value.receiptId !== undefined && !isUuid(value.receiptId)) return undefined;
++  if (value.receiptPersisted !== undefined && typeof value.receiptPersisted !== 'boolean') return undefined;
++  return {status: String(value.status), ...(value.choice === undefined ? {} : {choice: value.choice as string}),
++    ...(value.confidence === undefined ? {} : {confidence: value.confidence as number}),
++    ...(value.reasonCode === undefined ? {} : {reasonCode: value.reasonCode as string}),
++    ...(value.receiptId === undefined ? {} : {receiptId: value.receiptId as string}),
++    ...(value.receiptPersisted === undefined ? {} : {receiptPersisted: value.receiptPersisted as boolean})};
++}
++
++function canonical(value: unknown): unknown {
++  if (Array.isArray(value)) return value.map(canonical);
++  if (isRecord(value)) return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
++  return value;
++}
++
++function semanticDigest(event: NormalizedEvent, input?: DecisionInput, taskContext?: TaskContextRecord): string {
++  // Only the plugin-owned task timestamp is non-semantic. User fields with
++  // names such as updatedAt remain part of the raw event fingerprint.
++  const taskView = (value: unknown): unknown => {
++    if (!isRecord(value)) return value;
++    const {updatedAt: _timestamp, ...facts} = value;
++    return facts;
++  };
++  const serializedTask = (value: unknown): unknown => {
++    if (typeof value !== 'string') return value;
++    try {
++      const parsed: unknown = JSON.parse(value);
++      if (isRecord(parsed) && 'rootObjective' in parsed && 'version' in parsed) return canonical(taskView(parsed));
++    } catch { /* an ordinary prompt remains literal evidence */ }
++    return value;
++  };
++  let context: unknown = input?.context;
++  try {
++    const parsed: unknown = JSON.parse(input?.context ?? 'null');
++    if (isRecord(parsed)) context = {...parsed, taskPrompt: serializedTask(parsed.taskPrompt), taskContext: taskView(parsed.taskContext)};
++  } catch { /* preserve any non-JSON context verbatim */ }
++  const view = taskContext ? taskView(JSON.parse(renderTaskContext(taskContext) ?? '{}')) : undefined;
++  const evidence = input?.evidence.map(item => item.id === 'task.prompt' ? {...item, text: serializedTask(item.text)} : item);
++  return hash(JSON.stringify(canonical({version: 'hook-semantic-v1', event: event.raw, input: input ? {...input, context, evidence} : undefined, taskContext: view})));
++}
++
++async function publishExclusive(path: string, contents: string): Promise<boolean> {
++  const temporary = path + '.' + randomUUID() + '.tmp';
++  let handle: Awaited<ReturnType<typeof open>> | undefined;
++  try {
++    handle = await open(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
++    await handle.writeFile(contents, 'utf8');
++    await handle.sync();
++    await handle.close();
++    handle = undefined;
++    await link(temporary, path);
++    await syncDirectory(dirname(path));
++    return true;
++  } catch {
++    return false;
++  } finally {
++    await handle?.close().catch(() => {});
++    await unlink(temporary).catch(() => {});
++  }
++}
++
++async function syncDirectory(directory: string): Promise<void> {
++  const handle = await open(directory, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW);
++  try { await handle.sync(); } finally { await handle.close(); }
++}
++
++function resolutionPath(rootPath: string, attemptId: string): string {
++  return join(dirname(rootPath), `${basename(rootPath)}.${attemptId}.resolution`);
++}
++
++async function readEventClaim(path: string): Promise<ReadEventClaim> {
++  try {
++    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
++    try {
++      const info = await handle.stat();
++      if (!info.isFile() || info.size > EVENT_CLAIM_MAX_BYTES) return {kind: 'legacy'};
++      if (info.size === 0) return {kind: 'legacy'};
++      let value: unknown;
++      try { value = JSON.parse(await handle.readFile('utf8')); } catch { return {kind: 'legacy'}; }
++      if (!isRecord(value)) return {kind: 'legacy'};
++      if ((value.version !== 1 && value.version !== 2) || !['pending', 'completed'].includes(String(value.status)) || !Number.isSafeInteger(value.ownerPid) || (value.ownerPid as number) <= 0 ||
++          !isUuid(value.ownerToken) || !isUuid(value.attemptId) || !Number.isSafeInteger(value.claimedAt) ||
++          !Number.isSafeInteger(value.leaseUntil)) return {kind: 'legacy'};
++      if (value.version === 2 && value.admission !== 'finite' && value.admission !== 'unlimited') return {kind: 'legacy'};
++      if (value.reservationId !== undefined && (typeof value.reservationId !== 'string' || !/^slot-[0-9]+$/.test(value.reservationId))) return {kind: 'legacy'};
++      if (value.predecessorAttemptId !== undefined && !isUuid(value.predecessorAttemptId)) return {kind: 'legacy'};
++      if (value.status === 'completed') {
++        const assessment = storedAssessment(value.assessment);
++        if (value.version !== 2 || !assessment || value.delivery !== 'unknown' || value.digestVersion !== 'hook-semantic-v1' ||
++            typeof value.inputDigest !== 'string' || !/^[a-f0-9]{64}$/.test(value.inputDigest) || !Number.isSafeInteger(value.completedAt)) return {kind: 'legacy'};
++        return {kind: 'completed', record: {...value, assessment} as unknown as EventClaimRecord};
++      }
++      return {kind: 'pending', record: value as unknown as EventClaimRecord, dev: info.dev, ino: info.ino};
++    } finally { await handle.close(); }
++  } catch (error) {
++    return (error as NodeJS.ErrnoException).code === 'ENOENT' ? {kind: 'missing'} : {kind: 'legacy'};
++  }
++}
++
++async function processIsAlive(pid: number): Promise<boolean> {
++  try { process.kill(pid, 0); return true; }
++  catch (error) { return (error as NodeJS.ErrnoException).code === 'EPERM'; }
++}
++
++async function readClaimTail(initialPath: string): Promise<ClaimTail> {
++  let path = initialPath;
++  let retry = false;
++  for (let generation = 0; generation < MAX_CLAIM_GENERATIONS; generation++) {
++    const current = await readEventClaim(path);
++    if (current.kind === 'missing') return {kind: 'leaf', path, retry};
++    if (current.kind === 'legacy') return {kind: 'legacy'};
++    if (current.kind === 'completed') return current;
++    const nextPath = resolutionPath(initialPath, current.record.attemptId);
++    const next = await readEventClaim(nextPath);
++    if (next.kind === 'missing') return {kind: 'leaf', path, record: current.record, retry};
++    if (next.kind === 'legacy') return {kind: 'legacy'};
++    if (next.kind === 'pending' && next.record.predecessorAttemptId !== current.record.attemptId) return {kind: 'legacy'};
++    if (next.kind === 'completed' && (next.record.attemptId !== current.record.attemptId || next.record.ownerToken !== current.record.ownerToken)) return {kind: 'legacy'};
++    path = nextPath;
++    retry = true;
++  }
++  return {kind: 'limit'};
++}
++
++async function reserveSessionSlot(sessionDirectory: string, eventName: string, cap: number, deadline: number): Promise<string | undefined> {
++  const directory = join(sessionDirectory, 'reservations');
++  await mkdir(directory, {recursive: true, mode: 0o700}).catch(() => {});
++  // Every admission occupies the same append-only slot log. Re-read a lost
++  // publication race at the same index: duplicate importers/event callers
++  // then observe the winner instead of consuming another slot.
++  const reserve = async (eventId: string): Promise<string | undefined> => {
++    for (let index = 0; index < cap; index++) {
++      if (Date.now() >= deadline) return undefined;
++      const reservationId = `slot-${index}`;
++      const path = join(directory, reservationId);
++      let missing = false;
++      try {
++        const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
++        try {
++          const info = await handle.stat();
++          if (info.isFile() && info.size <= 1024) {
++            const value: unknown = JSON.parse(await handle.readFile('utf8'));
++            if (isRecord(value) && value.version === 1 && value.event === eventId) return reservationId;
++          }
++        } finally { await handle.close(); }
++      } catch (error) { missing = (error as NodeJS.ErrnoException).code === 'ENOENT'; }
++      if (!missing) continue; // malformed slots remain consumed
++      if (await publishExclusive(path, JSON.stringify({version: 1, event: eventId, reservedAt: Date.now()}) + '\n')) return reservationId;
++      // Publication can lose to another importer of this same event. Never
++      // advance past that slot before reading its immutable winner.
++      try {
++        const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
++        try {
++          const info = await handle.stat();
++          if (info.isFile() && info.size <= 1024) {
++            const value: unknown = JSON.parse(await handle.readFile('utf8'));
++            if (isRecord(value) && value.version === 1 && value.event === eventId) return reservationId;
++          }
++        } finally { await handle.close(); }
++      } catch { return undefined; }
++    }
++    return undefined;
++  };
++  // Old roots and roots created while unlimited already consumed an event.
++  // Import them into real exclusive capacity before admitting a new event.
++  // Version-2 finite roots are elected before admission and must not be
++  // mistaken for already-admitted legacy roots.
++  const entries = await readdir(sessionDirectory, {withFileTypes: true});
++  for (const entry of entries.filter(item => item.isFile() && /^[a-f0-9]{64}$/.test(item.name)).sort((a, b) => a.name.localeCompare(b.name))) {
++    const root = await readEventClaim(join(sessionDirectory, entry.name));
++    if ((root.kind === 'pending' || root.kind === 'completed') && root.record.version === 2 && root.record.admission === 'finite') continue;
++    if (await reserve(entry.name) === undefined) return undefined;
++  }
++  return reserve(eventName);
++}
++
++async function claimEvent(event: NormalizedEvent, policy: HookPolicy, env: NodeJS.ProcessEnv, deadline: number): Promise<ClaimResult | undefined> {
++  if (policy.maxHookCallsPerSession !== null && policy.maxHookCallsPerSession <= 0) return undefined;
+   const directory = dataDirectory(env);
+-  if (!isAbsolute(directory) || directory.includes('\0')) return false;
++  if (!isAbsolute(directory) || directory.includes('\0')) return undefined;
+   let workspace: string;
+   try {
+     await mkdir(directory, {recursive: true, mode: 0o700});
+     workspace = await realpath(event.cwd);
+-  } catch {
+-    return false;
+-  }
++  } catch { return undefined; }
+   const sessionDirectory = join(directory, EVENT_DIRECTORY, hash(workspace), hash(event.sessionId));
+   await mkdir(sessionDirectory, {recursive: true, mode: 0o700}).catch(() => {});
+   const eventName = eventKey(event);
+-  if (policy.maxHookCallsPerSession === null) {
+-    try {
+-      const marker = await open(join(sessionDirectory, eventName), constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+-      await marker.close();
+-      return true;
+-    } catch {
+-      return false;
++  const initialPath = join(sessionDirectory, eventName);
++  for (let attempt = 0; attempt < 3; attempt++) {
++    const tail = await readClaimTail(initialPath);
++    if (tail.kind === 'completed') return {kind: 'replay', record: tail.record};
++    if (tail.kind !== 'leaf') return undefined;
++    let claim: EventClaim | undefined;
++    if (tail.record) {
++      const ownerAlive = await processIsAlive(tail.record.ownerPid);
++      const leaseExpired = tail.record.leaseUntil <= Date.now();
++      // A live owner is never reclaimed. A dead owner is uncertain even if
++      // its bounded lease has not elapsed, so the successor is retryable.
++      if (ownerAlive || (!leaseExpired && tail.record.ownerPid === process.pid)) return undefined;
++      const successor = newEventClaimRecord(policy.maxHookCallsPerSession === null ? 'unlimited' : 'finite', tail.record.attemptId);
++      const successorPath = resolutionPath(initialPath, tail.record.attemptId);
++      if (await publishExclusive(successorPath, JSON.stringify(successor) + '\n')) {
++        claim = {path: successorPath, rootPath: initialPath, ownerToken: successor.ownerToken, attemptId: successor.attemptId, retry: true};
++      }
++    } else {
++      const record = newEventClaimRecord(policy.maxHookCallsPerSession === null ? 'unlimited' : 'finite');
++      if (await publishExclusive(initialPath, JSON.stringify(record) + '\n')) {
++        claim = {path: initialPath, rootPath: initialPath, ownerToken: record.ownerToken, attemptId: record.attemptId, retry: false};
++      }
+     }
++    if (!claim) continue;
++    if (policy.maxHookCallsPerSession !== null && await reserveSessionSlot(sessionDirectory, eventName, policy.maxHookCallsPerSession, deadline) === undefined) return undefined;
++    return {kind: 'owned', claim};
+   }
+-  const lockPath = join(sessionDirectory, '.lock');
+-  let lock;
+-  try {
+-    lock = await open(lockPath, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+-  } catch {
+-    return false;
+-  }
+-  try {
+-    const entries = await readdir(sessionDirectory, {withFileTypes: true});
+-    if (entries.some(entry => entry.isFile() && entry.name === eventName)) return false;
+-    const count = entries.filter(entry => entry.isFile() && /^[a-f0-9]{64}$/.test(entry.name)).length;
+-    if (policy.maxHookCallsPerSession !== null && count >= policy.maxHookCallsPerSession) return false;
+-    const marker = await open(join(sessionDirectory, eventName), constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+-    await marker.close();
+-    return true;
+-  } catch {
+-    return false;
+-  } finally {
+-    await lock.close().catch(() => {});
+-    await unlink(lockPath).catch(() => {});
+-  }
++  return undefined;
++}
++
++async function finalizeEventClaim(claim: EventClaim, deadline: number, result: DecisionAssessment, inputDigest: string): Promise<boolean> {
++  if (deadline !== undefined && Date.now() >= deadline) return false;
++  const current = await readEventClaim(claim.path);
++  if (current.kind !== 'pending' || current.record.ownerToken !== claim.ownerToken || current.record.attemptId !== claim.attemptId) return false;
++  const terminalPath = resolutionPath(claim.rootPath, claim.attemptId);
++  const assessment = storedAssessment(result);
++  if (!assessment) return false;
++  const terminal: EventClaimRecord = {
++    ...current.record,
++    version: 2,
++    status: 'completed',
++    completedAt: Date.now(),
++    assessmentStatus: assessment.status,
++    assessment,
++    inputDigest,
++    digestVersion: 'hook-semantic-v1',
++    delivery: 'unknown',
++  };
++  // A successor and a terminal assessment compete for one immutable resolution
++  // slot. Whichever exclusive publication wins is the generation's outcome.
++  return await publishExclusive(terminalPath, JSON.stringify(terminal) + '\n');
++}
++
++function canFinalizeEvent(result: DecisionAssessment | undefined): boolean {
++  return result?.status === 'assessed' || result?.status === 'abstained' || result?.status === 'skipped' || result?.status === 'preview';
+ }
+ 
+ function instructionOutput(event: NormalizedEvent): HookResult {
+@@ -816,6 +1076,8 @@ function decisionOutput(event: NormalizedEvent, result: DecisionAssessment): Hoo
+   }
+   if (typeof result.reasonCode === 'string' && /^[a-z_]{1,80}$/.test(result.reasonCode)) fields.push(`reason=${result.reasonCode}`);
+   if (result.receiptPersisted === true && typeof result.receiptId === 'string' && /^[a-f0-9-]{1,80}$/.test(result.receiptId)) fields.push(`receipt=${result.receiptId}`);
++  if (result.replayed) fields.push('replayed=true');
++  if (result.delivery === 'unknown') fields.push('delivery=unknown');
+   const suffix = status === 'assessed'
+     ? 'advisory only, continue ordinary reasoning.'
+     : 'continue ordinary reasoning and gather authorized evidence if useful.';
+@@ -827,11 +1089,11 @@ function resultStatus(result: DecisionAssessment | undefined): string {
+   return 'unavailable';
+ }
+ 
+-async function writeInvocationReceipt(event: NormalizedEvent, env: NodeJS.ProcessEnv, input: DecisionInput, response: ReturnType<typeof semanticResponse>, result: DecisionAssessment | undefined): Promise<void> {
++async function writeInvocationReceipt(event: NormalizedEvent, env: NodeJS.ProcessEnv, input: DecisionInput, response: ReturnType<typeof semanticResponse>, result: DecisionAssessment | undefined, claim: EventClaim): Promise<boolean> {
+   const sessionDirectory = await privateSessionDirectory(event, env, true);
+-  if (!sessionDirectory) return;
++  if (!sessionDirectory) return false;
+   const directory = join(sessionDirectory, INVOCATION_DIRECTORY);
+-  const path = join(directory, `${eventKey(event)}.json`);
++  const path = join(directory, claim.retry ? `${eventKey(event)}-${claim.attemptId}.json` : `${eventKey(event)}.json`);
+   try {
+     await mkdir(directory, {recursive: true, mode: 0o700});
+     const receipt: RecordValue = {
+@@ -870,12 +1132,18 @@ async function writeInvocationReceipt(event: NormalizedEvent, env: NodeJS.Proces
+         agentId: event.agentId || undefined,
+       },
+       correlationId: eventKey(event),
++      attemptId: claim.attemptId,
+       candidateDigest: hash(JSON.stringify(input.candidates.map(candidate => candidate.id))),
+     };
+     const contents = JSON.stringify(receipt) + '\n';
+     const handle = await open(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+-    try { await handle.writeFile(contents, 'utf8'); } finally { await handle.close(); }
+-  } catch { /* receipts are private proof and never affect hook behavior */ }
++    try {
++      await handle.writeFile(contents, 'utf8');
++      await handle.sync();
++    } finally { await handle.close(); }
++    await syncDirectory(directory);
++    return true;
++  } catch { /* receipts are private proof and never affect hook behavior */ return false; }
+ }
+ 
+ function defaultService(env: NodeJS.ProcessEnv, timeoutMs = PROVIDER_TIMEOUT_MS, fetchFn?: typeof fetch): DecisionService {
+@@ -923,17 +1191,24 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
+     const allowedResult = await withinHookDeadline(deadline, () => workspaceAllowed(policy, event.cwd));
+     if (allowedResult.expired) return timedOut();
+     if (!allowedResult.value || isInternal(event, env)) return {};
++    // Elect one owner before context mutation or finite-cap admission. A replay
++    // reads the current context without replaying the old user prompt into it.
++    const claimed = await withinHookDeadline(deadline, () => claimEvent(event, policy, env, deadline));
++    if (claimed.expired) return timedOut();
++    if (!claimed.value) return {};
++    const acquisition = claimed.value;
+     if (event.name === 'SessionStart') {
+-      const claimed = await withinHookDeadline(deadline, () => claimEvent(event, policy, env));
+-      if (claimed.expired) return timedOut();
+-      if (!claimed.value) return {};
++      const inputDigest = semanticDigest(event);
++      if (acquisition.kind === 'replay') {
++        if (acquisition.record.inputDigest !== inputDigest) return decisionOutput(event, {status: 'unavailable', reasonCode: 'stored_assessment_mismatch', delivery: 'unknown'});
++      } else await withinHookDeadline(deadline, () => finalizeEventClaim(acquisition.claim, deadline, {status: 'skipped'}, inputDigest));
+       return instructionOutput(event);
+     }
+     const scope = taskContextScope(event);
+     const loadedContext = await withinHookDeadline(deadline, () => loadTaskContext(scope, {env}));
+     if (loadedContext.expired) return timedOut();
+     let taskContext = loadedContext.value;
+-    if (event.name === 'UserPromptSubmit') {
++    if (event.name === 'UserPromptSubmit' && acquisition.kind === 'owned') {
+       const update = promptContextUpdate(event, taskContext, env);
+       if (update) {
+         const updatedContext = await withinHookDeadline(deadline, () => updateTaskContext(scope, update, {env}));
+@@ -941,15 +1216,12 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
+         taskContext = updatedContext.value ?? taskContext;
+       }
+     }
+-    const cachedPromptResult = await withinHookDeadline(deadline, () => event.name === 'UserPromptSubmit' ? updatePromptCache(event, env) : readPromptCache(event, env));
++    const cachedPromptResult = await withinHookDeadline(deadline, () => event.name === 'UserPromptSubmit' && acquisition.kind === 'owned' ? updatePromptCache(event, env) : readPromptCache(event, env));
+     if (cachedPromptResult.expired) return timedOut();
+     const cachedPrompt = cachedPromptResult.value;
+     const taskPrompt = renderTaskContext(taskContext) ?? cachedPrompt;
+-    const claimed = await withinHookDeadline(deadline, () => claimEvent(event, policy, env));
+-    if (claimed.expired) return timedOut();
+-    if (!claimed.value) return {};
+     const response = semanticResponse(event, env);
+-    if (event.name === 'PostToolUse') {
++    if (event.name === 'PostToolUse' && acquisition.kind === 'owned') {
+       const turnCache = await withinHookDeadline(deadline, () => updateTurnResultCache(event, response, env));
+       if (turnCache.expired) return timedOut();
+     }
+@@ -960,7 +1232,20 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
+       turnResults = turnCache.value;
+     }
+     const input = decisionInput(event, env, taskPrompt, taskContext, turnResults);
+-    if (Date.now() >= deadline) return timedOut();
++    const inputDigest = semanticDigest(event, input, taskContext);
++    if (acquisition.kind === 'replay') {
++      const record = acquisition.record;
++      if (record.inputDigest !== inputDigest || !record.assessment ||
++          (record.assessment.status === 'assessed' && !input.candidates.some(candidate => candidate.id === record.assessment?.choice && candidate.available !== false))) {
++        return decisionOutput(event, {status: 'unavailable', reasonCode: 'stored_assessment_mismatch', delivery: 'unknown'});
++      }
++      return decisionOutput(event, {...record.assessment, replayed: true, delivery: 'unknown'});
++    }
++    const claim = acquisition.claim;
++    if (Date.now() >= deadline) {
++      await withinHookDeadline(deadline, () => writeInvocationReceipt(event, env, input, response, timeoutAssessment, claim));
++      return timedOut();
++    }
+     const remainingMs = deadline - Date.now();
+     const providerTimeoutMs = Math.min(shortEvent ? SHORT_EVENT_PROVIDER_TIMEOUT_MS : PROVIDER_TIMEOUT_MS, Math.max(1, remainingMs));
+     const service = options.service ?? defaultService(env, providerTimeoutMs, options.fetchFn);
+@@ -980,8 +1265,11 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
+       clearTimeout(timer);
+     }
+     if (Date.now() >= deadline) result = timeoutAssessment;
+-    const receipt = await withinHookDeadline(deadline, () => writeInvocationReceipt(event, env, input, response, result));
+-    if (receipt.expired || Date.now() >= deadline) return timedOut();
++    const receipt = await withinHookDeadline(deadline, () => writeInvocationReceipt(event, env, input, response, result, claim));
++    if (!receipt.expired && receipt.value && canFinalizeEvent(result) && Date.now() < deadline) {
++      await withinHookDeadline(deadline, () => finalizeEventClaim(claim, deadline, result, inputDigest));
++    }
++    if (Date.now() >= deadline) return timedOut();
+     return decisionOutput(event, result);
+   } catch {
+     return {};
+diff --git a/source/jev-workflows/tests/decision-hook.test.ts b/source/jev-workflows/tests/decision-hook.test.ts
+index 4e8d72a..98c49e1 100644
+--- a/source/jev-workflows/tests/decision-hook.test.ts
++++ b/source/jev-workflows/tests/decision-hook.test.ts
+@@ -95,7 +95,7 @@ describe('decision hook', () => {
+     });
+     await runDecisionHook(JSON.stringify(identifiedCompact), {env: environment, service});
+     const beforeDuplicate = calls.count;
+-    assert.deepEqual(await runDecisionHook(JSON.stringify(identifiedCompact), {env: environment, service}), {});
++    assert.match((await runDecisionHook(JSON.stringify(identifiedCompact), {env: environment, service})).systemMessage ?? '', /status=assessed; decision=proceed; replayed=true; delivery=unknown/);
+     assert.equal(calls.count, beforeDuplicate);
+ 
+     const subagentStart = await runDecisionHook(JSON.stringify(toolEvent({
+@@ -468,7 +468,7 @@ describe('decision hook', () => {
+     const second = {...base, agent_id: 'agent-b', last_assistant_message: 'agent B finished'};
+     assert.equal((await runDecisionHook(JSON.stringify(first), {env: environment, service})).systemMessage?.includes('decision=proceed'), true);
+     assert.equal((await runDecisionHook(JSON.stringify(second), {env: environment, service})).systemMessage?.includes('decision=proceed'), true);
+-    assert.deepEqual(await runDecisionHook(JSON.stringify(first), {env: environment, service}), {});
++    assert.match((await runDecisionHook(JSON.stringify(first), {env: environment, service})).systemMessage ?? '', /status=assessed; decision=proceed; replayed=true; delivery=unknown/);
+     assert.equal(calls.count, 2);
+     assert.match(calls.inputs[0]?.context ?? '', /"turnResults":\{"status":"unsupported_agent_scope","results":\[\]\}/);
+     const invocationDir = join(environment.PLUGIN_DATA!, 'decision-hook-v1', digest(process.cwd()), digest('session-1'), 'invocations');
+diff --git a/source/jev-workflows/tests/restart-recovery.test.ts b/source/jev-workflows/tests/restart-recovery.test.ts
+new file mode 100644
+index 0000000..009647d
+--- /dev/null
++++ b/source/jev-workflows/tests/restart-recovery.test.ts
+@@ -0,0 +1,430 @@
++import {spawn} from 'node:child_process';
++import {createHash} from 'node:crypto';
++import fs from 'node:fs';
++import {syncBuiltinESMExports} from 'node:module';
++import {mkdir, mkdtemp, readFile, readdir, rm, writeFile} from 'node:fs/promises';
++import {join} from 'node:path';
++import {setTimeout as delay} from 'node:timers/promises';
++import {after, before, test} from 'node:test';
++import assert from 'node:assert/strict';
++import {configurePolicy} from '../src/policy.js';
++import {runDecisionHook, type DecisionInput, type DecisionService} from '../src/decision-hook.js';
++import {loadTaskContext, updateTaskContext} from '../src/task-context.js';
++
++type Env = NodeJS.ProcessEnv;
++let root: string;
++
++before(async () => { root = await mkdtemp(join(process.env.TMPDIR ?? join(process.cwd(), 'work'), 'restart-recovery-')); });
++after(async () => { await rm(root, {recursive: true, force: true}); });
++
++function digest(value: string): string { return createHash('sha256').update(value).digest('hex'); }
++function env(name: string): Env { return {PLUGIN_DATA: join(root, name), JEV_ENABLED: '1', TYPESAFE_API_KEY: 'synthetic-test-key'}; }
++function event(id: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
++  return {hook_event_name: 'PreToolUse', session_id: 'restart-session', turn_id: 'restart-turn', tool_use_id: id,
++    cwd: process.cwd(), tool_name: 'Bash', tool_input: {command: 'printf restart'}, ...overrides};
++}
++function service(result: Record<string, unknown>, calls: {count: number}): DecisionService {
++  return {async classifyDecision(_input: DecisionInput) { calls.count += 1; return result; }};
++}
++function paths(environment: Env, nativeEvent: Record<string, unknown>) {
++  const session = String(nativeEvent.session_id);
++  const eventId = String(nativeEvent.tool_use_id);
++  const eventName = digest(`PreToolUse\0${session}\0${String(nativeEvent.turn_id)}\0${eventId}`);
++  const directory = join(environment.PLUGIN_DATA!, 'decision-hook-v1', digest(process.cwd()), digest(session));
++  return {directory, marker: join(directory, eventName), invocations: join(directory, 'invocations'), attempts: join(directory, 'attempts')};
++}
++function resolution(rootPath: string, attemptId: string): string {
++  const parts = rootPath.split('/');
++  const name = parts.pop()!;
++  return `${parts.join('/')}/${name}.${attemptId}.resolution`;
++}
++async function enable(environment: Env, cap: number | null = null): Promise<void> {
++  await configurePolicy({enabled: true, scope: 'workspaces', workspaces: [process.cwd()], maxHookCallsPerSession: cap}, environment);
++}
++async function runCrashChild(environment: Env, nativeEvent: Record<string, unknown>, cap: number | null = null): Promise<number> {
++  const script = `
++    const {configurePolicy} = await import('./src/policy.ts');
++    const {runDecisionHook} = await import('./src/decision-hook.ts');
++    const env = {PLUGIN_DATA: process.env.PLUGIN_DATA, JEV_ENABLED: '1', TYPESAFE_API_KEY: 'synthetic-test-key'};
++    const event = JSON.parse(process.env.RESTART_EVENT_JSON);
++    await configurePolicy({enabled:true, scope:'workspaces', workspaces:[process.cwd()], maxHookCallsPerSession:JSON.parse(process.env.RESTART_CAP)}, env);
++    await runDecisionHook(JSON.stringify(event), {env, service:{classifyDecision(){ process.exit(91); }}});
++  `;
++  return await new Promise(resolve => {
++    const child = spawn(process.execPath, ['--import', 'tsx', '--eval', script], {
++      cwd: process.cwd(), env: {...process.env, ...environment, RESTART_EVENT_JSON: JSON.stringify(nativeEvent), RESTART_CAP: JSON.stringify(cap)}, stdio: ['ignore', 'ignore', 'pipe'],
++    });
++    child.on('error', () => resolve(-1));
++    child.on('exit', code => resolve(code ?? -1));
++  });
++}
++
++test('reclaims a crash-left pending claim and records a new attempt receipt', async () => {
++  const environment = env('crash');
++  const nativeEvent = event('crash-event');
++  const exitCode = await runCrashChild(environment, nativeEvent);
++  assert.equal(exitCode, 91);
++  const claimPaths = paths(environment, nativeEvent);
++  const pending = JSON.parse(await readFile(claimPaths.marker, 'utf8')) as Record<string, unknown>;
++  assert.equal(pending.status, 'pending');
++  assert.equal(typeof pending.ownerToken, 'string');
++  const calls = {count: 0};
++  const result = await runDecisionHook(JSON.stringify(nativeEvent), {env: environment, service: service({status: 'assessed', choice: 'proceed'}, calls)});
++  assert.match(result.hookSpecificOutput?.additionalContext ?? '', /status=assessed; decision=proceed/);
++  assert.equal(calls.count, 1);
++  const completed = JSON.parse(await readFile(claimPaths.marker, 'utf8')) as Record<string, unknown>;
++  assert.equal(completed.status, 'pending');
++  const successorPath = resolution(claimPaths.marker, String(pending.attemptId));
++  const successor = JSON.parse(await readFile(successorPath, 'utf8')) as Record<string, unknown>;
++  assert.equal(successor.status, 'pending');
++  const terminalPath = resolution(claimPaths.marker, String(successor.attemptId));
++  const terminal = JSON.parse(await readFile(terminalPath, 'utf8')) as Record<string, unknown>;
++  assert.equal(terminal.status, 'completed');
++  assert.equal(terminal.assessmentStatus, 'assessed');
++  assert.equal(terminal.delivery, 'unknown');
++  assert.equal(typeof terminal.inputDigest, 'string');
++  const receipts = await readdir(claimPaths.invocations);
++  assert.equal(receipts.length, 1);
++  assert.match(receipts[0]!, /-[a-f0-9-]{36}\.json$/);
++});
++
++function blockFirstLink(destination: string | ((path: string) => boolean)) {
++  const original = fs.promises.link;
++  let enter!: () => void;
++  let release!: () => void;
++  let finish!: () => void;
++  let intercepted = false;
++  const entered = new Promise<void>(resolve => {enter = resolve;});
++  const released = new Promise<void>(resolve => {release = resolve;});
++  const finished = new Promise<void>(resolve => {finish = resolve;});
++  fs.promises.link = async (source, target) => {
++    if (!intercepted && (typeof destination === 'string' ? String(target) === destination : destination(String(target)))) {
++      intercepted = true;
++      enter();
++      await released;
++      try { return await original(source, target); } finally { finish(); }
++    }
++    return original(source, target);
++  };
++  syncBuiltinESMExports();
++  return {entered, finished, release, restore() {release(); fs.promises.link = original; syncBuiltinESMExports();}};
++}
++
++async function tickets(environment: Env, nativeEvent: Record<string, unknown>): Promise<Array<{event: string}>> {
++  const directory = join(paths(environment, nativeEvent).directory, 'reservations');
++  return Promise.all((await readdir(directory)).filter(name => /^slot-[0-9]+$/.test(name)).map(async name => JSON.parse(await readFile(join(directory, name), 'utf8')) as {event: string}));
++}
++
++test('replays a persisted matching assessment without another service call and keeps delivery unknown', async () => {
++  const environment = env('readback');
++  const nativeEvent = event('readback-event');
++  await enable(environment);
++  const calls = {count: 0};
++  const fake = service({status: 'assessed', choice: 'proceed', confidence: 0.93, reasonCode: 'matched_evidence'}, calls);
++  // Discarding this return models the host not retaining the first output.
++  await runDecisionHook(nativeEvent, {env: environment, service: fake});
++  const replay = await runDecisionHook(nativeEvent, {env: environment, service: fake});
++  assert.match(replay.hookSpecificOutput?.additionalContext ?? '', /status=assessed; decision=proceed; confidence=0\.93/);
++  assert.match(replay.hookSpecificOutput?.additionalContext ?? '', /replayed=true; delivery=unknown/);
++  assert.equal(calls.count, 1);
++  const changed = await runDecisionHook({...nativeEvent, tool_input: {command: 'different action'}}, {env: environment, service: fake});
++  assert.match(changed.hookSpecificOutput?.additionalContext ?? '', /status=unavailable; reason=stored_assessment_mismatch; delivery=unknown/);
++  assert.doesNotMatch(changed.hookSpecificOutput?.additionalContext ?? '', /decision=/);
++  assert.equal(calls.count, 1);
++});
++
++test('prompt replay preserves context, ignores only plugin timestamps, and rejects changed requirements', async () => {
++  const environment = env('semantic-readback');
++  const nativeEvent = event('semantic-event', {hook_event_name: 'UserPromptSubmit', tool_name: undefined, tool_use_id: undefined, prompt: 'Continue.'});
++  const scope = {cwd: process.cwd(), sessionId: String(nativeEvent.session_id)};
++  await enable(environment);
++  await updateTaskContext(scope, {rootObjective: 'Inspect the parser.', constraints: ['Do not edit source.']}, {env: environment});
++  const calls = {count: 0};
++  const fake = service({status: 'assessed', choice: 'proceed'}, calls);
++  await runDecisionHook(nativeEvent, {env: environment, service: fake});
++  const firstContext = await loadTaskContext(scope, {env: environment});
++  assert.equal(firstContext?.followUps.length, 1);
++  const replay = await runDecisionHook(nativeEvent, {env: environment, service: fake});
++  assert.match(replay.hookSpecificOutput?.additionalContext ?? '', /replayed=true; delivery=unknown/);
++  assert.deepEqual(await loadTaskContext(scope, {env: environment}), firstContext);
++  await updateTaskContext(scope, {provenance: {source: 'system'}}, {env: environment, now: new Date('2026-09-27T00:00:00Z')});
++  const refreshed = await runDecisionHook(nativeEvent, {env: environment, service: fake});
++  assert.match(refreshed.hookSpecificOutput?.additionalContext ?? '', /replayed=true/);
++  await updateTaskContext(scope, {constraints: ['Stop inspecting; report existing evidence only.']}, {env: environment});
++  const stale = await runDecisionHook(nativeEvent, {env: environment, service: fake});
++  assert.match(stale.hookSpecificOutput?.additionalContext ?? '', /reason=stored_assessment_mismatch/);
++  assert.equal(calls.count, 1);
++});
++
++test('invalid terminal records and foreign stored choices never become replayed advice', async () => {
++  const environment = env('invalid-terminal');
++  const nativeEvent = event('invalid-terminal-event');
++  await enable(environment);
++  const calls = {count: 0};
++  const fake = service({status: 'assessed', choice: 'proceed'}, calls);
++  await runDecisionHook(nativeEvent, {env: environment, service: fake});
++  const rootPath = paths(environment, nativeEvent).marker;
++  const rootRecord = JSON.parse(await readFile(rootPath, 'utf8')) as {attemptId: string};
++  const terminalPath = resolution(rootPath, rootRecord.attemptId);
++  const terminal = JSON.parse(await readFile(terminalPath, 'utf8')) as Record<string, unknown>;
++  await writeFile(terminalPath, JSON.stringify({...terminal, assessment: {status: 'assessed', choice: 'foreign-choice'}}));
++  const foreign = await runDecisionHook(nativeEvent, {env: environment, service: fake});
++  assert.match(foreign.hookSpecificOutput?.additionalContext ?? '', /stored_assessment_mismatch/);
++  assert.doesNotMatch(foreign.hookSpecificOutput?.additionalContext ?? '', /decision=foreign-choice/);
++  await writeFile(terminalPath, JSON.stringify({status: 'completed'}));
++  assert.deepEqual(await runDecisionHook(nativeEvent, {env: environment, service: fake}), {});
++  assert.equal(calls.count, 1);
++});
++
++test('a capped duplicate cannot reserve while the elected owner admission is paused', async () => {
++  const environment = env('duplicate-cap');
++  const nativeEvent = event('duplicate-cap-event');
++  await enable(environment, 2);
++  const calls = {count: 0};
++  const fake = service({status: 'assessed', choice: 'proceed'}, calls);
++  const barrier = blockFirstLink(join(paths(environment, nativeEvent).directory, 'reservations', 'slot-0'));
++  let first: Promise<unknown> | undefined;
++  try {
++    first = runDecisionHook(nativeEvent, {env: environment, service: fake});
++    await barrier.entered;
++    assert.deepEqual(await runDecisionHook(nativeEvent, {env: environment, service: fake}), {});
++    barrier.release();
++    await first;
++    assert.equal((await tickets(environment, nativeEvent)).length, 1);
++    await runDecisionHook(event('second-cap-event'), {env: environment, service: fake});
++    assert.equal(calls.count, 2);
++    assert.equal((await tickets(environment, nativeEvent)).length, 2);
++  } finally {barrier.restore(); await first;}
++});
++
++test('concurrent new events cannot exceed a cap containing an imported legacy root', async () => {
++  const environment = env('legacy-cap');
++  const oldEvent = event('legacy-admitted-event');
++  const eventA = event('new-event-a');
++  const eventB = event('new-event-b');
++  await enable(environment, 2);
++  const oldPaths = paths(environment, oldEvent);
++  await mkdir(oldPaths.directory, {recursive: true});
++  await writeFile(oldPaths.marker, '');
++  const calls = {count: 0};
++  const fake = service({status: 'assessed', choice: 'proceed'}, calls);
++  const barrier = blockFirstLink(join(oldPaths.directory, 'reservations', 'slot-0'));
++  let first: Promise<unknown> | undefined;
++  try {
++    first = runDecisionHook(eventA, {env: environment, service: fake});
++    await barrier.entered;
++    await runDecisionHook(eventB, {env: environment, service: fake});
++    barrier.release();
++    await first;
++    assert.equal(calls.count, 1, 'one legacy event leaves capacity for exactly one new event');
++    const admissions = await tickets(environment, oldEvent);
++    assert.equal(admissions.length, 2);
++    assert.equal(admissions.filter(item => item.event === oldPaths.marker.split('/').at(-1)).length, 1);
++    assert.equal(new Set(admissions.map(item => item.event)).size, 2);
++  } finally {barrier.restore(); await first;}
++});
++
++test('a successor reuses its finite event admission after a process crash', async () => {
++  const environment = env('successor-cap');
++  const nativeEvent = event('successor-cap-event');
++  assert.equal(await runCrashChild(environment, nativeEvent, 1), 91);
++  assert.equal((await tickets(environment, nativeEvent)).length, 1);
++  const calls = {count: 0};
++  const result = await runDecisionHook(nativeEvent, {env: environment, service: service({status: 'assessed', choice: 'proceed'}, calls)});
++  assert.match(result.hookSpecificOutput?.additionalContext ?? '', /status=assessed/);
++  assert.equal(calls.count, 1);
++  assert.equal((await tickets(environment, nativeEvent)).length, 1);
++});
++
++test('six process recoveries keep fixed-length resolution filenames and immutable predecessors', async () => {
++  const environment = env('many-generations');
++  const nativeEvent = event('many-generations-event');
++  for (let attempt = 0; attempt < 6; attempt++) assert.equal(await runCrashChild(environment, nativeEvent), 91);
++  const claimPaths = paths(environment, nativeEvent);
++  const original = await readFile(claimPaths.marker, 'utf8');
++  const calls = {count: 0};
++  await runDecisionHook(nativeEvent, {env: environment, service: service({status: 'assessed', choice: 'proceed'}, calls)});
++  assert.equal(calls.count, 1);
++  assert.equal(await readFile(claimPaths.marker, 'utf8'), original);
++  const names = await readdir(claimPaths.directory);
++  assert.equal(names.filter(name => name.endsWith('.resolution')).length, 7);
++  assert.equal(names.every(name => Buffer.byteLength(name) <= 112), true);
++  assert.equal(names.includes('reservations'), false, 'unlimited policy must bypass finite reservation tickets');
++});
++
++test('a terminal publication finishing after timeout remains readable with unknown delivery', async () => {
++  const environment = env('late-terminal-readback');
++  const nativeEvent = event('late-terminal-readback-event');
++  await enable(environment);
++  const directory = paths(environment, nativeEvent).directory;
++  const barrier = blockFirstLink(path => path.startsWith(directory + '/') && path.endsWith('.resolution'));
++  const calls = {count: 0};
++  const fake = service({status: 'assessed', choice: 'proceed'}, calls);
++  let first: ReturnType<typeof runDecisionHook> | undefined;
++  try {
++    const start = Date.now();
++    first = runDecisionHook(nativeEvent, {env: environment, service: fake, hookTimeoutMs: 100});
++    await barrier.entered;
++    const timedOut = await first;
++    assert.match(timedOut.hookSpecificOutput?.additionalContext ?? '', /reason=hook_timeout/);
++    assert.ok(Date.now() - start < 750);
++    barrier.release();
++    await barrier.finished;
++    const replay = await runDecisionHook(nativeEvent, {env: environment, service: fake});
++    assert.match(replay.hookSpecificOutput?.additionalContext ?? '', /decision=proceed/);
++    assert.match(replay.hookSpecificOutput?.additionalContext ?? '', /replayed=true; delivery=unknown/);
++    assert.equal(calls.count, 1);
++  } finally {barrier.restore(); await first;}
++});
++
++test('an elected successor wins against a delayed ancestor terminal in the same resolution slot', async () => {
++  const environment = env('terminal-successor-race');
++  const nativeEvent = event('terminal-successor-race-event');
++  await enable(environment);
++  const claimPaths = paths(environment, nativeEvent);
++  const barrier = blockFirstLink(path => path.startsWith(claimPaths.directory + '/') && path.endsWith('.resolution'));
++  let first: ReturnType<typeof runDecisionHook> | undefined;
++  try {
++    first = runDecisionHook(nativeEvent, {env: environment, service: service({status: 'assessed', choice: 'proceed'}, {count: 0}), hookTimeoutMs: 100});
++    await barrier.entered;
++    assert.match((await first).hookSpecificOutput?.additionalContext ?? '', /reason=hook_timeout/);
++    // Fault injection models an owner lost while its publication is in flight.
++    const ancestor = JSON.parse(await readFile(claimPaths.marker, 'utf8')) as {attemptId: string};
++    await writeFile(claimPaths.marker, JSON.stringify({...ancestor, ownerPid: 999999996}));
++    const calls = {count: 0};
++    const fake = service({status: 'assessed', choice: 'reconsider'}, calls);
++    const successorOutput = await runDecisionHook(nativeEvent, {env: environment, service: fake});
++    assert.match(successorOutput.hookSpecificOutput?.additionalContext ?? '', /decision=reconsider/);
++    const slot = resolution(claimPaths.marker, ancestor.attemptId);
++    const elected = await readFile(slot, 'utf8');
++    assert.equal((JSON.parse(elected) as {status: string}).status, 'pending');
++    barrier.release();
++    await barrier.finished;
++    assert.equal(await readFile(slot, 'utf8'), elected);
++    const replay = await runDecisionHook(nativeEvent, {env: environment, service: fake});
++    assert.match(replay.hookSpecificOutput?.additionalContext ?? '', /decision=reconsider/);
++    assert.match(replay.hookSpecificOutput?.additionalContext ?? '', /replayed=true; delivery=unknown/);
++    assert.equal(calls.count, 1);
++  } finally {barrier.restore(); await first;}
++});
++
++test('keeps an active owner claim suppressed even after its lease expires', async () => {
++  const environment = env('active-owner');
++  const nativeEvent = event('active-event');
++  await enable(environment);
++  const claimPaths = paths(environment, nativeEvent);
++  await mkdir(claimPaths.directory, {recursive: true});
++  const record = {version: 1, status: 'pending', ownerPid: process.pid, ownerToken: '11111111-1111-1111-1111-111111111111', attemptId: '22222222-2222-2222-2222-222222222222', claimedAt: Date.now() - 100_000, leaseUntil: Date.now() - 1};
++  await writeFile(claimPaths.marker, JSON.stringify(record) + '\n');
++  const calls = {count: 0};
++  assert.deepEqual(await runDecisionHook(JSON.stringify(nativeEvent), {env: environment, service: service({status: 'assessed', choice: 'proceed'}, calls)}), {});
++  assert.equal(calls.count, 0);
++  assert.deepEqual(JSON.parse(await readFile(claimPaths.marker, 'utf8')), record);
++});
++
++test('treats a legacy zero-byte claim as completed', async () => {
++  const environment = env('legacy');
++  const nativeEvent = event('legacy-event');
++  await enable(environment);
++  const claimPaths = paths(environment, nativeEvent);
++  await mkdir(claimPaths.directory, {recursive: true});
++  // A zero-byte legacy session lock must not block the versioned atomic lock.
++  await writeFile(join(claimPaths.directory, '.lock'), '');
++  await writeFile(claimPaths.marker, '');
++  const calls = {count: 0};
++  assert.deepEqual(await runDecisionHook(JSON.stringify(nativeEvent), {env: environment, service: service({status: 'assessed', choice: 'proceed'}, calls)}), {});
++  assert.equal(calls.count, 0);
++});
++
++test('retains uncertain receipts and gives a retry a distinct attempt identity', async () => {
++  const environment = env('uncertain');
++  const nativeEvent = event('uncertain-event');
++  await enable(environment);
++  const firstCalls = {count: 0};
++  const first = await runDecisionHook(JSON.stringify(nativeEvent), {env: environment, service: service({status: 'unavailable', reasonCode: 'service_error'}, firstCalls)});
++  assert.match(first.hookSpecificOutput?.additionalContext ?? '', /status=unavailable/);
++  const claimPaths = paths(environment, nativeEvent);
++  const pending = JSON.parse(await readFile(claimPaths.marker, 'utf8')) as Record<string, unknown>;
++  await writeFile(claimPaths.marker, JSON.stringify({...pending, ownerPid: 999999999, leaseUntil: Date.now() - 1}) + '\n');
++  const secondCalls = {count: 0};
++  const second = await runDecisionHook(JSON.stringify(nativeEvent), {env: environment, service: service({status: 'assessed', choice: 'proceed'}, secondCalls)});
++  assert.match(second.hookSpecificOutput?.additionalContext ?? '', /status=assessed/);
++  assert.equal(firstCalls.count, 1);
++  assert.equal(secondCalls.count, 1);
++  const receipts = (await readdir(claimPaths.invocations)).sort();
++  assert.equal(receipts.length, 2);
++  assert.equal(receipts[0]!.includes('-'), true);
++  const statuses = await Promise.all(receipts.map(async name => (JSON.parse(await readFile(join(claimPaths.invocations, name), 'utf8')) as Record<string, unknown>).assessmentStatus));
++  assert.deepEqual(new Set(statuses), new Set(['unavailable', 'assessed']));
++  assert.equal((JSON.parse(await readFile(claimPaths.marker, 'utf8')) as Record<string, unknown>).status, 'pending');
++  const successorPath = resolution(claimPaths.marker, String(pending.attemptId));
++  const successor = JSON.parse(await readFile(successorPath, 'utf8')) as Record<string, unknown>;
++  assert.equal((JSON.parse(await readFile(resolution(claimPaths.marker, String(successor.attemptId)), 'utf8')) as Record<string, unknown>).status, 'completed');
++});
++
++test('a timed-out owner cannot overwrite a later owner completion', async () => {
++  const environment = env('late-timeout');
++  const nativeEvent = event('late-event');
++  await enable(environment);
++  let release!: (value: Record<string, unknown>) => void;
++  const pending = new Promise<Record<string, unknown>>(resolve => {release = resolve;});
++  const first = await runDecisionHook(JSON.stringify(nativeEvent), {env: environment, hookTimeoutMs: 30, service: {async classifyDecision() { return pending; }}});
++  assert.match(first.hookSpecificOutput?.additionalContext ?? '', /status=unavailable; reason=hook_timeout/);
++  const claimPaths = paths(environment, nativeEvent);
++  const oldClaim = JSON.parse(await readFile(claimPaths.marker, 'utf8')) as Record<string, unknown>;
++  await writeFile(claimPaths.marker, JSON.stringify({...oldClaim, ownerPid: 999999998, leaseUntil: Date.now() - 1}) + '\n');
++  const second = await runDecisionHook(JSON.stringify(nativeEvent), {env: environment, service: service({status: 'assessed', choice: 'proceed'}, {count: 0})});
++  assert.match(second.hookSpecificOutput?.additionalContext ?? '', /status=assessed/);
++  release({status: 'assessed', choice: 'reconsider'});
++  await new Promise(resolve => setTimeout(resolve, 10));
++  const completed = JSON.parse(await readFile(claimPaths.marker, 'utf8')) as Record<string, unknown>;
++  assert.equal(completed.status, 'pending');
++  const successorPath = resolution(claimPaths.marker, String(oldClaim.attemptId));
++  const successor = JSON.parse(await readFile(successorPath, 'utf8')) as Record<string, unknown>;
++  assert.notEqual(successor.attemptId, oldClaim.attemptId);
++  assert.equal((JSON.parse(await readFile(resolution(claimPaths.marker, String(successor.attemptId)), 'utf8')) as Record<string, unknown>).status, 'completed');
++});
++
++test('serializes concurrent owners for the same event', async () => {
++  const environment = env('concurrent');
++  const nativeEvent = event('concurrent-event');
++  await enable(environment);
++  const calls = {count: 0};
++  const sharedService: DecisionService = {async classifyDecision() {
++    calls.count += 1;
++    await delay(20);
++    return {status: 'assessed', choice: 'proceed'};
++  }};
++  const results = await Promise.all([
++    runDecisionHook(JSON.stringify(nativeEvent), {env: environment, service: sharedService}),
++    runDecisionHook(JSON.stringify(nativeEvent), {env: environment, service: sharedService}),
++  ]);
++  assert.equal(calls.count, 1);
++  assert.equal(results.filter(result => /status=assessed/.test(result.hookSpecificOutput?.additionalContext ?? '')).length, 1);
++  assert.equal(results.filter(result => Object.keys(result).length === 0).length, 1);
++});
++
++test('serializes concurrent reclaimers through one immutable successor slot', async () => {
++  const environment = env('successor-race');
++  const nativeEvent = event('successor-race-event');
++  await enable(environment);
++  const claimPaths = paths(environment, nativeEvent);
++  const first = await runDecisionHook(JSON.stringify(nativeEvent), {env: environment, service: service({status: 'unavailable', reasonCode: 'service_error'}, {count: 0})});
++  assert.match(first.hookSpecificOutput?.additionalContext ?? '', /status=unavailable/);
++  const pending = JSON.parse(await readFile(claimPaths.marker, 'utf8')) as Record<string, unknown>;
++  await writeFile(claimPaths.marker, JSON.stringify({...pending, ownerPid: 999999997, leaseUntil: Date.now() - 1}) + '\n');
++  const calls = {count: 0};
++  const sharedService: DecisionService = {async classifyDecision() {
++    calls.count += 1;
++    await delay(10);
++    return {status: 'assessed', choice: 'proceed'};
++  }};
++  const results = await Promise.all([
++    runDecisionHook(JSON.stringify(nativeEvent), {env: environment, service: sharedService}),
++    runDecisionHook(JSON.stringify(nativeEvent), {env: environment, service: sharedService}),
++  ]);
++  assert.equal(calls.count, 1);
++  assert.equal(results.filter(result => /status=assessed/.test(result.hookSpecificOutput?.additionalContext ?? '')).length, 1);
++  const successorPath = resolution(claimPaths.marker, String(pending.attemptId));
++  assert.equal((await readFile(successorPath, 'utf8')).includes('"attemptId"'), true);
++});

@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "paired-v1-runtime-provenance-1",
+  "capturedAt": "2026-09-26T14:58:28.436300+00:00",
+  "pluginVersion": "0.4.0",
+  "installedVersion": "0.4.0+codex.20260926072321",
+  "releaseSourceCommit": "f67f0f35df13cbc0556539e6f86fe14e2c04d6f8",
+  "codexVersion": "codex-cli 0.155.0",
+  "nodeVersion": "v22.23.2",
+  "observedPlatform": "macOS",
+  "sequentialSameHost": true,
+  "installedManifestFilesVerified": 31,
+  "publishedSemanticPackageFiles": 30,
+  "excludedNonSemanticFiles": [
+    ".DS_Store"
+  ],
+  "installedFilesSha256": {
+    ".codex-plugin/plugin.json": "0c09fb93dd0115a6fbb4aa14c80daabf5671033a2aac31619a9769dd90b37263",
+    ".gitignore": "14a52462f9c1e71e25845771a0782a0de2a72b7d3798a5d60c865eeb9893679b",
+    ".mcp.json": "4aa483173c3f385e529d3d3592f4ec37c29d54049401fa58bb9184753282f108",
+    "assets/jev-workflows-mark.png": "639eae33a18a096aa844eea13c038eae05b1a324c151632c9ca9e2050ff74087",
+    "assets/jev-workflows-mark.svg": "e0d12092e7456b037793b2f8de8d5a5248ce7825ffd290eee5e527d816096e71",
+    "dist/cli.mjs": "9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db",
+    "dist/decision-hook.mjs": "cbbe3150a0996b18737526a284c3d979430315ce4e459e89edcc17618439c10f",
+    "dist/hook.mjs": "205d545ff8437d6d4595e787e04c24d5136db2626e7ad0d3a0b6cbea2720d6bd",
+    "dist/server.mjs": "88913f614e6bbf0da4637877fb1aef6f5d6cb9bbbbdecaed1f3566a280438064",
+    "docs/accounting.md": "7e8abc9e25d5b5842581ca873b4d85e9b50cf222679bf54502a566f5365da35e",
+    "docs/compatibility.md": "51ee43f12595180cd0cc7b9fbb5484e14414e28352d8877f24b5ef207638fd06",
+    "docs/distribution.md": "ad5154e7343a334ac25dfdc73406368b7494ab08cc0792f9d5ffd8f3a769b8c2",
+    "docs/fixture-rationale.md": "5992a01f2a5f67ed198e01bc682fa43c5960fd05cf642994d1a3ced5836b6acf",
+    "docs/privacy.md": "a0a97d77f733997435517be59cf751a8c7d936555836e05e7616388558938887",
+    "docs/publication.md": "b08012ebd39d164ce141836759eb121afa002da6d5a97f99c63c341ff02c096a",
+    "docs/reviewer-cases.md": "03a302151dec2d5aed75fc839bcbcd2fff50452eddbe79227d19dd4cd7489154",
+    "docs/terms.md": "7c4bc559d94a81b69eb6c6e4b7706398b5300a227c98a59948aba27287fbb4ff",
+    "hooks/hooks.json": "ae764c24df9f35917f5a8b0728f66d19e333399963e66faf738733167e2b8592",
+    "HOST-COMPATIBILITY.json": "9fa57855d3420a9b2be3bb704949924252477c2065f89a22086fa0df599bc8a2",
+    "LICENSE": "90f9b49ccfa673a6952b0b9cfb6a88a0131c2b93d0c4cbfa03f7d5ba35873b26",
+    "README.md": "8290228fd74ae48fef4f35619457cfca8362c8c738753d5ba586b2a3eeaa02b4",
+    "skills/check-completion/references/standalone.md": "046a2dca022b61d2ad8c17b5d803c018fcfeeb19d9d2d33d9b968606446501f8",
+    "skills/check-completion/scripts/jev.mjs": "9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db",
+    "skills/check-completion/SKILL.md": "7a9bc3ac4ed186857a5a5b704398e53a775a37c6b715c8e4856e6af1d9d4caa3",
+    "skills/classify-decision/references/standalone.md": "ade260df533c67bfdf8632d338b3805de438433d5fe57c708a034596f761f119",
+    "skills/classify-decision/scripts/jev.mjs": "9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db",
+    "skills/classify-decision/SKILL.md": "eefa7df798b393173b961e1abc3ff81db85fa5a58d3161d9029620177d86ddd1",
+    "skills/diagnose-failure/references/standalone.md": "72c597efa3b0b2ee68e4de4832e09af4510cc2dfc845952f949b4559ef1af099",
+    "skills/diagnose-failure/scripts/jev.mjs": "9f4b7a3f639ff1726e04647ebc6f9a97aa475a2a61b660d2095635d5b40e25db",
+    "skills/diagnose-failure/SKILL.md": "14b0670514691b6c6922cfdfeadb2eefe8817f6d8cb7b12d9da0fb7de637211e"
+  },
+  "privateRetainedEvidence": {
+    "plan.json": {
+      "bytes": 4472,
+      "sha256": "0830c28ddd5dfc70d92b60ad18616f5baeca3fa4b28ff71b0eab4496c4fa3f5a"
+    },
+    "trials.jsonl": {
+      "bytes": 150541,
+      "sha256": "2b20ae3da5325936384978e16938af0d2f197aa3e2b56cfc49ccc8e8255d0ff4"
+    },
+    "report.json": {
+      "bytes": 11152,
+      "sha256": "fb8255b5de5636d853bddf133ad0b78f0751eecf7a6994933e689ced81c1db64"
+    }
+  },
+  "privacy": "Relative package hashes and private-evidence hashes only; no host paths, identifiers, credentials, receipts, or logs are included."
+}
