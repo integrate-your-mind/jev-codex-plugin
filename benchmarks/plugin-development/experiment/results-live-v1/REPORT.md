@@ -40,3 +40,25 @@ Each row records sanitized timing, model, HTTP/validation, usage, delivery/actio
 Completion receipts match reservation/result/journal bytes and hashes for all 16 rows; row and manifest identities, result-persisted journal hashes, service-to-result receipt links, invocation-to-service links, and expected event kinds all validate. The initial tar `ENOSPC` occurred before any reservation/provider call and the output directory was verified empty; the run resumed from unchanged frozen source on a dedicated temporary volume. Local 25-test validation passed. Hosted jobs `108508343837` and `108508351940` were not started because of the GitHub account billing lock.
 
 Billing remains unreconciled. This is a bundled repair versus released control hook-component result using a supplied authored catalogue through normalized `PreToolUse`/`runDecisionHook`; it provides zero Codex task-quality inference, no native catalogue/host discovery, and no per-component causal attribution.
+
+## Rechecking retained evidence
+
+The read-only [report verifier](verify-report.mjs) checks the frozen schedule,
+every retained attempt artifact, raw service/invocation receipts and their parsed
+projections, completion hashes, finite nonnegative measurements, and the published
+row and aggregate results. It rejects orphan attempts and duplicate schedule rows.
+It does not make provider calls or rerun any attempt. Raw provider evidence remains
+private; public hashes permit checking a supplied evidence bundle, but are not
+independent provider authentication or billing reconciliation.
+
+```sh
+node benchmarks/plugin-development/experiment/results-live-v1/verify-report.mjs --self-test
+node benchmarks/plugin-development/experiment/results-live-v1/verify-report.mjs \
+  --private-root "$PRIVATE_CANDIDATE_RECEIPTS" \
+  --manifest benchmarks/plugin-development/experiment/frozen-live-v2.json \
+  --report benchmarks/plugin-development/experiment/results-live-v1/report.json
+```
+
+The retained 16-row evidence bundle passed both commands after the run. The
+negative checks include a changed completion hash, changed raw receipt projection,
+duplicate or wrong scheduled identity, and invalid numeric measurements.
