@@ -30327,6 +30327,599 @@ function sanitize(value, secrets) {
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 
+// node_modules/@typesafe-ai/sdk/dist/index.mjs
+var requestIdFrom = (headers) => headers.get("x-typesafe-request-id") ?? void 0;
+var APIPromise = class APIPromise2 extends Promise {
+  #responsePromise;
+  #parseResponse;
+  #parsed;
+  constructor(responsePromise, parseResponse) {
+    super((resolve) => resolve(void 0));
+    this.#responsePromise = responsePromise;
+    this.#parseResponse = parseResponse;
+  }
+  /**
+  * Resolves to the raw `Response` without parsing the body. SDK requests buffer the full
+  * body under the request timeout before handoff; reading it afterwards is caller-owned.
+  * The caller owns the body; don't also `await` the parsed result on the same promise.
+  */
+  asResponse() {
+    return this.#responsePromise;
+  }
+  /** Return the parsed result, HTTP response, and request ID. */
+  async withResponse() {
+    const [data, response] = await Promise.all([this.#parse(), this.#responsePromise]);
+    return {
+      data,
+      response,
+      requestId: requestIdFrom(response.headers)
+    };
+  }
+  /** Transform the parsed result, sharing the HTTP response and a single body parse. */
+  map(fn) {
+    return new APIPromise2(this.#responsePromise, () => this.#parse().then(fn));
+  }
+  #parse() {
+    this.#parsed ??= this.#responsePromise.then(this.#parseResponse);
+    return this.#parsed;
+  }
+  then(onfulfilled, onrejected) {
+    return this.#parse().then(onfulfilled, onrejected);
+  }
+  catch(onrejected) {
+    return this.#parse().catch(onrejected);
+  }
+  finally(onfinally) {
+    return this.#parse().finally(onfinally);
+  }
+};
+var ENV = {
+  /** Required API key; used when `apiKey` is omitted. */
+  apiKey: "TYPESAFE_API_KEY",
+  /** API root; defaults to `https://api.typesafe.ai`. */
+  baseURL: "TYPESAFE_BASE_URL",
+  /** Default model name; defaults to `jev-latest`. */
+  defaultModel: "TYPESAFE_DEFAULT_MODEL",
+  /** Log level; defaults to `warn`. */
+  logLevel: "TYPESAFE_LOG_LEVEL"
+};
+var readEnv = (name) => {
+  if (typeof process === "undefined" || !process.env) return void 0;
+  return process.env[name]?.trim() || void 0;
+};
+var fromCodeOrEnv = (fromCode, envVar) => fromCode ?? readEnv(envVar);
+var range = (from, to) => Array.from({ length: to - from }, (_, i) => from + i);
+var DEFAULT_RETRY_POLICY = {
+  maxRetries: 2,
+  backoffInitialMs: 500,
+  backoffMaxMs: 5e3,
+  backoffJitter: 0.25,
+  /** HTTP 408, 429, and 5xx responses. */
+  httpStatuses: /* @__PURE__ */ new Set([
+    408,
+    429,
+    ...range(500, 600)
+  ]),
+  respectRetryAfter: true,
+  /** Maximum server retry delay before falling back to backoff. */
+  maxRetryAfterMs: 6e4,
+  apiConnectionError: true,
+  apiTimeoutError: true
+};
+DEFAULT_RETRY_POLICY.maxRetries;
+var isRetryableStatus = (status, policy = DEFAULT_RETRY_POLICY) => policy.httpStatuses.has(status);
+var parseRetryAfter = (headers, now = Date.now()) => {
+  const ms = Number(headers.get("retry-after-ms"));
+  if (headers.has("retry-after-ms") && Number.isFinite(ms) && ms >= 0) return ms;
+  const raw = headers.get("retry-after");
+  if (raw === null) return void 0;
+  const seconds = Number(raw);
+  if (Number.isFinite(seconds)) return seconds >= 0 ? seconds * 1e3 : void 0;
+  const date5 = Date.parse(raw);
+  if (!Number.isNaN(date5)) return Math.max(0, date5 - now);
+};
+var retryDelayMs = (attempt, headers, policy = DEFAULT_RETRY_POLICY, random = Math.random) => {
+  if (policy.respectRetryAfter && headers !== void 0) {
+    const retryAfter2 = parseRetryAfter(headers);
+    if (retryAfter2 !== void 0 && retryAfter2 <= policy.maxRetryAfterMs) return retryAfter2;
+  }
+  const exponential = Math.min(policy.backoffInitialMs * 2 ** attempt, policy.backoffMaxMs);
+  return Math.round(exponential * (1 - random() * policy.backoffJitter));
+};
+var sleep = (ms, signal) => new Promise((resolve, reject) => {
+  if (signal?.aborted) return reject(signal.reason);
+  const onAbort = () => {
+    clearTimeout(timer);
+    reject(signal?.reason);
+  };
+  const timer = setTimeout(() => {
+    signal?.removeEventListener("abort", onAbort);
+    resolve();
+  }, ms);
+  signal?.addEventListener("abort", onAbort, { once: true });
+});
+var TypeSafeError = class extends Error {
+  constructor(message, options) {
+    super(message, options);
+    this.name = new.target.name;
+  }
+};
+var isRecord = (value) => typeof value === "object" && value !== null;
+var extractMessage = (body) => {
+  if (typeof body === "string") return body || void 0;
+  if (!isRecord(body)) return void 0;
+  const { error: error62, message, detail } = body;
+  if (typeof error62 === "string") return error62;
+  if (isRecord(error62) && typeof error62.message === "string") return error62.message;
+  if (typeof message === "string") return message;
+  if (typeof detail === "string") return detail;
+  if (isRecord(detail) && typeof detail.message === "string") return detail.message;
+  if (Array.isArray(detail)) return describeValidationErrors(detail);
+};
+var describeValidationErrors = (errors) => {
+  const parts = errors.flatMap((e) => {
+    if (!isRecord(e) || typeof e.msg !== "string") return [];
+    const loc = Array.isArray(e.loc) ? e.loc.filter((x) => x !== "body").join(".") : "";
+    return [loc ? `${loc}: ${e.msg}` : e.msg];
+  });
+  return parts.length > 0 ? parts.join("; ") : void 0;
+};
+var MAX_RAW_BODY_IN_MESSAGE = 200;
+var APIError = class APIError2 extends TypeSafeError {
+  /** HTTP response status code. */
+  status;
+  /** HTTP response headers. */
+  headers;
+  /** Parsed JSON, response text, or `undefined` for an empty body. */
+  body;
+  /** Request ID from `x-typesafe-request-id`, or `undefined` when absent. */
+  requestId;
+  constructor(status, body, headers, message) {
+    super(message ?? APIError2.describe(status, body));
+    this.status = status;
+    this.body = body;
+    this.headers = headers;
+    this.requestId = requestIdFrom(headers);
+  }
+  static describe(status, body) {
+    const detail = extractMessage(body);
+    if (detail) return `${status} ${detail}`;
+    if (body === void 0) return `${status} status code (no body)`;
+    const raw = typeof body === "string" ? body : JSON.stringify(body);
+    return `${status} ${raw.length > MAX_RAW_BODY_IN_MESSAGE ? `${raw.slice(0, MAX_RAW_BODY_IN_MESSAGE)}\u2026` : raw}`;
+  }
+  /** Create the error subclass for an HTTP status code. */
+  static fromResponse(status, body, headers) {
+    if (status === 400) return new BadRequestError(status, body, headers);
+    if (status === 401) return new AuthenticationError(status, body, headers);
+    if (status === 403) return new PermissionDeniedError(status, body, headers);
+    if (status === 404) return new NotFoundError(status, body, headers);
+    if (status === 422) return new UnprocessableEntityError(status, body, headers);
+    if (status === 429) return new RateLimitError(status, body, headers);
+    if (status >= 500) return new InternalServerError(status, body, headers);
+    return new APIError2(status, body, headers);
+  }
+};
+var BadRequestError = class extends APIError {
+};
+var AuthenticationError = class extends APIError {
+};
+var PermissionDeniedError = class extends APIError {
+};
+var NotFoundError = class extends APIError {
+};
+var UnprocessableEntityError = class extends APIError {
+};
+var RateLimitError = class extends APIError {
+  /** Server retry delay in milliseconds, or `undefined` when absent or invalid. */
+  retryAfterMs = parseRetryAfter(this.headers);
+};
+var InternalServerError = class extends APIError {
+};
+var APIConnectionError = class extends TypeSafeError {
+  constructor(message = "Connection error.", options) {
+    super(message, options);
+  }
+};
+var APITimeoutError = class extends APIConnectionError {
+  /** Configured timeout in milliseconds. */
+  timeoutMs;
+  constructor(timeoutMs, options) {
+    super(`Request timed out after ${timeoutMs}ms.`, options);
+    this.timeoutMs = timeoutMs;
+  }
+};
+var APIUserAbortError = class extends TypeSafeError {
+  constructor(message = "Request was aborted.", options) {
+    super(message, options);
+  }
+};
+var LOG_LEVELS = [
+  "debug",
+  "info",
+  "warn",
+  "error",
+  "off"
+];
+var DEFAULT_LOG_LEVEL = "warn";
+var isLogLevel = (value) => LOG_LEVELS.includes(value);
+var parseLogLevel = (value, source) => {
+  if (isLogLevel(value)) return value;
+  throw new TypeSafeError(`Invalid log level "${value}" from ${source}. Expected one of: ${LOG_LEVELS.join(", ")}.`);
+};
+var PREFIX = "[typesafe-sdk]";
+var consoleLogger = {
+  debug: (message, ...args) => console.debug(`${PREFIX} ${message}`, ...args),
+  info: (message, ...args) => console.info(`${PREFIX} ${message}`, ...args),
+  warn: (message, ...args) => console.warn(`${PREFIX} ${message}`, ...args),
+  error: (message, ...args) => console.error(`${PREFIX} ${message}`, ...args)
+};
+var RANK = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+  off: 4
+};
+var drop = () => {
+};
+var withLevel = (sink, level) => {
+  const enabled = (at) => RANK[at] >= RANK[level];
+  return {
+    debug: enabled("debug") ? (message, ...args) => sink.debug(message, ...args) : drop,
+    info: enabled("info") ? (message, ...args) => sink.info(message, ...args) : drop,
+    warn: enabled("warn") ? (message, ...args) => sink.warn(message, ...args) : drop,
+    error: enabled("error") ? (message, ...args) => sink.error(message, ...args) : drop
+  };
+};
+var KEY_HEADERS = /* @__PURE__ */ new Set([
+  "authorization",
+  "proxy-authorization",
+  "x-api-key"
+]);
+var OPAQUE_HEADERS = /* @__PURE__ */ new Set(["cookie", "set-cookie"]);
+var redactKey = (value) => {
+  const [scheme, secret] = value.includes(" ") ? value.split(/\s+/, 2) : [void 0, value];
+  const tail = secret && secret.length > 8 ? secret.slice(-4) : "";
+  return `${scheme ? `${scheme} ` : ""}***${tail}`;
+};
+var redact = (name, value) => {
+  const lower = name.toLowerCase();
+  if (KEY_HEADERS.has(lower)) return redactKey(value);
+  if (OPAQUE_HEADERS.has(lower)) return "***";
+  return value;
+};
+var redactHeaders = (headers) => Object.fromEntries(Object.entries(headers).map(([name, value]) => [name, redact(name, value)]));
+var validateQuestions = (questions) => {
+  if (Object.keys(questions).length === 0) throw new TypeSafeError("At least one question is required.");
+  for (const [name, question] of Object.entries(questions)) {
+    if (question.type !== "score") continue;
+    if (!Array.isArray(question.criteria)) throw new TypeSafeError(`Score question "${name}" has criteria that are not a list; score criteria must be a list of descriptions indexed by score from zero.`);
+    if (question.criteria.length < 2) throw new TypeSafeError(`Score question "${name}" has ${question.criteria.length} criteria; at least two scores are required.`);
+  }
+};
+var Models = class {
+  #transport;
+  constructor(transport) {
+    this.#transport = transport;
+  }
+  /** List the models available to the account. */
+  list(options = {}) {
+    return this.#transport.request("GET", "/v1/models", options).map(unwrapModels);
+  }
+};
+var unwrapModels = (wire) => {
+  if (Array.isArray(wire?.models)) return wire.models;
+  throw new TypeSafeError("Unexpected response shape from GET /v1/models; expected { models: [...] }.");
+};
+var g = globalThis;
+var isBrowser = () => typeof g.window !== "undefined" && typeof g.window.document !== "undefined" && typeof g.navigator !== "undefined";
+var describeRuntime = () => {
+  const platform = g.process?.platform && g.process?.arch ? ` (${g.process.platform}; ${g.process.arch})` : "";
+  if (g.Bun?.version) return `bun/${g.Bun.version}${platform}`;
+  if (g.Deno?.version?.deno) return `deno/${g.Deno.version.deno}${platform}`;
+  if (g.EdgeRuntime !== void 0) return "vercel-edge";
+  if (g.navigator?.userAgent === "Cloudflare-Workers") return "cloudflare-workers";
+  if (g.process?.versions?.node) return `node/${g.process.versions.node}${platform}`;
+  if (isBrowser()) return "browser";
+  return "unknown";
+};
+var VERSION = "0.6.0";
+var missingApiKey = () => {
+  throw new TypeSafeError(`No API key was provided. Pass \`apiKey\` to the TypeSafeClient constructor or set the ${ENV.apiKey} environment variable.`);
+};
+var missingFetch = () => {
+  throw new TypeSafeError("No global `fetch` is available in this runtime. Pass a `fetch` implementation to the TypeSafeClient constructor.");
+};
+var refuseBrowser = () => {
+  throw new TypeSafeError("TypeSafeClient is running in a browser, which would expose your API key to anyone using the page. Call the API from a server instead, or pass `dangerouslyAllowBrowser: true` if you understand the risk.");
+};
+var defaultFetch = (input2, init) => globalThis.fetch(input2, init);
+var assertNonNegativeInteger = (name, value) => {
+  if (!Number.isInteger(value) || value < 0) throw new TypeSafeError(`\`${name}\` must be a non-negative integer, got ${String(value)}.`);
+  return value;
+};
+var assertPositiveMs = (name, value) => {
+  if (!Number.isFinite(value) || value <= 0) throw new TypeSafeError(`\`${name}\` must be a positive number of milliseconds, got ${String(value)}.`);
+  return value;
+};
+var assertNonNegativeMs = (name, value) => {
+  if (!Number.isFinite(value) || value < 0) throw new TypeSafeError(`\`${name}\` must be a non-negative number of milliseconds, got ${String(value)}.`);
+  return value;
+};
+var assertFraction = (name, value) => {
+  if (!Number.isFinite(value) || value < 0 || value > 1) throw new TypeSafeError(`\`${name}\` must be between 0 and 1, got ${String(value)}.`);
+  return value;
+};
+var assertStatusSet = (name, statuses) => {
+  for (const status of statuses) if (!Number.isInteger(status) || status < 100 || status > 999) throw new TypeSafeError(`\`${name}\` must contain HTTP status codes, got ${String(status)}.`);
+  return statuses;
+};
+var resolveRetryPolicy = (base, overrides) => {
+  const o = overrides ?? {};
+  return {
+    maxRetries: o.maxRetries === void 0 ? base.maxRetries : assertNonNegativeInteger("retry.maxRetries", o.maxRetries),
+    backoffInitialMs: o.backoffInitialMs === void 0 ? base.backoffInitialMs : assertNonNegativeMs("retry.backoffInitialMs", o.backoffInitialMs),
+    backoffMaxMs: o.backoffMaxMs === void 0 ? base.backoffMaxMs : assertNonNegativeMs("retry.backoffMaxMs", o.backoffMaxMs),
+    backoffJitter: o.backoffJitter === void 0 ? base.backoffJitter : assertFraction("retry.backoffJitter", o.backoffJitter),
+    httpStatuses: new Set(o.httpStatuses === void 0 ? base.httpStatuses : assertStatusSet("retry.httpStatuses", o.httpStatuses)),
+    respectRetryAfter: o.respectRetryAfter ?? base.respectRetryAfter,
+    maxRetryAfterMs: o.maxRetryAfterMs === void 0 ? base.maxRetryAfterMs : assertNonNegativeMs("retry.maxRetryAfterMs", o.maxRetryAfterMs),
+    apiConnectionError: o.apiConnectionError ?? base.apiConnectionError,
+    apiTimeoutError: o.apiTimeoutError ?? base.apiTimeoutError
+  };
+};
+var isRetryableError = (err, policy) => {
+  if (err instanceof APITimeoutError) return policy.apiTimeoutError;
+  if (err instanceof APIConnectionError) return policy.apiConnectionError;
+  return false;
+};
+var resolveLogLevel = (fromCode) => {
+  if (fromCode !== void 0) return parseLogLevel(fromCode, "the `logLevel` option");
+  const fromEnv = readEnv(ENV.logLevel);
+  if (fromEnv !== void 0) return parseLogLevel(fromEnv, ENV.logLevel);
+  return DEFAULT_LOG_LEVEL;
+};
+var stripTrailingSlashes = (url2) => url2.replace(/\/+$/, "");
+var mergeHeaders = (...sources) => {
+  const entries = /* @__PURE__ */ new Map();
+  for (const source of sources) for (const [name, value] of Object.entries(source)) if (value === void 0) entries.delete(name.toLowerCase());
+  else entries.set(name.toLowerCase(), [name, value]);
+  return Object.fromEntries(entries.values());
+};
+var bufferResponse = async (response, signal) => {
+  const reader = response.clone().body?.getReader();
+  if (!reader) return;
+  const cancel = () => {
+    reader.cancel(signal.reason).catch(() => {
+    });
+    response.body?.cancel(signal.reason).catch(() => {
+    });
+  };
+  signal.addEventListener("abort", cancel, { once: true });
+  try {
+    if (signal.aborted) cancel();
+    signal.throwIfAborted();
+    while (!(await reader.read()).done) signal.throwIfAborted();
+    signal.throwIfAborted();
+  } finally {
+    signal.removeEventListener("abort", cancel);
+    reader.releaseLock();
+  }
+};
+var RUNTIME = describeRuntime();
+var TypeSafeClient = class {
+  /** API key excluded from serialization and public properties. */
+  #apiKey;
+  /** API root with trailing slashes removed. */
+  baseURL;
+  /** Model used when a request omits `model`. */
+  defaultModel;
+  /** Configured log verbosity. */
+  logLevel;
+  /** The configured logger, filtered to `logLevel`. */
+  logger;
+  /** Retry settings with constructor overrides applied. */
+  retry;
+  /** Timeout per attempt in milliseconds. */
+  timeout;
+  /** Additional headers sent with each request. */
+  defaultHeaders;
+  /** HTTP fetch implementation. */
+  fetch;
+  /** The models available to the account. */
+  models;
+  #requestCount = 0;
+  /**
+  * Create a client for the TypeSafe AI API.
+  *
+  * Explicit options take precedence over environment variables, then SDK defaults.
+  * Empty or whitespace-only environment values are ignored.
+  *
+  * @throws {TypeSafeError} The API key is missing, configuration is invalid, or the runtime is unsupported.
+  */
+  constructor(config2 = {}) {
+    if (isBrowser() && !config2.dangerouslyAllowBrowser) refuseBrowser();
+    this.#apiKey = fromCodeOrEnv(config2.apiKey, ENV.apiKey) ?? missingApiKey();
+    this.baseURL = stripTrailingSlashes(fromCodeOrEnv(config2.baseURL, ENV.baseURL) ?? "https://api.typesafe.ai");
+    this.defaultModel = fromCodeOrEnv(config2.defaultModel, ENV.defaultModel) ?? "jev-latest";
+    this.logLevel = resolveLogLevel(config2.logLevel);
+    this.logger = withLevel(config2.logger ?? consoleLogger, this.logLevel);
+    this.retry = resolveRetryPolicy(DEFAULT_RETRY_POLICY, config2.retry);
+    this.timeout = assertPositiveMs("timeout", config2.timeout ?? 1e4);
+    this.defaultHeaders = { ...config2.defaultHeaders };
+    if (config2.fetch === void 0 && typeof globalThis.fetch !== "function") missingFetch();
+    this.fetch = config2.fetch ?? defaultFetch;
+    const transport = {
+      request: (method, path, options) => this.#request(method, path, options),
+      defaultModel: this.defaultModel
+    };
+    this.models = new Models(transport);
+  }
+  /**
+  * Answer named questions about text or structured state.
+  *
+  * @param request - State, questions, and an optional model override.
+  * @param options - Per-call timeout, retry, headers, and cancellation settings.
+  * @returns Answers typed by question name and criteria, with model and token usage.
+  * @throws {TypeSafeError} Questions are empty, or score criteria are not a list of at least two entries.
+  * @throws {APIError} The server returns a non-2xx response after retries.
+  * @throws {APIConnectionError} The request cannot connect or times out after retries.
+  * @throws {APIUserAbortError} The caller aborts the request.
+  *
+  * @example
+  * ```ts
+  * const { answers } = await client.systemOne({
+  *   state: "I was charged twice. Please help.",
+  *   questions: { billing: noul("Is this about billing?") },
+  * });
+  * console.log(answers.billing.noul);
+  * ```
+  */
+  systemOne(request, options = {}) {
+    validateQuestions(request.questions);
+    const body = {
+      ...request,
+      model: request.model ?? this.defaultModel
+    };
+    return this.#request("POST", "/v1/systemone", {
+      ...options,
+      body
+    });
+  }
+  /** Send a request and parse its response body. */
+  #request(method, path, options = {}) {
+    const resolved = {
+      method,
+      path,
+      body: options.body,
+      headers: mergeHeaders(this.defaultHeaders, options.headers ?? {}),
+      signal: options.signal,
+      timeout: options.timeout === void 0 ? this.timeout : assertPositiveMs("timeout", options.timeout),
+      retry: resolveRetryPolicy(this.retry, options.retry)
+    };
+    const tag = `#${++this.#requestCount} ${method} ${path}`;
+    return new APIPromise(this.fetchWithRetries(tag, resolved), async (res) => {
+      const parsed = await parseBody(res);
+      this.logger.debug(`${tag} <- body`, parsed);
+      return parsed;
+    });
+  }
+  /** Retry eligible failures, logging attempt summaries at `info` and headers and bodies at `debug`. */
+  async fetchWithRetries(tag, req) {
+    const url2 = `${this.baseURL}${req.path}`;
+    const headers = mergeHeaders(req.headers, {
+      Authorization: `Bearer ${this.#apiKey}`,
+      Accept: "application/json",
+      "User-Agent": `typesafe-sdk/${VERSION}`,
+      "X-TypeSafe-SDK": `typesafe-sdk/${VERSION}`,
+      "X-TypeSafe-Runtime": RUNTIME,
+      "Content-Type": req.body === void 0 ? void 0 : "application/json",
+      "X-TypeSafe-Retry-Count": void 0
+    });
+    const body = req.body === void 0 ? void 0 : JSON.stringify(req.body);
+    for (let attempt = 0; ; attempt++) {
+      const retriesLeft = req.retry.maxRetries - attempt;
+      const attemptHeaders = attempt === 0 ? headers : {
+        ...headers,
+        "X-TypeSafe-Retry-Count": String(attempt)
+      };
+      this.logger.debug(`${tag} -> ${url2}`, {
+        headers: redactHeaders(attemptHeaders),
+        body: req.body
+      });
+      const started = Date.now();
+      let res;
+      try {
+        res = await this.attempt(tag, url2, {
+          method: req.method,
+          headers: attemptHeaders,
+          body
+        }, req);
+      } catch (err) {
+        if (err instanceof APIUserAbortError || retriesLeft <= 0) throw err;
+        if (!isRetryableError(err, req.retry)) throw err;
+        await this.backOff(tag, attempt, retriesLeft, err.message, void 0, req);
+        continue;
+      }
+      const requestId = requestIdFrom(res.headers);
+      this.logger.info(`${tag} <- ${res.status} in ${Date.now() - started}ms${requestId ? ` (request ${requestId})` : ""}`);
+      if (res.ok) return res;
+      const errorBody = await parseBody(res);
+      this.logger.debug(`${tag} <- error body`, errorBody);
+      const error62 = APIError.fromResponse(res.status, errorBody, res.headers);
+      if (retriesLeft <= 0 || !isRetryableStatus(res.status, req.retry)) throw error62;
+      await this.backOff(tag, attempt, retriesLeft, `${res.status}`, res.headers, req);
+    }
+  }
+  /**
+  * One HTTP round trip, including body delivery, with a timeout. The caller's signal and our
+  * timer both abort the same controller; we check which fired to choose the error class.
+  */
+  async attempt(tag, url2, init, { signal, timeout }) {
+    const controller = new AbortController();
+    const abortFromCaller = () => controller.abort(signal?.reason);
+    if (signal?.aborted) abortFromCaller();
+    signal?.addEventListener("abort", abortFromCaller, { once: true });
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeout);
+    const started = Date.now();
+    const elapsed = () => `${Date.now() - started}ms`;
+    try {
+      const response = await this.fetch(url2, {
+        ...init,
+        signal: controller.signal
+      });
+      await bufferResponse(response, controller.signal);
+      return response;
+    } catch (err) {
+      if (signal?.aborted) {
+        this.logger.info(`${tag} aborted by caller after ${elapsed()}`);
+        throw new APIUserAbortError(void 0, { cause: err });
+      }
+      if (timedOut) {
+        this.logger.info(`${tag} timed out after ${elapsed()}`);
+        throw new APITimeoutError(timeout, { cause: err });
+      }
+      this.logger.info(`${tag} connection error after ${elapsed()}`, err);
+      throw new APIConnectionError(err instanceof Error ? `Connection error: ${err.message}` : void 0, { cause: err });
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", abortFromCaller);
+    }
+  }
+  /** Wait before retrying; caller cancellation throws `APIUserAbortError`. */
+  async backOff(tag, attempt, retriesLeft, reason, headers, { retry, signal }) {
+    const delay3 = retryDelayMs(attempt, headers, retry);
+    const nth = attempt + 1;
+    const total = attempt + retriesLeft;
+    this.logger.info(`${tag} retrying in ${delay3}ms (retry ${nth}/${total}) after ${reason}`);
+    try {
+      await sleep(delay3, signal);
+    } catch (err) {
+      this.logger.info(`${tag} aborted by caller while waiting to retry`);
+      throw new APIUserAbortError(void 0, { cause: err });
+    }
+  }
+};
+var parseBody = async (res) => {
+  const text = await res.text();
+  if (text.length === 0) return void 0;
+  if ((res.headers.get("content-type") ?? "").includes("application/json")) try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+};
+
 // src/batch.ts
 var BATCH_RUBRIC_VERSION = "batch-2026-09-26.2";
 var DECISION_POLICY_VERSION = "decision-policy-2026-09-26.1";
@@ -30491,13 +31084,9 @@ var scoreAnswerSchema = external_exports.strictObject({
 function fingerprintCredential(apiKey) {
   return createHash("sha256").update(apiKey).digest("hex");
 }
-function requestIdentifier(response, apiKey) {
-  const names = ["x-typesafe-request-id", "x-request-id", "request-id"];
-  for (const name of names) {
-    const value = response.headers.get(name);
-    if (value !== null && value.length <= 256 && /^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(value) && !value.includes(apiKey)) {
-      return { providerRequestId: value, providerRequestIdHeader: name };
-    }
+function requestIdentifier(requestId, apiKey) {
+  if (requestId !== void 0 && requestId.length <= 256 && /^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(requestId) && (!apiKey || !requestId.includes(apiKey))) {
+    return { providerRequestId: requestId, providerRequestIdHeader: "x-typesafe-request-id" };
   }
   return { providerRequestId: null, providerRequestIdHeader: null };
 }
@@ -30576,11 +31165,10 @@ function validateEvaluation(raw, questions, transport = null) {
   return { model: parsed.model, answers, usage: parsed.usage, ...transport ? { transport } : {} };
 }
 async function evaluateProvider(args) {
-  const timeout = AbortSignal.timeout(args.timeoutMs);
-  const signal = args.signal ? AbortSignal.any([args.signal, timeout]) : timeout;
   let transport = {
     requestStartedAt: (/* @__PURE__ */ new Date()).toISOString(),
     fetchInvoked: false,
+    attempts: 0,
     responseReceivedAt: null,
     responseStatus: null,
     validatedResponse: false,
@@ -30589,61 +31177,104 @@ async function evaluateProvider(args) {
     retryAfter: null,
     credentialFingerprint: fingerprintCredential(args.apiKey)
   };
-  try {
-    if (args.signal?.aborted) throw new ProviderError("cancelled", transport);
-    transport = { ...transport, fetchInvoked: true };
-    const response = await (args.fetchFn ?? fetch)(ENDPOINT, {
-      method: "POST",
-      redirect: "error",
-      signal,
-      headers: { "content-type": "application/json", authorization: `Bearer ${args.apiKey}` },
-      body: JSON.stringify({ model: MODEL, state: args.state, questions: args.questions })
-    });
+  let missingBody = false;
+  let responseTooLarge = false;
+  let invalidJson = false;
+  const fetchFn = args.fetchFn ?? fetch;
+  const instrumentedFetch = async (input2, init) => {
+    transport = { ...transport, fetchInvoked: true, attempts: transport.attempts + 1 };
+    const response = await fetchFn(input2, { ...init, redirect: "error" });
     const policyError = response.status === 403 ? networkPolicyError(response) : null;
     transport = {
       ...transport,
       responseReceivedAt: (/* @__PURE__ */ new Date()).toISOString(),
       responseStatus: response.status,
-      ...requestIdentifier(response, args.apiKey),
+      ...requestIdentifier(response.headers.get("x-typesafe-request-id") ?? void 0, args.apiKey),
       retryAfter: retryAfter(response, args.apiKey),
       ...policyError ? { networkPolicyError: policyError } : {}
     };
     if (!response.ok) {
       await response.body?.cancel().catch(() => {
       });
-      const code = response.status === 401 ? "authentication_failed" : response.status === 403 && policyError ? "network_policy_blocked" : response.status === 403 ? "request_forbidden" : response.status === 422 ? "invalid_request" : response.status === 429 ? "rate_limited" : response.status === 529 ? "provider_overloaded" : "provider_error";
-      throw new ProviderError(code, transport);
+      const headers = new Headers(response.headers);
+      headers.delete("content-length");
+      return new Response(null, { status: response.status, statusText: response.statusText, headers });
     }
-    if (!response.body) invalidResponse(transport, "missing_body");
+    if (!response.body) {
+      missingBody = true;
+      return response;
+    }
     const reader = response.body.getReader();
     const chunks = [];
     let size = 0;
+    let tooLarge = false;
     try {
       while (true) {
         const next = await reader.read();
         if (next.done) break;
         size += next.value.byteLength;
         if (size > 65536) {
-          await reader.cancel();
-          throw new ProviderError("response_too_large", transport);
+          tooLarge = true;
+          await reader.cancel().catch(() => {
+          });
+          break;
         }
         chunks.push(next.value);
       }
     } finally {
       reader.releaseLock();
     }
-    let payload;
-    try {
-      payload = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    } catch {
-      invalidResponse(transport, "invalid_json");
+    if (tooLarge) {
+      responseTooLarge = true;
+      const headers = new Headers(response.headers);
+      headers.delete("content-length");
+      return new Response(null, { status: response.status, statusText: response.statusText, headers });
     }
-    const evaluation = validateEvaluation(payload, args.questions, transport);
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    try {
+      JSON.parse(new TextDecoder().decode(bytes));
+    } catch {
+      invalidJson = true;
+    }
+    return new Response(bytes, { status: response.status, statusText: response.statusText, headers: response.headers });
+  };
+  const requestSignal = args.signal;
+  if (requestSignal?.aborted) throw new ProviderError("cancelled", transport);
+  if (!args.apiKey.trim()) throw new ProviderError("authentication_failed", transport);
+  try {
+    const client = new TypeSafeClient({
+      apiKey: args.apiKey,
+      defaultModel: MODEL,
+      fetch: instrumentedFetch,
+      timeout: args.timeoutMs,
+      retry: { maxRetries: 0 },
+      logLevel: "off"
+    });
+    const result = await client.systemOne(
+      { state: args.state, questions: args.questions, model: MODEL },
+      { signal: requestSignal, timeout: args.timeoutMs }
+    ).withResponse();
+    transport = { ...transport, ...requestIdentifier(result.requestId, args.apiKey) };
+    if (responseTooLarge) throw new ProviderError("response_too_large", transport);
+    if (missingBody) invalidResponse(transport, "missing_body");
+    if (invalidJson) invalidResponse(transport, "invalid_json");
+    const evaluation = validateEvaluation(result.data, args.questions, transport);
     return { ...evaluation, transport: { ...transport, validatedResponse: true } };
   } catch (error62) {
-    if (args.signal?.aborted) throw new ProviderError("cancelled", transport);
-    if (timeout.aborted) throw new ProviderError("timeout", transport);
+    if (requestSignal?.aborted || error62 instanceof APIUserAbortError) throw new ProviderError("cancelled", transport);
     if (error62 instanceof ProviderError) throw error62;
+    if (error62 instanceof APIError) {
+      transport = { ...transport, ...requestIdentifier(error62.requestId, args.apiKey) };
+      const code = error62.status === 401 ? "authentication_failed" : error62.status === 403 && transport.networkPolicyError ? "network_policy_blocked" : error62.status === 403 ? "request_forbidden" : error62.status === 422 ? "invalid_request" : error62.status === 429 ? "rate_limited" : error62.status === 529 ? "provider_overloaded" : "provider_error";
+      throw new ProviderError(code, transport);
+    }
+    if (error62 instanceof APITimeoutError) throw new ProviderError("timeout", transport);
+    if (error62 instanceof APIConnectionError) throw new ProviderError("provider_unavailable", transport);
     throw new ProviderError("provider_unavailable", transport);
   }
 }
@@ -31156,7 +31787,7 @@ function createService(options = {}) {
   function status(policy = DEFAULT_POLICY) {
     const current = credential();
     return {
-      version: "0.4.0",
+      version: "0.5.0",
       provider: "TypeSafe",
       endpoint: ENDPOINT,
       model: MODEL,
@@ -32168,7 +32799,7 @@ async function recordDecisionOutcome(raw, options = {}) {
 
 // src/server.ts
 var service = createService();
-var server = new Server({ name: "jev-workflows", version: "0.4.0" }, { capabilities: { tools: {} } });
+var server = new Server({ name: "jev-workflows", version: "0.5.0" }, { capabilities: { tools: {} } });
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [
   { name: "jev_status", description: "Read local Jev plugin readiness and limits. Does not contact TypeSafe or expose credentials.", inputSchema: { type: "object", properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } },
   { name: "classify_failure", description: "Preview selected redacted command evidence locally, or evaluate an authorized payload with TypeSafe Jev. Evaluate sends data externally in a billable provider API request. Advisory failure classification; never edits files, approves permissions, or certifies a fix.", inputSchema: external_exports.toJSONSchema(failureSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },

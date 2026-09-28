@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
+import { APIConnectionError, APIError, APIUserAbortError, APITimeoutError, TypeSafeClient, type EntryType, type Questions } from '@typesafe-ai/sdk';
 import { z } from 'zod';
-import { ENDPOINT, MODEL, type Question } from './contracts.js';
+import { MODEL, type Question } from './contracts.js';
 import { isBoundedJsonStructure, structuredEntrySchema, type StructuredEntry } from './batch.js';
 
 export type ProviderRequestIdHeader = 'x-typesafe-request-id' | 'x-request-id' | 'request-id';
@@ -35,6 +36,7 @@ export type ResponseValidationDiagnostic = {
 export type ProviderTransport = {
   requestStartedAt: string;
   fetchInvoked: boolean;
+  attempts: number;
   responseReceivedAt: string | null;
   responseStatus: number | null;
   validatedResponse: boolean;
@@ -78,18 +80,13 @@ export function fingerprintCredential(apiKey: string): string {
   return createHash('sha256').update(apiKey).digest('hex');
 }
 
-function requestIdentifier(response: Response, apiKey: string): {
+function requestIdentifier(requestId: string | undefined, apiKey: string): {
   providerRequestId: string | null;
   providerRequestIdHeader: ProviderRequestIdHeader | null;
 } {
-  const names: ProviderRequestIdHeader[] = ['x-typesafe-request-id', 'x-request-id', 'request-id'];
-  for (const name of names) {
-    const value = response.headers.get(name);
-    // Keep only bounded opaque identifiers. This excludes whitespace, control
-    // characters, and reflected bearer credentials from receipts.
-    if (value !== null && value.length <= 256 && /^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(value) && !value.includes(apiKey)) {
-      return {providerRequestId: value, providerRequestIdHeader: name};
-    }
+  // Keep only the SDK's bounded TypeSafe request ID; never retain a reflected credential.
+  if (requestId !== undefined && requestId.length <= 256 && /^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(requestId) && (!apiKey || !requestId.includes(apiKey))) {
+    return {providerRequestId: requestId, providerRequestIdHeader: 'x-typesafe-request-id'};
   }
   return {providerRequestId: null, providerRequestIdHeader: null};
 }
@@ -180,11 +177,10 @@ export async function evaluateProvider(args: {
   state: unknown; questions: Record<string, Question>; apiKey: string;
   timeoutMs: number; signal?: AbortSignal; fetchFn?: typeof fetch
 }): Promise<ProviderEvaluation> {
-  const timeout = AbortSignal.timeout(args.timeoutMs);
-  const signal = args.signal ? AbortSignal.any([args.signal, timeout]) : timeout;
   let transport: ProviderTransport = {
     requestStartedAt: new Date().toISOString(),
     fetchInvoked: false,
+    attempts: 0,
     responseReceivedAt: null,
     responseStatus: null,
     validatedResponse: false,
@@ -193,62 +189,111 @@ export async function evaluateProvider(args: {
     retryAfter: null,
     credentialFingerprint: fingerprintCredential(args.apiKey),
   };
-  try {
-    // AbortSignal listeners added after an abort do not fire. Check explicitly
-    // before entering fetch so cancellation during earlier service work cannot
-    // leave a custom transport waiting forever.
-    if (args.signal?.aborted) throw new ProviderError('cancelled', transport);
-    transport = {...transport, fetchInvoked: true};
-    const response = await (args.fetchFn ?? fetch)(ENDPOINT, {
-      method: 'POST', redirect: 'error', signal,
-      headers: {'content-type': 'application/json', authorization: `Bearer ${args.apiKey}`},
-      body: JSON.stringify({model: MODEL, state: args.state, questions: args.questions})
-    });
+  let missingBody = false;
+  let responseTooLarge = false;
+  let invalidJson = false;
+  const fetchFn = args.fetchFn ?? fetch;
+  const instrumentedFetch = async (input: string, init?: RequestInit): Promise<Response> => {
+    transport = {...transport, fetchInvoked: true, attempts: transport.attempts + 1};
+    const response = await fetchFn(input, {...init, redirect: 'error'});
     const policyError = response.status === 403 ? networkPolicyError(response) : null;
     transport = {
       ...transport,
       responseReceivedAt: new Date().toISOString(),
       responseStatus: response.status,
-      ...requestIdentifier(response, args.apiKey),
+      ...requestIdentifier(response.headers.get('x-typesafe-request-id') ?? undefined, args.apiKey),
       retryAfter: retryAfter(response, args.apiKey),
       ...(policyError ? {networkPolicyError: policyError} : {}),
     };
     if (!response.ok) {
       await response.body?.cancel().catch(() => {});
-      const code = response.status === 401 ? 'authentication_failed'
-        : response.status === 403 && policyError ? 'network_policy_blocked'
-        : response.status === 403 ? 'request_forbidden'
-        : response.status === 422 ? 'invalid_request'
-        : response.status === 429 ? 'rate_limited'
-        : response.status === 529 ? 'provider_overloaded'
-        : 'provider_error';
-      throw new ProviderError(code, transport);
+      const headers = new Headers(response.headers);
+      headers.delete('content-length');
+      return new Response(null, {status: response.status, statusText: response.statusText, headers});
     }
-    // Bound the response even when content-length is missing or dishonest.
-    if (!response.body) invalidResponse(transport, 'missing_body');
+    if (!response.body) {
+      missingBody = true;
+      return response;
+    }
+
     const reader = response.body.getReader();
-    const chunks: Uint8Array[] = []; let size = 0;
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    let tooLarge = false;
     try {
       while (true) {
         const next = await reader.read();
         if (next.done) break;
         size += next.value.byteLength;
-        if (size > 65536) { await reader.cancel(); throw new ProviderError('response_too_large', transport); }
+        if (size > 65536) {
+          tooLarge = true;
+          await reader.cancel().catch(() => {});
+          break;
+        }
         chunks.push(next.value);
       }
-    } finally { reader.releaseLock(); }
-    let payload: unknown;
-    try {
-      payload = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-    } catch {
-      invalidResponse(transport, 'invalid_json');
+    } finally {
+      reader.releaseLock();
     }
-    const evaluation = validateEvaluation(payload, args.questions, transport);
+    if (tooLarge) {
+      responseTooLarge = true;
+      const headers = new Headers(response.headers);
+      headers.delete('content-length');
+      return new Response(null, {status: response.status, statusText: response.statusText, headers});
+    }
+
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    try {
+      JSON.parse(new TextDecoder().decode(bytes));
+    } catch {
+      invalidJson = true;
+    }
+    return new Response(bytes, {status: response.status, statusText: response.statusText, headers: response.headers});
+  };
+
+  const requestSignal = args.signal;
+  if (requestSignal?.aborted) throw new ProviderError('cancelled', transport);
+  if (!args.apiKey.trim()) throw new ProviderError('authentication_failed', transport);
+  try {
+    const client = new TypeSafeClient({
+      apiKey: args.apiKey,
+      defaultModel: MODEL,
+      fetch: instrumentedFetch,
+      timeout: args.timeoutMs,
+      retry: {maxRetries: 0},
+      logLevel: 'off',
+    });
+    const result = await client.systemOne(
+      {state: args.state as EntryType, questions: args.questions as unknown as Questions, model: MODEL},
+      {signal: requestSignal, timeout: args.timeoutMs},
+    ).withResponse();
+    transport = {...transport, ...requestIdentifier(result.requestId, args.apiKey)};
+    if (responseTooLarge) throw new ProviderError('response_too_large', transport);
+    if (missingBody) invalidResponse(transport, 'missing_body');
+    if (invalidJson) invalidResponse(transport, 'invalid_json');
+    const evaluation = validateEvaluation(result.data, args.questions, transport);
     return {...evaluation, transport: {...transport, validatedResponse: true}};
   } catch (error) {
-    if (args.signal?.aborted) throw new ProviderError('cancelled', transport);
-    if (timeout.aborted) throw new ProviderError('timeout', transport);
+    if (requestSignal?.aborted || error instanceof APIUserAbortError) throw new ProviderError('cancelled', transport);
     if (error instanceof ProviderError) throw error;
+    if (error instanceof APIError) {
+      transport = {...transport, ...requestIdentifier(error.requestId, args.apiKey)};
+      const code = error.status === 401 ? 'authentication_failed'
+        : error.status === 403 && transport.networkPolicyError ? 'network_policy_blocked'
+        : error.status === 403 ? 'request_forbidden'
+        : error.status === 422 ? 'invalid_request'
+        : error.status === 429 ? 'rate_limited'
+        : error.status === 529 ? 'provider_overloaded'
+        : 'provider_error';
+      throw new ProviderError(code, transport);
+    }
+    if (error instanceof APITimeoutError) throw new ProviderError('timeout', transport);
+    if (error instanceof APIConnectionError) throw new ProviderError('provider_unavailable', transport);
     throw new ProviderError('provider_unavailable', transport);
   }
 }

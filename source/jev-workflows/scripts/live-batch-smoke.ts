@@ -99,7 +99,7 @@ async function main(): Promise<void> {
         ],
       },
     },
-    origin: {source: 'service', eventId: 'live-batch-smoke-0.4.0'},
+    origin: {source: 'service', eventId: 'live-batch-smoke-0.5.0'},
     correlation: {requestId: 'live-batch-smoke-2026-09-26'},
     mode: 'evaluate',
   });

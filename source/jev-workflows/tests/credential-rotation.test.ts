@@ -140,7 +140,7 @@ test('rotation gives concurrent requests separate credential snapshots, receipts
   const headers: string[] = [];
   const service = createService({env: {JEV_API_KEY_FILE: path, TYPESAFE_API_KEY: 'synthetic-stale-key'}, store,
     fetchFn: async (_url, init) => {
-      const authorization = (init?.headers as Record<string, string>).authorization;
+      const authorization = new Headers(init?.headers).get('authorization') ?? '';
       assert.ok(authorization);
       headers.push(authorization);
       if (authorization === `Bearer ${FILE_KEY_ONE}`) {firstStarted(); await firstGate;}

@@ -205,7 +205,7 @@ describe('service evaluation and persistence', () => {
     assert.equal(calls.length, 1);
     assert.equal(calls[0]?.url, 'https://api.typesafe.ai/v1/systemone');
     assert.equal(calls[0]?.init?.redirect, 'error');
-    assert.equal((calls[0]?.init?.headers as Record<string, string>).authorization, 'Bearer configured-test-key');
+    assert.equal(new Headers(calls[0]?.init?.headers).get('authorization'), 'Bearer configured-test-key');
     assert.equal(store.receipts.length, 1);
     assert.equal(JSON.stringify(store.receipts[0]).includes('AssertionError'), false);
     assert.equal(result.transport?.responseStatus, 200);
