@@ -18,7 +18,7 @@ async function receipt(root: string, n: number, fields: Record<string, unknown>)
   await writeFile(join(root, 'receipts', `${id(n)}.json`), JSON.stringify({receiptId:id(n),timestamp:now.toISOString(),...fields}));
 }
 function transport(responseStatus: number | null, validatedResponse = false, fingerprint = key) {
-  return {requestStartedAt:now.toISOString(), fetchInvoked:true, responseReceivedAt:responseStatus === null ? null : now.toISOString(), responseStatus, validatedResponse, credentialFingerprint:fingerprint, providerRequestId:null};
+  return {requestStartedAt:now.toISOString(), fetchInvoked:true, attempts:1, responseReceivedAt:responseStatus === null ? null : now.toISOString(), responseStatus, validatedResponse, credentialFingerprint:fingerprint, providerRequestId:null};
 }
 const countFields = [
   'receipts', 'assessed', 'abstained', 'unavailable', 'other',

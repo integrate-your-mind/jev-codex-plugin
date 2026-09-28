@@ -77,7 +77,7 @@ describe('workflow quality scoring', () => {
         status: 'assessed', choice: first.label.acceptableChoices[0], latencyMs: 12,
         usage: {input_tokens: 20, output_tokens: 8},
         transport: {
-          requestStartedAt: '2026-09-26T00:00:00.000Z', fetchInvoked: true,
+          requestStartedAt: '2026-09-26T00:00:00.000Z', fetchInvoked: true, attempts: 1,
           responseReceivedAt: '2026-09-26T00:00:00.010Z', responseStatus: 200,
           retryAfter: null,
           validatedResponse: true, providerRequestId: 'req-quality-test', providerRequestIdHeader: 'x-typesafe-request-id', credentialFingerprint: 'fingerprint',

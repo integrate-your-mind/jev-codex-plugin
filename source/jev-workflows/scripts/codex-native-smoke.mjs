@@ -373,7 +373,7 @@ async function readDecisionReceipts(threadSessionId, stateDirectory) {
 
 const report = {
   startedAt: new Date().toISOString(),
-  cliProbe: 'codex-native-smoke-v0.4.0',
+  cliProbe: 'codex-native-smoke-v0.5.0',
   ephemeral: true,
   isolatedCodexHome: process.env.CODEX_HOME ?? null,
   mutationGates: { installPlugin, trustReviewedHooks, enableAutomation },

@@ -1,9 +1,15 @@
 # Verification
 
-Latest verification date: 2026-09-26
+Latest verification date: 2026-09-28
 
 This report covers the public source and packaged runtime. It records the checks
 below; it does not establish directory approval, provider billing, or model quality.
+
+## Version 0.5.0 source candidate
+
+- Local Node 26.3.0 verification passed: locked install with scripts disabled, typecheck, **155 tests**, build, manifest validation, generated host-package parity, and the distribution verifier.
+- The provider uses `@typesafe-ai/sdk@0.6.0`, passes the plugin-resolved credential and pinned model explicitly, validates SDK-parsed data with the existing schema, and sets SDK retries to zero. The pre-migration provider made one fetch attempt; the HTTP 429 regression asserts one recorded attempt.
+- A packaged stdio MCP smoke called `jev_status` and one mixed Noul/Choice `evaluate_decisions` request. The validated response returned Jev 1.13.0 over HTTP 200 with a provider request ID. This local check does not establish provider billing, general accuracy, hosted CI, or public release.
 
 ## Version 0.4.0
 

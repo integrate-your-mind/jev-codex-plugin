@@ -13,7 +13,7 @@ import { updateTaskContextInputSchema, updateTaskContext } from './task-context.
 import { decisionOutcomeSchema, recordDecisionOutcome } from './outcomes.js';
 
 const service = createService();
-const server = new Server({name: 'jev-workflows', version: '0.4.0'}, {capabilities: {tools: {}}});
+const server = new Server({name: 'jev-workflows', version: '0.5.0'}, {capabilities: {tools: {}}});
 server.setRequestHandler(ListToolsRequestSchema, async () => ({tools: [
   {name: 'jev_status', description: 'Read local Jev plugin readiness and limits. Does not contact TypeSafe or expose credentials.', inputSchema: {type: 'object', properties: {}, additionalProperties: false}, annotations: {readOnlyHint: true, destructiveHint: false, openWorldHint: false}},
   {name: 'classify_failure', description: 'Preview selected redacted command evidence locally, or evaluate an authorized payload with TypeSafe Jev. Evaluate sends data externally in a billable provider API request. Advisory failure classification; never edits files, approves permissions, or certifies a fix.', inputSchema: z.toJSONSchema(failureSchema, {io: 'input'}) as any, annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: true}},

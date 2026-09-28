@@ -72,7 +72,7 @@ export function createService(options: ServiceOptions = {}) {
   const digestOf = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
   function status(policy: HookPolicy = DEFAULT_POLICY) {
     const current = credential();
-    return {version: '0.4.0', provider: 'TypeSafe', endpoint: ENDPOINT, model: MODEL,
+    return {version: '0.5.0', provider: 'TypeSafe', endpoint: ENDPOINT, model: MODEL,
       credentialConfigured: Boolean(current.apiKey), credentialFingerprint: current.fingerprint, enabled,
       stateDirectory: dataDirectory(env), defaultMode: 'preview', rubricVersion: RUBRIC_VERSION, completionRubricVersion: COMPLETION_RUBRIC_VERSION, decisionRubricVersion: DECISION_RUBRIC_VERSION, batchRubricVersion: BATCH_RUBRIC_VERSION, maxPayloadBytes,
       maxCallsPerDay: positiveLimit(env.JEV_MAX_CALLS_PER_DAY, policy.maxCallsPerDay),

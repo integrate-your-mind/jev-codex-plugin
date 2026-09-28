@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { ENDPOINT, failureQuestions, type Question } from '../src/contracts.js';
 import { evaluateProvider, ProviderError, validateEvaluation, type ProviderTransport, type ResponseValidationFailure } from '../src/provider.js';
 
@@ -27,6 +28,7 @@ function assertProviderError(error: unknown, code: string): asserts error is Pro
 const observedTransport: ProviderTransport = {
   requestStartedAt: '2026-09-18T00:00:00.000Z',
   fetchInvoked: true,
+  attempts: 1,
   responseReceivedAt: '2026-09-18T00:00:00.100Z',
   responseStatus: 200,
   validatedResponse: false,
@@ -189,7 +191,29 @@ describe('provider response validation', () => {
 });
 
 describe('provider transport', () => {
-  it('uses the fixed API endpoint, POST, bearer auth, and redirect error mode', async () => {
+  it('does not fall back to the SDK environment when the resolved key is empty', async () => {
+    let calls = 0;
+    await assert.rejects(() => evaluateProvider({
+      state: {}, questions: failureQuestions, apiKey: '', timeoutMs: 1000,
+      fetchFn: async () => { calls += 1; return new Response(JSON.stringify(validEvaluation())); },
+    }), error => {
+      assertProviderError(error, 'authentication_failed');
+      assert.equal(error.transport?.fetchInvoked, false);
+      assert.equal(error.transport?.attempts, 0);
+      return true;
+    });
+    assert.equal(calls, 0);
+  });
+
+  it('delegates endpoint transport to the SDK instead of issuing a raw endpoint fetch', async () => {
+    const source = await readFile(new URL('../src/provider.ts', import.meta.url), 'utf8');
+    assert.match(source, /new TypeSafeClient/);
+    assert.match(source, /client\.systemOne/);
+    assert.doesNotMatch(source, /(?:fetch|fetchFn)\s*\(\s*ENDPOINT/);
+    assert.doesNotMatch(source, /https:\/\/api\.typesafe\.ai\/v1\/systemone/);
+  });
+
+  it('uses the SDK endpoint, POST, bearer auth, and redirect error mode', async () => {
     let request: {input: RequestInfo | URL; init: RequestInit | undefined} | undefined;
     const result = await evaluateProvider({
       state: {output: '[REDACTED]'}, questions: failureQuestions, apiKey: 'provider-key', timeoutMs: 1000,
@@ -201,10 +225,11 @@ describe('provider transport', () => {
     assert.equal(String(request?.input), ENDPOINT);
     assert.equal(request?.init?.method, 'POST');
     assert.equal(request?.init?.redirect, 'error');
-    assert.equal((request?.init?.headers as Record<string, string>).authorization, 'Bearer provider-key');
+    assert.equal(new Headers(request?.init?.headers).get('authorization'), 'Bearer provider-key');
     assert.equal(JSON.parse(String(request?.init?.body)).model, 'jev-1.13.0');
     assert.equal(result.transport.responseStatus, 200);
     assert.equal(result.transport.fetchInvoked, true);
+    assert.equal(result.transport.attempts, 1);
     assert.equal(result.transport.validatedResponse, true);
     assert.equal(result.transport.providerRequestId, 'req_typesafe_123');
     assert.equal(result.transport.providerRequestIdHeader, 'x-typesafe-request-id');
@@ -214,33 +239,35 @@ describe('provider transport', () => {
     assert.match(result.transport.responseReceivedAt!, /^\d{4}-\d{2}-\d{2}T/);
   });
 
-  it('records only safe IDs from the three allowlisted response headers', async () => {
+  it('keeps the model mismatch check on the SDK-parsed data', async () => {
+    const mismatched = {...validEvaluation(), model: 'jev-future'};
+    await assert.rejects(() => evaluateProvider({
+      state: {}, questions: failureQuestions, apiKey: 'provider-key', timeoutMs: 1000,
+      fetchFn: async () => new Response(JSON.stringify(mismatched), {headers: {'x-typesafe-request-id': 'req_model_mismatch'}}),
+    }), error => {
+      assertProviderError(error, 'invalid_response');
+      assert.equal(error.transport?.responseValidationFailure, 'model_mismatch');
+      assert.equal(error.transport?.responseStatus, 200);
+      assert.equal(error.transport?.attempts, 1);
+      return true;
+    });
+  });
+
+  it('takes the safe provider request ID from the SDK TypeSafe header only', async () => {
     const evaluate = (headers?: HeadersInit) => evaluateProvider({
       state: {}, questions: failureQuestions, apiKey: 'provider-key', timeoutMs: 1000,
       fetchFn: async () => new Response(JSON.stringify(validEvaluation()), {headers}),
     });
 
-    const absent = await evaluate({'x-amzn-requestid': 'ignored-request-id'});
-    assert.equal(absent.transport.providerRequestId, null);
-    assert.equal(absent.transport.providerRequestIdHeader, null);
+    const typed = await evaluate({'x-typesafe-request-id': 'req_typesafe_123', 'x-request-id': 'req_generic_123'});
+    assert.equal(typed.transport.providerRequestId, 'req_typesafe_123');
+    assert.equal(typed.transport.providerRequestIdHeader, 'x-typesafe-request-id');
 
     const generic = await evaluate({'x-request-id': 'req_generic_123'});
-    assert.equal(generic.transport.providerRequestId, 'req_generic_123');
-    assert.equal(generic.transport.providerRequestIdHeader, 'x-request-id');
+    assert.equal(generic.transport.providerRequestId, null);
+    assert.equal(generic.transport.providerRequestIdHeader, null);
 
-    const fallback = await evaluate({
-      'x-typesafe-request-id': 'provider-key',
-      'x-request-id': 'req_safe_fallback',
-      'request-id': 'req_lower_priority',
-    });
-    assert.equal(fallback.transport.providerRequestId, 'req_safe_fallback');
-    assert.equal(fallback.transport.providerRequestIdHeader, 'x-request-id');
-
-    const unsafe = await evaluate({
-      'x-typesafe-request-id': 'provider-key',
-      'x-request-id': 'https://provider.invalid/request/123',
-      'request-id': 'x'.repeat(257),
-    });
+    const unsafe = await evaluate({'x-typesafe-request-id': 'provider-key'});
     assert.equal(unsafe.transport.providerRequestId, null);
     assert.equal(unsafe.transport.providerRequestIdHeader, null);
     assert.equal(JSON.stringify(unsafe).includes('provider-key'), false);
@@ -257,6 +284,7 @@ describe('provider transport', () => {
       assertProviderError(error, 'rate_limited');
       assert.equal(error.transport?.providerRequestId, 'req_rate_123');
       assert.equal(error.transport?.retryAfter, '12');
+      assert.equal(error.transport?.attempts, 1);
       return true;
     });
     assert.equal(calls, 1);
@@ -421,6 +449,7 @@ describe('provider transport', () => {
     }), error => {
       assertProviderError(error, 'cancelled');
       assert.equal(error.transport?.fetchInvoked, false);
+      assert.equal(error.transport?.attempts, 0);
       assert.equal(error.transport?.responseStatus, null);
       return true;
     });
