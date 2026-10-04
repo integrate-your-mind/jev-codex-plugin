@@ -36,7 +36,8 @@ const ACTION_CANDIDATES = [
   {id: 'reconsider', description: 'Reconsider the current action using the available evidence.', available: true},
   {id: 'gather_evidence', description: 'Gather authorized evidence before choosing the next action.', available: true},
 ] as const;
-const ACTION_CHOICES = new Set([...ACTION_CANDIDATES.map(candidate => candidate.id), 'insufficient_evidence']);
+const CANDIDATE_ID = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/;
+const RESERVED_CANDIDATE_IDS = new Set(['insufficient_evidence', '__proto__', 'constructor', 'prototype']);
 const SUPPORTED_EVENTS = new Set([
   'SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PermissionRequest', 'PostToolUse',
   'PreCompact', 'PostCompact', 'SubagentStart', 'SubagentStop', 'Stop', 'Interrupt',
@@ -85,6 +86,10 @@ type NormalizedEvent = {
 
 function isRecord(value: unknown): value is RecordValue {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isSafeCandidateId(value: unknown): value is string {
+  return typeof value === 'string' && CANDIDATE_ID.test(value) && !RESERVED_CANDIDATE_IDS.has(value);
 }
 
 function boundedWithEnv(value: unknown, maxBytes: number, env: NodeJS.ProcessEnv): string | undefined {
@@ -534,9 +539,9 @@ function taskContextScope(event: NormalizedEvent): TaskContextScope {
   return {cwd: event.cwd, sessionId: event.sessionId, ...(event.agentId ? {agentId: event.agentId} : {})};
 }
 
-function renderTaskContext(value: TaskContextRecord | undefined): string | undefined {
+function taskContextView(value: TaskContextRecord | undefined): RecordValue | undefined {
   if (!value) return undefined;
-  const compact = {
+  return {
     version: value.version,
     rootObjective: value.rootObjective?.value ?? null,
     latestStep: value.latestStep?.value ?? null,
@@ -545,12 +550,8 @@ function renderTaskContext(value: TaskContextRecord | undefined): string | undef
     criteria: value.criteria.map(entry => entry.value),
     corrections: value.corrections.map(entry => entry.value),
     evidenceRefs: value.evidenceRefs.map(ref => ({id: ref.id, source: ref.source, summary: ref.summary})),
-    candidateCatalogs: value.candidateCatalogs,
-    history: value.history.map(entry => entry.value),
     updatedAt: value.updatedAt,
-    scope: value.scope,
   };
-  return JSON.stringify(compact);
 }
 
 function promptContextUpdate(event: NormalizedEvent, prior: TaskContextRecord | undefined, env: NodeJS.ProcessEnv): Parameters<typeof updateTaskContext>[1] | undefined {
@@ -573,9 +574,10 @@ function promptContextUpdate(event: NormalizedEvent, prior: TaskContextRecord | 
 
 function candidateFromUnknown(value: unknown, env: NodeJS.ProcessEnv): DecisionInput['candidates'][number] | undefined {
   if (!isRecord(value) || typeof value.id !== 'string' || typeof value.description !== 'string') return undefined;
+  if (value.available !== undefined && typeof value.available !== 'boolean') return undefined;
   const id = boundedWithEnv(value.id, 80, env);
   const description = boundedWithEnv(value.description, 1_600, env);
-  if (!id || !description || id === 'insufficient_evidence' || !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/.test(id)) return undefined;
+  if (!isSafeCandidateId(id) || !description) return undefined;
   const metadata: Record<string, string | number | boolean> = {};
   if (isRecord(value.metadata)) {
     for (const [key, item] of Object.entries(value.metadata).slice(0, 16)) {
@@ -585,43 +587,111 @@ function candidateFromUnknown(value: unknown, env: NodeJS.ProcessEnv): DecisionI
       else if (typeof item === 'boolean') metadata[key] = item;
     }
   }
-  return {id, description, available: value.available !== false, ...(Object.keys(metadata).length ? {metadata} : {})};
+  return {id, description, available: value.available ?? true, ...(Object.keys(metadata).length ? {metadata} : {})};
 }
 
 function candidateCatalog(event: NormalizedEvent, domain: DecisionInput['domain'], env: NodeJS.ProcessEnv, taskContext?: TaskContextRecord): CandidateCatalog {
   const context = isRecord(event.raw.task_context) ? event.raw.task_context : isRecord(event.raw.taskContext) ? event.raw.taskContext : undefined;
   const catalogs = context && (isRecord(context.candidateCatalog) ? context.candidateCatalog : isRecord(context.candidate_catalog) ? context.candidate_catalog : undefined);
-  const explicit = (domain === 'general' ? undefined : taskContext?.candidateCatalogs?.[domain]) ?? catalogs?.[domain] ?? (domain === 'tool' ? context?.availableCandidates ?? context?.available_candidates : undefined) ?? (isRecord(event.raw.candidate_catalog) ? event.raw.candidate_catalog[domain] : undefined) ?? event.raw.available_candidates;
+  const eventCatalog = isRecord(event.raw.candidate_catalog) ? event.raw.candidate_catalog[domain] : undefined;
+  const sources = [
+    {value: catalogs?.[domain], source: 'host.event.task_context'},
+    {value: domain === 'tool' ? context?.availableCandidates ?? context?.available_candidates : undefined, source: 'host.event.available_candidates'},
+    {value: eventCatalog, source: 'host.event.candidate_catalog'},
+    {value: event.raw.available_candidates, source: 'host.event.available_candidates'},
+    {value: domain === 'general' ? undefined : taskContext?.candidateCatalogs?.[domain], source: 'saved.task_context'},
+  ];
+  const selected = sources.find(item => item.value !== undefined);
+  const explicit = selected?.value;
   const list = Array.isArray(explicit) ? explicit.map(item => candidateFromUnknown(item, env)).filter((item): item is DecisionInput['candidates'][number] => item !== undefined) : [];
-  const unique = [...new Map(list.map(item => [item.id, item])).values()];
-  if (unique.length >= 1) return {candidates: unique.slice(0, 12), provided: true, source: 'host.task_context', domain};
+  const duplicateIds = new Set(list.map(item => item.id)).size !== list.length;
+  if (list.length >= 1 && !duplicateIds) return {candidates: list.slice(0, 12), provided: true, source: selected?.source ?? 'host.event', domain};
   return {candidates: actionCandidates(event), provided: false, source: explicit === undefined ? 'fallback:no_catalog' : 'fallback:invalid_or_insufficient_catalog', domain};
 }
 
-function taskContextExcerpt(value: unknown, env: NodeJS.ProcessEnv, maxBytes: number): string | undefined {
-  if (typeof value !== 'string' && !isRecord(value)) return undefined;
-  let parsed: unknown = value;
-  if (typeof value === 'string') {
-    try { parsed = JSON.parse(value) as unknown; } catch { return boundedWithEnv(value, maxBytes, env); }
+function taskContextExcerpt(value: unknown, env: NodeJS.ProcessEnv, maxBytes: number): RecordValue | undefined {
+  if (!isRecord(value)) return undefined;
+  const strings = (items: unknown): string[] => Array.isArray(items) ? items.filter((item): item is string => typeof item === 'string') : [];
+  const followUps = strings(value.followUps);
+  const constraints = strings(value.constraints);
+  const criteria = strings(value.criteria);
+  const corrections = strings(value.corrections);
+  const detailed = maxBytes >= 1_000;
+  const retained = {
+    followUps: detailed ? Math.min(1, followUps.length) : 0,
+    constraints: Math.min(detailed ? 2 : 1, constraints.length),
+    criteria: Math.min(1, criteria.length),
+    corrections: Math.min(1, corrections.length),
+  };
+  const omitted = {
+    followUps: Math.max(0, followUps.length - retained.followUps),
+    constraints: Math.max(0, constraints.length - retained.constraints),
+    criteria: Math.max(0, criteria.length - retained.criteria),
+    corrections: Math.max(0, corrections.length - retained.corrections),
+    evidenceRefs: Array.isArray(value.evidenceRefs) ? value.evidenceRefs.length : 0,
+  };
+  const excerpt: RecordValue = {
+    version: typeof value.version === 'number' && Number.isFinite(value.version) ? value.version : undefined,
+    rootObjective: typeof value.rootObjective === 'string' ? '' : null,
+    latestStep: typeof value.latestStep === 'string' ? '' : null,
+    ...(retained.followUps ? {followUps: Array(retained.followUps).fill('')} : {}),
+    ...(retained.constraints ? {constraints: Array(retained.constraints).fill('')} : {}),
+    ...(retained.criteria ? {criteria: Array(retained.criteria).fill('')} : {}),
+    ...(retained.corrections ? {corrections: Array(retained.corrections).fill('')} : {}),
+    ...(detailed && typeof value.updatedAt === 'string' ? {updatedAt: ''} : {}),
+    truncation: {taskContext: true, compacted: true, omitted},
+  };
+  type Slot = {value: string; weight: number; assign: (text: string) => void};
+  const slots: Slot[] = [];
+  if (typeof value.rootObjective === 'string') slots.push({value: value.rootObjective, weight: 5, assign: text => { excerpt.rootObjective = text; }});
+  if (typeof value.latestStep === 'string') slots.push({value: value.latestStep, weight: 4, assign: text => { excerpt.latestStep = text; }});
+  const addTail = (key: 'followUps' | 'constraints' | 'criteria' | 'corrections', items: string[], count: number, weights: number[]): void => {
+    if (!count) return;
+    const target = excerpt[key] as string[];
+    for (const [index, item] of items.slice(-count).entries()) {
+      slots.push({value: item, weight: weights[index] ?? weights.at(-1) ?? 1, assign: text => { target[index] = text; }});
+    }
+  };
+  addTail('followUps', followUps, retained.followUps, [2]);
+  addTail('constraints', constraints, retained.constraints, retained.constraints > 1 ? [2, 4] : [4]);
+  addTail('criteria', criteria, retained.criteria, [2]);
+  addTail('corrections', corrections, retained.corrections, [4]);
+  if (detailed && typeof value.updatedAt === 'string') slots.push({value: value.updatedAt, weight: 1, assign: text => { excerpt.updatedAt = text; }});
+
+  const encodedContentBytes = (text: string): number => Buffer.byteLength(JSON.stringify(text)) - 2;
+  const clipForJson = (text: string, budget: number): string => {
+    const redacted = (boundedWithEnv(text, MAX_SEMANTIC_BYTES, env) ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ');
+    if (encodedContentBytes(redacted) <= budget) return redacted;
+    const marker = '…';
+    if (encodedContentBytes(marker) > budget) return '';
+    const points = Array.from(redacted);
+    for (let retainedPoints = Math.min(points.length - 1, budget); retainedPoints >= 0; retainedPoints--) {
+      const head = Math.ceil(retainedPoints * 0.6);
+      const clipped = `${points.slice(0, head).join('')}${marker}${points.slice(points.length - (retainedPoints - head)).join('')}`;
+      if (encodedContentBytes(clipped) <= budget) return clipped;
+    }
+    return marker;
+  };
+  const overhead = Buffer.byteLength(JSON.stringify(excerpt));
+  const available = Math.max(0, maxBytes - overhead);
+  const minimum = available >= slots.length * 3 ? 3 : 0;
+  const distributable = Math.max(0, available - minimum * slots.length);
+  const weightTotal = slots.reduce((total, slot) => total + slot.weight, 0);
+  for (const slot of slots) {
+    const budget = minimum + Math.floor(distributable * slot.weight / Math.max(1, weightTotal));
+    slot.assign(clipForJson(slot.value, budget));
   }
-  if (!isRecord(parsed)) return boundedWithEnv(String(parsed), maxBytes, env);
-  const rootBudget = Math.max(128, Math.floor(maxBytes * 0.65));
-  const latestBudget = Math.max(64, Math.floor(maxBytes * 0.2));
-  const excerpt: RecordValue = {version: parsed.version};
-  if (typeof parsed.rootObjective === 'string') excerpt.rootObjective = boundedWithEnv(parsed.rootObjective, rootBudget, env);
-  if (typeof parsed.latestStep === 'string') excerpt.latestStep = boundedWithEnv(parsed.latestStep, latestBudget, env);
-  if (Array.isArray(parsed.followUps)) excerpt.followUps = parsed.followUps.slice(-2).map(item => typeof item === 'string' ? boundedWithEnv(item, 120, env) : undefined).filter(Boolean);
-  if (Array.isArray(parsed.constraints)) excerpt.constraints = parsed.constraints.slice(-2).map(item => typeof item === 'string' ? boundedWithEnv(item, 120, env) : undefined).filter(Boolean);
-  const encoded = JSON.stringify(excerpt);
-  if (Buffer.byteLength(encoded) <= maxBytes) return encoded;
-  // Root and latest step carry the goal semantics. Keep those fields and
-  // shrink only their individual values before applying a final safe clip.
-  const priority = JSON.stringify({
-    version: parsed.version,
-    rootObjective: typeof parsed.rootObjective === 'string' ? boundedWithEnv(parsed.rootObjective, Math.floor(maxBytes * 0.72), env) : undefined,
-    latestStep: typeof parsed.latestStep === 'string' ? boundedWithEnv(parsed.latestStep, Math.floor(maxBytes * 0.2), env) : undefined,
-  });
-  return Buffer.byteLength(priority) <= maxBytes ? priority : boundedWithEnv(priority, maxBytes, env);
+  if (Buffer.byteLength(JSON.stringify(excerpt)) <= maxBytes) return excerpt;
+  const dropped = {
+    truncation: {
+      taskContext: true,
+      compacted: true,
+      excerptDropped: 'budget_exceeded',
+      omitted,
+      droppedFields: ['rootObjective', 'latestStep', 'followUps', 'constraints', 'criteria', 'corrections'],
+    },
+  };
+  return Buffer.byteLength(JSON.stringify(dropped)) <= maxBytes ? dropped : undefined;
 }
 
 function contextText(value: RecordValue, env: NodeJS.ProcessEnv): string {
@@ -629,6 +699,7 @@ function contextText(value: RecordValue, env: NodeJS.ProcessEnv): string {
   if (Buffer.byteLength(complete) <= MAX_CONTEXT_BYTES) return complete;
   const response = isRecord(value.response) ? value.response : {};
   const turnResults = isRecord(value.turnResults) ? value.turnResults : undefined;
+  const existingTruncation = isRecord(value.truncation) ? value.truncation : {};
   const compact = {
     event: value.event,
     toolName: value.toolName,
@@ -647,18 +718,37 @@ function contextText(value: RecordValue, env: NodeJS.ProcessEnv): string {
       isError: response.isError,
       resultExcerpt: boundedWithEnv(response.failureExcerpt ?? response.resultExcerpt, 700, env),
     },
-    taskPrompt: taskContextExcerpt(value.taskPrompt, env, 700),
-    taskContext: taskContextExcerpt(value.taskContext, env, 1_000),
+    currentPrompt: boundedWithEnv(value.currentPrompt, 500, env),
+    taskContext: taskContextExcerpt(value.taskContext, env, 1_400),
     candidateCatalog: value.candidateCatalog,
-    truncation: value.truncation,
+    truncation: {...existingTruncation, context: true, taskContext: value.taskContext !== undefined},
     finalMessage: boundedWithEnv(value.finalMessage, 700, env),
     turnResults: turnResults ? {status: turnResults.status, resultCount: Array.isArray(turnResults.results) ? turnResults.results.length : 0} : undefined,
     contextTruncated: true,
   };
-  return JSON.stringify(compact);
+  const encoded = JSON.stringify(compact);
+  if (Buffer.byteLength(encoded) <= MAX_CONTEXT_BYTES) return encoded;
+  return JSON.stringify({
+    event: value.event,
+    toolName: value.toolName,
+    response: {status: response.status, exitCode: response.exitCode, isError: response.isError},
+    currentPrompt: boundedWithEnv(value.currentPrompt, 300, env),
+    taskContext: taskContextExcerpt(value.taskContext, env, 700),
+    candidateCatalog: value.candidateCatalog,
+    truncation: {...existingTruncation, context: true, taskContext: value.taskContext !== undefined},
+    turnResults: turnResults ? {status: turnResults.status, resultCount: Array.isArray(turnResults.results) ? turnResults.results.length : 0} : undefined,
+    contextTruncated: true,
+  });
 }
 
-function decisionInput(event: NormalizedEvent, env: NodeJS.ProcessEnv, taskPrompt?: string, taskContext?: TaskContextRecord, turnResults?: TurnResultContext): DecisionInput {
+function concreteCandidateQuestion(event: NormalizedEvent, catalog: CandidateCatalog): string {
+  const subject = catalog.domain === 'context' ? 'context-handling'
+    : catalog.domain === 'result' ? 'result-handling'
+      : catalog.domain;
+  return `Which available ${subject} candidate best fits the current authorized task, constraints, and evidence for this ${event.name} event?`;
+}
+
+function decisionInput(event: NormalizedEvent, env: NodeJS.ProcessEnv, currentPrompt?: string, taskContext?: TaskContextRecord, turnResults?: TurnResultContext): DecisionInput {
   const args = semanticArguments(event, env);
   const response = semanticResponse(event, env);
   const message = finalMessage(event, env);
@@ -666,6 +756,8 @@ function decisionInput(event: NormalizedEvent, env: NodeJS.ProcessEnv, taskPromp
     : event.name === 'PreToolUse' || event.name === 'PermissionRequest' ? 'tool'
     : event.name === 'PreCompact' || event.name === 'PostCompact' ? 'context' : 'result';
   const catalog = candidateCatalog(event, domain, env, taskContext);
+  const taskContextState = taskContextView(taskContext);
+  const taskContextWasClipped = taskContextState ? JSON.stringify(taskContextState).includes('...[truncated]...') : false;
   const context = contextText({
     event: event.name,
     toolName: boundedWithEnv(event.toolName, 128, env),
@@ -679,19 +771,21 @@ function decisionInput(event: NormalizedEvent, env: NodeJS.ProcessEnv, taskPromp
     arguments: args.values,
     argumentProjection: {omitted: args.omitted, truncated: args.truncated, tailRetained: args.tailRetained},
     response,
-    taskPrompt,
-    taskContext: taskContext ? JSON.parse(renderTaskContext(taskContext) ?? '{}') : undefined,
+    currentPrompt: taskContextState ? undefined : currentPrompt,
+    taskContext: taskContextState,
     candidateCatalog: {provided: catalog.provided, source: catalog.source, domain: catalog.domain, count: catalog.candidates.length},
     truncation: {
-      taskPrompt: Boolean(taskPrompt?.includes('...[truncated]...')),
+      currentPrompt: Boolean(currentPrompt?.includes('...[truncated]...')),
+      taskContext: taskContextWasClipped,
       arguments: args.truncated,
-      tailRetained: args.tailRetained || Boolean(taskPrompt?.includes('...[truncated]...')),
+      tailRetained: args.tailRetained || Boolean(currentPrompt?.includes('...[truncated]...')) || taskContextWasClipped,
     },
     finalMessage: message,
     turnResults,
   }, env);
   const evidence: Array<{id: string; text: string; source?: string}> = [];
-  if (event.name === 'UserPromptSubmit' && taskPrompt) evidence.push({id: safeId('task.prompt'), text: taskPrompt, source: 'prompt'});
+  const promptEvidence = event.name === 'UserPromptSubmit' ? boundedWithEnv(event.prompt, MAX_PROMPT_BYTES, env) : undefined;
+  if (promptEvidence) evidence.push({id: safeId('task.prompt'), text: promptEvidence, source: 'prompt'});
   if (response.failureExcerpt) evidence.push({id: safeId('tool.failure'), text: response.failureExcerpt, source: 'hook'});
   else if (event.name === 'PostToolUse' && response.resultExcerpt) evidence.push({id: safeId('tool.result'), text: response.resultExcerpt, source: 'hook'});
   if (message) evidence.push({id: safeId('result.message'), text: message, source: 'assistant'});
@@ -699,7 +793,7 @@ function decisionInput(event: NormalizedEvent, env: NodeJS.ProcessEnv, taskPromp
     const text = boundedWithEnv(JSON.stringify(turnResults.results), MAX_CONTEXT_BYTES, env);
     if (text) evidence.push({id: safeId('result.tool_summaries'), text, source: 'hook'});
   }
-  const question = event.name === 'UserPromptSubmit'
+  const question = catalog.provided ? concreteCandidateQuestion(event, catalog) : event.name === 'UserPromptSubmit'
     ? 'Does the current user prompt support proceeding with the ordinary workflow, reconsidering direction, or gathering evidence first?'
     : event.name === 'PreToolUse'
     ? 'Should this tool action proceed, be reconsidered, or gather evidence?'
@@ -800,7 +894,29 @@ function instructionOutput(event: NormalizedEvent): HookResult {
   return {hookSpecificOutput: {hookEventName: event.name, additionalContext: LOCAL_INSTRUCTION}};
 }
 
-function decisionOutput(event: NormalizedEvent, result: DecisionAssessment): HookResult {
+function validatedCandidateChoice(input: DecisionInput | undefined, result: DecisionAssessment | undefined): string | undefined {
+  if (!input || !isSafeCandidateId(result?.choice)) return undefined;
+  const candidate = input.candidates.find(item => item.id === result.choice);
+  return candidate && candidate.available !== false ? candidate.id : undefined;
+}
+
+function validatedProviderChoice(input: DecisionInput, result: DecisionAssessment | undefined): string | undefined {
+  if (result?.status === 'abstained' && result.choice === 'insufficient_evidence') return result.choice;
+  return validatedCandidateChoice(input, result);
+}
+
+function normalizeDecisionAssessment(input: DecisionInput, result: DecisionAssessment): DecisionAssessment {
+  if (result.status !== 'assessed' || validatedCandidateChoice(input, result)) return result;
+  return {
+    status: 'unavailable',
+    reasonCode: 'invalid_choice',
+    ...(result.receiptPersisted === true && typeof result.receiptId === 'string'
+      ? {receiptPersisted: true, receiptId: result.receiptId}
+      : {}),
+  };
+}
+
+function decisionOutput(event: NormalizedEvent, result: DecisionAssessment, input?: DecisionInput): HookResult {
   const prefix = event.name === 'UserPromptSubmit' ? `${LOCAL_INSTRUCTION} ` : '';
   const emit = (message: string): HookResult => ['Stop', 'SubagentStop', 'PermissionRequest', 'Interrupt', 'SessionEnd', 'PreCompact', 'PostCompact'].includes(event.name)
     ? {systemMessage: message}
@@ -810,7 +926,8 @@ function decisionOutput(event: NormalizedEvent, result: DecisionAssessment): Hoo
   const fields = [`status=${status}`];
   // An abstention is intentionally neutral. The provider choice remains in
   // the private receipt for diagnosis, but must not nudge the host workflow.
-  if (status === 'assessed' && typeof result.choice === 'string' && ACTION_CHOICES.has(result.choice)) fields.push(`decision=${result.choice}`);
+  const choice = status === 'assessed' ? validatedCandidateChoice(input, result) : undefined;
+  if (choice) fields.push(`decision=${choice}`);
   if (typeof result.confidence === 'number' && Number.isFinite(result.confidence) && result.confidence >= 0 && result.confidence <= 1) {
     fields.push(`confidence=${result.confidence.toFixed(2)}`);
   }
@@ -822,8 +939,9 @@ function decisionOutput(event: NormalizedEvent, result: DecisionAssessment): Hoo
   return emit(`${prefix}JEV advisory: ${fields.join('; ')}; ${suffix}`);
 }
 
-function resultStatus(result: DecisionAssessment | undefined): string {
-  if (result?.status === 'assessed' && typeof result.choice === 'string' && ACTION_CHOICES.has(result.choice)) return result.choice;
+function resultStatus(input: DecisionInput, result: DecisionAssessment | undefined): string {
+  const choice = result?.status === 'assessed' ? validatedCandidateChoice(input, result) : undefined;
+  if (choice) return choice;
   return 'unavailable';
 }
 
@@ -856,8 +974,8 @@ async function writeInvocationReceipt(event: NormalizedEvent, env: NodeJS.Proces
         return bytes >= MAX_RESULT_EXCERPT_BYTES;
       }),
       referenceReceiptId: result?.receiptPersisted === true && typeof result?.receiptId === 'string' && /^[a-f0-9-]{1,80}$/.test(result.receiptId) ? result.receiptId : undefined,
-      classification: resultStatus(result),
-      providerChoice: typeof result?.choice === 'string' && ACTION_CHOICES.has(result.choice) ? result.choice : undefined,
+      classification: resultStatus(input, result),
+      providerChoice: validatedProviderChoice(input, result),
       assessmentStatus: result?.status && ['assessed','abstained','unavailable','skipped','preview'].includes(result.status) ? result.status : 'unavailable',
       confidence: typeof result?.confidence === 'number' && Number.isFinite(result.confidence) && result.confidence >= 0 && result.confidence <= 1 ? result.confidence : undefined,
       reasonCode: result?.reasonCode && /^[a-z_]{1,80}$/.test(result.reasonCode) ? result.reasonCode : undefined,
@@ -944,7 +1062,6 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
     const cachedPromptResult = await withinHookDeadline(deadline, () => event.name === 'UserPromptSubmit' ? updatePromptCache(event, env) : readPromptCache(event, env));
     if (cachedPromptResult.expired) return timedOut();
     const cachedPrompt = cachedPromptResult.value;
-    const taskPrompt = renderTaskContext(taskContext) ?? cachedPrompt;
     const claimed = await withinHookDeadline(deadline, () => claimEvent(event, policy, env));
     if (claimed.expired) return timedOut();
     if (!claimed.value) return {};
@@ -959,7 +1076,7 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
       if (turnCache.expired) return timedOut();
       turnResults = turnCache.value;
     }
-    const input = decisionInput(event, env, taskPrompt, taskContext, turnResults);
+    const input = decisionInput(event, env, cachedPrompt, taskContext, turnResults);
     if (Date.now() >= deadline) return timedOut();
     const remainingMs = deadline - Date.now();
     const providerTimeoutMs = Math.min(shortEvent ? SHORT_EVENT_PROVIDER_TIMEOUT_MS : PROVIDER_TIMEOUT_MS, Math.max(1, remainingMs));
@@ -980,9 +1097,10 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
       clearTimeout(timer);
     }
     if (Date.now() >= deadline) result = timeoutAssessment;
+    else result = normalizeDecisionAssessment(input, result);
     const receipt = await withinHookDeadline(deadline, () => writeInvocationReceipt(event, env, input, response, result));
     if (receipt.expired || Date.now() >= deadline) return timedOut();
-    return decisionOutput(event, result);
+    return decisionOutput(event, result, input);
   } catch {
     return {};
   }
