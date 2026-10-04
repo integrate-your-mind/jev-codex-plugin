@@ -1,0 +1,71 @@
+{
+  "sourceCommit": "78612994bb856252fc300ffef17421d092f70b52",
+  "installedVersion": "0.4.1",
+  "cliVersion": "0.155.0",
+  "runtimeChecksPassed": true,
+  "nativeGenerativeTurns": 1,
+  "nativeModel": "gpt-6-astra",
+  "nativeModelEffort": "low",
+  "hooksLoaded": 12,
+  "hooksTrusted": 12,
+  "nativeCommandExitCode": 0,
+  "nativeResponseReceipts": [
+    {
+      "event": "UserPromptSubmit",
+      "status": "assessed",
+      "receiptId": "a2210306-29e7-4798-be2e-c433d7169683",
+      "responseStatus": 200,
+      "validatedResponse": true,
+      "providerRequestId": "req_01a1050a05827f27b9f40a330f3d5092"
+    },
+    {
+      "event": "PreToolUse",
+      "status": "assessed",
+      "receiptId": "ee45fd8a-1cbb-4e0e-b195-da8f7604c2ad",
+      "responseStatus": 200,
+      "validatedResponse": true,
+      "providerRequestId": "req_01a1050a113879f793b4dc5faa78a78d"
+    },
+    {
+      "event": "Stop",
+      "status": "assessed",
+      "receiptId": "b088e639-55cd-4e0b-8936-6bd82d5aab46",
+      "responseStatus": 200,
+      "validatedResponse": true,
+      "providerRequestId": "req_01a1050a1a2a731bba9eeff5fe30ba5a"
+    },
+    {
+      "event": "PostToolUse",
+      "status": "assessed",
+      "receiptId": "24689b00-0a6d-45c2-9ee7-d0cd9ffbbf0c",
+      "responseStatus": 200,
+      "validatedResponse": true,
+      "providerRequestId": "req_01a1050a12eb716285371cffc48ecfc7"
+    }
+  ],
+  "installedCandidateProbe": {
+    "inputCatalog": [
+      "read_thread",
+      "run_tests"
+    ],
+    "status": "assessed",
+    "choice": "read_thread",
+    "confidence": 0.99,
+    "receiptId": "d6dd42c8-ace5-4608-aaaf-6efb6163e20a",
+    "responseStatus": 200,
+    "validatedResponse": true,
+    "providerRequestId": "req_01a10509f9967b13ac8d3eb941f7a7d3",
+    "deliveredToHookOutput": true
+  },
+  "usagePolicy": {
+    "maxHookCallsPerSession": null,
+    "maxCallsPerDay": null,
+    "maxBytesPerDay": null
+  },
+  "limitations": [
+    "Candidate probe is a synthetic hook input, not a native catalog discovery test.",
+    "Native smoke is runtime integration evidence, not a task-quality benchmark.",
+    "Provider confidence is not a correctness guarantee.",
+    "Existing benchmark does not establish improved task completion."
+  ]
+}
