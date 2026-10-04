@@ -21256,7 +21256,8 @@ var ACTION_CANDIDATES = [
   { id: "reconsider", description: "Reconsider the current action using the available evidence.", available: true },
   { id: "gather_evidence", description: "Gather authorized evidence before choosing the next action.", available: true }
 ];
-var ACTION_CHOICES = /* @__PURE__ */ new Set([...ACTION_CANDIDATES.map((candidate) => candidate.id), "insufficient_evidence"]);
+var CANDIDATE_ID = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/;
+var RESERVED_CANDIDATE_IDS = /* @__PURE__ */ new Set(["insufficient_evidence", "__proto__", "constructor", "prototype"]);
 var SUPPORTED_EVENTS = /* @__PURE__ */ new Set([
   "SessionStart",
   "SessionEnd",
@@ -21276,6 +21277,9 @@ var INTERNAL_TOOL_NAMES = /* @__PURE__ */ new Set(["classify_decision", "classif
 var credentialSnapshot = /* @__PURE__ */ Symbol("credentialSnapshot");
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isSafeCandidateId(value) {
+  return typeof value === "string" && CANDIDATE_ID.test(value) && !RESERVED_CANDIDATE_IDS.has(value);
 }
 function boundedWithEnv(value, maxBytes, env) {
   if (typeof value !== "string") return void 0;
@@ -21711,9 +21715,9 @@ function actionCandidates(event) {
 function taskContextScope(event) {
   return { cwd: event.cwd, sessionId: event.sessionId, ...event.agentId ? { agentId: event.agentId } : {} };
 }
-function renderTaskContext(value) {
+function taskContextView(value) {
   if (!value) return void 0;
-  const compact = {
+  return {
     version: value.version,
     rootObjective: value.rootObjective?.value ?? null,
     latestStep: value.latestStep?.value ?? null,
@@ -21722,12 +21726,8 @@ function renderTaskContext(value) {
     criteria: value.criteria.map((entry) => entry.value),
     corrections: value.corrections.map((entry) => entry.value),
     evidenceRefs: value.evidenceRefs.map((ref) => ({ id: ref.id, source: ref.source, summary: ref.summary })),
-    candidateCatalogs: value.candidateCatalogs,
-    history: value.history.map((entry) => entry.value),
-    updatedAt: value.updatedAt,
-    scope: value.scope
+    updatedAt: value.updatedAt
   };
-  return JSON.stringify(compact);
 }
 function promptContextUpdate(event, prior, env) {
   const prompt = boundedWithEnv(event.prompt, MAX_PROMPT_BYTES, env);
@@ -21748,9 +21748,10 @@ function promptContextUpdate(event, prior, env) {
 }
 function candidateFromUnknown(value, env) {
   if (!isRecord(value) || typeof value.id !== "string" || typeof value.description !== "string") return void 0;
+  if (value.available !== void 0 && typeof value.available !== "boolean") return void 0;
   const id = boundedWithEnv(value.id, 80, env);
   const description = boundedWithEnv(value.description, 1600, env);
-  if (!id || !description || id === "insufficient_evidence" || !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/.test(id)) return void 0;
+  if (!isSafeCandidateId(id) || !description) return void 0;
   const metadata = {};
   if (isRecord(value.metadata)) {
     for (const [key, item2] of Object.entries(value.metadata).slice(0, 16)) {
@@ -21760,49 +21761,122 @@ function candidateFromUnknown(value, env) {
       else if (typeof item2 === "boolean") metadata[key] = item2;
     }
   }
-  return { id, description, available: value.available !== false, ...Object.keys(metadata).length ? { metadata } : {} };
+  return { id, description, available: value.available ?? true, ...Object.keys(metadata).length ? { metadata } : {} };
 }
 function candidateCatalog(event, domain2, env, taskContext) {
   const context = isRecord(event.raw.task_context) ? event.raw.task_context : isRecord(event.raw.taskContext) ? event.raw.taskContext : void 0;
   const catalogs = context && (isRecord(context.candidateCatalog) ? context.candidateCatalog : isRecord(context.candidate_catalog) ? context.candidate_catalog : void 0);
-  const explicit = (domain2 === "general" ? void 0 : taskContext?.candidateCatalogs?.[domain2]) ?? catalogs?.[domain2] ?? (domain2 === "tool" ? context?.availableCandidates ?? context?.available_candidates : void 0) ?? (isRecord(event.raw.candidate_catalog) ? event.raw.candidate_catalog[domain2] : void 0) ?? event.raw.available_candidates;
+  const eventCatalog = isRecord(event.raw.candidate_catalog) ? event.raw.candidate_catalog[domain2] : void 0;
+  const sources = [
+    { value: catalogs?.[domain2], source: "host.event.task_context" },
+    { value: domain2 === "tool" ? context?.availableCandidates ?? context?.available_candidates : void 0, source: "host.event.available_candidates" },
+    { value: eventCatalog, source: "host.event.candidate_catalog" },
+    { value: event.raw.available_candidates, source: "host.event.available_candidates" },
+    { value: domain2 === "general" ? void 0 : taskContext?.candidateCatalogs?.[domain2], source: "saved.task_context" }
+  ];
+  const selected = sources.find((item2) => item2.value !== void 0);
+  const explicit = selected?.value;
   const list = Array.isArray(explicit) ? explicit.map((item2) => candidateFromUnknown(item2, env)).filter((item2) => item2 !== void 0) : [];
-  const unique = [...new Map(list.map((item2) => [item2.id, item2])).values()];
-  if (unique.length >= 1) return { candidates: unique.slice(0, 12), provided: true, source: "host.task_context", domain: domain2 };
+  const duplicateIds = new Set(list.map((item2) => item2.id)).size !== list.length;
+  if (list.length >= 1 && !duplicateIds) return { candidates: list.slice(0, 12), provided: true, source: selected?.source ?? "host.event", domain: domain2 };
   return { candidates: actionCandidates(event), provided: false, source: explicit === void 0 ? "fallback:no_catalog" : "fallback:invalid_or_insufficient_catalog", domain: domain2 };
 }
 function taskContextExcerpt(value, env, maxBytes) {
-  if (typeof value !== "string" && !isRecord(value)) return void 0;
-  let parsed = value;
-  if (typeof value === "string") {
-    try {
-      parsed = JSON.parse(value);
-    } catch {
-      return boundedWithEnv(value, maxBytes, env);
+  if (!isRecord(value)) return void 0;
+  const strings = (items) => Array.isArray(items) ? items.filter((item2) => typeof item2 === "string") : [];
+  const followUps = strings(value.followUps);
+  const constraints = strings(value.constraints);
+  const criteria = strings(value.criteria);
+  const corrections = strings(value.corrections);
+  const detailed = maxBytes >= 1e3;
+  const retained = {
+    followUps: detailed ? Math.min(1, followUps.length) : 0,
+    constraints: Math.min(detailed ? 2 : 1, constraints.length),
+    criteria: Math.min(1, criteria.length),
+    corrections: Math.min(1, corrections.length)
+  };
+  const omitted = {
+    followUps: Math.max(0, followUps.length - retained.followUps),
+    constraints: Math.max(0, constraints.length - retained.constraints),
+    criteria: Math.max(0, criteria.length - retained.criteria),
+    corrections: Math.max(0, corrections.length - retained.corrections),
+    evidenceRefs: Array.isArray(value.evidenceRefs) ? value.evidenceRefs.length : 0
+  };
+  const excerpt = {
+    version: typeof value.version === "number" && Number.isFinite(value.version) ? value.version : void 0,
+    rootObjective: typeof value.rootObjective === "string" ? "" : null,
+    latestStep: typeof value.latestStep === "string" ? "" : null,
+    ...retained.followUps ? { followUps: Array(retained.followUps).fill("") } : {},
+    ...retained.constraints ? { constraints: Array(retained.constraints).fill("") } : {},
+    ...retained.criteria ? { criteria: Array(retained.criteria).fill("") } : {},
+    ...retained.corrections ? { corrections: Array(retained.corrections).fill("") } : {},
+    ...detailed && typeof value.updatedAt === "string" ? { updatedAt: "" } : {},
+    truncation: { taskContext: true, compacted: true, omitted }
+  };
+  const slots = [];
+  if (typeof value.rootObjective === "string") slots.push({ value: value.rootObjective, weight: 5, assign: (text) => {
+    excerpt.rootObjective = text;
+  } });
+  if (typeof value.latestStep === "string") slots.push({ value: value.latestStep, weight: 4, assign: (text) => {
+    excerpt.latestStep = text;
+  } });
+  const addTail = (key, items, count, weights) => {
+    if (!count) return;
+    const target = excerpt[key];
+    for (const [index, item2] of items.slice(-count).entries()) {
+      slots.push({ value: item2, weight: weights[index] ?? weights.at(-1) ?? 1, assign: (text) => {
+        target[index] = text;
+      } });
     }
+  };
+  addTail("followUps", followUps, retained.followUps, [2]);
+  addTail("constraints", constraints, retained.constraints, retained.constraints > 1 ? [2, 4] : [4]);
+  addTail("criteria", criteria, retained.criteria, [2]);
+  addTail("corrections", corrections, retained.corrections, [4]);
+  if (detailed && typeof value.updatedAt === "string") slots.push({ value: value.updatedAt, weight: 1, assign: (text) => {
+    excerpt.updatedAt = text;
+  } });
+  const encodedContentBytes = (text) => Buffer.byteLength(JSON.stringify(text)) - 2;
+  const clipForJson = (text, budget) => {
+    const redacted = (boundedWithEnv(text, MAX_SEMANTIC_BYTES, env) ?? "").replace(/[\u0000-\u001f\u007f]/g, " ");
+    if (encodedContentBytes(redacted) <= budget) return redacted;
+    const marker = "\u2026";
+    if (encodedContentBytes(marker) > budget) return "";
+    const points = Array.from(redacted);
+    for (let retainedPoints = Math.min(points.length - 1, budget); retainedPoints >= 0; retainedPoints--) {
+      const head = Math.ceil(retainedPoints * 0.6);
+      const clipped = `${points.slice(0, head).join("")}${marker}${points.slice(points.length - (retainedPoints - head)).join("")}`;
+      if (encodedContentBytes(clipped) <= budget) return clipped;
+    }
+    return marker;
+  };
+  const overhead = Buffer.byteLength(JSON.stringify(excerpt));
+  const available = Math.max(0, maxBytes - overhead);
+  const minimum = available >= slots.length * 3 ? 3 : 0;
+  const distributable = Math.max(0, available - minimum * slots.length);
+  const weightTotal = slots.reduce((total, slot) => total + slot.weight, 0);
+  for (const slot of slots) {
+    const budget = minimum + Math.floor(distributable * slot.weight / Math.max(1, weightTotal));
+    slot.assign(clipForJson(slot.value, budget));
   }
-  if (!isRecord(parsed)) return boundedWithEnv(String(parsed), maxBytes, env);
-  const rootBudget = Math.max(128, Math.floor(maxBytes * 0.65));
-  const latestBudget = Math.max(64, Math.floor(maxBytes * 0.2));
-  const excerpt = { version: parsed.version };
-  if (typeof parsed.rootObjective === "string") excerpt.rootObjective = boundedWithEnv(parsed.rootObjective, rootBudget, env);
-  if (typeof parsed.latestStep === "string") excerpt.latestStep = boundedWithEnv(parsed.latestStep, latestBudget, env);
-  if (Array.isArray(parsed.followUps)) excerpt.followUps = parsed.followUps.slice(-2).map((item2) => typeof item2 === "string" ? boundedWithEnv(item2, 120, env) : void 0).filter(Boolean);
-  if (Array.isArray(parsed.constraints)) excerpt.constraints = parsed.constraints.slice(-2).map((item2) => typeof item2 === "string" ? boundedWithEnv(item2, 120, env) : void 0).filter(Boolean);
-  const encoded = JSON.stringify(excerpt);
-  if (Buffer.byteLength(encoded) <= maxBytes) return encoded;
-  const priority = JSON.stringify({
-    version: parsed.version,
-    rootObjective: typeof parsed.rootObjective === "string" ? boundedWithEnv(parsed.rootObjective, Math.floor(maxBytes * 0.72), env) : void 0,
-    latestStep: typeof parsed.latestStep === "string" ? boundedWithEnv(parsed.latestStep, Math.floor(maxBytes * 0.2), env) : void 0
-  });
-  return Buffer.byteLength(priority) <= maxBytes ? priority : boundedWithEnv(priority, maxBytes, env);
+  if (Buffer.byteLength(JSON.stringify(excerpt)) <= maxBytes) return excerpt;
+  const dropped = {
+    truncation: {
+      taskContext: true,
+      compacted: true,
+      excerptDropped: "budget_exceeded",
+      omitted,
+      droppedFields: ["rootObjective", "latestStep", "followUps", "constraints", "criteria", "corrections"]
+    }
+  };
+  return Buffer.byteLength(JSON.stringify(dropped)) <= maxBytes ? dropped : void 0;
 }
 function contextText(value, env) {
   const complete = JSON.stringify({ ...value, contextTruncated: false });
   if (Buffer.byteLength(complete) <= MAX_CONTEXT_BYTES) return complete;
   const response = isRecord(value.response) ? value.response : {};
   const turnResults = isRecord(value.turnResults) ? value.turnResults : void 0;
+  const existingTruncation = isRecord(value.truncation) ? value.truncation : {};
   const compact = {
     event: value.event,
     toolName: value.toolName,
@@ -21821,22 +21895,40 @@ function contextText(value, env) {
       isError: response.isError,
       resultExcerpt: boundedWithEnv(response.failureExcerpt ?? response.resultExcerpt, 700, env)
     },
-    taskPrompt: taskContextExcerpt(value.taskPrompt, env, 700),
-    taskContext: taskContextExcerpt(value.taskContext, env, 1e3),
+    currentPrompt: boundedWithEnv(value.currentPrompt, 500, env),
+    taskContext: taskContextExcerpt(value.taskContext, env, 1400),
     candidateCatalog: value.candidateCatalog,
-    truncation: value.truncation,
+    truncation: { ...existingTruncation, context: true, taskContext: value.taskContext !== void 0 },
     finalMessage: boundedWithEnv(value.finalMessage, 700, env),
     turnResults: turnResults ? { status: turnResults.status, resultCount: Array.isArray(turnResults.results) ? turnResults.results.length : 0 } : void 0,
     contextTruncated: true
   };
-  return JSON.stringify(compact);
+  const encoded = JSON.stringify(compact);
+  if (Buffer.byteLength(encoded) <= MAX_CONTEXT_BYTES) return encoded;
+  return JSON.stringify({
+    event: value.event,
+    toolName: value.toolName,
+    response: { status: response.status, exitCode: response.exitCode, isError: response.isError },
+    currentPrompt: boundedWithEnv(value.currentPrompt, 300, env),
+    taskContext: taskContextExcerpt(value.taskContext, env, 700),
+    candidateCatalog: value.candidateCatalog,
+    truncation: { ...existingTruncation, context: true, taskContext: value.taskContext !== void 0 },
+    turnResults: turnResults ? { status: turnResults.status, resultCount: Array.isArray(turnResults.results) ? turnResults.results.length : 0 } : void 0,
+    contextTruncated: true
+  });
 }
-function decisionInput(event, env, taskPrompt, taskContext, turnResults) {
+function concreteCandidateQuestion(event, catalog) {
+  const subject = catalog.domain === "context" ? "context-handling" : catalog.domain === "result" ? "result-handling" : catalog.domain;
+  return `Which available ${subject} candidate best fits the current authorized task, constraints, and evidence for this ${event.name} event?`;
+}
+function decisionInput(event, env, currentPrompt, taskContext, turnResults) {
   const args = semanticArguments(event, env);
   const response = semanticResponse(event, env);
   const message = finalMessage(event, env);
   const domain2 = event.name === "UserPromptSubmit" || event.name === "SubagentStart" ? "task" : event.name === "PreToolUse" || event.name === "PermissionRequest" ? "tool" : event.name === "PreCompact" || event.name === "PostCompact" ? "context" : "result";
   const catalog = candidateCatalog(event, domain2, env, taskContext);
+  const taskContextState = taskContextView(taskContext);
+  const taskContextWasClipped = taskContextState ? JSON.stringify(taskContextState).includes("...[truncated]...") : false;
   const context = contextText({
     event: event.name,
     toolName: boundedWithEnv(event.toolName, 128, env),
@@ -21850,19 +21942,21 @@ function decisionInput(event, env, taskPrompt, taskContext, turnResults) {
     arguments: args.values,
     argumentProjection: { omitted: args.omitted, truncated: args.truncated, tailRetained: args.tailRetained },
     response,
-    taskPrompt,
-    taskContext: taskContext ? JSON.parse(renderTaskContext(taskContext) ?? "{}") : void 0,
+    currentPrompt: taskContextState ? void 0 : currentPrompt,
+    taskContext: taskContextState,
     candidateCatalog: { provided: catalog.provided, source: catalog.source, domain: catalog.domain, count: catalog.candidates.length },
     truncation: {
-      taskPrompt: Boolean(taskPrompt?.includes("...[truncated]...")),
+      currentPrompt: Boolean(currentPrompt?.includes("...[truncated]...")),
+      taskContext: taskContextWasClipped,
       arguments: args.truncated,
-      tailRetained: args.tailRetained || Boolean(taskPrompt?.includes("...[truncated]..."))
+      tailRetained: args.tailRetained || Boolean(currentPrompt?.includes("...[truncated]...")) || taskContextWasClipped
     },
     finalMessage: message,
     turnResults
   }, env);
   const evidence = [];
-  if (event.name === "UserPromptSubmit" && taskPrompt) evidence.push({ id: safeId("task.prompt"), text: taskPrompt, source: "prompt" });
+  const promptEvidence = event.name === "UserPromptSubmit" ? boundedWithEnv(event.prompt, MAX_PROMPT_BYTES, env) : void 0;
+  if (promptEvidence) evidence.push({ id: safeId("task.prompt"), text: promptEvidence, source: "prompt" });
   if (response.failureExcerpt) evidence.push({ id: safeId("tool.failure"), text: response.failureExcerpt, source: "hook" });
   else if (event.name === "PostToolUse" && response.resultExcerpt) evidence.push({ id: safeId("tool.result"), text: response.resultExcerpt, source: "hook" });
   if (message) evidence.push({ id: safeId("result.message"), text: message, source: "assistant" });
@@ -21870,7 +21964,7 @@ function decisionInput(event, env, taskPrompt, taskContext, turnResults) {
     const text = boundedWithEnv(JSON.stringify(turnResults.results), MAX_CONTEXT_BYTES, env);
     if (text) evidence.push({ id: safeId("result.tool_summaries"), text, source: "hook" });
   }
-  const question = event.name === "UserPromptSubmit" ? "Does the current user prompt support proceeding with the ordinary workflow, reconsidering direction, or gathering evidence first?" : event.name === "PreToolUse" ? "Should this tool action proceed, be reconsidered, or gather evidence?" : event.name === "PostToolUse" ? "After this tool result, should the next step proceed, be reconsidered, or gather evidence?" : event.name === "PermissionRequest" ? "What advisory feedback best fits this approval request without granting or denying it?" : event.name === "PreCompact" || event.name === "PostCompact" ? "Does this context-compaction lifecycle point support proceeding, reconsidering, or gathering evidence?" : event.name === "SubagentStart" ? "Does this subagent start fit the current task, or should the workflow be reconsidered or gather evidence?" : "Should this task result proceed, be reconsidered, or gather evidence?";
+  const question = catalog.provided ? concreteCandidateQuestion(event, catalog) : event.name === "UserPromptSubmit" ? "Does the current user prompt support proceeding with the ordinary workflow, reconsidering direction, or gathering evidence first?" : event.name === "PreToolUse" ? "Should this tool action proceed, be reconsidered, or gather evidence?" : event.name === "PostToolUse" ? "After this tool result, should the next step proceed, be reconsidered, or gather evidence?" : event.name === "PermissionRequest" ? "What advisory feedback best fits this approval request without granting or denying it?" : event.name === "PreCompact" || event.name === "PostCompact" ? "Does this context-compaction lifecycle point support proceeding, reconsidering, or gathering evidence?" : event.name === "SubagentStart" ? "Does this subagent start fit the current task, or should the workflow be reconsidered or gather evidence?" : "Should this task result proceed, be reconsidered, or gather evidence?";
   return { domain: domain2, question, context, candidates: catalog.candidates, evidence, mode: "evaluate" };
 }
 function eventKey(event) {
@@ -21954,12 +22048,30 @@ async function claimEvent(event, policy, env) {
 function instructionOutput(event) {
   return { hookSpecificOutput: { hookEventName: event.name, additionalContext: LOCAL_INSTRUCTION } };
 }
-function decisionOutput(event, result) {
+function validatedCandidateChoice(input2, result) {
+  if (!input2 || !isSafeCandidateId(result?.choice)) return void 0;
+  const candidate = input2.candidates.find((item2) => item2.id === result.choice);
+  return candidate && candidate.available !== false ? candidate.id : void 0;
+}
+function validatedProviderChoice(input2, result) {
+  if (result?.status === "abstained" && result.choice === "insufficient_evidence") return result.choice;
+  return validatedCandidateChoice(input2, result);
+}
+function normalizeDecisionAssessment(input2, result) {
+  if (result.status !== "assessed" || validatedCandidateChoice(input2, result)) return result;
+  return {
+    status: "unavailable",
+    reasonCode: "invalid_choice",
+    ...result.receiptPersisted === true && typeof result.receiptId === "string" ? { receiptPersisted: true, receiptId: result.receiptId } : {}
+  };
+}
+function decisionOutput(event, result, input2) {
   const prefix = event.name === "UserPromptSubmit" ? `${LOCAL_INSTRUCTION} ` : "";
   const emit = (message) => ["Stop", "SubagentStop", "PermissionRequest", "Interrupt", "SessionEnd", "PreCompact", "PostCompact"].includes(event.name) ? { systemMessage: message } : { hookSpecificOutput: { hookEventName: event.name, additionalContext: message } };
   const status = typeof result.status === "string" && ["assessed", "abstained", "unavailable", "skipped", "preview"].includes(result.status) ? result.status : "unavailable";
   const fields = [`status=${status}`];
-  if (status === "assessed" && typeof result.choice === "string" && ACTION_CHOICES.has(result.choice)) fields.push(`decision=${result.choice}`);
+  const choice = status === "assessed" ? validatedCandidateChoice(input2, result) : void 0;
+  if (choice) fields.push(`decision=${choice}`);
   if (typeof result.confidence === "number" && Number.isFinite(result.confidence) && result.confidence >= 0 && result.confidence <= 1) {
     fields.push(`confidence=${result.confidence.toFixed(2)}`);
   }
@@ -21968,8 +22080,9 @@ function decisionOutput(event, result) {
   const suffix = status === "assessed" ? "advisory only, continue ordinary reasoning." : "continue ordinary reasoning and gather authorized evidence if useful.";
   return emit(`${prefix}JEV advisory: ${fields.join("; ")}; ${suffix}`);
 }
-function resultStatus(result) {
-  if (result?.status === "assessed" && typeof result.choice === "string" && ACTION_CHOICES.has(result.choice)) return result.choice;
+function resultStatus(input2, result) {
+  const choice = result?.status === "assessed" ? validatedCandidateChoice(input2, result) : void 0;
+  if (choice) return choice;
   return "unavailable";
 }
 async function writeInvocationReceipt(event, env, input2, response, result) {
@@ -22001,8 +22114,8 @@ async function writeInvocationReceipt(event, env, input2, response, result) {
         return bytes >= MAX_RESULT_EXCERPT_BYTES;
       }),
       referenceReceiptId: result?.receiptPersisted === true && typeof result?.receiptId === "string" && /^[a-f0-9-]{1,80}$/.test(result.receiptId) ? result.receiptId : void 0,
-      classification: resultStatus(result),
-      providerChoice: typeof result?.choice === "string" && ACTION_CHOICES.has(result.choice) ? result.choice : void 0,
+      classification: resultStatus(input2, result),
+      providerChoice: validatedProviderChoice(input2, result),
       assessmentStatus: result?.status && ["assessed", "abstained", "unavailable", "skipped", "preview"].includes(result.status) ? result.status : "unavailable",
       confidence: typeof result?.confidence === "number" && Number.isFinite(result.confidence) && result.confidence >= 0 && result.confidence <= 1 ? result.confidence : void 0,
       reasonCode: result?.reasonCode && /^[a-z_]{1,80}$/.test(result.reasonCode) ? result.reasonCode : void 0,
@@ -22084,7 +22197,6 @@ async function runDecisionHook(raw, options = {}) {
     const cachedPromptResult = await withinHookDeadline(deadline, () => event.name === "UserPromptSubmit" ? updatePromptCache(event, env) : readPromptCache(event, env));
     if (cachedPromptResult.expired) return timedOut();
     const cachedPrompt = cachedPromptResult.value;
-    const taskPrompt = renderTaskContext(taskContext) ?? cachedPrompt;
     const claimed = await withinHookDeadline(deadline, () => claimEvent(event, policy, env));
     if (claimed.expired) return timedOut();
     if (!claimed.value) return {};
@@ -22099,7 +22211,7 @@ async function runDecisionHook(raw, options = {}) {
       if (turnCache.expired) return timedOut();
       turnResults = turnCache.value;
     }
-    const input2 = decisionInput(event, env, taskPrompt, taskContext, turnResults);
+    const input2 = decisionInput(event, env, cachedPrompt, taskContext, turnResults);
     if (Date.now() >= deadline) return timedOut();
     const remainingMs = deadline - Date.now();
     const providerTimeoutMs = Math.min(shortEvent ? SHORT_EVENT_PROVIDER_TIMEOUT_MS : PROVIDER_TIMEOUT_MS, Math.max(1, remainingMs));
@@ -22122,9 +22234,10 @@ async function runDecisionHook(raw, options = {}) {
       clearTimeout(timer);
     }
     if (Date.now() >= deadline) result = timeoutAssessment;
+    else result = normalizeDecisionAssessment(input2, result);
     const receipt = await withinHookDeadline(deadline, () => writeInvocationReceipt(event, env, input2, response, result));
     if (receipt.expired || Date.now() >= deadline) return timedOut();
-    return decisionOutput(event, result);
+    return decisionOutput(event, result, input2);
   } catch {
     return {};
   }
