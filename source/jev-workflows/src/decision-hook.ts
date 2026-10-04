@@ -3,6 +3,7 @@ import { constants } from 'node:fs';
 import { mkdir, open, realpath, readdir, unlink, lstat, rename } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { isAbsolute, join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
 import { createService } from './service.js';
 import { redactText } from './redact.js';
@@ -30,6 +31,10 @@ const MAX_CACHED_RESULT_BYTES = 500;
 const MAX_TURN_RESULT_FILE_BYTES = 12 * 1024;
 const TURN_RESULT_DIRECTORY = 'turn-results';
 const INVOCATION_DIRECTORY = 'invocations';
+const EVENT_CLAIM_MAX_BYTES = 4096;
+const EVENT_CLAIM_LEASE_MS = 10_000;
+const EVENT_LOCK_STALE_MS = 30_000;
+const EVENT_LOCK_ATTEMPTS = 50;
 const LOCAL_INSTRUCTION = 'Before choosing a tool, model, effort, task, skill, context, or strategy, consult classify_decision when this automation policy permits it. Treat its answer as advisory and continue ordinary reasoning when it is unavailable or inconclusive.';
 const ACTION_CANDIDATES = [
   {id: 'proceed', description: 'Continue with the ordinary workflow.', available: true},
@@ -750,50 +755,187 @@ async function withinHookDeadline<T>(deadline: number, work: () => Promise<T>): 
   }
 }
 
-async function claimEvent(event: NormalizedEvent, policy: HookPolicy, env: NodeJS.ProcessEnv): Promise<boolean> {
-  if (policy.maxHookCallsPerSession !== null && policy.maxHookCallsPerSession <= 0) return false;
+type EventClaimRecord = {
+  version: 1;
+  status: 'pending' | 'completed';
+  ownerPid: number;
+  ownerToken: string;
+  attemptId: string;
+  claimedAt: number;
+  leaseUntil: number;
+  completedAt?: number;
+};
+
+type EventClaim = {path: string; ownerToken: string; attemptId: string; retry: boolean};
+type ReadEventClaim =
+  | {kind: 'missing'}
+  | {kind: 'legacy'}
+  | {kind: 'completed'}
+  | {kind: 'pending'; record: EventClaimRecord; dev: number; ino: number};
+
+type EventLock = {handle: Awaited<ReturnType<typeof open>>; token: string; path: string};
+
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && /^[a-f0-9-]{36}$/.test(value);
+}
+
+function newEventClaimRecord(): EventClaimRecord {
+  const now = Date.now();
+  return {version: 1, status: 'pending', ownerPid: process.pid, ownerToken: randomUUID(), attemptId: randomUUID(), claimedAt: now, leaseUntil: now + EVENT_CLAIM_LEASE_MS};
+}
+
+async function readEventClaim(path: string): Promise<ReadEventClaim> {
+  try {
+    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    try {
+      const info = await handle.stat();
+      if (!info.isFile() || info.size > EVENT_CLAIM_MAX_BYTES) return {kind: 'legacy'};
+      if (info.size === 0) return {kind: 'legacy'};
+      let value: unknown;
+      try { value = JSON.parse(await handle.readFile('utf8')); } catch { return {kind: 'legacy'}; }
+      if (!isRecord(value)) return {kind: 'legacy'};
+      if (value.status === 'completed') return {kind: 'completed'};
+      if (value.version !== 1 || value.status !== 'pending' || !Number.isSafeInteger(value.ownerPid) || (value.ownerPid as number) <= 0 ||
+          !isUuid(value.ownerToken) || !isUuid(value.attemptId) || !Number.isSafeInteger(value.claimedAt) ||
+          !Number.isSafeInteger(value.leaseUntil)) return {kind: 'legacy'};
+      return {kind: 'pending', record: value as unknown as EventClaimRecord, dev: info.dev, ino: info.ino};
+    } finally { await handle.close(); }
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'ENOENT' ? {kind: 'missing'} : {kind: 'legacy'};
+  }
+}
+
+async function processIsAlive(pid: number): Promise<boolean> {
+  try { process.kill(pid, 0); return true; }
+  catch (error) { return (error as NodeJS.ErrnoException).code === 'EPERM'; }
+}
+
+async function createEventClaim(path: string, record: EventClaimRecord): Promise<boolean> {
+  let handle: Awaited<ReturnType<typeof open>> | undefined;
+  try {
+    handle = await open(path, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+    await handle.writeFile(JSON.stringify(record) + '\n', 'utf8');
+    await handle.sync();
+    await handle.close();
+    return true;
+  } catch {
+    await handle?.close().catch(() => {});
+    return false;
+  }
+}
+
+async function unlinkClaimIfSame(path: string, claim: Extract<ReadEventClaim, {kind: 'pending'}>): Promise<boolean> {
+  try {
+    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    try {
+      const info = await handle.stat();
+      if (info.dev !== claim.dev || info.ino !== claim.ino) return false;
+    } finally { await handle.close(); }
+    await unlink(path);
+    return true;
+  } catch { return false; }
+}
+
+async function readEventLock(path: string): Promise<{token: string; pid: number; mtimeMs: number} | undefined> {
+  try {
+    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    try {
+      const info = await handle.stat();
+      if (!info.isFile() || info.size > 1024) return undefined;
+      const value = JSON.parse(await handle.readFile('utf8')) as RecordValue;
+      if (!isUuid(value.token) || !Number.isSafeInteger(value.pid) || (value.pid as number) <= 0) return undefined;
+      return {token: value.token, pid: value.pid as number, mtimeMs: info.mtimeMs};
+    } catch { return undefined; }
+    finally { await handle.close(); }
+  } catch { return undefined; }
+}
+
+async function acquireEventLock(path: string): Promise<EventLock | undefined> {
+  for (let attempt = 0; attempt < EVENT_LOCK_ATTEMPTS; attempt++) {
+    const token = randomUUID();
+    let handle: Awaited<ReturnType<typeof open>> | undefined;
+    try {
+      handle = await open(path, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+      await handle.writeFile(JSON.stringify({pid: process.pid, token}) + '\n', 'utf8');
+      await handle.sync();
+      return {handle, token, path};
+    } catch (error) {
+      await handle?.close().catch(() => {});
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') return undefined;
+      const existing = await readEventLock(path);
+      if (existing && Date.now() - existing.mtimeMs >= EVENT_LOCK_STALE_MS && !(await processIsAlive(existing.pid))) await unlink(path).catch(() => {});
+      await delay(10);
+    }
+  }
+  return undefined;
+}
+
+async function releaseEventLock(lock: EventLock): Promise<void> {
+  try {
+    const existing = await readEventLock(lock.path);
+    if (existing?.token === lock.token) await unlink(lock.path);
+  } finally { await lock.handle.close().catch(() => {}); }
+}
+
+async function claimEvent(event: NormalizedEvent, policy: HookPolicy, env: NodeJS.ProcessEnv): Promise<EventClaim | undefined> {
+  if (policy.maxHookCallsPerSession !== null && policy.maxHookCallsPerSession <= 0) return undefined;
   const directory = dataDirectory(env);
-  if (!isAbsolute(directory) || directory.includes('\0')) return false;
+  if (!isAbsolute(directory) || directory.includes('\0')) return undefined;
   let workspace: string;
   try {
     await mkdir(directory, {recursive: true, mode: 0o700});
     workspace = await realpath(event.cwd);
-  } catch {
-    return false;
-  }
+  } catch { return undefined; }
   const sessionDirectory = join(directory, EVENT_DIRECTORY, hash(workspace), hash(event.sessionId));
   await mkdir(sessionDirectory, {recursive: true, mode: 0o700}).catch(() => {});
   const eventName = eventKey(event);
-  if (policy.maxHookCallsPerSession === null) {
-    try {
-      const marker = await open(join(sessionDirectory, eventName), constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
-      await marker.close();
-      return true;
-    } catch {
-      return false;
+  const path = join(sessionDirectory, eventName);
+  const lock = policy.maxHookCallsPerSession === null ? undefined : await acquireEventLock(join(sessionDirectory, '.lock'));
+  if (policy.maxHookCallsPerSession !== null && !lock) return undefined;
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const existing = await readEventClaim(path);
+      if (existing.kind === 'completed' || existing.kind === 'legacy') return undefined;
+      if (existing.kind === 'pending') {
+        if (await processIsAlive(existing.record.ownerPid)) return undefined;
+        if (!await unlinkClaimIfSame(path, existing)) continue;
+        const retryRecord = newEventClaimRecord();
+        if (await createEventClaim(path, retryRecord)) return {path, ownerToken: retryRecord.ownerToken, attemptId: retryRecord.attemptId, retry: true};
+        continue;
+      }
+      if (policy.maxHookCallsPerSession !== null) {
+        const entries = await readdir(sessionDirectory, {withFileTypes: true}).catch(() => []);
+        const count = entries.filter(entry => entry.isFile() && /^[a-f0-9]{64}$/.test(entry.name)).length;
+        if (count >= policy.maxHookCallsPerSession) return undefined;
+      }
+      const record = newEventClaimRecord();
+      if (await createEventClaim(path, record)) return {path, ownerToken: record.ownerToken, attemptId: record.attemptId, retry: false};
     }
+    return undefined;
+  } finally {
+    if (lock) await releaseEventLock(lock);
   }
-  const lockPath = join(sessionDirectory, '.lock');
-  let lock;
+}
+
+async function finalizeEventClaim(claim: EventClaim): Promise<boolean> {
+  const current = await readEventClaim(claim.path);
+  if (current.kind !== 'pending' || current.record.ownerToken !== claim.ownerToken || current.record.attemptId !== claim.attemptId) return false;
+  const completed: EventClaimRecord = {...current.record, status: 'completed', completedAt: Date.now()};
+  const temporary = \${claim.path}.\${claim.ownerToken}.tmp;
   try {
-    lock = await open(lockPath, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
-  } catch {
-    return false;
-  }
-  try {
-    const entries = await readdir(sessionDirectory, {withFileTypes: true});
-    if (entries.some(entry => entry.isFile() && entry.name === eventName)) return false;
-    const count = entries.filter(entry => entry.isFile() && /^[a-f0-9]{64}$/.test(entry.name)).length;
-    if (policy.maxHookCallsPerSession !== null && count >= policy.maxHookCallsPerSession) return false;
-    const marker = await open(join(sessionDirectory, eventName), constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
-    await marker.close();
+    const handle = await open(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+    try { await handle.writeFile(JSON.stringify(completed) + '\n', 'utf8'); await handle.sync(); }
+    finally { await handle.close(); }
+    await rename(temporary, claim.path);
     return true;
   } catch {
+    await unlink(temporary).catch(() => {});
     return false;
-  } finally {
-    await lock.close().catch(() => {});
-    await unlink(lockPath).catch(() => {});
   }
+}
+
+function canFinalizeEvent(result: DecisionAssessment | undefined): boolean {
+  return result?.status === 'assessed' || result?.status === 'abstained' || result?.status === 'skipped' || result?.status === 'preview';
 }
 
 function instructionOutput(event: NormalizedEvent): HookResult {
@@ -827,11 +969,11 @@ function resultStatus(result: DecisionAssessment | undefined): string {
   return 'unavailable';
 }
 
-async function writeInvocationReceipt(event: NormalizedEvent, env: NodeJS.ProcessEnv, input: DecisionInput, response: ReturnType<typeof semanticResponse>, result: DecisionAssessment | undefined): Promise<void> {
+async function writeInvocationReceipt(event: NormalizedEvent, env: NodeJS.ProcessEnv, input: DecisionInput, response: ReturnType<typeof semanticResponse>, result: DecisionAssessment | undefined, claim: EventClaim): Promise<boolean> {
   const sessionDirectory = await privateSessionDirectory(event, env, true);
-  if (!sessionDirectory) return;
+  if (!sessionDirectory) return false;
   const directory = join(sessionDirectory, INVOCATION_DIRECTORY);
-  const path = join(directory, `${eventKey(event)}.json`);
+  const path = join(directory, claim.retry ? `${eventKey(event)}-${claim.attemptId}.json` : `${eventKey(event)}.json`);
   try {
     await mkdir(directory, {recursive: true, mode: 0o700});
     const receipt: RecordValue = {
@@ -870,12 +1012,14 @@ async function writeInvocationReceipt(event: NormalizedEvent, env: NodeJS.Proces
         agentId: event.agentId || undefined,
       },
       correlationId: eventKey(event),
+      attemptId: claim.attemptId,
       candidateDigest: hash(JSON.stringify(input.candidates.map(candidate => candidate.id))),
     };
     const contents = JSON.stringify(receipt) + '\n';
     const handle = await open(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
     try { await handle.writeFile(contents, 'utf8'); } finally { await handle.close(); }
-  } catch { /* receipts are private proof and never affect hook behavior */ }
+    return true;
+  } catch { /* receipts are private proof and never affect hook behavior */ return false; }
 }
 
 function defaultService(env: NodeJS.ProcessEnv, timeoutMs = PROVIDER_TIMEOUT_MS, fetchFn?: typeof fetch): DecisionService {
