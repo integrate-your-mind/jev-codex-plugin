@@ -1,0 +1,22 @@
+// Archival source text with private host paths replaced by placeholders.
+// Not an executable entrypoint; original retained privately. This fixture calls the live provider.
+import {runDecisionHook} from '<INSTALLED_PLUGIN_ROOT>/dist/decision-hook.mjs';
+import {writeFile} from 'node:fs/promises';
+import {randomUUID} from 'node:crypto';
+const fixtureId = randomUUID();
+const output = await runDecisionHook({
+  hook_event_name: 'PreToolUse', session_id: `delivery-${fixtureId}`, turn_id: 'turn-1', tool_use_id: 'choice-1',
+  cwd: process.cwd(), tool_name: 'read_thread', tool_input: {threadId: 'synthetic-thread'},
+  task_context: {
+    rootObjective: 'Report the status already recorded in the specified chat.',
+    latestStep: 'Choose how to retrieve the chat status. No code has changed and no tests are required.',
+    constraints: ['Read-only status lookup. Do not execute code.'],
+    candidateCatalog: {tool: [
+      {id: 'read_thread', description: 'Read the specified chat and return its recorded status.', available: true},
+      {id: 'run_tests', description: 'Execute the repository test suite; does not retrieve chat status.', available: true},
+    ]},
+  },
+}, {env: {...process.env, JEV_ENABLED: '1', JEV_HOOKS_ENABLED: '1', JEV_STATE_DIRECTORY: '<EXISTING_PRIVATE_JEV_STATE_DIRECTORY>'}});
+const report = {fixtureId, installedVersion: '0.4.1', suppliedCatalog: ['read_thread', 'run_tests'], output};
+await writeFile('verification/local-delivery-0.4.1/installed-candidate.json', JSON.stringify(report,null,2)+'\n');
+console.log(JSON.stringify(report));

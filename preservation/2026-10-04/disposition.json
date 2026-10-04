@@ -1,0 +1,480 @@
+{
+  "schemaVersion": "jev-owned-file-preservation-v1",
+  "purpose": "Preservation only; not a release, benchmark, implementation selection or validation claim.",
+  "benchmarkPublicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4",
+  "deliveryPublicCommit": "a29b4427947d85d321ae8fd2090ef8f3658e9ac0",
+  "benchmarkFiles": [
+    {
+      "path": "benchmarks/plugin-development/batch/README.md",
+      "bytes": 4454,
+      "kind": "different_from_public",
+      "disposition": "historical-source-archived",
+      "archivePath": "preservation/2026-10-04/original-files/benchmarks/plugin-development/batch/README.md"
+    },
+    {
+      "path": "benchmarks/plugin-development/batch/freeze.json",
+      "bytes": 3533,
+      "kind": "different_from_public",
+      "disposition": "historical-source-archived",
+      "archivePath": "preservation/2026-10-04/original-files/benchmarks/plugin-development/batch/freeze.json"
+    },
+    {
+      "path": "benchmarks/plugin-development/batch/freeze.mjs",
+      "bytes": 10133,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-development/batch/grader.mjs",
+      "bytes": 9325,
+      "kind": "different_from_public",
+      "disposition": "historical-source-archived",
+      "archivePath": "preservation/2026-10-04/original-files/benchmarks/plugin-development/batch/grader.mjs"
+    },
+    {
+      "path": "benchmarks/plugin-development/batch/inputs.json",
+      "bytes": 11601,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-development/batch/oracle/oracle.json",
+      "bytes": 2882,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-development/batch/run.mjs",
+      "bytes": 16152,
+      "kind": "different_from_public",
+      "disposition": "historical-source-archived",
+      "archivePath": "preservation/2026-10-04/original-files/benchmarks/plugin-development/batch/run.mjs"
+    },
+    {
+      "path": "benchmarks/plugin-development/batch/run.test.mjs",
+      "bytes": 10069,
+      "kind": "different_from_public",
+      "disposition": "historical-source-archived",
+      "archivePath": "preservation/2026-10-04/original-files/benchmarks/plugin-development/batch/run.test.mjs"
+    },
+    {
+      "path": "benchmarks/plugin-development/batch/schedule.json",
+      "bytes": 3804,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-features/README.md",
+      "bytes": 2731,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-features/external-reproductions.json",
+      "bytes": 406,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-features/resolve-deps-loader.mjs",
+      "bytes": 681,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-features/results-baseline.json",
+      "bytes": 12599,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-features/results-repaired.json",
+      "bytes": 12716,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-features/results.json",
+      "bytes": 12716,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-features/run.mjs",
+      "bytes": 14105,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-features/run.test.mjs",
+      "bytes": 4180,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-features/scenarios.json",
+      "bytes": 6322,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-features/truth-labels.json",
+      "bytes": 985,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-live-eval/README.md",
+      "bytes": 5195,
+      "kind": "different_from_public",
+      "disposition": "historical-source-archived",
+      "archivePath": "preservation/2026-10-04/original-files/benchmarks/plugin-live-eval/README.md"
+    },
+    {
+      "path": "benchmarks/plugin-live-eval/compat-loader.mjs",
+      "bytes": 1072,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-live-eval/episodes.json",
+      "bytes": 89856,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-live-eval/freeze.json",
+      "bytes": 814,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-live-eval/freeze.mjs",
+      "bytes": 5448,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-live-eval/oracle.json",
+      "bytes": 11550,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-live-eval/provider-inputs.json",
+      "bytes": 89892,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-live-eval/run.mjs",
+      "bytes": 25887,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-live-eval/study-freeze.json",
+      "bytes": 1174,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-live-eval/test.mjs",
+      "bytes": 4313,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-value/dependency-recovery/README.md",
+      "bytes": 2702,
+      "kind": "not_at_public_path",
+      "disposition": "historical-source-archived",
+      "archivePath": "preservation/2026-10-04/original-files/benchmarks/plugin-value/dependency-recovery/README.md"
+    },
+    {
+      "path": "benchmarks/plugin-value/dependency-recovery/build-overlay.py",
+      "bytes": 30130,
+      "kind": "not_at_public_path",
+      "disposition": "historical-source-archived",
+      "archivePath": "preservation/2026-10-04/original-files/benchmarks/plugin-value/dependency-recovery/build-overlay.py"
+    },
+    {
+      "path": "benchmarks/plugin-value/dependency-recovery/test_builder.py",
+      "bytes": 2255,
+      "kind": "not_at_public_path",
+      "disposition": "historical-source-archived",
+      "archivePath": "preservation/2026-10-04/original-files/benchmarks/plugin-value/dependency-recovery/test_builder.py"
+    },
+    {
+      "path": "benchmarks/plugin-value/development-selection.md",
+      "bytes": 11717,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-value/heldout-selection.json",
+      "bytes": 21653,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-value/heldout-selection.mjs",
+      "bytes": 10559,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-value/heldout-selection.test.mjs",
+      "bytes": 11461,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-value/host-runner.mjs",
+      "bytes": 33654,
+      "kind": "already_public_historical",
+      "exactPublicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a",
+      "disposition": "already-preserved-historical-public",
+      "publicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a"
+    },
+    {
+      "path": "benchmarks/plugin-value/image-identities.json",
+      "bytes": 20303,
+      "kind": "different_from_public",
+      "disposition": "generated-evidence-retained-local",
+      "reason": "Historical raw metadata/status; public sanitized or later evidence exists. No source implementation is unique here."
+    },
+    {
+      "path": "benchmarks/plugin-value/invalid-response-audit.json",
+      "bytes": 2879,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-value/paired-statistics.mjs",
+      "bytes": 10617,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-value/paired-statistics.test.mjs",
+      "bytes": 5126,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-value/pier-main.py",
+      "bytes": 142,
+      "kind": "already_public_historical",
+      "exactPublicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a",
+      "disposition": "already-preserved-historical-public",
+      "publicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a"
+    },
+    {
+      "path": "benchmarks/plugin-value/probability-validation-review.md",
+      "bytes": 2239,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-value/protocol.md",
+      "bytes": 9961,
+      "kind": "already_public_historical",
+      "exactPublicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a",
+      "disposition": "already-preserved-historical-public",
+      "publicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a"
+    },
+    {
+      "path": "benchmarks/plugin-value/research-questions.json",
+      "bytes": 19253,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-value/research.md",
+      "bytes": 6768,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-value/run-one.sh",
+      "bytes": 1511,
+      "kind": "already_public_historical",
+      "exactPublicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a",
+      "disposition": "already-preserved-historical-public",
+      "publicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a"
+    },
+    {
+      "path": "benchmarks/plugin-value/runtime-identity.json",
+      "bytes": 1580,
+      "kind": "already_public_historical",
+      "exactPublicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a",
+      "disposition": "already-preserved-historical-public",
+      "publicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a"
+    },
+    {
+      "path": "benchmarks/plugin-value/runtime-validation.json",
+      "bytes": 2259,
+      "kind": "different_from_public",
+      "disposition": "generated-evidence-retained-local",
+      "reason": "Historical raw metadata/status; public sanitized or later evidence exists. No source implementation is unique here."
+    },
+    {
+      "path": "benchmarks/plugin-value/runtime.py",
+      "bytes": 8578,
+      "kind": "already_public_historical",
+      "exactPublicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a",
+      "disposition": "already-preserved-historical-public",
+      "publicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a"
+    },
+    {
+      "path": "benchmarks/plugin-value/schedule.json",
+      "bytes": 16833,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/plugin-value/task-runtime-metadata.json",
+      "bytes": 34022,
+      "kind": "already_public_historical",
+      "exactPublicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a",
+      "disposition": "already-preserved-historical-public",
+      "publicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a"
+    },
+    {
+      "path": "benchmarks/plugin-value/tests/host-runner.test.mjs",
+      "bytes": 3475,
+      "kind": "already_public_historical",
+      "exactPublicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a",
+      "disposition": "already-preserved-historical-public",
+      "publicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a"
+    },
+    {
+      "path": "benchmarks/plugin-value/tests/runtime_test.py",
+      "bytes": 1495,
+      "kind": "already_public_historical",
+      "exactPublicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a",
+      "disposition": "already-preserved-historical-public",
+      "publicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a"
+    },
+    {
+      "path": "benchmarks/plugin-value/x-research-2026-09-26.md",
+      "bytes": 14644,
+      "kind": "already_public_historical",
+      "exactPublicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a",
+      "disposition": "already-preserved-historical-public",
+      "publicCommit": "46dd949bc9292c22ceb0c5593d3f87f4670bd14a"
+    },
+    {
+      "path": "benchmarks/results/2026-09-26-plugin-decisions-v1/README.md",
+      "bytes": 3793,
+      "kind": "different_from_public",
+      "disposition": "historical-source-archived",
+      "archivePath": "preservation/2026-10-04/original-files/benchmarks/results/2026-09-26-plugin-decisions-v1/README.md"
+    },
+    {
+      "path": "benchmarks/results/2026-09-26-plugin-decisions-v1/export-live.mjs",
+      "bytes": 19160,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/results/2026-09-26-plugin-decisions-v1/export-live.test.mjs",
+      "bytes": 11936,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/results/2026-09-26-plugin-decisions-v1/summary.json",
+      "bytes": 2678,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    },
+    {
+      "path": "benchmarks/results/2026-09-26-plugin-decisions-v1/trials.json",
+      "bytes": 72605,
+      "kind": "already_public_identical",
+      "disposition": "already-preserved-current-public",
+      "publicCommit": "c548d0b09aef8d948f9932d4114ab1921ed47ef4"
+    }
+  ],
+  "deliveryVerificationFiles": [
+    {
+      "path": "error.log",
+      "disposition": "private-generated-evidence-retained-local",
+      "reason": "Contains account identifier and opaque task cursor; not published."
+    },
+    {
+      "path": "verification/delivery-fix-baseline.txt",
+      "disposition": "raw-evidence-retained-local",
+      "publicRepresentation": "verification/delivery-fix-0.4.1.md"
+    },
+    {
+      "path": "verification/delivery-fix-pr-body.md",
+      "disposition": "draft-retained-local",
+      "publicRepresentation": "PR9 description and verification/delivery-fix-0.4.1.md"
+    },
+    {
+      "path": "verification/delivery-fix-tests.txt",
+      "disposition": "raw-test-evidence-retained-local",
+      "publicRepresentation": "verification/delivery-fix-0.4.1.md"
+    },
+    {
+      "path": "verification/installed-candidate-probe.mjs",
+      "disposition": "private-original-retained-local-public-path-redacted-source-text",
+      "archivePath": "preservation/2026-10-04/installed-candidate-probe.mjs.txt"
+    },
+    {
+      "path": "verification/local-delivery-0.4.1/installed-candidate.json",
+      "disposition": "private-generated-evidence-retained-local",
+      "publicRepresentation": "verification/delivery-fix-runtime-0.4.1.json"
+    },
+    {
+      "path": "verification/local-delivery-0.4.1/codex-native-runtime.json",
+      "disposition": "private-generated-evidence-retained-local",
+      "publicRepresentation": "verification/delivery-fix-runtime-0.4.1.json"
+    },
+    {
+      "path": "verification/local-delivery-0.4.1/preservation-benchmark-inventory.json",
+      "disposition": "management-evidence-retained-local",
+      "publicRepresentation": "preservation/2026-10-04/disposition.json"
+    }
+  ]
+}
