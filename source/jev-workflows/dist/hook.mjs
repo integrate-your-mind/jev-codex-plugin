@@ -20570,7 +20570,7 @@ function createService(options = {}) {
   function status(policy = DEFAULT_POLICY) {
     const current = credential();
     return {
-      version: "0.4.0",
+      version: "0.4.1",
       provider: "TypeSafe",
       endpoint: ENDPOINT,
       model: MODEL,
