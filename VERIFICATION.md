@@ -9,7 +9,7 @@ below; it does not establish directory approval, provider billing, or model qual
 
 The current source adds native Claude Code packaging and the October 15 Jev contract while preserving unlimited defaults. Shared fixtures and a deterministic drift check connect the TypeScript plugin and QQ Rust integration; QQ verification is recorded in its own PR.
 
-- The full source suite passed 193 tests on Node 22.23.2, with typecheck, build and manifest validation. Production dependency audit reported zero vulnerabilities. Generated distribution parity and all four root distribution/contract tests passed.
+- The full source suite passed 195 tests on Node 22.23.2, with typecheck, build and manifest validation. Production dependency audit reported zero vulnerabilities. Generated distribution parity and all four root distribution/contract tests passed.
 - Real Jev 1.13 and 1.14 text requests and an explicit synthetic image/Box request returned validated HTTP 200 responses with provider request IDs. See [provider evidence](verification/cross-host-0.5.0-provider.json).
 - The documented 256×307 image boundary returned HTTP 400 twice (`Invalid image dimensions.`); the final 280×280 PNG and JPEG checks passed. Those failed attempts remain in the provider evidence, separate from the five successful requests.
 - A fresh installed Codex session loaded the plugin, executed its command and correlated four lifecycle evaluations with retained provider receipts.
@@ -126,6 +126,8 @@ corrected in the docs; runtime behavior was unchanged.
 - Fresh native MCP status checks passed for both the installed personal package and neutral public package. They asserted reservation semantics, current/other/unknown credential partitions, and unknown provider billing.
 
 ## Hosted CI
+
+The [0.5.0 run for ec4561f](https://github.com/integrate-your-mind/jev-codex-plugin/actions/runs/38814474977) did not start: GitHub reports the account is locked due to a billing issue. Hosted CI is not passed; local checks and independent review are separate evidence.
 
 The [0.4.0 GitHub Actions run](https://github.com/integrate-your-mind/jev-codex-plugin/actions/runs/36225421255)
 for revision `913bb7fbea73efbdb37535d02debae7a0b28485c` was blocked before

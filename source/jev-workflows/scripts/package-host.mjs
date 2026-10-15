@@ -103,16 +103,17 @@ if (targetExists) {
       throw new Error(`Host target contains an unrecognized path ${name}; choose a clean target: ${target}`);
     }
   }
-  reconcileExisting = entries.length > 0;
+  reconcileExisting = true;
 }
 
-const stagingTarget = reconcileExisting ? join(dirname(target), `.jev-codex-stage-${randomUUID()}`) : target;
+const stagingTarget = join(dirname(target), `.jev-codex-stage-${randomUUID()}`);
 try {
 await mkdir(stagingTarget, { recursive: true });
 
 for (const name of included) {
   await cp(join(source, name), join(stagingTarget, name), { recursive: true });
 }
+if (process.env.JEV_PACKAGE_TEST_FAIL_AFTER_STAGE === '1') throw new Error('injected Codex package staging failure');
 if (reconcileExisting && (await readdir(target)).includes('.DS_Store')) await cp(join(target, '.DS_Store'), join(stagingTarget, '.DS_Store'));
 
 // The legacy Codex parser does not expand Agent Plugin placeholders in the
@@ -225,9 +226,11 @@ if (reconcileExisting) {
     throw error;
   }
   await rm(backupTarget, {recursive: true, force: true});
+} else {
+  await rename(stagingTarget, target);
 }
 
 console.log(`Codex legacy host package staged: ${target}${stateDirectory === undefined ? ' (neutral user state mode)' : ' (state directory override configured)'}`);
 } finally {
-  if (reconcileExisting) await rm(stagingTarget, {recursive: true, force: true});
+  await rm(stagingTarget, {recursive: true, force: true});
 }

@@ -41,12 +41,12 @@ try {
       throw new Error(`Refusing to stage into a non-empty target without Claude compatibility marker: ${target}`);
     }
     for (const entry of entries) if (!allowed.has(entry)) throw new Error(`Refusing to overwrite unrecognized target entry ${entry}: ${target}`);
-    reconcileExisting = entries.length > 0;
+    reconcileExisting = true;
   }
 } catch (error) {
   if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
 }
-const stagingTarget = reconcileExisting ? join(dirname(target), `.jev-claude-stage-${randomUUID()}`) : target;
+const stagingTarget = join(dirname(target), `.jev-claude-stage-${randomUUID()}`);
 try {
 await mkdir(stagingTarget, {recursive: true});
 await cp(join(source, 'templates/claude'), stagingTarget, {recursive: true});
@@ -97,8 +97,10 @@ if (reconcileExisting) {
     throw error;
   }
   await rm(backupTarget, {recursive: true, force: true});
+} else {
+  await rename(stagingTarget, target);
 }
 console.log(`Claude plugin package staged: ${target}${stateDirectory === undefined ? ' (user state default)' : ' (state directory override configured)'}`);
 } finally {
-  if (reconcileExisting) await rm(stagingTarget, {recursive: true, force: true});
+  await rm(stagingTarget, {recursive: true, force: true});
 }

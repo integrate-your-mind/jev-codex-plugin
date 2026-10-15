@@ -66,3 +66,14 @@ test('Claude staging failure preserves the marked package and cleans staging deb
     await rm(parent, {recursive: true, force: true});
   }
 });
+
+
+test('fresh Claude package failure leaves no partial target and retry succeeds', async () => {
+  const parent = await mkdtemp('/tmp/jev-claude-fresh-failure-');
+  const target = join(parent, 'jev-workflows-claude');
+  try {
+    assert.notEqual((await packageClaude(target, true)).code, 0);
+    assert.deepEqual(await readdir(parent), []);
+    assert.equal((await packageClaude(target)).code, 0);
+  } finally { await rm(parent, {recursive: true, force: true}); }
+});

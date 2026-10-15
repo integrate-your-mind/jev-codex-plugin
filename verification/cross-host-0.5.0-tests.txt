@@ -6,1300 +6,1312 @@ TAP version 13
 # Subtest: separates reservations, validated and legacy evaluations, HTTP errors, and unknown outcomes
 ok 1 - separates reservations, validated and legacy evaluations, HTTP errors, and unknown outcomes
   ---
-  duration_ms: 27.971208
+  duration_ms: 24.518583
   type: 'test'
   ...
 # Subtest: accounts known token fields independently and preserves unknown counts
 ok 2 - accounts known token fields independently and preserves unknown counts
   ---
-  duration_ms: 8.714541
+  duration_ms: 10.890833
   type: 'test'
   ...
 # Subtest: counts duplicate provider IDs separately and flags malformed receipts without reading symlinks
 ok 3 - counts duplicate provider IDs separately and flags malformed receipts without reading symlinks
   ---
-  duration_ms: 9.998166
+  duration_ms: 12.018834
   type: 'test'
   ...
 # Subtest: a null current fingerprint classifies known fingerprints as other and preserves every partition invariant
 ok 4 - a null current fingerprint classifies known fingerprints as other and preserves every partition invariant
   ---
-  duration_ms: 11.206625
+  duration_ms: 10.9745
   type: 'test'
   ...
 # Subtest: an absent receipt directory is a readable empty inventory without claiming zero provider billing
 ok 5 - an absent receipt directory is a readable empty inventory without claiming zero provider billing
   ---
-  duration_ms: 1.353333
+  duration_ms: 0.878584
   type: 'test'
   ...
 # Subtest: an unreadable receipt inventory reports unreadable evidence without claiming billing
 ok 6 - an unreadable receipt inventory reports unreadable evidence without claiming billing
   ---
-  duration_ms: 2.034
+  duration_ms: 1.67875
   type: 'test'
   ...
 # Subtest: uses a valid daily index and reports gaps without rewriting receipts
 ok 7 - uses a valid daily index and reports gaps without rewriting receipts
   ---
-  duration_ms: 15.202292
+  duration_ms: 4.412875
   type: 'test'
   ...
 # Subtest: falls back to the legacy inventory and reports a corrupt index
 ok 8 - falls back to the legacy inventory and reports a corrupt index
   ---
-  duration_ms: 5.780583
+  duration_ms: 6.064792
   type: 'test'
   ...
 # Subtest: evaluate_decisions mixed typed batch
     # Subtest: keeps media opt-in local, redacts preview assets, and validates Box responses
     ok 1 - keeps media opt-in local, redacts preview assets, and validates Box responses
       ---
-      duration_ms: 39.229333
+      duration_ms: 72.269792
       type: 'test'
       ...
     # Subtest: rejects Box without explicit images or an image reference before network
     ok 2 - rejects Box without explicit images or an image reference before network
       ---
-      duration_ms: 0.883167
+      duration_ms: 0.772917
       type: 'test'
       ...
     # Subtest: rejects credential-bearing asset names before preview metadata is returned
     ok 3 - rejects credential-bearing asset names before preview metadata is returned
       ---
-      duration_ms: 1.09525
+      duration_ms: 0.780375
       type: 'test'
       ...
     # Subtest: filters unavailable candidates, validates mixed answers, and separates best candidate from local policy
     ok 4 - filters unavailable candidates, validates mixed answers, and separates best candidate from local policy
       ---
-      duration_ms: 5.731084
+      duration_ms: 3.674042
       type: 'test'
       ...
     # Subtest: previews locally, rejects unsafe IDs and insufficient available candidates, and honors cancellation
     ok 5 - previews locally, rejects unsafe IDs and insufficient available candidates, and honors cancellation
       ---
-      duration_ms: 3.806625
+      duration_ms: 3.536166
       type: 'test'
       ...
     # Subtest: includes correlation in cache identity and preserves credential rotation boundaries
     ok 6 - includes correlation in cache identity and preserves credential rotation boundaries
       ---
-      duration_ms: 6.457042
+      duration_ms: 3.148
       type: 'test'
       ...
     # Subtest: uses the reserved evidence option as a neutral provider abstention
     ok 7 - uses the reserved evidence option as a neutral provider abstention
       ---
-      duration_ms: 3.320875
+      duration_ms: 1.102167
       type: 'test'
       ...
     1..7
 ok 9 - evaluate_decisions mixed typed batch
   ---
-  duration_ms: 61.219666
+  duration_ms: 86.077041
   type: 'suite'
   ...
 # Subtest: reports valid usage and the next UTC midnight without writing state
 ok 10 - reports valid usage and the next UTC midnight without writing state
   ---
-  duration_ms: 9.467875
+  duration_ms: 6.201875
   type: 'test'
   ...
 # Subtest: treats a missing budget as unused without creating its directory
 ok 11 - treats a missing budget as unused without creating its directory
   ---
-  duration_ms: 1.868125
+  duration_ms: 1.010166
   type: 'test'
   ...
 # Subtest: fails closed for malformed or oversized budget state
 ok 12 - fails closed for malformed or oversized budget state
   ---
-  duration_ms: 2.643292
+  duration_ms: 2.128833
   type: 'test'
   ...
 # Subtest: fails closed for a symlinked budget and does not read outside state
 ok 13 - fails closed for a symlinked budget and does not read outside state
   ---
-  duration_ms: 2.271
+  duration_ms: 1.256458
   type: 'test'
   ...
 # Subtest: uses the UTC date even when the local offset crosses a calendar boundary
 ok 14 - uses the UTC date even when the local offset crosses a calendar boundary
   ---
-  duration_ms: 0.937291
+  duration_ms: 0.798333
   type: 'test'
   ...
 # Subtest: reports reserved attempts while leaving remaining caps null when unlimited
 ok 15 - reports reserved attempts while leaving remaining caps null when unlimited
   ---
-  duration_ms: 1.456584
+  duration_ms: 1.046834
   type: 'test'
   ...
 # Subtest: Claude prompt creates a private turn UUID and prefixes the session identity
 ok 16 - Claude prompt creates a private turn UUID and prefixes the session identity
   ---
-  duration_ms: 85.565709
+  duration_ms: 38.735833
   type: 'test'
   ...
 # Subtest: multiple prompts replace the current turn and later tool hooks reuse it
 ok 17 - multiple prompts replace the current turn and later tool hooks reuse it
   ---
-  duration_ms: 43.784334
+  duration_ms: 63.554042
   type: 'test'
   ...
 # Subtest: PostToolUseFailure uses the common result path and restores the native event name
 ok 18 - PostToolUseFailure uses the common result path and restores the native event name
   ---
-  duration_ms: 65.120042
+  duration_ms: 38.984625
   type: 'test'
   ...
 # Subtest: Jev-owned tools stay silent and provider failures remain fail-open
 ok 19 - Jev-owned tools stay silent and provider failures remain fail-open
   ---
-  duration_ms: 22.805542
+  duration_ms: 30.068333
   type: 'test'
   ...
 # Subtest: Claude native Jev MCP tools stay silent while foreign MCP tools remain evaluable
 ok 20 - Claude native Jev MCP tools stay silent while foreign MCP tools remain evaluable
   ---
-  duration_ms: 21.71725
+  duration_ms: 24.934708
   type: 'test'
   ...
 # Subtest: unsafe symlink turn state fails open without replacing the link
 ok 21 - unsafe symlink turn state fails open without replacing the link
   ---
-  duration_ms: 2.181417
+  duration_ms: 4.115792
   type: 'test'
   ...
 # Subtest: disabled policy and oversized input do not create Claude turn state
 ok 22 - disabled policy and oversized input do not create Claude turn state
   ---
-  duration_ms: 1.381875
+  duration_ms: 7.539167
   type: 'test'
   ...
 # Subtest: built Claude and Codex hook entrypoints each emit exactly one JSON object
 ok 23 - built Claude and Codex hook entrypoints each emit exactly one JSON object
   ---
-  duration_ms: 277.273583
+  duration_ms: 345.339917
   type: 'test'
   ...
 # Subtest: Claude package carries native paths and protected credential path consistently
 ok 24 - Claude package carries native paths and protected credential path consistently
   ---
-  duration_ms: 259.949
+  duration_ms: 358.179625
   type: 'test'
   ...
 # Subtest: Claude staging failure preserves the marked package and cleans staging debris
 ok 25 - Claude staging failure preserves the marked package and cleans staging debris
   ---
-  duration_ms: 158.189
+  duration_ms: 129.187583
+  type: 'test'
+  ...
+# Subtest: fresh Claude package failure leaves no partial target and retry succeeds
+ok 26 - fresh Claude package failure leaves no partial target and retry succeeds
+  ---
+  duration_ms: 272.208708
   type: 'test'
   ...
 # Subtest: bundled CLI launches directly through a symlink and imports without executing
-ok 26 - bundled CLI launches directly through a symlink and imports without executing
+ok 27 - bundled CLI launches directly through a symlink and imports without executing
   ---
-  duration_ms: 111.92775
+  duration_ms: 151.623167
   type: 'test'
   ...
 # Subtest: standalone CLI
     # Subtest: parses commands and rejects malformed arguments
     ok 1 - parses commands and rejects malformed arguments
       ---
-      duration_ms: 0.821959
+      duration_ms: 0.702625
       type: 'test'
       ...
     # Subtest: bounds stdin before parsing and reports malformed JSON
     ok 2 - bounds stdin before parsing and reports malformed JSON
       ---
-      duration_ms: 0.250792
+      duration_ms: 0.236958
       type: 'test'
       ...
     # Subtest: rejects evaluate input unless --evaluate is explicit
     ok 3 - rejects evaluate input unless --evaluate is explicit
       ---
-      duration_ms: 0.229708
+      duration_ms: 0.218917
       type: 'test'
       ...
     # Subtest: previews through the real service without provider egress
     ok 4 - previews through the real service without provider egress
       ---
-      duration_ms: 2.456625
+      duration_ms: 2.238584
       type: 'test'
       ...
     # Subtest: serializes unavailable no-key evaluation without calling a provider
     ok 5 - serializes unavailable no-key evaluation without calling a provider
       ---
-      duration_ms: 0.292375
+      duration_ms: 0.277208
       type: 'test'
       ...
     # Subtest: keeps preview local and no-key evaluation provider-free for decision and completion
     ok 6 - keeps preview local and no-key evaluation provider-free for decision and completion
       ---
-      duration_ms: 2.681416
+      duration_ms: 2.292833
       type: 'test'
       ...
     # Subtest: dispatches the generic typed batch command with explicit evaluation gating
     ok 7 - dispatches the generic typed batch command with explicit evaluation gating
       ---
-      duration_ms: 0.164417
+      duration_ms: 0.179708
       type: 'test'
       ...
     # Subtest: sanitizes service and transport exceptions
     ok 8 - sanitizes service and transport exceptions
       ---
-      duration_ms: 0.3
+      duration_ms: 0.163625
       type: 'test'
       ...
     # Subtest: keeps status public and preserves assessed and abstained exit semantics with an injectable service
     ok 9 - keeps status public and preserves assessed and abstained exit semantics with an injectable service
       ---
-      duration_ms: 9.358917
+      duration_ms: 5.872458
       type: 'test'
       ...
     1..9
-ok 27 - standalone CLI
+ok 28 - standalone CLI
   ---
-  duration_ms: 17.28775
+  duration_ms: 12.951625
   type: 'suite'
   ...
 # Subtest: honors an injected environment for credentials, enablement and settings without ambient leakage
-ok 28 - honors an injected environment for credentials, enablement and settings without ambient leakage
+ok 29 - honors an injected environment for credentials, enablement and settings without ambient leakage
   ---
-  duration_ms: 2.068584
+  duration_ms: 1.168
   type: 'test'
   ...
 # Subtest: rejects an explicit preview with --evaluate before dispatch
-ok 29 - rejects an explicit preview with --evaluate before dispatch
+ok 30 - rejects an explicit preview with --evaluate before dispatch
   ---
-  duration_ms: 0.193375
+  duration_ms: 0.114041
   type: 'test'
   ...
 # Subtest: reports disabled evaluation even when a credential is configured
-ok 30 - reports disabled evaluation even when a credential is configured
+ok 31 - reports disabled evaluation even when a credential is configured
   ---
-  duration_ms: 0.52725
+  duration_ms: 0.539083
   type: 'test'
   ...
 # Subtest: credential file accepts one private literal assignment and rejects unsafe sources
-ok 31 - credential file accepts one private literal assignment and rejects unsafe sources
+ok 32 - credential file accepts one private literal assignment and rejects unsafe sources
   ---
-  duration_ms: 3.356167
+  duration_ms: 3.46075
   type: 'test'
   ...
 # Subtest: invalid configured source permits redacted local preview while evaluation fails closed
-ok 32 - invalid configured source permits redacted local preview while evaluation fails closed
+ok 33 - invalid configured source permits redacted local preview while evaluation fails closed
   ---
-  duration_ms: 36.932208
+  duration_ms: 28.554666
   type: 'test'
   ...
 # Subtest: rotation gives concurrent requests separate credential snapshots, receipts and cache entries
-ok 33 - rotation gives concurrent requests separate credential snapshots, receipts and cache entries
+ok 34 - rotation gives concurrent requests separate credential snapshots, receipts and cache entries
   ---
-  duration_ms: 4.705625
+  duration_ms: 5.435708
   type: 'test'
   ...
 # Subtest: standalone hook runs through a symlinked dist entrypoint
-ok 34 - standalone hook runs through a symlinked dist entrypoint
+ok 35 - standalone hook runs through a symlinked dist entrypoint
   ---
-  duration_ms: 95.742541
+  duration_ms: 64.317708
   type: 'test'
   ...
 # Subtest: bundled hook emits only a supplied validated candidate
-ok 35 - bundled hook emits only a supplied validated candidate
+ok 36 - bundled hook emits only a supplied validated candidate
   ---
-  duration_ms: 67.240375
+  duration_ms: 40.429167
   type: 'test'
   ...
 # Subtest: decision hook
     # Subtest: normalizes supported events and rejects missing native identity
     ok 1 - normalizes supported events and rejects missing native identity
       ---
-      duration_ms: 0.94
+      duration_ms: 0.92725
       type: 'test'
       ...
     # Subtest: keeps added lifecycle events advisory and uses only their supported output shape
     ok 2 - keeps added lifecycle events advisory and uses only their supported output shape
       ---
-      duration_ms: 56.213375
+      duration_ms: 22.618917
       type: 'test'
       ...
     # Subtest: calls classifyDecision with bounded redacted semantic input and fixed advisory output
     ok 3 - calls classifyDecision with bounded redacted semantic input and fixed advisory output
       ---
-      duration_ms: 2.947
+      duration_ms: 2.797875
       type: 'test'
       ...
     # Subtest: captures bounded successful string and MCP results plus freeform code without surfacing raw output
     ok 4 - captures bounded successful string and MCP results plus freeform code without surfacing raw output
       ---
-      duration_ms: 8.449333
+      duration_ms: 8.420666
       type: 'test'
       ...
     # Subtest: captures raw string tool input and failure evidence
     ok 5 - captures raw string tool input and failure evidence
       ---
-      duration_ms: 5.217792
+      duration_ms: 4.869541
       type: 'test'
       ...
     # Subtest: marks asynchronous tool responses as running instead of completed
     ok 6 - marks asynchronous tool responses as running instead of completed
       ---
-      duration_ms: 5.271291
+      duration_ms: 5.7515
       type: 'test'
       ...
     # Subtest: fails open for disabled policy, Jev recursion, duplicate events, and cap exhaustion
     ok 7 - fails open for disabled policy, Jev recursion, duplicate events, and cap exhaustion
       ---
-      duration_ms: 3.779833
+      duration_ms: 4.324584
       type: 'test'
       ...
     # Subtest: evaluates concurrent distinct events under unlimited policy and atomically deduplicates identical events
     ok 8 - evaluates concurrent distinct events under unlimited policy and atomically deduplicates identical events
       ---
-      duration_ms: 2.938041
+      duration_ms: 4.151292
       type: 'test'
       ...
     # Subtest: reports oversized hook input only when automation is enabled
     ok 9 - reports oversized hook input only when automation is enabled
       ---
-      duration_ms: 1.125584
+      duration_ms: 1.48075
       type: 'test'
       ...
     # Subtest: classifies a bounded prompt, reuses it for tool relevance, and injects fixed guidance
     ok 10 - classifies a bounded prompt, reuses it for tool relevance, and injects fixed guidance
       ---
-      duration_ms: 15.02
+      duration_ms: 18.04425
       type: 'test'
       ...
     # Subtest: includes bounded final assistant messages and expires the private prompt cache
     ok 11 - includes bounded final assistant messages and expires the private prompt cache
       ---
-      duration_ms: 13.931417
+      duration_ms: 12.134625
       type: 'test'
       ...
     # Subtest: carries same-turn tool summaries into Stop and excludes other-turn summaries
     ok 12 - carries same-turn tool summaries into Stop and excludes other-turn summaries
       ---
-      duration_ms: 18.317541
+      duration_ms: 5.852
       type: 'test'
       ...
     # Subtest: marks stale same-turn tool summaries and does not use them as evidence
     ok 13 - marks stale same-turn tool summaries and does not use them as evidence
       ---
-      duration_ms: 52.063959
+      duration_ms: 3.77875
       type: 'test'
       ...
     # Subtest: keeps oversized task context valid JSON and records explicit truncation flags
     ok 14 - keeps oversized task context valid JSON and records explicit truncation flags
       ---
-      duration_ms: 61.089125
+      duration_ms: 52.607167
       type: 'test'
       ...
     # Subtest: bounds a valid large saved task context before the real service validates and calls the provider
     ok 15 - bounds a valid large saved task context before the real service validates and calls the provider
       ---
-      duration_ms: 129.3305
+      duration_ms: 64.981084
       type: 'test'
       ...
     # Subtest: retains the newest constraint and correction in the strict fallback context budget
     ok 16 - retains the newest constraint and correction in the strict fallback context budget
       ---
-      duration_ms: 9.978083
+      duration_ms: 11.54
       type: 'test'
       ...
     # Subtest: writes bounded private invocation receipts without raw context
     ok 17 - writes bounded private invocation receipts without raw context
       ---
-      duration_ms: 2.301083
+      duration_ms: 2.549167
       type: 'test'
       ...
     # Subtest: does not send a retired credential from a queued hook event after file rotation
     ok 18 - does not send a retired credential from a queued hook event after file rotation
       ---
-      duration_ms: 4.127167
+      duration_ms: 4.576041
       type: 'test'
       ...
     # Subtest: uses the hook-entry credential for redaction and provider authentication across rotation
     ok 19 - uses the hook-entry credential for redaction and provider authentication across rotation
       ---
-      duration_ms: 34.775792
+      duration_ms: 31.950292
       type: 'test'
       ...
     # Subtest: deduplicates each SubagentStop agent independently within a shared turn
     ok 20 - deduplicates each SubagentStop agent independently within a shared turn
       ---
-      duration_ms: 52.598416
+      duration_ms: 4.644125
       type: 'test'
       ...
     # Subtest: reports a provider that ignores abort as an explicit hook timeout
     ok 21 - reports a provider that ignores abort as an explicit hook timeout
       ---
-      duration_ms: 37.441125
+      duration_ms: 27.842542
       type: 'test'
       ...
     # Subtest: clips hook context on UTF-8 boundaries while retaining the tail
     ok 22 - clips hook context on UTF-8 boundaries while retaining the tail
       ---
-      duration_ms: 95.793084
+      duration_ms: 10.324042
       type: 'test'
       ...
     # Subtest: uses a supplied single candidate instead of inventing a fallback catalog
     ok 23 - uses a supplied single candidate instead of inventing a fallback catalog
       ---
-      duration_ms: 42.143583
+      duration_ms: 2.24975
       type: 'test'
       ...
     # Subtest: prefers the current event candidate catalog over a stale saved catalog
     ok 24 - prefers the current event candidate catalog over a stale saved catalog
       ---
-      duration_ms: 49.307875
+      duration_ms: 10.272041
       type: 'test'
       ...
     # Subtest: rejects duplicate supplied candidate IDs instead of resolving conflicting availability by order
     ok 25 - rejects duplicate supplied candidate IDs instead of resolving conflicting availability by order
       ---
-      duration_ms: 6.191959
+      duration_ms: 1.940625
       type: 'test'
       ...
     # Subtest: rejects non-boolean candidate availability instead of coercing it to available
     ok 26 - rejects non-boolean candidate availability instead of coercing it to available
       ---
-      duration_ms: 12.121916
+      duration_ms: 5.769917
       type: 'test'
       ...
     # Subtest: asks about and emits the selected supplied candidate through the real service boundary
     ok 27 - asks about and emits the selected supplied candidate through the real service boundary
       ---
-      duration_ms: 100.501
+      duration_ms: 27.606958
       type: 'test'
       ...
     # Subtest: rejects foreign, unavailable, and injection-shaped assessed choices at the hook boundary
     ok 28 - rejects foreign, unavailable, and injection-shaped assessed choices at the hook boundary
       ---
-      duration_ms: 44.710834
+      duration_ms: 8.171333
       type: 'test'
       ...
     # Subtest: keeps a valid supplied candidate private when the service abstains
     ok 29 - keeps a valid supplied candidate private when the service abstains
       ---
-      duration_ms: 16.34825
+      duration_ms: 2.332792
       type: 'test'
       ...
     # Subtest: retains a real provider insufficient-evidence abstention only in the compact receipt
     ok 30 - retains a real provider insufficient-evidence abstention only in the compact receipt
       ---
-      duration_ms: 100.745
+      duration_ms: 27.90275
       type: 'test'
       ...
     # Subtest: does not call the provider after a contended context lock consumes the hook budget
     ok 31 - does not call the provider after a contended context lock consumes the hook budget
       ---
-      duration_ms: 40.8375
+      duration_ms: 32.490167
       type: 'test'
       ...
     # Subtest: preserves structured argument values, task context, and an explicit candidate catalog
     ok 32 - preserves structured argument values, task context, and an explicit candidate catalog
       ---
-      duration_ms: 16.335208
+      duration_ms: 18.982792
       type: 'test'
       ...
     # Subtest: skips pure Jev wrappers while retaining mixed real work for evaluation
     ok 33 - skips pure Jev wrappers while retaining mixed real work for evaluation
       ---
-      duration_ms: 2.504375
+      duration_ms: 3.059
       type: 'test'
       ...
     # Subtest: records invocation origin, timestamp, correlation, and candidate digest
     ok 34 - records invocation origin, timestamp, correlation, and candidate digest
       ---
-      duration_ms: 2.338083
+      duration_ms: 2.766708
       type: 'test'
       ...
     # Subtest: reports service errors and fixed receipt-backed abstention details
     ok 35 - reports service errors and fixed receipt-backed abstention details
       ---
-      duration_ms: 6.219875
+      duration_ms: 4.694958
       type: 'test'
       ...
     1..35
-ok 36 - decision hook
+ok 37 - decision hook
   ---
-  duration_ms: 1059.359958
+  duration_ms: 458.052167
   type: 'suite'
   ...
 # Subtest: decision input and preview boundaries
     # Subtest: selects custom general taxonomies and tool/model/task domains with a valid distribution
     ok 1 - selects custom general taxonomies and tool/model/task domains with a valid distribution
       ---
-      duration_ms: 110.531125
+      duration_ms: 30.606167
       type: 'test'
       ...
     # Subtest: previews with zero egress and redacts question, context, candidate descriptions, metadata, and evidence
     ok 2 - previews with zero egress and redacts question, context, candidate descriptions, metadata, and evidence
       ---
-      duration_ms: 0.526625
+      duration_ms: 0.823458
       type: 'test'
       ...
     # Subtest: defaults an omitted mode to preview without fetch, reserve, or save
     ok 3 - defaults an omitted mode to preview without fetch, reserve, or save
       ---
-      duration_ms: 0.218083
+      duration_ms: 1.495125
       type: 'test'
       ...
     # Subtest: rejects duplicate, reserved, and credential-bearing candidate IDs before egress
     ok 4 - rejects duplicate, reserved, and credential-bearing candidate IDs before egress
       ---
-      duration_ms: 1.658334
+      duration_ms: 2.018084
       type: 'test'
       ...
     # Subtest: rejects an empty caller candidate catalog before egress
     ok 5 - rejects an empty caller candidate catalog before egress
       ---
-      duration_ms: 0.3235
+      duration_ms: 0.214209
       type: 'test'
       ...
     # Subtest: abstains with zero egress when every candidate is unavailable
     ok 6 - abstains with zero egress when every candidate is unavailable
       ---
-      duration_ms: 0.245166
+      duration_ms: 0.130083
       type: 'test'
       ...
     1..6
-ok 37 - decision input and preview boundaries
+ok 38 - decision input and preview boundaries
   ---
-  duration_ms: 114.166791
+  duration_ms: 36.490083
   type: 'suite'
   ...
 # Subtest: decision evaluation semantics
     # Subtest: does not allow an unavailable candidate to become the answer
     ok 1 - does not allow an unavailable candidate to become the answer
       ---
-      duration_ms: 2.843458
+      duration_ms: 2.709875
       type: 'test'
       ...
     # Subtest: abstains for low confidence while preserving the provider best candidate
     ok 2 - abstains for low confidence while preserving the provider best candidate
       ---
-      duration_ms: 1.210292
+      duration_ms: 1.11675
       type: 'test'
       ...
     # Subtest: lets the provider abstain on missing distinctions while retaining the best actual candidate separately
     ok 3 - lets the provider abstain on missing distinctions while retaining the best actual candidate separately
       ---
-      duration_ms: 0.990917
+      duration_ms: 1.060375
       type: 'test'
       ...
     # Subtest: evaluates one caller candidate against the evidence abstention option
     ok 4 - evaluates one caller candidate against the evidence abstention option
       ---
-      duration_ms: 1.30975
+      duration_ms: 1.066417
       type: 'test'
       ...
     # Subtest: abstains when confidence is high but the selected probability is below the floor
     ok 5 - abstains when confidence is high but the selected probability is below the floor
       ---
-      duration_ms: 2.144334
+      duration_ms: 1.864584
       type: 'test'
       ...
     # Subtest: supports explicit reversible ranking without presenting it as authority
     ok 6 - supports explicit reversible ranking without presenting it as authority
       ---
-      duration_ms: 1.960709
+      duration_ms: 1.479125
       type: 'test'
       ...
     # Subtest: honors an explicit context constraint without imposing a hidden least-cost choice rule
     ok 7 - honors an explicit context constraint without imposing a hidden least-cost choice rule
       ---
-      duration_ms: 0.686083
+      duration_ms: 0.762375
       type: 'test'
       ...
     # Subtest: keeps selected probability and confidence separate and does not collide cache entries across candidates
     ok 8 - keeps selected probability and confidence separate and does not collide cache entries across candidates
       ---
-      duration_ms: 1.493917
+      duration_ms: 1.509417
       type: 'test'
       ...
     # Subtest: persists a bounded receipt without raw credentials or malicious provider text
     ok 9 - persists a bounded receipt without raw credentials or malicious provider text
       ---
-      duration_ms: 2.030833
+      duration_ms: 0.897667
       type: 'test'
       ...
     # Subtest: rejects malformed and oversized decision data without egress
     ok 10 - rejects malformed and oversized decision data without egress
       ---
-      duration_ms: 2.125416
+      duration_ms: 1.847042
       type: 'test'
       ...
     # Subtest: rejects candidate metadata with more than sixteen keys before egress
     ok 11 - rejects candidate metadata with more than sixteen keys before egress
       ---
-      duration_ms: 0.162417
+      duration_ms: 0.132958
       type: 'test'
       ...
     # Subtest: does not leak a credential embedded in a metadata key during preview
     ok 12 - does not leak a credential embedded in a metadata key during preview
       ---
-      duration_ms: 0.262875
+      duration_ms: 0.179833
       type: 'test'
       ...
     1..12
-ok 38 - decision evaluation semantics
+ok 39 - decision evaluation semantics
   ---
-  duration_ms: 17.691917
+  duration_ms: 15.075042
   type: 'suite'
   ...
 # Subtest: hook normalization
     # Subtest: normalizes a completed native unified exec failure
     ok 1 - normalizes a completed native unified exec failure
       ---
-      duration_ms: 0.462708
+      duration_ms: 0.391291
       type: 'test'
       ...
     # Subtest: normalizes the documented model-facing failure string
     ok 2 - normalizes the documented model-facing failure string
       ---
-      duration_ms: 0.268791
+      duration_ms: 0.194959
       type: 'test'
       ...
     # Subtest: marks provider output that is clipped to the bounded payload
     ok 3 - marks provider output that is clipped to the bounded payload
       ---
-      duration_ms: 0.098667
+      duration_ms: 0.140792
       type: 'test'
       ...
     # Subtest: does not parse generic error text, successful output, or pending sessions
     ok 4 - does not parse generic error text, successful output, or pending sessions
       ---
-      duration_ms: 0.078208
+      duration_ms: 0.073166
       type: 'test'
       ...
     1..4
-ok 39 - hook normalization
+ok 40 - hook normalization
   ---
-  duration_ms: 25.104167
+  duration_ms: 4.245083
   type: 'suite'
   ...
 # Subtest: hook execution
     # Subtest: does not call the service while disabled or for a successful Bash call
     ok 1 - does not call the service while disabled or for a successful Bash call
       ---
-      duration_ms: 13.011209
+      duration_ms: 3.766
       type: 'test'
       ...
     # Subtest: calls once for an allowed failed command and deduplicates the same event
     ok 2 - calls once for an allowed failed command and deduplicates the same event
       ---
-      duration_ms: 23.819333
+      duration_ms: 1.929542
       type: 'test'
       ...
     # Subtest: enforces a realpath workspace boundary and never reads transcript_path
     ok 3 - enforces a realpath workspace boundary and never reads transcript_path
       ---
-      duration_ms: 15.322208
+      duration_ms: 0.900875
       type: 'test'
       ...
     # Subtest: does not require an API key and honors the explicit service disable flag
     ok 4 - does not require an API key and honors the explicit service disable flag
       ---
-      duration_ms: 2.750542
+      duration_ms: 0.871916
       type: 'test'
       ...
     # Subtest: rejects oversized stdin before invoking the service
     ok 5 - rejects oversized stdin before invoking the service
       ---
-      duration_ms: 1.041583
+      duration_ms: 0.842167
       type: 'test'
       ...
     1..5
-ok 40 - hook execution
+ok 41 - hook execution
   ---
-  duration_ms: 56.455875
+  duration_ms: 8.62325
   type: 'suite'
   ...
 # Subtest: bundled MCP server
     # Subtest: lists all tools and serves isolated previews, context, and outcome records
     ok 1 - lists all tools and serves isolated previews, context, and outcome records
       ---
-      duration_ms: 233.96825
+      duration_ms: 145.335542
       type: 'test'
       ...
     # Subtest: observes protected key rotation in one long-running MCP process
     ok 2 - observes protected key rotation in one long-running MCP process
       ---
-      duration_ms: 79.824042
+      duration_ms: 78.453917
       type: 'test'
       ...
     1..2
-ok 41 - bundled MCP server
+ok 42 - bundled MCP server
   ---
-  duration_ms: 314.477542
+  duration_ms: 224.298667
   type: 'suite'
   ...
 # Subtest: experimental media wire validation
     # Subtest: accepts bounded PNG and JPEG JSON assets
     ok 1 - accepts bounded PNG and JPEG JSON assets
       ---
-      duration_ms: 22.179959
+      duration_ms: 19.42925
       type: 'test'
       ...
     # Subtest: accepts a real JPEG at the documented maximum dimensions
     ok 2 - accepts a real JPEG at the documented maximum dimensions
       ---
-      duration_ms: 135.2985
+      duration_ms: 130.250458
       type: 'test'
       ...
     # Subtest: rejects malformed base64 and mismatched media
     ok 3 - rejects malformed base64 and mismatched media
       ---
-      duration_ms: 2.493833
+      duration_ms: 2.646625
       type: 'test'
       ...
     # Subtest: enforces documented image dimensions
     ok 4 - enforces documented image dimensions
       ---
-      duration_ms: 19.598
+      duration_ms: 19.242792
       type: 'test'
       ...
     # Subtest: rejects CRC-correct but undecodable PNG IDAT data
     ok 5 - rejects CRC-correct but undecodable PNG IDAT data
       ---
-      duration_ms: 2.314042
+      duration_ms: 2.722417
       type: 'test'
       ...
     # Subtest: bounds inflated PNG scanline output before the decoder
     ok 6 - bounds inflated PNG scanline output before the decoder
       ---
-      duration_ms: 1.408875
+      duration_ms: 1.473417
       type: 'test'
       ...
     # Subtest: rejects APNG animation chunks
     ok 7 - rejects APNG animation chunks
       ---
-      duration_ms: 0.646125
+      duration_ms: 0.663458
       type: 'test'
       ...
     # Subtest: rejects a JPEG with headers but no decodable entropy stream
     ok 8 - rejects a JPEG with headers but no decodable entropy stream
       ---
-      duration_ms: 0.738709
+      duration_ms: 0.709583
       type: 'test'
       ...
     # Subtest: rejects unused and missing references without exposing content
     ok 9 - rejects unused and missing references without exposing content
       ---
-      duration_ms: 4.195167
+      duration_ms: 4.172542
       type: 'test'
       ...
     # Subtest: validates Box answer bounds and nullable confidence
     ok 10 - validates Box answer bounds and nullable confidence
       ---
-      duration_ms: 1.117459
+      duration_ms: 1.072417
       type: 'test'
       ...
     # Subtest: bounds encoded size before allocating the decoded image
     ok 11 - bounds encoded size before allocating the decoded image
       ---
-      duration_ms: 17.7715
+      duration_ms: 16.01325
       type: 'test'
       ...
     # Subtest: preserves a prototype-like asset reference as data
     ok 12 - preserves a prototype-like asset reference as data
       ---
-      duration_ms: 1.43225
+      duration_ms: 1.469167
       type: 'test'
       ...
     1..12
-ok 42 - experimental media wire validation
+ok 43 - experimental media wire validation
   ---
-  duration_ms: 209.962833
+  duration_ms: 200.703625
   type: 'suite'
   ...
 # Subtest: records a caller observation only against an existing receipt
-ok 43 - records a caller observation only against an existing receipt
+ok 44 - records a caller observation only against an existing receipt
   ---
-  duration_ms: 17.25025
+  duration_ms: 15.218125
   type: 'test'
   ...
 # Subtest: rejects private claims, unknown fields, duplicate evidence, and missing receipts
-ok 44 - rejects private claims, unknown fields, duplicate evidence, and missing receipts
+ok 45 - rejects private claims, unknown fields, duplicate evidence, and missing receipts
   ---
-  duration_ms: 2.393542
+  duration_ms: 4.117375
   type: 'test'
   ...
 # Subtest: neutral legacy package passes user state mode consistently to MCP and hooks
-ok 45 - neutral legacy package passes user state mode consistently to MCP and hooks
+ok 46 - neutral legacy package passes user state mode consistently to MCP and hooks
   ---
-  duration_ms: 85.657
+  duration_ms: 77.554458
   type: 'test'
   ...
 # Subtest: explicit legacy state directory remains shared by MCP and hooks
-ok 46 - explicit legacy state directory remains shared by MCP and hooks
+ok 47 - explicit legacy state directory remains shared by MCP and hooks
   ---
-  duration_ms: 100.991792
+  duration_ms: 63.25325
   type: 'test'
   ...
 # Subtest: marked legacy package regeneration removes stale generated files and preserves refusal state
-ok 47 - marked legacy package regeneration removes stale generated files and preserves refusal state
+ok 48 - marked legacy package regeneration removes stale generated files and preserves refusal state
   ---
-  duration_ms: 144.023833
+  duration_ms: 144.661792
+  type: 'test'
+  ...
+# Subtest: fresh legacy package failure leaves no partial target and retry succeeds
+ok 49 - fresh legacy package failure leaves no partial target and retry succeeds
+  ---
+  duration_ms: 117.348958
   type: 'test'
   ...
 # Subtest: standalone skill packaging
     # Subtest: creates exactly three isolated ZIPs, manifest, and checksums
     ok 1 - creates exactly three isolated ZIPs, manifest, and checksums
       ---
-      duration_ms: 371.845459
+      duration_ms: 363.617459
       type: 'test'
       ...
     # Subtest: runs each actual bundled CLI for status, preview, and no-key evaluation after extraction
     ok 2 - runs each actual bundled CLI for status, preview, and no-key evaluation after extraction
       ---
-      duration_ms: 857.72475
+      duration_ms: 943.668417
       type: 'test'
       ...
     # Subtest: rejects a non-empty output directory before creating artifacts
     ok 3 - rejects a non-empty output directory before creating artifacts
       ---
-      duration_ms: 37.873708
+      duration_ms: 45.858125
       type: 'test'
       ...
     1..3
-ok 48 - standalone skill packaging
+ok 50 - standalone skill packaging
   ---
-  duration_ms: 1268.052625
+  duration_ms: 1353.658208
   type: 'suite'
   ...
 # Subtest: policy budget changes preserve existing usage and affect an already running service
-ok 49 - policy budget changes preserve existing usage and affect an already running service
+ok 51 - policy budget changes preserve existing usage and affect an already running service
   ---
-  duration_ms: 65.913583
+  duration_ms: 62.461125
   type: 'test'
   ...
 # Subtest: automation policy
     # Subtest: defaults to disabled and writes a bounded private policy on first use
     ok 1 - defaults to disabled and writes a bounded private policy on first use
       ---
-      duration_ms: 6.682417
+      duration_ms: 4.082209
       type: 'test'
       ...
     # Subtest: accepts unlimited or user-selected caps without a plugin usage ceiling
     ok 2 - accepts unlimited or user-selected caps without a plugin usage ceiling
       ---
-      duration_ms: 0.605125
+      duration_ms: 0.708375
       type: 'test'
       ...
     # Subtest: adds safe defaults when reading an older policy without daily budgets
     ok 3 - adds safe defaults when reading an older policy without daily budgets
       ---
-      duration_ms: 1.022666
+      duration_ms: 1.042709
       type: 'test'
       ...
     # Subtest: rejects a policy path symlink instead of following it
     ok 4 - rejects a policy path symlink instead of following it
       ---
-      duration_ms: 0.50825
+      duration_ms: 0.695084
       type: 'test'
       ...
     # Subtest: canonicalizes roots and fails closed when a configured root is retargeted
     ok 5 - canonicalizes roots and fails closed when a configured root is retargeted
       ---
-      duration_ms: 1.481333
+      duration_ms: 3.499542
       type: 'test'
       ...
     1..5
-ok 50 - automation policy
+ok 52 - automation policy
   ---
-  duration_ms: 13.023959
+  duration_ms: 12.422833
   type: 'suite'
   ...
 # Subtest: provider response validation
     # Subtest: consumes the shared conformance fixtures for pinned and aliased model selectors
     ok 1 - consumes the shared conformance fixtures for pinned and aliased model selectors
       ---
-      duration_ms: 3.621083
+      duration_ms: 3.757458
       type: 'test'
       ...
     # Subtest: accepts independently nullable usage fields
     ok 2 - accepts independently nullable usage fields
       ---
-      duration_ms: 0.432625
+      duration_ms: 0.408666
       type: 'test'
       ...
     # Subtest: rejects malformed probabilities, wrong choices, malformed noul, and schema-invalid responses
     ok 3 - rejects malformed probabilities, wrong choices, malformed noul, and schema-invalid responses
       ---
-      duration_ms: 0.390292
+      duration_ms: 0.358584
       type: 'test'
       ...
     # Subtest: requires exact answer IDs and exact probability keys
     ok 4 - requires exact answer IDs and exact probability keys
       ---
-      duration_ms: 0.163334
+      duration_ms: 0.149458
       type: 'test'
       ...
     # Subtest: compares probability keys without delimiter collisions and exposes no response-controlled detail
     ok 5 - compares probability keys without delimiter collisions and exposes no response-controlled detail
       ---
-      duration_ms: 0.11425
+      duration_ms: 0.105125
       type: 'test'
       ...
     # Subtest: distinguishes response shape and choice consistency failures with fixed stages
     ok 6 - distinguishes response shape and choice consistency failures with fixed stages
       ---
-      duration_ms: 0.10125
+      duration_ms: 0.136167
       type: 'test'
       ...
     # Subtest: validates structured Score legends, distributions, and weighted values exactly
     ok 7 - validates structured Score legends, distributions, and weighted values exactly
       ---
-      duration_ms: 1.3775
+      duration_ms: 1.25875
       type: 'test'
       ...
     # Subtest: accepts semantically equal Score legends when nested object keys are reordered
     ok 8 - accepts semantically equal Score legends when nested object keys are reordered
       ---
-      duration_ms: 0.744833
+      duration_ms: 0.68725
       type: 'test'
       ...
     # Subtest: records bounded numeric diagnostics for inconsistent distributions and argmax choices
     ok 9 - records bounded numeric diagnostics for inconsistent distributions and argmax choices
       ---
-      duration_ms: 1.3035
+      duration_ms: 0.262042
       type: 'test'
       ...
     1..9
-ok 51 - provider response validation
+ok 53 - provider response validation
   ---
-  duration_ms: 9.124292
+  duration_ms: 7.82825
   type: 'suite'
   ...
 # Subtest: provider transport
     # Subtest: uses the fixed API endpoint, POST, bearer auth, and redirect error mode
     ok 1 - uses the fixed API endpoint, POST, bearer auth, and redirect error mode
       ---
-      duration_ms: 18.439792
+      duration_ms: 30.133834
       type: 'test'
       ...
     # Subtest: adds the opt-in long-context header without changing the request bound
     ok 2 - adds the opt-in long-context header without changing the request bound
       ---
-      duration_ms: 0.397
+      duration_ms: 0.362292
       type: 'test'
       ...
     # Subtest: records only safe IDs from the three allowlisted response headers
     ok 3 - records only safe IDs from the three allowlisted response headers
       ---
-      duration_ms: 0.837792
+      duration_ms: 0.8155
       type: 'test'
       ...
     # Subtest: captures only bounded Retry-After values without retrying
     ok 4 - captures only bounded Retry-After values without retrying
       ---
-      duration_ms: 0.309
+      duration_ms: 0.296083
       type: 'test'
       ...
     # Subtest: maps HTTP failures to sanitized provider codes without echoing provider bodies
     ok 5 - maps HTTP failures to sanitized provider codes without echoing provider bodies
       ---
-      duration_ms: 1.1375
+      duration_ms: 1.117833
       type: 'test'
       ...
     # Subtest: retains only recognized Codex network-policy block codes from 403 responses
     ok 6 - retains only recognized Codex network-policy block codes from 403 responses
       ---
-      duration_ms: 0.479666
+      duration_ms: 0.468458
       type: 'test'
       ...
     # Subtest: maps missing, malformed, and empty successful response bodies to fixed validation stages
     ok 7 - maps missing, malformed, and empty successful response bodies to fixed validation stages
       ---
-      duration_ms: 0.341417
+      duration_ms: 0.287125
       type: 'test'
       ...
     # Subtest: bounds response bodies and maps cancellation and timeout separately
     ok 8 - bounds response bodies and maps cancellation and timeout separately
       ---
-      duration_ms: 12.265917
+      duration_ms: 11.793625
       type: 'test'
       ...
     1..8
-ok 52 - provider transport
+ok 54 - provider transport
   ---
-  duration_ms: 34.418625
+  duration_ms: 45.509125
   type: 'suite'
   ...
 # Subtest: tool-result text redacts JSON tokens and signed download credentials
-ok 53 - tool-result text redacts JSON tokens and signed download credentials
+ok 55 - tool-result text redacts JSON tokens and signed download credentials
   ---
-  duration_ms: 0.741917
+  duration_ms: 0.888041
   type: 'test'
   ...
 # Subtest: common exported credentials and cookie headers are removed
-ok 54 - common exported credentials and cookie headers are removed
+ok 56 - common exported credentials and cookie headers are removed
   ---
-  duration_ms: 1.024375
+  duration_ms: 0.778792
   type: 'test'
   ...
 # Subtest: diffuse probabilities cannot become confident advice
-ok 55 - diffuse probabilities cannot become confident advice
+ok 57 - diffuse probabilities cannot become confident advice
   ---
-  duration_ms: 20.6735
+  duration_ms: 25.967042
   type: 'test'
   ...
 # Subtest: redacted evidence identifiers cannot collide or escape through receipts
-ok 56 - redacted evidence identifiers cannot collide or escape through receipts
+ok 58 - redacted evidence identifiers cannot collide or escape through receipts
   ---
-  duration_ms: 0.719
+  duration_ms: 0.940084
   type: 'test'
   ...
 # Subtest: a different provider model cannot masquerade as the pinned release
-ok 57 - a different provider model cannot masquerade as the pinned release
+ok 59 - a different provider model cannot masquerade as the pinned release
   ---
-  duration_ms: 0.165167
+  duration_ms: 0.23975
   type: 'test'
   ...
 # Subtest: service preview and input gates
     # Subtest: fails locally for unknown model selectors and sends the selected alias
     ok 1 - fails locally for unknown model selectors and sends the selected alias
       ---
-      duration_ms: 26.149416
+      duration_ms: 23.081959
       type: 'test'
       ...
     # Subtest: previews locally with redacted evidence and never calls fetch
     ok 2 - previews locally with redacted evidence and never calls fetch
       ---
-      duration_ms: 0.315417
+      duration_ms: 0.475834
       type: 'test'
       ...
     # Subtest: skips disabled evaluation and reports missing credentials without egress
     ok 3 - skips disabled evaluation and reports missing credentials without egress
       ---
-      duration_ms: 0.5935
+      duration_ms: 0.697083
       type: 'test'
       ...
     # Subtest: skips successful commands, abstains on incomplete commands, and abstains without completion evidence
     ok 4 - skips successful commands, abstains on incomplete commands, and abstains without completion evidence
       ---
-      duration_ms: 0.571458
+      duration_ms: 0.685709
       type: 'test'
       ...
     # Subtest: batches independent completion-criterion signals while preserving the aggregate support question
     ok 5 - batches independent completion-criterion signals while preserving the aggregate support question
       ---
-      duration_ms: 0.316875
+      duration_ms: 0.357
       type: 'test'
       ...
     # Subtest: returns validated individual criterion signals alongside aggregate completion support
     ok 6 - returns validated individual criterion signals alongside aggregate completion support
       ---
-      duration_ms: 2.3525
+      duration_ms: 1.764416
       type: 'test'
       ...
     # Subtest: enforces strict input, duplicate IDs, and the payload byte limit
     ok 7 - enforces strict input, duplicate IDs, and the payload byte limit
       ---
-      duration_ms: 2.023417
+      duration_ms: 1.937375
       type: 'test'
       ...
     # Subtest: accepts explicit safe-integer environment limits above the removed ceilings and preserves unlimited defaults
     ok 8 - accepts explicit safe-integer environment limits above the removed ceilings and preserves unlimited defaults
       ---
-      duration_ms: 0.281833
+      duration_ms: 0.321958
       type: 'test'
       ...
     1..8
-ok 58 - service preview and input gates
+ok 60 - service preview and input gates
   ---
-  duration_ms: 33.144792
+  duration_ms: 29.897208
   type: 'suite'
   ...
 # Subtest: service evaluation and persistence
     # Subtest: sends only the fixed provider request and persists a successful receipt
     ok 1 - sends only the fixed provider request and persists a successful receipt
       ---
-      duration_ms: 1.789042
+      duration_ms: 1.8955
       type: 'test'
       ...
     # Subtest: abstains on low confidence and caches completed assessments while coalescing duplicate calls
     ok 2 - abstains on low confidence and caches completed assessments while coalescing duplicate calls
       ---
-      duration_ms: 7.355584
+      duration_ms: 7.206208
       type: 'test'
       ...
     # Subtest: persists response facts for HTTP errors and leaves pre-response timeout and cancellation unknown
     ok 3 - persists response facts for HTTP errors and leaves pre-response timeout and cancellation unknown
       ---
-      duration_ms: 10.973333
+      duration_ms: 12.3615
       type: 'test'
       ...
     # Subtest: exposes only the credential fingerprint in status and receipts
     ok 4 - exposes only the credential fingerprint in status and receipts
       ---
-      duration_ms: 0.987333
+      duration_ms: 1.516958
       type: 'test'
       ...
     # Subtest: reports budget exhaustion and store failures without calling or exposing provider data
     ok 5 - reports budget exhaustion and store failures without calling or exposing provider data
       ---
-      duration_ms: 2.434833
+      duration_ms: 1.694584
       type: 'test'
       ...
     1..5
-ok 59 - service evaluation and persistence
+ok 61 - service evaluation and persistence
   ---
-  duration_ms: 23.798875
+  duration_ms: 24.946542
   type: 'suite'
   ...
 # Subtest: JEV_STATE_DIRECTORY is the validated host-local state override
-ok 60 - JEV_STATE_DIRECTORY is the validated host-local state override
+ok 62 - JEV_STATE_DIRECTORY is the validated host-local state override
   ---
-  duration_ms: 0.395791
+  duration_ms: 0.348166
   type: 'test'
   ...
 # Subtest: neutral user state mode bypasses host plugin data while portable mode preserves it
-ok 61 - neutral user state mode bypasses host plugin data while portable mode preserves it
+ok 63 - neutral user state mode bypasses host plugin data while portable mode preserves it
   ---
-  duration_ms: 0.060208
+  duration_ms: 0.063584
   type: 'test'
   ...
 # Subtest: file budgets are shared across instances and never overspend on concurrent calls
-ok 62 - file budgets are shared across instances and never overspend on concurrent calls
+ok 64 - file budgets are shared across instances and never overspend on concurrent calls
   ---
-  duration_ms: 141.036667
+  duration_ms: 161.2625
   type: 'test'
   ...
 # Subtest: invalid or symlinked budget state fails closed rather than resetting usage
-ok 63 - invalid or symlinked budget state fails closed rather than resetting usage
+ok 65 - invalid or symlinked budget state fails closed rather than resetting usage
   ---
-  duration_ms: 1.569
+  duration_ms: 1.831
   type: 'test'
   ...
 # Subtest: unlimited stores retain usage past the former default caps
-ok 64 - unlimited stores retain usage past the former default caps
+ok 66 - unlimited stores retain usage past the former default caps
   ---
-  duration_ms: 822.501084
+  duration_ms: 817.145
   type: 'test'
   ...
 # Subtest: rejects invalid reservation byte sizes before touching shared state
-ok 65 - rejects invalid reservation byte sizes before touching shared state
+ok 67 - rejects invalid reservation byte sizes before touching shared state
   ---
-  duration_ms: 0.932917
+  duration_ms: 1.354083
   type: 'test'
   ...
 # Subtest: reclaims only an old lock whose recorded writer is definitely gone
-ok 66 - reclaims only an old lock whose recorded writer is definitely gone
+ok 68 - reclaims only an old lock whose recorded writer is definitely gone
   ---
-  duration_ms: 28.538292
+  duration_ms: 40.43975
   type: 'test'
   ...
 # Subtest: versioned task context
     # Subtest: retains the root objective while Continue adds bounded follow-up history
     ok 1 - retains the root objective while Continue adds bounded follow-up history
       ---
-      duration_ms: 40.103667
+      duration_ms: 36.000125
       type: 'test'
       ...
     # Subtest: replaces and resets explicitly instead of inheriting a parent or prior goal
     ok 2 - replaces and resets explicitly instead of inheriting a parent or prior goal
       ---
-      duration_ms: 74.080542
+      duration_ms: 43.589708
       type: 'test'
       ...
     # Subtest: scopes records by agent and redacts bounded values while retaining the tail
     ok 3 - scopes records by agent and redacts bounded values while retaining the tail
       ---
-      duration_ms: 15.432209
+      duration_ms: 12.332542
       type: 'test'
       ...
     # Subtest: clips UTF-8 by code-point boundaries without replacement characters
     ok 4 - clips UTF-8 by code-point boundaries without replacement characters
       ---
-      duration_ms: 18.633834
+      duration_ms: 11.289291
       type: 'test'
       ...
     # Subtest: serializes concurrent merges without dropping constraints
     ok 5 - serializes concurrent merges without dropping constraints
       ---
-      duration_ms: 216.801375
+      duration_ms: 225.439042
       type: 'test'
       ...
     1..5
-ok 67 - versioned task context
+ok 69 - versioned task context
   ---
-  duration_ms: 366.915792
+  duration_ms: 331.719833
   type: 'suite'
   ...
 # Subtest: workflow quality fixture contract
     # Subtest: loads every domain in both frozen splits and all required hard-case tags
     ok 1 - loads every domain in both frozen splits and all required hard-case tags
       ---
-      duration_ms: 7.754416
+      duration_ms: 8.031084
       type: 'test'
       ...
     # Subtest: rejects exact input reuse across development and heldout without encoding fixture labels
     ok 2 - rejects exact input reuse across development and heldout without encoding fixture labels
       ---
-      duration_ms: 2.937
+      duration_ms: 2.329792
       type: 'test'
       ...
     # Subtest: loads the fresh v2 fixture through the same independent-label contract
     ok 3 - loads the fresh v2 fixture through the same independent-label contract
       ---
-      duration_ms: 1.600334
+      duration_ms: 2.38425
       type: 'test'
       ...
     1..3
-ok 68 - workflow quality fixture contract
+ok 70 - workflow quality fixture contract
   ---
-  duration_ms: 12.768333
+  duration_ms: 13.227625
   type: 'suite'
   ...
 # Subtest: workflow quality scoring
     # Subtest: scores a required abstention and a multi-answer close alternative independently
     ok 1 - scores a required abstention and a multi-answer close alternative independently
       ---
-      duration_ms: 1.314209
+      duration_ms: 1.260833
       type: 'test'
       ...
     # Subtest: does not report preview rows as accuracy and counts only provider evidence in request metrics
     ok 2 - does not report preview rows as accuracy and counts only provider evidence in request metrics
       ---
-      duration_ms: 0.934375
+      duration_ms: 1.06425
       type: 'test'
       ...
     1..2
-ok 69 - workflow quality scoring
+ok 71 - workflow quality scoring
   ---
-  duration_ms: 2.422959
+  duration_ms: 2.458292
   type: 'suite'
   ...
 # Subtest: workflow quality preview boundary
     # Subtest: uses the real createService preview path without egress by default
     ok 1 - uses the real createService preview path without egress by default
       ---
-      duration_ms: 1.882792
+      duration_ms: 2.252916
       type: 'test'
       ...
     # Subtest: reserves a fresh output directory before a run and rejects reruns
     ok 2 - reserves a fresh output directory before a run and rejects reruns
       ---
-      duration_ms: 5.29575
+      duration_ms: 5.46875
       type: 'test'
       ...
     1..2
-ok 70 - workflow quality preview boundary
+ok 72 - workflow quality preview boundary
   ---
-  duration_ms: 7.43325
+  duration_ms: 8.025541
   type: 'suite'
   ...
-1..70
-# tests 193
+1..72
+# tests 195
 # suites 19
-# pass 193
+# pass 195
 # fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 5695.313792
+# duration_ms 5219.617125
