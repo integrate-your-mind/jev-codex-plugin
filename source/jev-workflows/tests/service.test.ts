@@ -49,9 +49,9 @@ function completion(overrides: Record<string, unknown> = {}): Record<string, unk
   };
 }
 
-function responseForFailure(category = 'assertion_failure', confidence = 0.95): Response {
+function responseForFailure(category = 'assertion_failure', confidence = 0.95, model = 'jev-1.13.0'): Response {
   return new Response(JSON.stringify({
-    model: 'jev-1.13.0',
+    model,
     answers: {
       category: {type: 'choice', choice: category, probabilities: {
         compile_error: category === 'compile_error' ? 0.95 : 0.01,
@@ -93,6 +93,22 @@ function service(options: Partial<ServiceOptions> = {}): ReturnType<typeof creat
 }
 
 describe('service preview and input gates', () => {
+  it('fails locally for unknown model selectors and sends the selected alias', async () => {
+    const unknownCalls: FetchCall[] = [];
+    const unknown = service({env: {JEV_MODEL: 'jev-unknown'}, fetchFn: fetchReturning(responseForFailure(), unknownCalls)});
+    const unknownResult = await unknown.classifyFailure(failure());
+    assert.equal(unknownResult.status, 'unavailable');
+    assert.equal(unknownResult.reasonCode, 'unknown_model_selector');
+    assert.equal(unknownCalls.length, 0);
+
+    const calls: FetchCall[] = [];
+    const preview = service({env: {JEV_MODEL: 'jev-preview'}, fetchFn: fetchReturning(responseForFailure('assertion_failure', 0.95, 'jev-1.14.0'), calls)});
+    const result = await preview.classifyFailure(failure());
+    assert.equal(result.status, 'assessed');
+    assert.equal(result.model, 'jev-1.14.0');
+    assert.equal(JSON.parse(String(calls[0]?.init?.body)).model, 'jev-preview');
+  });
+
   it('previews locally with redacted evidence and never calls fetch', async () => {
     let calls = 0;
     const result = await service({

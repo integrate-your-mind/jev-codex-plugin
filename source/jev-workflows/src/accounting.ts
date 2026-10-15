@@ -13,6 +13,7 @@ function emptyCounts() {
     unknownNetworkOutcomes: 0, providerRequestIdsPresent: 0, cacheReuses: 0,
     retryLikeResponses: 0, billedUsageKnown: 0,
     reportedInputTokens: 0, reportedOutputTokens: 0,
+    unknownInputTokenCounts: 0, unknownOutputTokenCounts: 0,
   };
 }
 function add(target: Counts, receipt: Record<string, any>) {
@@ -37,10 +38,11 @@ function add(target: Counts, receipt: Record<string, any>) {
   // Billing is intentionally unknown. A caller field or provider token count
   // cannot turn this local inventory into an independently verified ledger.
   // These are provider-reported fields retained locally, not billing totals.
-  if (evaluated && Number.isSafeInteger(receipt.usage?.input_tokens) && receipt.usage.input_tokens >= 0 &&
-      Number.isSafeInteger(receipt.usage?.output_tokens) && receipt.usage.output_tokens >= 0) {
-    target.reportedInputTokens += receipt.usage.input_tokens;
-    target.reportedOutputTokens += receipt.usage.output_tokens;
+  if (evaluated) {
+    if (Number.isSafeInteger(receipt.usage?.input_tokens) && receipt.usage.input_tokens >= 0) target.reportedInputTokens += receipt.usage.input_tokens;
+    else target.unknownInputTokenCounts++;
+    if (Number.isSafeInteger(receipt.usage?.output_tokens) && receipt.usage.output_tokens >= 0) target.reportedOutputTokens += receipt.usage.output_tokens;
+    else target.unknownOutputTokenCounts++;
   }
 }
 

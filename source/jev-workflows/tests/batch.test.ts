@@ -66,7 +66,68 @@ function service(options: Partial<ServiceOptions> = {}) {
   return createService({apiKey: 'batch-test-key', enabled: true, ...options, store: options.store ?? new MemoryStore()});
 }
 
+function crc32(data: Buffer): number {
+  let crc = 0xffffffff;
+  for (const byte of data) { crc ^= byte; for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0); }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+function png(width = 280, height = 280): string {
+  const body = Buffer.alloc(13); body.writeUInt32BE(width, 0); body.writeUInt32BE(height, 4); body[8] = 8; body[9] = 6;
+  const chunk = (type: string, data: Buffer) => { const t = Buffer.from(type); const out = Buffer.alloc(12 + data.length); out.writeUInt32BE(data.length, 0); t.copy(out, 4); data.copy(out, 8); out.writeUInt32BE(crc32(Buffer.concat([t, data])), 8 + data.length); return out; };
+  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]), chunk('IHDR', body), chunk('IDAT', Buffer.alloc(1)), chunk('IEND', Buffer.alloc(0))]).toString('base64');
+}
+
 describe('evaluate_decisions mixed typed batch', () => {
+  it('keeps media opt-in local, redacts preview assets, and validates Box responses', async () => {
+    const mediaInput = input({
+      model: 'jev-preview',
+      experimental: {images: true},
+      assets: {photo: {format: 'png', data_base64: png()}},
+      state: {image: 'attach photo here and photo again'},
+      questions: {location: {type: 'box', instructions: 'Locate the object.'}},
+      mode: 'preview',
+    });
+    const preview = await service().evaluateDecisions(mediaInput);
+    assert.equal(preview.status, 'preview');
+    const previewJson = JSON.stringify(preview.preview);
+    assert.equal(previewJson.includes(png()), false);
+    assert.match(previewJson, /sha256/);
+    assert.match(previewJson, /"bytes"/);
+
+    const calls: Array<Record<string, unknown>> = [];
+    const evaluated = await service({fetchFn: async (_url, init) => {
+      const payload = JSON.parse(String(init?.body)); calls.push(payload);
+      return new Response(JSON.stringify({model: 'jev-1.14.0', answers: {
+        location: {type: 'box', box: {top: 0.1, bottom: 0.9, left: 0.2, right: 0.8}, confidence: null},
+      }, usage: {input_tokens: null, output_tokens: 4}}));
+    }}).evaluateDecisions({...mediaInput, mode: 'evaluate'});
+    assert.equal(evaluated.status, 'assessed');
+    assert.equal(evaluated.answers?.location?.type, 'box');
+    assert.equal(calls.length, 1);
+    assert.equal((calls[0]?.assets as Record<string, unknown>).photo !== undefined, true);
+  });
+
+  it('rejects Box without explicit images or an image reference before network', async () => {
+    let calls = 0;
+    const svc = service({fetchFn: async () => { calls++; throw new Error('no network'); }});
+    const noFlag = await svc.evaluateDecisions(input({questions: {location: {type: 'box', instructions: 'Locate'}}}));
+    assert.equal(noFlag.reasonCode, 'experimental_images_required');
+    const noAsset = await svc.evaluateDecisions(input({model: 'jev-preview', experimental: {images: true}, questions: {location: {type: 'box', instructions: 'Locate'}}}));
+    assert.equal(noAsset.reasonCode, 'box_requires_image');
+    assert.equal(calls, 0);
+  });
+
+  it('rejects credential-bearing asset names before preview metadata is returned', async () => {
+    const result = await service().evaluateDecisions(input({
+      experimental: {images: true},
+      assets: {'batch-test-key': {format: 'png', data_base64: png()}},
+      state: 'batch-test-key',
+      questions: {location: {type: 'box', instructions: 'Locate'}},
+      model: 'jev-preview', mode: 'preview',
+    }));
+    assert.equal(result.reasonCode, 'unsafe_asset_id');
+  });
+
   it('filters unavailable candidates, validates mixed answers, and separates best candidate from local policy', async () => {
     const calls: Array<Record<string, unknown>> = [];
     const store = new MemoryStore();

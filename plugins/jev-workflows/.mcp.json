@@ -15,6 +15,8 @@
         "JEV_MAX_CALLS_PER_DAY",
         "JEV_MAX_BYTES_PER_DAY",
         "JEV_ALLOWED_WORKSPACES",
+        "JEV_MODEL",
+        "JEV_LONG_CONTEXT",
         "XDG_STATE_HOME",
         "JEV_STATE_DIRECTORY"
       ],

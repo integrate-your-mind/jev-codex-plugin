@@ -44,21 +44,21 @@ const filesUnder = async (root, prefix = '') => {
 };
 
 const normalizedCompatibility = (contents, path) => {
-  if (path !== 'HOST-COMPATIBILITY.json') return null;
+  if (!['HOST-COMPATIBILITY.json', 'CLAUDE-HOST-COMPATIBILITY.json'].includes(path)) return null;
   const parsed = JSON.parse(contents);
   delete parsed.generatedAt;
   return parsed;
 };
 
-const compareHostPackage = async (generatedRoot) => {
-  const expectedFiles = (await filesUnder(committedHostRoot)).sort();
+const compareHostPackage = async (generatedRoot, committedRoot = committedHostRoot) => {
+  const expectedFiles = (await filesUnder(committedRoot)).sort();
   const generatedFiles = (await filesUnder(generatedRoot)).sort();
   if (!isDeepStrictEqual(expectedFiles, generatedFiles)) {
     throw new Error(`Generated host file set differs. committed=${expectedFiles.join(',')} generated=${generatedFiles.join(',')}`);
   }
 
   for (const path of expectedFiles) {
-    const committed = await readFile(join(committedHostRoot, path));
+    const committed = await readFile(join(committedRoot, path));
     const generated = await readFile(join(generatedRoot, path));
     const committedCompatibility = normalizedCompatibility(committed, path);
     const generatedCompatibility = normalizedCompatibility(generated, path);
@@ -93,6 +93,8 @@ const versionPaths = [
   'source/jev-workflows/plugin.json',
   'source/jev-workflows/.codex-plugin/plugin.json',
   'plugins/jev-workflows/.codex-plugin/plugin.json',
+  'source/jev-workflows/templates/claude/.claude-plugin/plugin.json',
+  'plugins/jev-workflows-claude/.claude-plugin/plugin.json',
 ];
 const verifyVersionParity = async () => {
   const versions = [];
@@ -111,6 +113,11 @@ const verifyVersionParity = async () => {
 };
 
 await verifyMarketplace();
+const claudeMarketplace = await readJson(join(repositoryRoot, '.claude-plugin/marketplace.json'));
+if (claudeMarketplace.name !== 'jev-workflows' || claudeMarketplace.plugins?.length !== 1 ||
+    claudeMarketplace.plugins[0].name !== 'jev-workflows' || claudeMarketplace.plugins[0].source !== './plugins/jev-workflows-claude') {
+  throw new Error('Claude marketplace must select the generated Claude package');
+}
 const version = await verifyVersionParity();
 let temporaryRoot;
 try {
@@ -118,7 +125,10 @@ try {
   const generatedRoot = join(temporaryRoot, 'jev-workflows');
   await execFileAsync(process.execPath, ['scripts/package-host.mjs', generatedRoot], { cwd: sourceRoot });
   await compareHostPackage(generatedRoot);
-  console.log(`Distribution verified: marketplace path, version ${version}, generated host package parity`);
+  const generatedClaude = join(temporaryRoot, 'jev-workflows-claude');
+  await execFileAsync(process.execPath, ['scripts/package-claude.mjs', generatedClaude], {cwd: sourceRoot});
+  await compareHostPackage(generatedClaude, join(repositoryRoot, 'plugins/jev-workflows-claude'));
+  console.log(`Distribution verified: marketplace path, version ${version}, Codex and Claude generated package parity`);
 } finally {
   if (temporaryRoot) await rm(temporaryRoot, { recursive: true, force: true });
 }

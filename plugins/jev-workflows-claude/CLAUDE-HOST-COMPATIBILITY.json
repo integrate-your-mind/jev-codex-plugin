@@ -1,0 +1,23 @@
+{
+  "name": "jev-workflows",
+  "packageKind": "claude-code-plugin",
+  "generatedAt": "2026-10-15T21:40:14.774Z",
+  "stateDirectory": null,
+  "credentialFile": null,
+  "stateMode": "user-default",
+  "supportedEvents": [
+    "SessionStart",
+    "UserPromptSubmit",
+    "PreToolUse",
+    "PostToolUse",
+    "PostToolUseFailure",
+    "PermissionRequest",
+    "PreCompact",
+    "PostCompact",
+    "SubagentStart",
+    "SubagentStop",
+    "Stop",
+    "SessionEnd"
+  ],
+  "credentialHandling": "Environment names and paths only. No credential values are packaged."
+}

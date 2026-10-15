@@ -25,4 +25,4 @@ jobs:
         run: node scripts/verify-distribution.mjs
       - name: Test distribution drift detection
         working-directory: .
-        run: node --test scripts/verify-distribution.test.mjs
+        run: node --test scripts/verify-distribution.test.mjs scripts/sync-jev-contract.test.mjs

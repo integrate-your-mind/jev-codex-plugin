@@ -101,10 +101,15 @@ export const batchScoreQuestionSchema = z.strictObject({
   ...commonQuestionFields,
   criteria: z.array(structuredEntrySchema).min(2).max(10),
 });
+export const batchBoxQuestionSchema = z.strictObject({
+  type: z.literal('box'),
+  ...commonQuestionFields,
+});
 export const batchQuestionSchema = z.discriminatedUnion('type', [
   batchChoiceQuestionSchema,
   batchNoulQuestionSchema,
   batchScoreQuestionSchema,
+  batchBoxQuestionSchema,
 ]);
 export type BatchQuestion = z.output<typeof batchQuestionSchema>;
 
@@ -136,6 +141,10 @@ const stateSchema = z.union([
 export const evaluateDecisionsSchema = z.strictObject({
   state: stateSchema,
   questions: questionRecordSchema,
+  assets: z.record(opaqueIdSchema, z.unknown()).optional(),
+  experimental: z.strictObject({images: z.boolean().optional()}).optional(),
+  model: z.string().optional(),
+  longContext: z.boolean().optional(),
   policy: decisionPolicySchema.optional(),
   origin: originSchema.optional(),
   correlation: correlationSchema.optional(),
@@ -154,6 +163,7 @@ export function providerQuestions(input: EvaluateDecisionsInput): Record<string,
       return [id, {type: 'choice', instructions: question.instructions, criteria} satisfies Question];
     }
     if (question.type === 'score') return [id, {type: 'score', instructions: question.instructions, criteria: question.criteria} satisfies Question];
+    if (question.type === 'box') return [id, {type: 'box', instructions: question.instructions} satisfies Question];
     return [id, {type: 'noul', instructions: question.instructions, ...(question.criteria ? {criteria: question.criteria} : {})} satisfies Question];
   }));
 }

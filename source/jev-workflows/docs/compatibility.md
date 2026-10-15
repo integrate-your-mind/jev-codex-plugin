@@ -152,3 +152,7 @@ Current event candidate catalogs take precedence over saved task catalogs. Dupli
 Hook context carries one structured task view and bounded current-prompt evidence. When compaction is necessary, it retains excerpts of the objective, latest step, recent constraints and corrections with explicit truncation and omission metadata. JSON encoding is included in the byte budget. This is a bounded view, not the entire conversation.
 
 This repair changes delivery and input preparation. It does not establish improved task completion or calibrate Jev confidence, alter the model or thresholds, or impose usage quotas.
+
+## Version 0.5.0 cross-host contract
+
+[Cross-host configuration](cross-host.md) describes native Claude support, current Jev models and nullable usage, explicit media support, and QQ conformance checks. The default remains pinned; current model aliases are not permanent mappings. Legacy payload bounds above describe the ordinary text path. Explicit media batches use a separate validated 32 MiB boundary.

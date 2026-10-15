@@ -18,6 +18,8 @@ const copyFixture = async (targetRoot) => {
     filter: (source) => !source.includes('/node_modules/') && !source.includes('/work/') && !source.includes('/receipts/'),
   });
   await cp(join(repositoryRoot, 'plugins/jev-workflows'), join(targetRoot, 'plugins/jev-workflows'), { recursive: true });
+  await cp(join(repositoryRoot, '.claude-plugin'), join(targetRoot, '.claude-plugin'), {recursive: true});
+  await cp(join(repositoryRoot, 'plugins/jev-workflows-claude'), join(targetRoot, 'plugins/jev-workflows-claude'), {recursive: true});
   await cp(verifier, join(targetRoot, 'scripts/verify-distribution.mjs'));
   await cp(join(repositoryRoot, 'source/jev-workflows/scripts/package-host.mjs'), join(targetRoot, 'source/jev-workflows/scripts/package-host.mjs'));
 };
@@ -40,4 +42,13 @@ test('distribution verifier rejects drift in a disposable fixture', async () => 
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true });
   }
+});
+
+test('distribution verifier rejects Claude package drift', async () => {
+  const temporaryRoot = await mkdtemp(join(tmpdir(), 'jev-claude-drift-test-'));
+  try {
+    await copyFixture(temporaryRoot);
+    await writeFile(join(temporaryRoot, 'plugins/jev-workflows-claude/.mcp.json'), '{}\n');
+    await assert.rejects(execFileAsync(process.execPath, [verifier, '--root', temporaryRoot]), /Generated host file differs: \.mcp\.json/);
+  } finally { await rm(temporaryRoot, {recursive: true, force: true}); }
 });

@@ -1,0 +1,5 @@
+{
+  "name": "jev-workflows",
+  "owner": {"name": "Romy Mondello"},
+  "plugins": [{"name": "jev-workflows", "source": "./plugins/jev-workflows-claude", "description": "Evidence-grounded Jev decisions across tools, models, tasks and strategies."}]
+}

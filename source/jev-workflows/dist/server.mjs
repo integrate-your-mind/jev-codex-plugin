@@ -28519,6 +28519,9 @@ var Protocol = class {
       this.setRequestHandler(GetTaskPayloadRequestSchema, async (request, extra) => {
         const handleTaskResult = async () => {
           const taskId = request.params.taskId;
+          if (!await this._taskStore.getTask(taskId, extra.sessionId)) {
+            throw new McpError(ErrorCode.InvalidParams, `Task not found: ${taskId}`);
+          }
           if (this._taskMessageQueue) {
             let queuedMessage;
             while (queuedMessage = await this._taskMessageQueue.dequeue(taskId, extra.sessionId)) {
@@ -28549,12 +28552,12 @@ var Protocol = class {
             throw new McpError(ErrorCode.InvalidParams, `Task not found: ${taskId}`);
           }
           if (!isTerminal(task.status)) {
-            await this._waitForTaskUpdate(taskId, extra.signal);
+            await this._waitForTaskUpdate(taskId, extra.signal, extra.sessionId);
             return await handleTaskResult();
           }
           if (isTerminal(task.status)) {
             const result = await this._taskStore.getTaskResult(taskId, extra.sessionId);
-            this._clearTaskQueue(taskId);
+            this._clearTaskQueue(taskId, extra.sessionId);
             return {
               ...result,
               _meta: {
@@ -28591,7 +28594,7 @@ var Protocol = class {
             throw new McpError(ErrorCode.InvalidParams, `Cannot cancel task in terminal status: ${task.status}`);
           }
           await this._taskStore.updateTaskStatus(request.params.taskId, "cancelled", "Client cancelled task execution.", extra.sessionId);
-          this._clearTaskQueue(request.params.taskId);
+          this._clearTaskQueue(request.params.taskId, extra.sessionId);
           const cancelledTask = await this._taskStore.getTask(request.params.taskId, extra.sessionId);
           if (!cancelledTask) {
             throw new McpError(ErrorCode.InvalidParams, `Task not found after cancellation: ${request.params.taskId}`);
@@ -28719,6 +28722,19 @@ var Protocol = class {
     const handler = this._requestHandlers.get(request.method) ?? this.fallbackRequestHandler;
     const capturedTransport = this._transport;
     const relatedTaskId = request.params?._meta?.[RELATED_TASK_META_KEY]?.taskId;
+    const sessionId = capturedTransport?.sessionId;
+    const store = this._taskStore;
+    let relatedTaskFound = true;
+    let relatedTaskLookup;
+    if (relatedTaskId && store && this._taskMessageQueue && sessionId !== void 0) {
+      relatedTaskFound = false;
+      relatedTaskLookup = (async () => {
+        if (!await store.getTask(relatedTaskId, sessionId)) {
+          throw new McpError(ErrorCode.InvalidParams, `Task not found: ${relatedTaskId}`);
+        }
+        relatedTaskFound = true;
+      })();
+    }
     if (handler === void 0) {
       const errorResponse = {
         jsonrpc: "2.0",
@@ -28728,7 +28744,10 @@ var Protocol = class {
           message: "Method not found"
         }
       };
-      if (relatedTaskId && this._taskMessageQueue) {
+      if (relatedTaskId && relatedTaskLookup) {
+        const queuedError = { type: "error", message: errorResponse, timestamp: Date.now() };
+        relatedTaskLookup.then(() => this._enqueueTaskMessage(relatedTaskId, queuedError, sessionId), () => capturedTransport?.send(errorResponse)).catch((error62) => this._onerror(new Error(`Failed to send an error response: ${error62}`)));
+      } else if (relatedTaskId && this._taskMessageQueue) {
         this._enqueueTaskMessage(relatedTaskId, {
           type: "error",
           message: errorResponse,
@@ -28779,7 +28798,10 @@ var Protocol = class {
       closeSSEStream: extra?.closeSSEStream,
       closeStandaloneSSEStream: extra?.closeStandaloneSSEStream
     };
-    Promise.resolve().then(() => {
+    (relatedTaskLookup ?? Promise.resolve()).then(() => {
+      if (relatedTaskLookup && abortController.signal.aborted) {
+        throw new McpError(ErrorCode.ConnectionClosed, "Request was cancelled");
+      }
       if (taskCreationParams) {
         this.assertTaskHandlerCapability(request.method);
       }
@@ -28814,7 +28836,7 @@ var Protocol = class {
           ...error62["data"] !== void 0 && { data: error62["data"] }
         }
       };
-      if (relatedTaskId && this._taskMessageQueue) {
+      if (relatedTaskId && this._taskMessageQueue && relatedTaskFound) {
         await this._enqueueTaskMessage(relatedTaskId, {
           type: "error",
           message: errorResponse,
@@ -29294,7 +29316,7 @@ var Protocol = class {
       throw new Error("Cannot enqueue task message: taskStore and taskMessageQueue are not configured");
     }
     const maxQueueSize = this._options?.maxTaskQueueSize;
-    await this._taskMessageQueue.enqueue(taskId, message, sessionId, maxQueueSize);
+    await this._taskMessageQueue.enqueue(taskId, message, sessionId ?? this._transport?.sessionId, maxQueueSize);
   }
   /**
    * Clears the message queue for a task and rejects any pending request resolvers.
@@ -29323,12 +29345,13 @@ var Protocol = class {
    * Uses polling to check for updates at the task's configured poll interval.
    * @param taskId The task ID to wait for
    * @param signal Abort signal to cancel the wait
+   * @param sessionId Session of the request that waits, passed to the task store
    * @returns Promise that resolves when an update occurs or rejects if aborted
    */
-  async _waitForTaskUpdate(taskId, signal) {
+  async _waitForTaskUpdate(taskId, signal, sessionId) {
     let interval = this._options?.defaultTaskPollInterval ?? 1e3;
     try {
-      const task = await this._taskStore?.getTask(taskId);
+      const task = await this._taskStore?.getTask(taskId, sessionId);
       if (task?.pollInterval) {
         interval = task.pollInterval;
       }
@@ -30260,6 +30283,26 @@ var RUBRIC_VERSION = "2026-09-17.1";
 var COMPLETION_RUBRIC_VERSION = "completion-2026-09-26.1";
 var MODEL = "jev-1.13.0";
 var ENDPOINT = "https://api.typesafe.ai/v1/systemone";
+var VERSIONED_MODELS = ["jev-1.13.0", "jev-1.14.0"];
+var MODEL_ALIASES = {
+  "jev-latest": "jev-1.13.0",
+  "jev-preview": "jev-1.14.0"
+};
+var versionedModelPattern = /^jev-\d+\.\d+\.\d+$/;
+function resolveModelSelector(value) {
+  const selector = value === void 0 || value === "" ? MODEL : value;
+  if (!VERSIONED_MODELS.includes(selector) && !Object.hasOwn(MODEL_ALIASES, selector)) {
+    throw new Error("unknown_model_selector");
+  }
+  return selector;
+}
+function validateReturnedModel(requested, returned) {
+  if (typeof returned !== "string" || !versionedModelPattern.test(returned)) return false;
+  if (VERSIONED_MODELS.includes(returned)) {
+    return requested in MODEL_ALIASES || returned === requested;
+  }
+  return requested in MODEL_ALIASES;
+}
 var failureQuestions = {
   category: {
     type: "choice",
@@ -30404,10 +30447,15 @@ var batchScoreQuestionSchema = external_exports.strictObject({
   ...commonQuestionFields,
   criteria: external_exports.array(structuredEntrySchema).min(2).max(10)
 });
+var batchBoxQuestionSchema = external_exports.strictObject({
+  type: external_exports.literal("box"),
+  ...commonQuestionFields
+});
 var batchQuestionSchema = external_exports.discriminatedUnion("type", [
   batchChoiceQuestionSchema,
   batchNoulQuestionSchema,
-  batchScoreQuestionSchema
+  batchScoreQuestionSchema,
+  batchBoxQuestionSchema
 ]);
 var questionRecordSchema = external_exports.record(opaqueIdSchema, batchQuestionSchema).superRefine((questions, context) => {
   const ids = Object.keys(questions);
@@ -30434,6 +30482,10 @@ var stateSchema = external_exports.union([
 var evaluateDecisionsSchema = external_exports.strictObject({
   state: stateSchema,
   questions: questionRecordSchema,
+  assets: external_exports.record(opaqueIdSchema, external_exports.unknown()).optional(),
+  experimental: external_exports.strictObject({ images: external_exports.boolean().optional() }).optional(),
+  model: external_exports.string().optional(),
+  longContext: external_exports.boolean().optional(),
   policy: decisionPolicySchema.optional(),
   origin: originSchema.optional(),
   correlation: correlationSchema.optional(),
@@ -30450,11 +30502,169 @@ function providerQuestions(input2) {
       return [id, { type: "choice", instructions: question.instructions, criteria }];
     }
     if (question.type === "score") return [id, { type: "score", instructions: question.instructions, criteria: question.criteria }];
+    if (question.type === "box") return [id, { type: "box", instructions: question.instructions }];
     return [id, { type: "noul", instructions: question.instructions, ...question.criteria ? { criteria: question.criteria } : {} }];
   }));
 }
 function policiesByQuestion(input2, defaults = {}) {
   return Object.fromEntries(Object.entries(input2.questions).map(([id, question]) => [id, resolveDecisionPolicy(input2.policy, question.policy, defaults)]));
+}
+
+// src/media.ts
+var MEDIA_MAX_IMAGE_BYTES = 16 * 1024 * 1024;
+var MEDIA_MAX_REQUEST_BYTES = 32 * 1024 * 1024;
+var MEDIA_MIN_DIMENSION = 280;
+var MEDIA_MAX_DIMENSION = 1568;
+var MEDIA_MIN_PIXELS = 78400;
+var MEDIA_MAX_PIXELS = 2458624;
+var formatSchema = external_exports.enum(["png", "jpg", "jpeg"]);
+var imageAssetSchema = external_exports.strictObject({
+  type: external_exports.literal("image").optional(),
+  format: formatSchema,
+  data_base64: external_exports.string()
+});
+var contentSchema = external_exports.union([
+  external_exports.string(),
+  external_exports.number().finite(),
+  external_exports.boolean(),
+  external_exports.null(),
+  external_exports.array(external_exports.unknown()),
+  external_exports.record(external_exports.string(), external_exports.unknown())
+]);
+var boxQuestionSchema = external_exports.strictObject({
+  type: external_exports.literal("box"),
+  instructions: contentSchema
+});
+var boxCoordinatesSchema = external_exports.strictObject({
+  top: external_exports.number().finite().min(0).max(1),
+  bottom: external_exports.number().finite().min(0).max(1),
+  left: external_exports.number().finite().min(0).max(1),
+  right: external_exports.number().finite().min(0).max(1)
+}).superRefine((value, context) => {
+  if (value.left >= value.right) context.addIssue({ code: "custom", message: "box left must be less than right" });
+  if (value.top >= value.bottom) context.addIssue({ code: "custom", message: "box top must be less than bottom" });
+});
+var boxAnswerSchema = external_exports.strictObject({
+  type: external_exports.literal("box"),
+  box: boxCoordinatesSchema,
+  confidence: external_exports.number().finite().min(0).max(1).nullable().optional().default(null)
+});
+var MediaValidationError = class extends Error {
+  constructor(code) {
+    super(code);
+    this.code = code;
+    this.name = "MediaValidationError";
+  }
+  code;
+};
+function fail(code) {
+  throw new MediaValidationError(code);
+}
+function decodeBase64(value) {
+  if (!value || value.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) fail("invalid_base64");
+  if (value.length > Math.ceil(MEDIA_MAX_IMAGE_BYTES / 3) * 4) fail("image_too_large");
+  const decoded = Buffer.from(value, "base64");
+  if (!decoded.length || decoded.toString("base64") !== value) fail("invalid_base64");
+  return decoded;
+}
+function dimensions(data, format) {
+  const png = data.length >= 24 && data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  if (format === "png") {
+    if (!png) fail("format_mismatch");
+    let offset = 8;
+    let width;
+    let height;
+    let idat = false;
+    let iend = false;
+    while (offset + 12 <= data.length) {
+      const length = data.readUInt32BE(offset);
+      const end = offset + 12 + length;
+      if (end > data.length) fail("format_mismatch");
+      const type = data.toString("ascii", offset + 4, offset + 8);
+      const body = data.subarray(offset + 8, offset + 8 + length);
+      const crc = data.readUInt32BE(offset + 8 + length);
+      if (crc32(Buffer.from(type + body.toString("binary"), "binary")) !== crc) fail("format_mismatch");
+      if (type === "IHDR") {
+        if (length !== 13 || width !== void 0) fail("format_mismatch");
+        width = body.readUInt32BE(0);
+        height = body.readUInt32BE(4);
+      } else if (type === "IDAT") idat = true;
+      else if (type === "IEND") {
+        if (length !== 0) fail("format_mismatch");
+        iend = true;
+        if (end !== data.length) fail("format_mismatch");
+        break;
+      }
+      offset = end;
+    }
+    if (width === void 0 || height === void 0 || !idat || !iend) fail("format_mismatch");
+    return { width, height };
+  }
+  if (png || data.length < 4 || data[0] !== 255 || data[1] !== 216 || data[2] !== 255) fail("format_mismatch");
+  let found;
+  let sawScan = false;
+  for (let offset = 2; offset + 1 < data.length; ) {
+    while (offset < data.length && data[offset] === 255) offset++;
+    if (offset >= data.length) break;
+    const marker = data[offset++];
+    if (marker === 216 || marker === 217) continue;
+    if (marker === 218) {
+      sawScan = true;
+      break;
+    }
+    if (offset + 2 > data.length) fail("format_mismatch");
+    const length = data.readUInt16BE(offset);
+    if (length < 2 || offset + length > data.length) fail("format_mismatch");
+    const isSof = marker >= 192 && marker <= 195 || marker >= 197 && marker <= 199 || marker >= 201 && marker <= 203 || marker >= 205 && marker <= 207;
+    if (isSof) {
+      if (length < 7) fail("format_mismatch");
+      found = { height: data.readUInt16BE(offset + 3), width: data.readUInt16BE(offset + 5) };
+    }
+    offset += length;
+  }
+  if (!found || !sawScan || data.length < 2 || data[data.length - 2] !== 255 || data[data.length - 1] !== 217) fail("format_mismatch");
+  return found;
+}
+function crc32(data) {
+  let crc = 4294967295;
+  for (const byte of data) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit++) crc = crc >>> 1 ^ (crc & 1 ? 3988292384 : 0);
+  }
+  return (crc ^ 4294967295) >>> 0;
+}
+function validateDimensions(width, height) {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < MEDIA_MIN_DIMENSION || height < MEDIA_MIN_DIMENSION || width > MEDIA_MAX_DIMENSION || height > MEDIA_MAX_DIMENSION || width * height < MEDIA_MIN_PIXELS || width * height > MEDIA_MAX_PIXELS) {
+    fail("invalid_dimensions");
+  }
+}
+function validateImageAsset(raw) {
+  const parsed = imageAssetSchema.safeParse(raw);
+  if (!parsed.success) fail("invalid_asset");
+  const data = decodeBase64(parsed.data.data_base64);
+  if (data.length > MEDIA_MAX_IMAGE_BYTES) fail("image_too_large");
+  const { width, height } = dimensions(data, parsed.data.format);
+  validateDimensions(width, height);
+  return parsed.data;
+}
+function validateMediaAssets(assets, referencedAssets) {
+  const validated = /* @__PURE__ */ Object.create(null);
+  for (const [reference, raw] of Object.entries(assets)) {
+    if (!reference.trim()) fail("invalid_asset");
+    const asset = validateImageAsset(raw);
+    validated[reference] = asset;
+  }
+  let totalBytes = 0;
+  if (referencedAssets) {
+    const names = new Set(referencedAssets);
+    for (const reference of Object.keys(validated)) if (!names.has(reference)) fail("unused_asset");
+    for (const reference of names) if (!Object.hasOwn(validated, reference)) fail("missing_asset");
+    for (const reference of referencedAssets) totalBytes += Buffer.byteLength(validated[reference].data_base64, "base64");
+  } else {
+    for (const asset of Object.values(validated)) totalBytes += Buffer.byteLength(asset.data_base64, "base64");
+  }
+  if (totalBytes > MEDIA_MAX_REQUEST_BYTES) fail("request_too_large");
+  return validated;
 }
 
 // src/provider.ts
@@ -30477,7 +30687,7 @@ var number01 = external_exports.number().finite().min(0).max(1);
 var responseSchema = external_exports.strictObject({
   model: external_exports.string(),
   answers: external_exports.record(external_exports.string(), external_exports.unknown()),
-  usage: external_exports.strictObject({ input_tokens: external_exports.number().int().nonnegative(), output_tokens: external_exports.number().int().nonnegative() })
+  usage: external_exports.strictObject({ input_tokens: external_exports.number().int().nonnegative().nullable(), output_tokens: external_exports.number().int().nonnegative().nullable() })
 });
 var noulAnswerSchema = external_exports.strictObject({ type: external_exports.literal("noul"), noul: number01 });
 var choiceAnswerSchema = external_exports.strictObject({ type: external_exports.literal("choice"), choice: external_exports.string(), probabilities: external_exports.record(external_exports.string(), number01), confidence: number01 });
@@ -30526,16 +30736,20 @@ function invalidResponse(transport, failure2, diagnostic) {
     ...bounded ? { responseValidationDiagnostic: bounded } : {}
   } : null);
 }
-function validateEvaluation(raw, questions, transport = null) {
+function validateEvaluation(raw, questions, transport = null, requestedModel = "jev-1.13.0") {
   if (!isBoundedJsonStructure(raw)) invalidResponse(transport, "response_schema");
   const parsedResult = responseSchema.safeParse(raw);
   if (!parsedResult.success) invalidResponse(transport, "response_schema");
   const parsed = parsedResult.data;
-  if (parsed.model !== MODEL) invalidResponse(transport, "model_mismatch");
+  if (!validateReturnedModel(requestedModel, parsed.model)) invalidResponse(transport, "model_mismatch");
   if (!exactKeys(parsed.answers, questions)) invalidResponse(transport, "answer_keys_mismatch");
   const answers = {};
   for (const [key, q] of Object.entries(questions)) {
-    if (q.type === "noul") {
+    if (q.type === "box") {
+      const result = boxAnswerSchema.safeParse(parsed.answers[key]);
+      if (!result.success) invalidResponse(transport, "answer_schema", { questionId: safeQuestionId(key) });
+      answers[key] = result.data;
+    } else if (q.type === "noul") {
       const result = noulAnswerSchema.safeParse(parsed.answers[key]);
       if (!result.success) invalidResponse(transport, "answer_schema", { questionId: safeQuestionId(key) });
       answers[key] = result.data;
@@ -30576,6 +30790,11 @@ function validateEvaluation(raw, questions, transport = null) {
   return { model: parsed.model, answers, usage: parsed.usage, ...transport ? { transport } : {} };
 }
 async function evaluateProvider(args) {
+  const model = args.model ?? "jev-1.13.0";
+  const hasBoxQuestion = Object.values(args.questions).some((question) => question.type === "box");
+  if (args.assets && !args.experimentalImages) throw new ProviderError("experimental_images_required", null);
+  if (hasBoxQuestion && !args.assets) throw new ProviderError("box_requires_image", null);
+  if (hasBoxQuestion && model !== "jev-1.14.0" && model !== "jev-preview") throw new ProviderError("box_model_unsupported", null);
   const timeout = AbortSignal.timeout(args.timeoutMs);
   const signal = args.signal ? AbortSignal.any([args.signal, timeout]) : timeout;
   let transport = {
@@ -30596,8 +30815,13 @@ async function evaluateProvider(args) {
       method: "POST",
       redirect: "error",
       signal,
-      headers: { "content-type": "application/json", authorization: `Bearer ${args.apiKey}` },
-      body: JSON.stringify({ model: MODEL, state: args.state, questions: args.questions })
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${args.apiKey}`,
+        ...args.longContext ? { "TypeSafe-Danger-Zone-Long-Context": "true" } : {},
+        ...args.experimentalImages ? { "TypeSafe-Danger-Zone-Images": "true" } : {}
+      },
+      body: JSON.stringify({ model, state: args.state, questions: args.questions, ...args.assets ? { assets: args.assets } : {} })
     });
     const policyError = response.status === 403 ? networkPolicyError(response) : null;
     transport = {
@@ -30611,7 +30835,7 @@ async function evaluateProvider(args) {
     if (!response.ok) {
       await response.body?.cancel().catch(() => {
       });
-      const code = response.status === 401 ? "authentication_failed" : response.status === 403 && policyError ? "network_policy_blocked" : response.status === 403 ? "request_forbidden" : response.status === 422 ? "invalid_request" : response.status === 429 ? "rate_limited" : response.status === 529 ? "provider_overloaded" : "provider_error";
+      const code = response.status === 400 ? "invalid_request" : response.status === 401 ? "authentication_failed" : response.status === 403 && policyError ? "network_policy_blocked" : response.status === 403 ? "request_forbidden" : response.status === 408 ? "request_timeout" : response.status === 413 ? "request_too_large" : response.status === 415 ? "unsupported_media_type" : response.status === 422 ? "invalid_request" : response.status === 429 ? "rate_limited" : response.status === 529 ? "provider_overloaded" : "provider_error";
       throw new ProviderError(code, transport);
     }
     if (!response.body) invalidResponse(transport, "missing_body");
@@ -30638,7 +30862,7 @@ async function evaluateProvider(args) {
     } catch {
       invalidResponse(transport, "invalid_json");
     }
-    const evaluation = validateEvaluation(payload, args.questions, transport);
+    const evaluation = validateEvaluation(payload, args.questions, transport, model);
     return { ...evaluation, transport: { ...transport, validatedResponse: true } };
   } catch (error62) {
     if (args.signal?.aborted) throw new ProviderError("cancelled", transport);
@@ -31139,6 +31363,38 @@ function positiveLimit(value, fallback) {
   const n = Number(value);
   return Number.isSafeInteger(n) && n >= 0 ? n : 0;
 }
+function referencedAssetNames(value, names, output2) {
+  if (typeof value === "string") {
+    if (names.includes(value)) {
+      output2.push(value);
+      return;
+    }
+    let cursor = 0;
+    while (cursor < value.length) {
+      let found;
+      for (const name of names) {
+        const index = value.indexOf(name, cursor);
+        if (index >= 0 && (!found || index < found.index || index === found.index && name.length > found.name.length)) found = { name, index };
+      }
+      if (!found) break;
+      output2.push(found.name);
+      cursor = found.index + found.name.length;
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item2 of value) referencedAssetNames(item2, names, output2);
+    return;
+  }
+  if (value && typeof value === "object") for (const item2 of Object.values(value)) referencedAssetNames(item2, names, output2);
+}
+function mediaPreviewAssets(assets) {
+  return Object.fromEntries(Object.entries(assets).map(([name, asset]) => [name, {
+    format: asset.format,
+    bytes: Buffer.byteLength(asset.data_base64, "base64"),
+    sha256: createHash2("sha256").update(Buffer.from(asset.data_base64, "base64")).digest("hex")
+  }]));
+}
 function createService(options = {}) {
   const env = options.env ?? process.env;
   const staticApiKey = options.apiKey ?? env.TYPESAFE_API_KEY ?? "";
@@ -31148,6 +31404,12 @@ function createService(options = {}) {
     return { apiKey, fingerprint: apiKey ? fingerprintCredential(apiKey) : null };
   };
   const enabled = options.enabled ?? env.JEV_ENABLED !== "0";
+  let model;
+  try {
+    model = resolveModelSelector(env.JEV_MODEL);
+  } catch {
+    model = null;
+  }
   const timeoutMs = Math.min(Math.max(options.timeoutMs ?? 1e4, 1), 1e4);
   const confidenceFloor = options.confidenceFloor ?? 0.6;
   const cache = /* @__PURE__ */ new Map();
@@ -31156,10 +31418,10 @@ function createService(options = {}) {
   function status(policy = DEFAULT_POLICY) {
     const current = credential();
     return {
-      version: "0.4.1",
+      version: "0.5.0",
       provider: "TypeSafe",
       endpoint: ENDPOINT,
-      model: MODEL,
+      model: model ?? env.JEV_MODEL ?? MODEL,
       credentialConfigured: Boolean(current.apiKey),
       credentialFingerprint: current.fingerprint,
       enabled,
@@ -31214,7 +31476,9 @@ function createService(options = {}) {
     const rawQuestions = "candidates" in input2 ? decisionQuestions(input2) : "exitCode" in input2 ? failureQuestions : completionQuestionsFor(input2);
     const questions = sanitize(rawQuestions, secrets);
     const rubricVersion = tool === "classify_decision" ? DECISION_RUBRIC_VERSION : tool === "check_completion" ? COMPLETION_RUBRIC_VERSION : RUBRIC_VERSION;
-    const payload = { state, questions, model: MODEL };
+    if (!model) return { status: "unavailable", reasonCode: "unknown_model_selector", ...originMeta };
+    const selectedModel = model;
+    const payload = { state, questions, model: selectedModel };
     const bytes = Buffer.byteLength(JSON.stringify(payload));
     if (bytes > maxPayloadBytes) return { status: "skipped", reasonCode: "payload_too_large", ...originMeta };
     const evidenceIds = input2.evidence.map((e) => e.id);
@@ -31250,7 +31514,7 @@ function createService(options = {}) {
         return { status: "unavailable", reasonCode: "budget_store_unavailable", ...meta3, receiptPersisted: false };
       }
       try {
-        const evaluation = await evaluateProvider({ state, questions, apiKey, timeoutMs, signal, fetchFn: options.fetchFn });
+        const evaluation = await evaluateProvider({ state, questions, apiKey, timeoutMs, model: selectedModel, longContext: env.JEV_LONG_CONTEXT === "1", signal, fetchFn: options.fetchFn });
         const answer = evaluation.answers[tool === "classify_failure" ? "category" : tool === "check_completion" ? "support" : "decision"];
         if (!answer || answer.type !== "choice") throw new ProviderError("invalid_response", evaluation.transport);
         const minConfidence = decisionPolicy?.minConfidence ?? confidenceFloor;
@@ -31334,10 +31598,36 @@ function createService(options = {}) {
     const state = sanitize(input2.state, secrets);
     const questions = sanitize(providerQuestions(input2), secrets);
     const policies = policiesByQuestion(input2, { minConfidence: confidenceFloor, minProbability: confidenceFloor });
-    const payload = { state, questions, model: MODEL };
+    let selectedModel;
+    try {
+      selectedModel = resolveModelSelector(input2.model ?? (model ?? void 0));
+    } catch {
+      return { status: "unavailable", reasonCode: "unknown_model_selector" };
+    }
+    const experimentalImages = input2.experimental?.images === true;
+    const hasAssets = Boolean(input2.assets && Object.keys(input2.assets).length);
+    const hasBox = Object.values(input2.questions).some((question) => question.type === "box");
+    if ((hasAssets || hasBox) && !experimentalImages) return { status: "skipped", reasonCode: "experimental_images_required", questionIds };
+    if (hasBox && selectedModel !== "jev-1.14.0" && selectedModel !== "jev-preview") return { status: "skipped", reasonCode: "box_model_unsupported", questionIds };
+    const assetNames = Object.keys(input2.assets ?? {});
+    if (assetNames.some((name) => redactText(name, secrets) !== name)) return { status: "skipped", reasonCode: "unsafe_asset_id", questionIds };
+    const references = [];
+    referencedAssetNames(state, assetNames, references);
+    referencedAssetNames(questions, assetNames, references);
+    let assets = {};
+    try {
+      assets = validateMediaAssets(input2.assets ?? {}, [...references]);
+    } catch (error62) {
+      return { status: "skipped", reasonCode: error62 instanceof MediaValidationError ? error62.code : "invalid_media", questionIds };
+    }
+    if (hasBox && Object.keys(assets).length === 0) return { status: "skipped", reasonCode: "box_requires_image", questionIds };
+    const selectedLongContext = input2.longContext ?? env.JEV_LONG_CONTEXT === "1";
+    const payload = { state, questions, model: selectedModel, ...Object.keys(assets).length ? { assets } : {} };
+    const mediaEnabled = experimentalImages || Object.keys(assets).length > 0;
     const bytes = Buffer.byteLength(JSON.stringify(payload));
-    if (bytes > maxPayloadBytes) return { status: "skipped", reasonCode: "payload_too_large", questionIds };
-    const inputDigest = digestOf({ payload, rubric: BATCH_RUBRIC_VERSION, policies });
+    if (bytes > (mediaEnabled ? 32 * 1024 * 1024 : maxPayloadBytes)) return { status: "skipped", reasonCode: "payload_too_large", questionIds };
+    const metadata = { model: selectedModel, longContext: selectedLongContext, experimentalImages };
+    const inputDigest = digestOf({ payload, rubric: BATCH_RUBRIC_VERSION, policies, metadata });
     const localMeta = {
       questionIds,
       inputDigest,
@@ -31347,7 +31637,7 @@ function createService(options = {}) {
       ...input2.origin ? { origin: input2.origin } : {},
       ...input2.correlation ? { correlation: input2.correlation } : {}
     };
-    if (input2.mode === "preview") return { status: "preview", preview: payload, ...localMeta };
+    if (input2.mode === "preview") return { status: "preview", preview: { ...payload, ...Object.keys(assets).length ? { assets: mediaPreviewAssets(assets) } : {} }, ...localMeta };
     if (!enabled) return { status: "skipped", reasonCode: "disabled", ...localMeta };
     if (!apiKey) return { status: "unavailable", reasonCode: "missing_api_key", ...localMeta };
     if (signal?.aborted) return { status: "unavailable", reasonCode: "cancelled", ...localMeta };
@@ -31375,7 +31665,7 @@ function createService(options = {}) {
         return { status: "unavailable", reasonCode: "budget_store_unavailable", ...meta3, receiptPersisted: false };
       }
       try {
-        const evaluation = await evaluateProvider({ state, questions, apiKey, timeoutMs, signal, fetchFn: options.fetchFn });
+        const evaluation = await evaluateProvider({ state, questions, apiKey, timeoutMs, model: selectedModel, longContext: selectedLongContext, assets: Object.keys(assets).length ? assets : void 0, experimentalImages, signal, fetchFn: options.fetchFn });
         const answers = Object.fromEntries(Object.entries(evaluation.answers).map(([questionId, answer]) => [
           questionId,
           assessBatchAnswer(answer, policies[questionId], input2.questions[questionId])
@@ -31424,6 +31714,7 @@ function createService(options = {}) {
   function assessBatchAnswer(answer, policy, question) {
     const domain2 = question.domain;
     const domainMeta = domain2 ? { domain: domain2 } : {};
+    if (answer.type === "box") return { type: "box", ...domainMeta, box: answer.box, confidence: answer.confidence, disposition: "advisory", policy };
     if (answer.type === "noul") return { type: "noul", ...domainMeta, noul: answer.noul, disposition: "advisory", policy };
     if (answer.type === "score") {
       const lowConfidence2 = policy.mode === "conservative" && answer.confidence < policy.minConfidence;
@@ -31488,7 +31779,9 @@ function emptyCounts() {
     retryLikeResponses: 0,
     billedUsageKnown: 0,
     reportedInputTokens: 0,
-    reportedOutputTokens: 0
+    reportedOutputTokens: 0,
+    unknownInputTokenCounts: 0,
+    unknownOutputTokenCounts: 0
   };
 }
 function add(target, receipt) {
@@ -31510,9 +31803,11 @@ function add(target, receipt) {
     if (typeof transport.providerRequestId === "string" && transport.providerRequestId.length > 0) target.providerRequestIdsPresent++;
   } else if (evaluated) target.legacyEvaluationsWithoutTransport++;
   if (receipt.cached === true || transport?.cacheHit === true) target.cacheReuses++;
-  if (evaluated && Number.isSafeInteger(receipt.usage?.input_tokens) && receipt.usage.input_tokens >= 0 && Number.isSafeInteger(receipt.usage?.output_tokens) && receipt.usage.output_tokens >= 0) {
-    target.reportedInputTokens += receipt.usage.input_tokens;
-    target.reportedOutputTokens += receipt.usage.output_tokens;
+  if (evaluated) {
+    if (Number.isSafeInteger(receipt.usage?.input_tokens) && receipt.usage.input_tokens >= 0) target.reportedInputTokens += receipt.usage.input_tokens;
+    else target.unknownInputTokenCounts++;
+    if (Number.isSafeInteger(receipt.usage?.output_tokens) && receipt.usage.output_tokens >= 0) target.reportedOutputTokens += receipt.usage.output_tokens;
+    else target.unknownOutputTokenCounts++;
   }
 }
 var validReceiptId = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -32168,14 +32463,14 @@ async function recordDecisionOutcome(raw, options = {}) {
 
 // src/server.ts
 var service = createService();
-var server = new Server({ name: "jev-workflows", version: "0.4.1" }, { capabilities: { tools: {} } });
+var server = new Server({ name: "jev-workflows", version: "0.5.0" }, { capabilities: { tools: {} } });
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [
   { name: "jev_status", description: "Read local Jev plugin readiness and limits. Does not contact TypeSafe or expose credentials.", inputSchema: { type: "object", properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } },
   { name: "classify_failure", description: "Preview selected redacted command evidence locally, or evaluate an authorized payload with TypeSafe Jev. Evaluate sends data externally in a billable provider API request. Advisory failure classification; never edits files, approves permissions, or certifies a fix.", inputSchema: external_exports.toJSONSchema(failureSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
   { name: "check_completion", description: "Preview a completion claim and selected evidence locally, or evaluate an authorized payload with TypeSafe Jev. Returns support, partial support, contradiction, or insufficient evidence. Advisory assessment, not a substitute for independent tests or user acceptance.", inputSchema: external_exports.toJSONSchema(completionSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
   { name: "classify_decision", description: "Consult Jev for any classification or choice: tools, models and effort, tasks/delegation, skills, context, strategy, outcomes, or a caller-defined taxonomy. Supply the actual available candidates, question, evidence, and context containing the objective and constraints. Preview is local; evaluate sends a bounded redacted payload to TypeSafe. Returns a validated candidate ID or abstention, never permission or proof of execution. Use before consequential choices when the user has enabled Jev consultation.", inputSchema: external_exports.toJSONSchema(decisionSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
   { name: "configure_automation", description: "Configure optional local evaluation caps and enable, scope, or disable automatic Jev lifecycle consultation for this local installation when the user requests it. There are no plugin-imposed daily call, byte-volume, or per-session caps by default; null leaves each optional cap unlimited, and only explicit user settings add caps. Replaces the previously saved local policy; the prior policy is not retained. Stores only local policy, never credentials. Enabled hooks send bounded redacted event context through the TypeSafe provider API. Hook trust remains a separate host control.", inputSchema: external_exports.toJSONSchema(automationPolicySchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false } },
-  { name: "evaluate_decisions", description: "Preview or evaluate independent typed Choice, Noul, and Score questions together against one selected structured state. Supply actual available candidates and explicit criteria. Evaluation sends redacted inputs to TypeSafe; probabilities and local per-question dispositions remain advisory. Batch only independent questions and combine answers in code. Never supplies authority, tool arguments, or proof of completion.", inputSchema: external_exports.toJSONSchema(evaluateDecisionsSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
+  { name: "evaluate_decisions", description: "Preview or evaluate independent typed Choice, Noul, Score, or explicitly opted-in experimental Box questions together against one selected structured state. Image assets are explicit bounded PNG/JPEG JSON inputs only; no file or URL reads occur. Evaluation sends redacted text and validated assets to TypeSafe; probabilities and local per-question dispositions remain advisory. Batch only independent questions and combine answers in code. Never supplies authority, tool arguments, or proof of completion.", inputSchema: external_exports.toJSONSchema(evaluateDecisionsSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
   { name: "update_task_context", description: "Update redacted local task context scoped to the actual workspace, session, and agent. Continue preserves the root objective; replace starts a new objective; reset clears the scoped context. Supply current constraints, acceptance criteria, corrections, evidence references, and actual candidate catalogs. Local only; replaces prior scoped context on replace/reset and does not change Codex settings or permissions.", inputSchema: external_exports.toJSONSchema(updateTaskContextInputSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false } },
   { name: "record_decision_outcome", description: "Append a local observation linked to an existing decision receipt, actual action, and evidence identifiers. This records what the caller reports happened; it never establishes independent verification, provider billing, or permission and never transmits evidence to TypeSafe.", inputSchema: external_exports.toJSONSchema(decisionOutcomeSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false } }
 ] }));
