@@ -1,0 +1,17 @@
+minimumLimaVersion: 2.0.0
+base:
+  - template:_images/ubuntu-26.04
+vmType: vz
+arch: aarch64
+cpus: 2
+memory: 3GiB
+disk: 15GiB
+plain: true
+propagateProxyEnv: false
+mounts: []
+ssh:
+  loadDotSSHPubKeys: false
+  forwardAgent: false
+containerd:
+  system: false
+  user: false
