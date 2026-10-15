@@ -1,5 +1,6 @@
-import { cp, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
-import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { cp, lstat, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const source = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -26,8 +27,10 @@ const target = resolve(targetArg);
 if (!new Set(['jev-workflows', 'jev-workflows-claude']).has(basename(target))) throw new Error(`Claude package target must end in jev-workflows or jev-workflows-claude: ${target}`);
 const targetRelativeToSource = relative(source, target);
 if (targetRelativeToSource === '' || (!targetRelativeToSource.startsWith('..' + sep) && targetRelativeToSource !== '..')) throw new Error(`Claude package target must be outside the source tree: ${target}`);
+let reconcileExisting = false;
 try {
-  const existing = await stat(target);
+  const existing = await lstat(target);
+  if (existing.isSymbolicLink() || !existing.isDirectory()) throw new Error(`Refusing to stage into a non-directory target: ${target}`);
   if (existing) {
     const allowed = new Set(['.claude-plugin', '.mcp.json', 'hooks', 'dist', 'skills', 'docs', 'README.md', 'LICENSE', 'CLAUDE-HOST-COMPATIBILITY.json']);
     const entries = await readdir(target);
@@ -38,17 +41,21 @@ try {
       throw new Error(`Refusing to stage into a non-empty target without Claude compatibility marker: ${target}`);
     }
     for (const entry of entries) if (!allowed.has(entry)) throw new Error(`Refusing to overwrite unrecognized target entry ${entry}: ${target}`);
+    reconcileExisting = entries.length > 0;
   }
 } catch (error) {
-  if (error?.code !== 'ENOENT') throw error;
+  if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
 }
-await mkdir(target, {recursive: true});
-await cp(join(source, 'templates/claude'), target, {recursive: true});
-for (const name of ['server.mjs', 'claude-hook.mjs']) await cp(join(source, 'dist', name), join(target, 'dist', name));
-for (const name of ['skills', 'docs']) await cp(join(source, name), join(target, name), {recursive: true});
-for (const name of ['README.md', 'LICENSE']) await cp(join(source, name), join(target, name));
+const stagingTarget = reconcileExisting ? join(dirname(target), `.jev-claude-stage-${randomUUID()}`) : target;
+try {
+await mkdir(stagingTarget, {recursive: true});
+await cp(join(source, 'templates/claude'), stagingTarget, {recursive: true});
+for (const name of ['server.mjs', 'claude-hook.mjs']) await cp(join(source, 'dist', name), join(stagingTarget, 'dist', name));
+for (const name of ['skills', 'docs']) await cp(join(source, name), join(stagingTarget, name), {recursive: true});
+for (const name of ['README.md', 'LICENSE']) await cp(join(source, name), join(stagingTarget, name));
+if (process.env.JEV_PACKAGE_TEST_FAIL_AFTER_STAGE === '1') throw new Error('injected Claude package staging failure');
 
-const mcpPath = join(target, '.mcp.json');
+const mcpPath = join(stagingTarget, '.mcp.json');
 const mcp = JSON.parse(await readFile(mcpPath, 'utf8'));
 const server = mcp.mcpServers?.['jev-workflows'];
 if (!server || server.type !== 'stdio' || !Array.isArray(server.args) || server.args.some(value => typeof value !== 'string' || !value.includes('${CLAUDE_PLUGIN_ROOT}'))) throw new Error('Expected native Claude MCP declaration');
@@ -56,7 +63,7 @@ if (stateDirectory !== undefined) server.env = {...server.env, JEV_STATE_DIRECTO
 if (credentialFile !== undefined) server.env = {...server.env, JEV_API_KEY_FILE: credentialFile};
 await writeFile(mcpPath, JSON.stringify(mcp, null, 2) + '\n');
 
-const hooksPath = join(target, 'hooks/hooks.json');
+const hooksPath = join(stagingTarget, 'hooks/hooks.json');
 const hooks = JSON.parse(await readFile(hooksPath, 'utf8'));
   if (stateDirectory !== undefined || credentialFile !== undefined) {
   const shellQuote = value => `'${value.replaceAll("'", "'\\''")}'`;
@@ -69,7 +76,7 @@ const hooks = JSON.parse(await readFile(hooksPath, 'utf8'));
   }
 }
 await writeFile(hooksPath, JSON.stringify(hooks, null, 2) + '\n');
-await writeFile(join(target, 'CLAUDE-HOST-COMPATIBILITY.json'), JSON.stringify({
+await writeFile(join(stagingTarget, 'CLAUDE-HOST-COMPATIBILITY.json'), JSON.stringify({
   name: 'jev-workflows', packageKind: 'claude-code-plugin', generatedAt: new Date().toISOString(),
   stateDirectory: stateDirectory ?? null,
   credentialFile: credentialFile ?? null,
@@ -77,4 +84,21 @@ await writeFile(join(target, 'CLAUDE-HOST-COMPATIBILITY.json'), JSON.stringify({
   supportedEvents: Object.keys(hooks.hooks ?? {}),
   credentialHandling: 'Environment names and paths only. No credential values are packaged.',
 }, null, 2) + '\n');
+if (reconcileExisting) {
+  const backupTarget = join(dirname(target), `.jev-claude-backup-${randomUUID()}`);
+  await rename(target, backupTarget);
+  try {
+    await rename(stagingTarget, target);
+  } catch (error) {
+    try { await rename(backupTarget, target); }
+    catch (rollbackError) {
+      throw new Error(`Claude package replacement failed and rollback failed; preserved backup at ${backupTarget}: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`);
+    }
+    throw error;
+  }
+  await rm(backupTarget, {recursive: true, force: true});
+}
 console.log(`Claude plugin package staged: ${target}${stateDirectory === undefined ? ' (user state default)' : ' (state directory override configured)'}`);
+} finally {
+  if (reconcileExisting) await rm(stagingTarget, {recursive: true, force: true});
+}

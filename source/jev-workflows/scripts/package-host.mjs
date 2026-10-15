@@ -1,5 +1,6 @@
-import { cp, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
-import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { cp, lstat, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Stage the legacy Codex shape used by hosts that do not yet load hooks from
@@ -73,17 +74,20 @@ const included = [
 ];
 
 let targetExists = true;
+let reconcileExisting = false;
 try {
-  await stat(target);
+  const info = await lstat(target);
+  if (info.isSymbolicLink() || !info.isDirectory()) throw new Error(`Refusing to stage into a non-directory target: ${target}`);
 } catch (error) {
-  if (error?.code !== 'ENOENT') throw error;
+  if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
   targetExists = false;
 }
 
 if (targetExists) {
   const entries = await readdir(target);
-  const generated = entries.includes('HOST-COMPATIBILITY.json');
-  if (!generated && entries.length > 0) {
+  let marker;
+  try { marker = JSON.parse(await readFile(join(target, 'HOST-COMPATIBILITY.json'), 'utf8')); } catch { marker = undefined; }
+  if (entries.length > 0 && marker?.packageKind !== 'codex-legacy-host-compatibility') {
     throw new Error(`Refusing to stage into a non-empty target without HOST-COMPATIBILITY.json: ${target}`);
   }
   for (const name of forbidden) {
@@ -99,20 +103,24 @@ if (targetExists) {
       throw new Error(`Host target contains an unrecognized path ${name}; choose a clean target: ${target}`);
     }
   }
+  reconcileExisting = entries.length > 0;
 }
 
-await mkdir(target, { recursive: true });
+const stagingTarget = reconcileExisting ? join(dirname(target), `.jev-codex-stage-${randomUUID()}`) : target;
+try {
+await mkdir(stagingTarget, { recursive: true });
 
 for (const name of included) {
-  await cp(join(source, name), join(target, name), { recursive: true });
+  await cp(join(source, name), join(stagingTarget, name), { recursive: true });
 }
+if (reconcileExisting && (await readdir(target)).includes('.DS_Store')) await cp(join(target, '.DS_Store'), join(stagingTarget, '.DS_Store'));
 
 // The legacy Codex parser does not expand Agent Plugin placeholders in the
 // stdio `args` or `cwd` fields. It resolves a relative cwd beneath the plugin
 // root and passes args through unchanged. Keep the portable `${PLUGIN_ROOT}`
 // declaration canonical in the source package, but emit the equivalent
 // relative declaration in this host-only package.
-const hostMcpPath = join(target, '.mcp.json');
+const hostMcpPath = join(stagingTarget, '.mcp.json');
 const hostMcp = JSON.parse(await readFile(hostMcpPath, 'utf8'));
 const hostServer = hostMcp?.mcpServers?.['jev-workflows'];
 if (!hostServer || hostServer.type !== 'stdio' || !Array.isArray(hostServer.args)) {
@@ -146,7 +154,7 @@ const stateEnvironment = stateDirectory === undefined
 hostServer.env = { ...existingEnv, ...stateEnvironment };
 await writeFile(hostMcpPath, JSON.stringify(hostMcp, null, 2) + '\n');
 
-const hostHooksPath = join(target, 'hooks/hooks.json');
+const hostHooksPath = join(stagingTarget, 'hooks/hooks.json');
 const hostHooks = JSON.parse(await readFile(hostHooksPath, 'utf8'));
 let rewrittenHookCommands = 0;
 const shellQuote = (value) => `'${value.replaceAll("'", "'\\''")}'`;
@@ -195,9 +203,9 @@ const compatibility = {
     pluginDataReserved: true,
   } : null,
 };
-await writeFile(join(target, 'HOST-COMPATIBILITY.json'), JSON.stringify(compatibility, null, 2) + '\n');
+await writeFile(join(stagingTarget, 'HOST-COMPATIBILITY.json'), JSON.stringify(compatibility, null, 2) + '\n');
 
-const readmePath = join(target, 'README.md');
+const readmePath = join(stagingTarget, 'README.md');
 const readme = await readFile(readmePath, 'utf8');
 const marker = '<!-- generated: codex legacy host compatibility -->';
 const stateNote = stateDirectory === undefined
@@ -207,4 +215,19 @@ const note = `\n\n${marker}\n## Codex legacy host package\n\nThis generated dire
 const withoutPriorNote = readme.replace(new RegExp(`\\n?${marker}[\\s\\S]*$`), '');
 await writeFile(readmePath, withoutPriorNote.trimEnd() + note);
 
+if (reconcileExisting) {
+  const backupTarget = join(dirname(target), `.jev-codex-backup-${randomUUID()}`);
+  await rename(target, backupTarget);
+  try { await rename(stagingTarget, target); }
+  catch (error) {
+    try { await rename(backupTarget, target); }
+    catch (rollbackError) { throw new Error(`Codex package replacement failed and rollback failed; preserved backup at ${backupTarget}: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`); }
+    throw error;
+  }
+  await rm(backupTarget, {recursive: true, force: true});
+}
+
 console.log(`Codex legacy host package staged: ${target}${stateDirectory === undefined ? ' (neutral user state mode)' : ' (state directory override configured)'}`);
+} finally {
+  if (reconcileExisting) await rm(stagingTarget, {recursive: true, force: true});
+}

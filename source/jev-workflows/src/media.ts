@@ -1,8 +1,11 @@
 import {z} from 'zod';
+import {inflateSync} from 'node:zlib';
+import {PNG} from 'pngjs';
+import jpeg from 'jpeg-js';
 
 export const MEDIA_MAX_IMAGE_BYTES = 16 * 1024 * 1024;
 export const MEDIA_MAX_REQUEST_BYTES = 32 * 1024 * 1024;
-export const MEDIA_MIN_DIMENSION = 280;
+export const MEDIA_MIN_DIMENSION = 256;
 export const MEDIA_MAX_DIMENSION = 1568;
 export const MEDIA_MIN_PIXELS = 78_400;
 export const MEDIA_MAX_PIXELS = 2_458_624;
@@ -79,7 +82,11 @@ function dimensions(data: Buffer, format: ImageAsset['format']): {width: number;
     let offset = 8;
     let width: number | undefined;
     let height: number | undefined;
+    let bitDepth: number | undefined;
+    let colorType: number | undefined;
+    let interlace: number | undefined;
     let idat = false;
+    const idatParts: Buffer[] = [];
     let iend = false;
     while (offset + 12 <= data.length) {
       const length = data.readUInt32BE(offset);
@@ -93,7 +100,12 @@ function dimensions(data: Buffer, format: ImageAsset['format']): {width: number;
         if (length !== 13 || width !== undefined) fail('format_mismatch');
         width = body.readUInt32BE(0);
         height = body.readUInt32BE(4);
-      } else if (type === 'IDAT') idat = true;
+        bitDepth = body[8];
+        colorType = body[9];
+        interlace = body[12];
+        if (body[10] !== 0 || body[11] !== 0 || ![0, 1].includes(interlace!)) fail('format_mismatch');
+      } else if (type === 'acTL' || type === 'fcTL' || type === 'fdAT') fail('format_mismatch');
+      else if (type === 'IDAT') { idat = true; idatParts.push(body); }
       else if (type === 'IEND') {
         if (length !== 0) fail('format_mismatch');
         iend = true;
@@ -102,9 +114,29 @@ function dimensions(data: Buffer, format: ImageAsset['format']): {width: number;
       }
       offset = end;
     }
-    if (width === undefined || height === undefined || !idat || !iend) fail('format_mismatch');
+    if (width === undefined || height === undefined || bitDepth === undefined || colorType === undefined || interlace === undefined || !idat || !iend) fail('format_mismatch');
+    const legalDepths: Record<number, readonly number[]> = {0: [1, 2, 4, 8, 16], 2: [8, 16], 3: [1, 2, 4, 8], 4: [8, 16], 6: [8, 16]};
+    if (!legalDepths[colorType]?.includes(bitDepth)) fail('format_mismatch');
+    validateDimensions(width, height);
+    try {
+      const channels: Record<number, number> = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4};
+      const bitsPerPixel = channels[colorType]! * bitDepth;
+      const passSizes = interlace === 0
+        ? [{width, height}]
+        : [[0, 0, 8, 8], [4, 0, 8, 8], [0, 4, 4, 8], [2, 0, 4, 4], [0, 2, 2, 4], [1, 0, 2, 2], [0, 1, 1, 2]].map(([x, y, dx, dy]) => ({
+          width: width > x! ? Math.ceil((width - x!) / dx!) : 0,
+          height: height > y! ? Math.ceil((height - y!) / dy!) : 0,
+        }));
+      const expectedInflated = passSizes.reduce((total, pass) => total + (pass.width ? Math.ceil(pass.width * bitsPerPixel / 8) + 1 : 0) * pass.height, 0);
+      const inflated = inflateSync(Buffer.concat(idatParts), {maxOutputLength: expectedInflated});
+      if (inflated.length !== expectedInflated) fail('format_mismatch');
+      PNG.sync.read(data, {checkCRC: true});
+    } catch {
+      fail('format_mismatch');
+    }
     return {width, height};
   }
+  // Parse the JPEG header first so decoder allocation is bounded by provider dimensions.
   if (png || data.length < 4 || data[0] !== 0xff || data[1] !== 0xd8 || data[2] !== 0xff) fail('format_mismatch');
   let found: {width: number; height: number} | undefined;
   let sawScan = false;
@@ -126,6 +158,18 @@ function dimensions(data: Buffer, format: ImageAsset['format']): {width: number;
     offset += length;
   }
   if (!found || !sawScan || data.length < 2 || data[data.length - 2] !== 0xff || data[data.length - 1] !== 0xd9) fail('format_mismatch');
+  validateDimensions(found.width, found.height);
+  try {
+    const decoded = jpeg.decode(data, {
+      maxResolutionInMP: MEDIA_MAX_PIXELS / 1_000_000,
+      // Bound decoder allocations while allowing maximum-size RGB and CMYK JPEGs.
+      maxMemoryUsageInMB: 128,
+      tolerantDecoding: false,
+    });
+    if (decoded.width !== found.width || decoded.height !== found.height) fail('format_mismatch');
+  } catch {
+    fail('format_mismatch');
+  }
   return found;
 }
 

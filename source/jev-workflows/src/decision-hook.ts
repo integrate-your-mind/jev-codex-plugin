@@ -3,7 +3,6 @@ import { constants } from 'node:fs';
 import { mkdir, open, realpath, readdir, unlink, lstat, rename } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { isAbsolute, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { createService } from './service.js';
 import { redactText } from './redact.js';
 import { readCredentialFile } from './credential.js';
@@ -87,7 +86,6 @@ type NormalizedEvent = {
 function isRecord(value: unknown): value is RecordValue {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
-
 function isSafeCandidateId(value: unknown): value is string {
   return typeof value === 'string' && CANDIDATE_ID.test(value) && !RESERVED_CANDIDATE_IDS.has(value);
 }
@@ -299,7 +297,6 @@ function responseExcerpt(value: unknown, env: NodeJS.ProcessEnv): string | undef
     return undefined;
   }
 }
-
 function semanticResponse(event: NormalizedEvent, env: NodeJS.ProcessEnv): SemanticResponse {
   const response = event.raw.tool_response;
   const result: SemanticResponse = {};
@@ -1105,22 +1102,3 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
     return {};
   }
 }
-
-async function readStdin(): Promise<Uint8Array> {
-  const chunks: Buffer[] = [];
-  let total = 0;
-  for await (const chunk of process.stdin) {
-    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    total += bytes.byteLength;
-    if (total > MAX_STDIN_BYTES) return new Uint8Array(MAX_STDIN_BYTES + 1);
-    chunks.push(bytes);
-  }
-  return Buffer.concat(chunks);
-}
-
-async function main(): Promise<void> {
-  const result = await runDecisionHook(await readStdin());
-  process.stdout.write(JSON.stringify(result));
-}
-
-if (process.argv[1] && import.meta.url === pathToFileURL(await realpath(process.argv[1])).href) void main().catch(() => process.stdout.write('{}'));

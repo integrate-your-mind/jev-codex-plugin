@@ -2,6 +2,7 @@ import {describe, it} from 'node:test';
 import assert from 'node:assert/strict';
 import {createService, type ServiceOptions} from '../src/service.js';
 import type {Receipt, Store} from '../src/store.js';
+import {validPngBase64 as png} from './media-fixture.js';
 
 class MemoryStore implements Store {
   receipts: Receipt[] = [];
@@ -64,17 +65,6 @@ function provider(calls: Array<Record<string, unknown>>): typeof fetch {
 
 function service(options: Partial<ServiceOptions> = {}) {
   return createService({apiKey: 'batch-test-key', enabled: true, ...options, store: options.store ?? new MemoryStore()});
-}
-
-function crc32(data: Buffer): number {
-  let crc = 0xffffffff;
-  for (const byte of data) { crc ^= byte; for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0); }
-  return (crc ^ 0xffffffff) >>> 0;
-}
-function png(width = 280, height = 280): string {
-  const body = Buffer.alloc(13); body.writeUInt32BE(width, 0); body.writeUInt32BE(height, 4); body[8] = 8; body[9] = 6;
-  const chunk = (type: string, data: Buffer) => { const t = Buffer.from(type); const out = Buffer.alloc(12 + data.length); out.writeUInt32BE(data.length, 0); t.copy(out, 4); data.copy(out, 8); out.writeUInt32BE(crc32(Buffer.concat([t, data])), 8 + data.length); return out; };
-  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]), chunk('IHDR', body), chunk('IDAT', Buffer.alloc(1)), chunk('IEND', Buffer.alloc(0))]).toString('base64');
 }
 
 describe('evaluate_decisions mixed typed batch', () => {

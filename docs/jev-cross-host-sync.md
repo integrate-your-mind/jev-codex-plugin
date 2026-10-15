@@ -20,7 +20,7 @@ Research current official Jev API/model documentation first. Record endpoint, re
 
 ## Scope and tradeoffs
 
-Implement the current documented Jev decision API capabilities relevant to these integrations; record any unsupported primitive explicitly. Do not add a second orchestrator, recurring monitor, auth flow, bulk historical benchmark, or QQ login/TUI changes. Provider aliases may evolve; preserve actual resolved model in receipts and validate documented alias relationships. Never claim an accuracy improvement from transport compatibility tests. Host versions are tested independently; current local Claude CLI reports 2.1.218.
+Implement the current documented Jev decision API capabilities relevant to these integrations; record any unsupported primitive explicitly. Do not add a second orchestrator, recurring monitor, auth flow, bulk historical benchmark, or QQ login/TUI changes. Provider aliases may evolve; preserve actual resolved model in receipts and validate documented alias relationships. Never claim an accuracy improvement from transport compatibility tests. Host versions are tested independently; initial Claude discovery reported 2.1.218; native installation and runtime QA used Claude Code 2.1.301.
 
 ## Acceptance
 

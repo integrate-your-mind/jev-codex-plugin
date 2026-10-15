@@ -26,6 +26,7 @@ const TURN_EVENTS = new Set([
 const TURN_DIRECTORY = 'claude-turns-v1';
 const HOST_PREFIX = 'claude:';
 const MAX_STDIN_BYTES = 128 * 1024;
+const CLAUDE_INTERNAL_TOOL_PREFIX = 'mcp__plugin_jev-workflows_jev-workflows__';
 
 function isRecord(value: unknown): value is RecordValue {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -39,6 +40,10 @@ function validIdentity(raw: RecordValue): boolean {
   return typeof raw.session_id === 'string' && raw.session_id.length > 0 &&
     typeof raw.cwd === 'string' && isAbsolute(raw.cwd) &&
     typeof raw.hook_event_name === 'string' && SUPPORTED_EVENTS.has(raw.hook_event_name);
+}
+
+function isClaudeInternalTool(raw: RecordValue): boolean {
+  return typeof raw.tool_name === 'string' && raw.tool_name.startsWith(CLAUDE_INTERNAL_TOOL_PREFIX);
 }
 
 async function turnStatePath(raw: RecordValue, env: NodeJS.ProcessEnv): Promise<string | undefined> {
@@ -170,6 +175,7 @@ export async function runClaudeHook(
     const env = options.env ?? process.env;
     const policy = await readPolicy(env);
     if (!policy.enabled || env.JEV_ENABLED === '0' || !await workspaceAllowed(policy, parsed.cwd as string)) return {};
+    if (isClaudeInternalTool(parsed)) return {};
     const turnId = await resolveTurn(parsed, env);
     if (TURN_EVENTS.has(originalName) && !turnId) return {};
     const result = await runDecisionHook(commonEvent(parsed, turnId), options);

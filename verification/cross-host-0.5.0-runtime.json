@@ -1,0 +1,249 @@
+{
+  "recordedOn": "2026-10-15",
+  "scope": "Host integration and provider transport/schema proof; not evidence of decision-quality improvement.",
+  "codex": {
+    "pluginVersion": "0.5.0",
+    "selectedHostModel": "gpt-6-astra",
+    "passed": true,
+    "runtimeChecksPassed": true,
+    "turnStatus": "completed",
+    "terminalEvidence": {
+      "receiptId": "79618979-b357-46f1-823d-3db0b60f82c0",
+      "stdoutDigestMatched": true,
+      "hookExitCodeExposed": false,
+      "commandItemExitCode": 0
+    },
+    "correlatedHookReceipts": [
+      {
+        "event": "Stop",
+        "receiptId": "9ac6b73f-81a9-4fd4-844e-438461739491",
+        "status": "assessed",
+        "model": "jev-1.13.0",
+        "responseStatus": 200,
+        "validatedResponse": true,
+        "providerRequestId": "req_01a14186e37c754b9ad02ce3a102162b"
+      },
+      {
+        "event": "PostToolUse",
+        "receiptId": "79618979-b357-46f1-823d-3db0b60f82c0",
+        "status": "assessed",
+        "model": "jev-1.13.0",
+        "responseStatus": 200,
+        "validatedResponse": true,
+        "providerRequestId": "req_01a14186d8d674c5a3e1102a947cf959"
+      },
+      {
+        "event": "UserPromptSubmit",
+        "receiptId": "95900422-b087-49c3-8669-6bebf14ec2e6",
+        "status": "assessed",
+        "model": "jev-1.13.0",
+        "responseStatus": 200,
+        "validatedResponse": true,
+        "providerRequestId": "req_01a14186cc417c07b86433ca688cc360"
+      },
+      {
+        "event": "PreToolUse",
+        "receiptId": "d0eec460-9232-4849-a3b6-c48e90f6354b",
+        "status": "assessed",
+        "model": "jev-1.13.0",
+        "responseStatus": 200,
+        "validatedResponse": true,
+        "providerRequestId": "req_01a14186d73f76c5ac1b1731b8ab3b62"
+      }
+    ]
+  },
+  "claude": [
+    {
+      "scenario": "command-success",
+      "pluginVersion": "0.5.0",
+      "selectedHostModel": "claude-opus-5-5[1m]",
+      "hostResultError": false,
+      "turns": 4,
+      "explicitDecision": {
+        "receiptId": "8df9bf5d-2433-4df1-9125-338a2a27e17d",
+        "status": "assessed",
+        "model": "jev-1.13.0",
+        "responseStatus": 200,
+        "validatedResponse": true,
+        "providerRequestId": "req_01a14186bea876219b6b313988e2fe8b"
+      },
+      "ownMcpHookInvocationCount": 2,
+      "correlatedHookReceipts": [
+        {
+          "event": "PreToolUse",
+          "receiptId": "8f6bf64d-1578-4fd5-8583-8eea1c861c54",
+          "status": "assessed",
+          "model": "jev-1.13.0",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a14186bd7270cc8df6cb690c71cb4a"
+        },
+        {
+          "event": "PostToolUse",
+          "receiptId": "30a63dc7-28ab-4d09-9827-61c45e5050f2",
+          "status": "assessed",
+          "model": "jev-1.13.0",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a14186a8667d7ba91a99271decd9f3"
+        },
+        {
+          "event": "Stop",
+          "receiptId": "954a1c16-e950-46ad-bc67-4bde4ac36c41",
+          "status": "assessed",
+          "model": "jev-1.13.0",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a14186d875746bb15c0b854dcdfdec"
+        },
+        {
+          "event": "PreToolUse",
+          "receiptId": "f0ef61fe-96bd-41cd-a178-d626806b44b0",
+          "status": "assessed",
+          "model": "jev-1.13.0",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a14186976976b49fb0d36eee3d0fc8"
+        },
+        {
+          "event": "PostToolUse",
+          "receiptId": "d970f2e2-8710-4b94-b7e6-18ed57722655",
+          "status": "assessed",
+          "model": "jev-1.13.0",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a14186c00c7b60ad4f1e5d73168d16"
+        },
+        {
+          "event": "PostToolUse",
+          "receiptId": "4b78ffe1-49f6-4859-8cc8-8fd5632ee2a0",
+          "status": "assessed",
+          "model": "jev-1.13.0",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a14186a4b17c74af8a4c2dabbcb6a2"
+        },
+        {
+          "event": "PreToolUse",
+          "receiptId": "2139108d-d6bd-4c9a-be55-2b19f6587989",
+          "status": "abstained",
+          "model": "jev-1.13.0",
+          "reasonCode": "low_confidence",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a14186a727725391435f9f29c5f0de"
+        },
+        {
+          "event": "UserPromptSubmit",
+          "receiptId": "e7c36fb1-ebeb-4444-b011-4e59c3cb604a",
+          "status": "abstained",
+          "model": "jev-1.13.0",
+          "reasonCode": "low_confidence",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a141868ace766995c8a6d78c9c7f8a"
+        },
+        {
+          "event": "SessionEnd",
+          "receiptId": "07d627de-c780-46d9-933b-06bc847c5a07",
+          "status": "abstained",
+          "model": "jev-1.13.0",
+          "reasonCode": "low_confidence",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a14186da7d76ed92f0e12ab990cc21"
+        }
+      ]
+    },
+    {
+      "scenario": "expected-command-failure",
+      "pluginVersion": "0.5.0",
+      "selectedHostModel": "claude-opus-5-5[1m]",
+      "hostResultError": false,
+      "turns": 4,
+      "explicitDecision": {
+        "receiptId": "641275d8-e448-4482-befa-730da3a8cf30",
+        "status": "abstained",
+        "model": "jev-1.13.0",
+        "reasonCode": "insufficient_evidence",
+        "responseStatus": 200,
+        "validatedResponse": true,
+        "providerRequestId": "req_01a14189552b72c2b51148da902064e6"
+      },
+      "ownMcpHookInvocationCount": 0,
+      "correlatedHookReceipts": [
+        {
+          "event": "SessionEnd",
+          "receiptId": "73663dee-a4dd-41ab-8b10-b48488ddedba",
+          "status": "abstained",
+          "model": "jev-1.13.0",
+          "reasonCode": "low_confidence",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a1418974137f4180a093fbe0522905"
+        },
+        {
+          "event": "PostToolUse",
+          "receiptId": "0b6cef23-ef6c-4fed-b7a9-bb694123899b",
+          "status": "assessed",
+          "model": "jev-1.13.0",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a14189459075b5881889cea59a091f"
+        },
+        {
+          "event": "Stop",
+          "receiptId": "aa5920d0-bc86-4fad-8594-e267300feae8",
+          "status": "assessed",
+          "model": "jev-1.13.0",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a14189702a77db9fdf80213dce297b"
+        },
+        {
+          "event": "PreToolUse",
+          "receiptId": "ddc96c0f-7ba4-45e0-9a05-41092aaca9c0",
+          "status": "assessed",
+          "model": "jev-1.13.0",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a141893e9b7707af74f4dc5ddefc45"
+        },
+        {
+          "event": "PostToolUse",
+          "receiptId": "93af0046-c315-46c4-9721-61d9f7b4fad2",
+          "status": "assessed",
+          "model": "jev-1.13.0",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a14189480078b786e3a15786ae83a7"
+        },
+        {
+          "event": "UserPromptSubmit",
+          "receiptId": "ee48522f-8069-43c2-8385-c502766460ea",
+          "status": "assessed",
+          "model": "jev-1.13.0",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a141892fd974af87852c5b46c91980"
+        },
+        {
+          "event": "PreToolUse",
+          "receiptId": "3f3d27ab-8d4b-470a-a877-a7c3d53b269e",
+          "status": "abstained",
+          "model": "jev-1.13.0",
+          "reasonCode": "low_confidence",
+          "responseStatus": 200,
+          "validatedResponse": true,
+          "providerRequestId": "req_01a1418946d9772aa19a86ede4c420f1"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "The earlier Claude success run predates the own-MCP recursion fix; the failure run follows that fix.",
+    "Claude PostToolUseFailure is normalized to PostToolUse in shared invocation storage; the native output event is restored.",
+    "Codex smoke status RPC timeout was raised from 20 to 60 seconds because reading historical receipt accounting exceeded 20 seconds; hook execution deadlines did not change.",
+    "Final distribution identity and unit checks are recorded separately. Existing running chats have not been restarted."
+  ]
+}

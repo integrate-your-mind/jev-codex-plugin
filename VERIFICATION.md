@@ -1,9 +1,23 @@
 # Verification
 
-Latest verification date: 2026-09-26
+Latest verification date: 2026-10-15
 
 This report covers the public source and packaged runtime. It records the checks
 below; it does not establish directory approval, provider billing, or model quality.
+
+## Version 0.5.0 cross-host update
+
+The current source adds native Claude Code packaging and the October 15 Jev contract while preserving unlimited defaults. Shared fixtures and a deterministic drift check connect the TypeScript plugin and QQ Rust integration; QQ verification is recorded in its own PR.
+
+- The full source suite passed 193 tests on Node 22.23.2, with typecheck, build and manifest validation. Production dependency audit reported zero vulnerabilities. Generated distribution parity and all four root distribution/contract tests passed.
+- Real Jev 1.13 and 1.14 text requests and an explicit synthetic image/Box request returned validated HTTP 200 responses with provider request IDs. See [provider evidence](verification/cross-host-0.5.0-provider.json).
+- The documented 256×307 image boundary returned HTTP 400 twice (`Invalid image dimensions.`); the final 280×280 PNG and JPEG checks passed. Those failed attempts remain in the provider evidence, separate from the five successful requests.
+- A fresh installed Codex session loaded the plugin, executed its command and correlated four lifecycle evaluations with retained provider receipts.
+- Fresh Claude Code 2.1.301 sessions loaded the user-scoped plugin and exercised command success and expected exit-7 failure. The failure run confirmed that the plugin does not recursively classify its own MCP call. Explicit diagnosis abstained on insufficient evidence while ordinary execution continued. See [native runtime evidence](verification/cross-host-0.5.0-runtime.json).
+- Native QA caught and repaired duplicate hook JSON output and Claude MCP self-recursion. Independent source review also led to bounded PNG/JPEG decoding, animated-PNG rejection, and regeneration that removes stale Claude package files.
+- Existing credentials, receipt storage and unlimited policy were reused. No existing user chat was restarted, no host model was changed, and no QQ installation or authentication was changed.
+
+These are compatibility and execution checks, not a decision-quality benchmark. Source tests, exact-head review and hosted CI are reported with the release PR; official directory approval remains separate. Image payloads are explicit opt-in, never automatic capture or upload.
 
 ## Version 0.4.0
 
@@ -174,8 +188,7 @@ Those test cases exercise redaction and contain no live credential. The exact
 literal and exact public test path are allowlisted in [.gitleaks.toml](.gitleaks.toml);
 the scan was rerun with that narrowly scoped rule and produced a clean result.
 
-No private counts, request identifiers, fingerprints, account emails, home paths,
-transcripts, or model accuracy/performance benchmarks are included here.
+Public verification records include provider request IDs for the attributed synthetic tests. Private counts, credential fingerprints, account emails, home paths and raw transcripts remain excluded.
 
 ## Release status
 

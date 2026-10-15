@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { constants } from 'node:fs';
 import { access, lstat, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -10,6 +11,21 @@ import { runClaudeHook } from '../src/claude-hook.js';
 
 const cwd = process.cwd();
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
+
+async function runBuilt(entrypoint: string, event: Record<string, unknown>, env: NodeJS.ProcessEnv): Promise<{code: number | null; stdout: string; stderr: string}> {
+  return await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [entrypoint], {cwd, env});
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', value => { stdout += value; });
+    child.stderr.on('data', value => { stderr += value; });
+    child.once('error', reject);
+    child.once('close', code => resolve({code, stdout, stderr}));
+    child.stdin.end(JSON.stringify(event));
+  });
+}
 
 async function fixture(): Promise<{root: string; env: NodeJS.ProcessEnv}> {
   const root = await mkdtemp('/tmp/jev-claude-hook-');
@@ -88,6 +104,26 @@ test('Jev-owned tools stay silent and provider failures remain fail-open', async
   }
 });
 
+test('Claude native Jev MCP tools stay silent while foreign MCP tools remain evaluable', async () => {
+  const {root, env} = await fixture();
+  try {
+    let calls = 0;
+    const service = {classifyDecision: async () => { calls += 1; return {status: 'assessed', choice: 'proceed'}; }};
+    await runClaudeHook(prompt('session-native-mcp', 'inspect MCP tools'), {env, service});
+    calls = 0;
+    for (const hook_event_name of ['PreToolUse', 'PostToolUse']) {
+      const internal = await runClaudeHook({hook_event_name, session_id: 'session-native-mcp', cwd, tool_name: 'mcp__plugin_jev-workflows_jev-workflows__classify_decision', tool_use_id: `native-${hook_event_name}`, tool_input: {}, ...(hook_event_name === 'PostToolUse' ? {tool_response: {status: 'ok'}} : {})}, {env, service});
+      assert.deepEqual(internal, {});
+    }
+    assert.equal(calls, 0);
+    const foreign = await runClaudeHook({hook_event_name: 'PreToolUse', session_id: 'session-native-mcp', cwd, tool_name: 'mcp__foreign__lookup', tool_use_id: 'foreign-1', tool_input: {}}, {env, service});
+    assert.equal(foreign.hookSpecificOutput?.hookEventName, 'PreToolUse');
+    assert.equal(calls, 1);
+  } finally {
+    await rm(root, {recursive: true, force: true});
+  }
+});
+
 test('unsafe symlink turn state fails open without replacing the link', async () => {
   const {root, env} = await fixture();
   try {
@@ -113,6 +149,25 @@ test('disabled policy and oversized input do not create Claude turn state', asyn
     await assert.rejects(access(join(env.JEV_STATE_DIRECTORY, 'claude-turns-v1')));
     const oversized = await runClaudeHook(' '.repeat(128 * 1024 + 1), {env});
     assert.deepEqual(oversized, {});
+  } finally {
+    await rm(root, {recursive: true, force: true});
+  }
+});
+
+test('built Claude and Codex hook entrypoints each emit exactly one JSON object', async () => {
+  const {root, env} = await fixture();
+  try {
+    const claudeSession = await runBuilt(join(cwd, 'dist', 'claude-hook.mjs'), {hook_event_name: 'SessionStart', session_id: 'built-claude', cwd, source: 'startup'}, env);
+    const claudeEnd = await runBuilt(join(cwd, 'dist', 'claude-hook.mjs'), {hook_event_name: 'SessionEnd', session_id: 'built-claude', cwd, reason: 'other'}, env);
+    const codexSession = await runBuilt(join(cwd, 'dist', 'decision-hook.mjs'), {hook_event_name: 'SessionStart', session_id: 'built-codex', cwd}, env);
+    const codexEnd = await runBuilt(join(cwd, 'dist', 'decision-hook.mjs'), {hook_event_name: 'SessionEnd', session_id: 'built-codex', cwd, reason: 'other'}, env);
+    for (const result of [claudeSession, claudeEnd, codexSession, codexEnd]) {
+      assert.equal(result.code, 0);
+      assert.equal(result.stderr, '');
+      assert.equal(result.stdout.trim().startsWith('{'), true);
+      assert.equal(result.stdout.trim().endsWith('}'), true);
+      assert.equal(JSON.parse(result.stdout).constructor, Object);
+    }
   } finally {
     await rm(root, {recursive: true, force: true});
   }

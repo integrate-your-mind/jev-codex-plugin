@@ -26,7 +26,8 @@ const nativeCommandText = scenario === 'failure'
   : scenario === 'async'
   ? `python3 -c 'import time; time.sleep(2); print("${NATIVE_SENTINEL}")'`
   : `printf ${NATIVE_SENTINEL}`;
-const RPC_TIMEOUT_MS = 20_000;
+// Existing installs may inventory retained receipts during a status request.
+const RPC_TIMEOUT_MS = 60_000;
 const TURN_TIMEOUT_MS = 60_000;
 
 await mkdir(reportDir, { recursive: true });

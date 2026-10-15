@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { test } from 'node:test';
@@ -89,6 +89,27 @@ test('explicit legacy state directory remains shared by MCP and hooks', async ()
     const commands = commandHooks(hooks.hooks);
     assert.ok(commands.length > 0);
     assert.ok(commands.every(command => command.startsWith(`JEV_STATE_DIRECTORY='${stateDirectory}' `)));
+  } finally {
+    await rm(parent, {recursive: true, force: true});
+  }
+});
+
+test('marked legacy package regeneration removes stale generated files and preserves refusal state', async () => {
+  const parent = await mkdtemp('/tmp/jev-package-host-reconcile-');
+  const target = join(parent, 'jev-workflows');
+  try {
+    assert.equal((await runPackageHost([target])).code, 0);
+    await mkdir(join(target, 'skills', 'removed-skill', 'scripts'), {recursive: true});
+    await writeFile(join(target, 'skills', 'removed-skill', 'scripts', 'old.mjs'), 'stale\n');
+    assert.equal((await runPackageHost([target])).code, 0);
+    await assert.rejects(access(join(target, 'skills', 'removed-skill', 'scripts', 'old.mjs')));
+    await writeFile(join(target, 'unexpected.txt'), 'preserve\n');
+    const readme = await readFile(join(target, 'README.md'), 'utf8');
+    const refused = await runPackageHost([target]);
+    assert.notEqual(refused.code, 0);
+    assert.match(refused.stderr, /unrecognized path|unrecognized target entry/);
+    assert.equal(await readFile(join(target, 'README.md'), 'utf8'), readme);
+    assert.equal(await readFile(join(target, 'unexpected.txt'), 'utf8'), 'preserve\n');
   } finally {
     await rm(parent, {recursive: true, force: true});
   }

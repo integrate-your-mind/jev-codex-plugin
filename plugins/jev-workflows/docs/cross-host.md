@@ -40,3 +40,7 @@ Then run both repositories' checks. The command updates only QQ's two contract f
 JSON assets implement the documented media capability. Multipart and request compression are alternate transport encodings and are not required by this adapter. Audio and video are not supported by Jev. Experimental formats and accuracy may change; this update proves compatibility, not quality uplift.
 
 Sources: https://docs.typesafe.ai/api, https://docs.typesafe.ai/models, https://docs.typesafe.ai/images, https://docs.typesafe.ai/sdk/javascript/changelog, https://code.claude.com/docs/en/plugins-reference, https://code.claude.com/docs/en/hooks.
+
+### Observed experimental provider mismatch (October 15, 2026)
+
+The image documentation permits width/height from 256 through 1568 and at least 78,400 total pixels. The local validator follows that contract. A real 256×307 synthetic PNG (78,592 pixels) nevertheless returned HTTP 400 with `Invalid image dimensions.` in two attributed requests; 280×280 PNG and JPEG fixtures returned validated HTTP 200 responses. Prefer at least 280 pixels on each edge while this provider discrepancy persists. The plugin neither silently resizes images nor claims every documented boundary has been accepted by the service. Provider-side re-encoding can also exceed the expanded-size limit even when the uploaded-file estimate passes locally.
