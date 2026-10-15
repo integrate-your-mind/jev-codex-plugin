@@ -76,7 +76,7 @@ Task context is local and scoped to the actual workspace, session, and agent. `c
 - [Installable Claude Code package](plugins/jev-workflows-claude)
 - [Release downloads](https://github.com/integrate-your-mind/jev-codex-plugin/releases)
 - [Verification report](VERIFICATION.md)
-- [Run the shared local and GitHub CI checks](docs/ci.md)
+- [Run GitHub Actions locally without hosted minutes](docs/ci.md)
 - [Compatibility and event contract](source/jev-workflows/docs/compatibility.md)
 - [Privacy and local retention](source/jev-workflows/docs/privacy.md)
 - [Distribution and official-directory status](source/jev-workflows/docs/distribution.md)
@@ -90,7 +90,9 @@ persistent credential handling.
 
 ## Development
 
-Run the complete CI check from the repository root:
+CI runs locally through `act`, with an installed pre-push hook verifying each exact commit in an isolated Linux VM. See [setup and execution](docs/ci.md). GitHub-hosted scheduling is disabled.
+
+Run the shared checks directly during development:
 
 ```sh
 node scripts/verify.mjs

@@ -5,15 +5,21 @@ Latest verification date: 2026-10-15
 This report covers the public source and packaged runtime. It records the checks
 below; it does not establish directory approval, provider billing, or model quality.
 
+## Local Actions migration
+
+The first real `act` run on `b65422cdda1a538c3f944c4afd4be23a5ba3bacd` passed all 202 existing tests, typecheck, bundle integrity, manifests and package parity on Node 22.23.2/Linux ARM64. The installed hook rejected an intentionally failing commit during a real push to a disposable local bare repository; the destination ref was absent. Ten controller regressions cover exact archives, annotated tags, receipt identity, failed jobs, timeouts, hook preservation, transactional installation and isolation admission. See [sanitized evidence](verification/local-ci-2026-10-15.json).
+
+The old hosted workflow is disabled. The candidate stores its Actions workflow in `.ci/verify.yml` and runs it locally through a pre-push hook. No GitHub-hosted minutes or Actions scheduler is used. Final-commit execution is recorded in a separate `local-ci / act Linux ARM64` status. Local hooks apply to this installation; other clones and web edits need their own checks.
+
 ## Version 0.5.1 naming and CI follow-up
 
 Both host packages use the display name **Jev Workflows** and keep the stable `jev-workflows` ID. The patch version is necessary because Claude's normal updater retained the old manifest when the version stayed at 0.5.0. The normal update command installed 0.5.1 after the version changed.
 
-- `node scripts/verify.mjs` passed on Node 22.23.2, macOS arm64: 195 runtime tests, seven build/distribution/contract tests, typecheck, build, manifest validation and generated package parity. Actions now calls the same command. `actionlint` and native Claude manifest/marketplace validation passed.
+- `node scripts/verify.mjs` passed on Node 22.23.2, macOS arm64: 195 runtime tests, seven build/distribution/contract tests, typecheck, build, manifest validation and generated package parity. The local Actions workflow calls the same command. `actionlint` and native Claude manifest/marketplace validation passed.
 - Two new negative fixtures first failed with `Missing expected rejection`; after the identity check repair, matching source/generated Claude identifier and display-name drift both fail verification. The MCP test also checks that handshake and status versions match the package release. Independent review reproduced a build silently repairing stale checked-in source bundles; the build verifier now snapshots source runtime and standalone skill bytes before building and rejects those repairs. Its regression also preserves a failed build exit code.
 - A fresh Codex app-server loaded version 0.5.1, eight tools and twelve trusted/enabled hooks, and successfully called `jev_status`. A fresh Claude session loaded version 0.5.1, connected its plugin MCP server and returned status successfully. Shared state and credential paths, plugin IDs and unlimited policy were preserved. See [sanitized evidence](verification/cross-host-0.5.1.json).
 
-All 21 changed runtime bundles differ only in their release version strings. The 0.5.0 provider and hook execution evidence below remains applicable to the engine; this follow-up adds installation/discovery checks, not a quality benchmark. GitHub Actions is still rejected before jobs start by the account billing lock. Any separately published local commit status identifies its actual platform and tested SHA; it does not replace the failed Actions check. See [CI instructions and limits](docs/ci.md).
+All 21 changed runtime bundles differ only in their release version strings. The 0.5.0 provider and hook execution evidence below remains applicable to the engine; this follow-up adds installation/discovery checks, not a quality benchmark. The historical GitHub Actions attempts were rejected before jobs started by the account billing lock. The hosted workflow is now disabled, and the candidate branch moves verification to local Actions through `act`. A separately published local commit status identifies its actual platform and tested SHA. See [CI instructions and limits](docs/ci.md).
 
 ## Version 0.5.0 cross-host update
 
@@ -142,7 +148,7 @@ The [0.5.0 run for ec4561f](https://github.com/integrate-your-mind/jev-codex-plu
 The [0.4.0 GitHub Actions run](https://github.com/integrate-your-mind/jev-codex-plugin/actions/runs/36225421255)
 for revision `913bb7fbea73efbdb37535d02debae7a0b28485c` was blocked before
 any test step executed: GitHub reported that the account is locked due to a
-billing issue. Hosted CI is **not passed**. The workflow is enabled and can be
+billing issue. Hosted CI is **not passed**. The historical hosted workflow is now disabled and will not be
 run manually after the account restriction is resolved. Local Node 22 tests,
 native runtime checks, and independent QA are separate evidence.
 

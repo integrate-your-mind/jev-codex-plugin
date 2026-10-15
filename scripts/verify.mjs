@@ -15,7 +15,7 @@ const steps = [
   [process.execPath, ['scripts/verify-build.mjs'], root],
   ...['test', 'validate'].map(name => ['npm', ['run', name], source]),
   [process.execPath, ['scripts/verify-distribution.mjs'], root],
-  [process.execPath, ['--test', 'scripts/verify-build.test.mjs', 'scripts/verify-distribution.test.mjs', 'scripts/sync-jev-contract.test.mjs'], root],
+  [process.execPath, ['--test', 'scripts/verify-build.test.mjs', 'scripts/verify-distribution.test.mjs', 'scripts/sync-jev-contract.test.mjs', 'scripts/local-ci.test.mjs'], root],
 ];
 
 console.log(`Verifying Jev Workflows on Node ${process.versions.node} (${process.platform}/${process.arch})`);

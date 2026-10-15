@@ -6,7 +6,7 @@ Owner: the existing Jev plugin root owner, branch `feat/jev-cross-host-sync`, PR
 
 A maintainer installs the repository's pre-push hook once. Each pushed commit is verified from `git archive`, including non-HEAD branch tips, using the same `scripts/verify.mjs` entrypoint through `act`. A failed verification prevents that push. A manual command reruns an exact commit. The Actions-format workflow lives in `.ci/verify.yml`, outside GitHub's automatically scheduled workflow directory. The old hosted workflow is removed and disabled at GitHub during migration.
 
-A run has an exact commit SHA, controller digest, start/end timestamps, exit status, platform, log and receipt. Logs and receipts live in the Git common directory under `jev-local-ci`, outside source and packages. Success is recorded only after the workflow exits zero and cleanup completes. A previously successful run may be reused only for identical commit and controller identity. The local hook is an aid for this checkout, not a server-side merge policy. Contributors must install it or run the documented command themselves.
+A run has an exact commit SHA, controller digest, start/end timestamps, exit status, platform, log and receipt. Logs and receipts live in the Git common directory under `jev-local-ci`, outside source and packages. Success is recorded only after the workflow exits zero and cleanup completes. Every invocation reruns verification; success receipts are never used as a cache. The local hook is an aid for this checkout, not a server-side merge policy. Contributors must install it or run the documented command themselves.
 
 ## Execution and state ownership
 
