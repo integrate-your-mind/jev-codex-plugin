@@ -5,9 +5,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: source/jev-workflows
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -15,14 +13,5 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: source/jev-workflows/package-lock.json
-      - run: npm ci --ignore-scripts
-      - run: npm run typecheck
-      - run: npm run build
-      - run: npm test
-      - run: npm run validate
-      - name: Verify generated distribution
-        working-directory: .
-        run: node scripts/verify-distribution.mjs
-      - name: Test distribution drift detection
-        working-directory: .
-        run: node --test scripts/verify-distribution.test.mjs scripts/sync-jev-contract.test.mjs
+      - name: Verify both host packages
+        run: node scripts/verify.mjs

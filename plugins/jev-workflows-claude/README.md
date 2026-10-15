@@ -1,6 +1,6 @@
 # Jev Workflows
 
-A portable Codex and Claude Code plugin that consults Jev for tool, model, task, skill, context, strategy, result, outcome, and custom classification decisions. The current source package is version 0.5.0. It includes eight MCP surfaces, three independently usable skills, bundled JavaScript entrypoints, and scoped lifecycle hooks.
+A portable Codex and Claude Code plugin that consults Jev for tool, model, task, skill, context, strategy, result, outcome, and custom classification decisions. The current source package is version 0.5.1. It includes eight MCP surfaces, three independently usable skills, bundled JavaScript entrypoints, and scoped lifecycle hooks.
 
 ## Capabilities
 
@@ -70,6 +70,17 @@ node scripts/package-host.mjs /absolute/release-directory/jev-workflows
 ```
 
 The generated variant retains `.codex-plugin/plugin.json`, `.mcp.json`, skills, hooks and runtime, and omits the two portable root manifests. Install the prebuilt Codex variant from the public repository marketplace and review its hooks. The default generated package aligns MCP and hook state using `JEV_STATE_MODE=user`, without machine-specific absolute paths. Both packages use the same code. The Codex overlay forwards approved environment names only, with no credential values. See [compatibility](docs/compatibility.md).
+
+### Claude Code installation
+
+The same source is packaged for Claude Code with native `.claude-plugin`, MCP and hook files. Add this repository's Git marketplace, then install the stable `jev-workflows` plugin ID:
+
+```sh
+claude plugin marketplace add integrate-your-mind/jev-codex-plugin
+claude plugin install jev-workflows@jev-workflows
+```
+
+Reload plugins or start a fresh session, then inspect `jev_status` and explicitly enable automation if desired. This is a community Git marketplace route, not an Anthropic official marketplace or directory listing. Claude Code displays the installed plugin as **Jev Workflows** while its namespaced skills and MCP server retain the `jev-workflows` identifier. See [cross-host configuration](docs/cross-host.md).
 
 ## Standalone skills and CLI
 

@@ -4,7 +4,7 @@
 
 An open-source Codex and Claude Code plugin for consulting [TypeSafe Jev](https://docs.typesafe.ai/) about tools, models, tasks, skills, context, strategies, and custom decisions. It also diagnoses failed commands and checks completion claims against evidence.
 
-The current source package is version **0.5.0**. It includes the full MCP plugin, eight MCP tools, twelve lifecycle adapters, and three standalone skills that work without MCP. See [verification results](VERIFICATION.md) for tests and independent agent QA. This community Git marketplace is publicly installable; OpenAI Directory review is separate.
+The current source package is version **0.5.1**. It includes the full MCP plugin, eight MCP tools, twelve lifecycle adapters, and three standalone skills that work without MCP. See [verification results](VERIFICATION.md) for tests and independent agent QA. This community Git marketplace is publicly installable; OpenAI Directory review is separate.
 
 **Official catalog status:** the catalog contribution is [prepared in a public fork](https://github.com/openai/plugins/compare/main...integrate-your-mind:codex-official-plugins:jev-workflows-marketplace-entry), but OpenAI restricts upstream PR creation to repository collaborators. No official store listing is live. The separate directory draft also needs local-plugin compatibility review; [publication requirements](source/jev-workflows/docs/publication.md) record the remaining dependencies.
 
@@ -31,6 +31,8 @@ claude plugin install jev-workflows@jev-workflows
 ```
 
 Restart or reload plugins, then use `jev_status`. Enable automation explicitly through `configure_automation`, as in Codex. Claude's host adapter supplies local turn identities and converts failed-tool events; it never approves permissions or forces a Stop continuation. See [cross-host configuration](source/jev-workflows/docs/cross-host.md).
+
+This uses the repository's Git marketplace and the stable plugin ID `jev-workflows`; it is not an Anthropic official marketplace or directory listing. The manifest displays the plugin as **Jev Workflows** in Claude Code.
 
 ## Jev protocol updates
 
@@ -74,6 +76,7 @@ Task context is local and scoped to the actual workspace, session, and agent. `c
 - [Installable Claude Code package](plugins/jev-workflows-claude)
 - [Release downloads](https://github.com/integrate-your-mind/jev-codex-plugin/releases)
 - [Verification report](VERIFICATION.md)
+- [Run the shared local and GitHub CI checks](docs/ci.md)
 - [Compatibility and event contract](source/jev-workflows/docs/compatibility.md)
 - [Privacy and local retention](source/jev-workflows/docs/privacy.md)
 - [Distribution and official-directory status](source/jev-workflows/docs/distribution.md)
@@ -86,6 +89,14 @@ official directory approval or partner acceptance of local execution and
 persistent credential handling.
 
 ## Development
+
+Run the complete CI check from the repository root:
+
+```sh
+node scripts/verify.mjs
+```
+
+For focused source changes:
 
 ```sh
 cd source/jev-workflows

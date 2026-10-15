@@ -1,0 +1,59 @@
+{
+  "version": "0.5.1",
+  "productName": "Jev Workflows",
+  "pluginId": "jev-workflows",
+  "repositoryStrategy": "one shared engine with generated Codex and Claude Code packages",
+  "localVerification": {
+    "command": "node scripts/verify.mjs",
+    "node": "22.23.2",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "runtimeTests": 195,
+    "distributionAndContractTests": 6,
+    "typecheck": "passed",
+    "build": "passed",
+    "manifestValidation": "passed",
+    "generatedParity": "passed",
+    "workflowActionlint": "passed",
+    "claudeNativeManifestValidation": "passed"
+  },
+  "regressionEvidence": {
+    "beforeIdentityFix": "Both matching Claude name and displayName drift fixtures failed with Missing expected rejection.",
+    "afterIdentityFix": "Both drift fixtures reject incompatible names.",
+    "runtimeVersion": "Bundled MCP server handshake and jev_status match package.json.",
+    "cacheUpdate": "Claude retained 0.5.0 metadata until the patch version was increased; normal update then installed 0.5.1."
+  },
+  "nativeCodex": {
+    "version": "0.5.1",
+    "installed": true,
+    "enabled": true,
+    "loadedHooks": 12,
+    "allHooksTrustedAndEnabled": true,
+    "mcpToolCount": 8,
+    "statusCall": "passed",
+    "generativeTurns": 0
+  },
+  "nativeClaude": {
+    "version": "0.5.1",
+    "hostModel": "claude-opus-4-8[1m]",
+    "pluginLoaded": true,
+    "mcpConnected": true,
+    "statusCall": "passed",
+    "hostResultError": false,
+    "turns": 3
+  },
+  "preservation": {
+    "credentialsAndStatePaths": true,
+    "unlimitedPolicy": true,
+    "existingPluginIds": true,
+    "onlyVersionStringsChangedInRuntimeBundles": true,
+    "bundleCount": 21
+  },
+  "limitations": [
+    "Local macOS validation does not establish a Linux GitHub Actions run.",
+    "Actions scheduling remains blocked by the repository owner account billing lock.",
+    "No new provider accuracy or quality benchmark was performed.",
+    "Native Claude init reports the plugin ID; displayName was verified in the validated installed manifest, not a screenshot.",
+    "No merge or official marketplace approval is claimed."
+  ]
+}

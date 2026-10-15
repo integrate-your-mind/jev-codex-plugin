@@ -96,10 +96,19 @@ const versionPaths = [
   'source/jev-workflows/templates/claude/.claude-plugin/plugin.json',
   'plugins/jev-workflows-claude/.claude-plugin/plugin.json',
 ];
-const verifyVersionParity = async () => {
+const verifyIdentityParity = async () => {
   const versions = [];
   for (const path of versionPaths) {
     const manifest = await readJson(join(repositoryRoot, path));
+    if (manifest.name !== 'jev-workflows') {
+      throw new Error(`Plugin identity must remain jev-workflows: ${path}`);
+    }
+    if (!path.endsWith('/package.json')) {
+      const displayName = manifest.displayName ?? manifest.interface?.displayName ?? manifest.extensions?.['com.openai']?.interface?.displayName;
+      if (displayName !== 'Jev Workflows') {
+        throw new Error(`Display name must remain Jev Workflows: ${path}`);
+      }
+    }
     if (typeof manifest.version !== 'string' || manifest.version.length === 0) {
       throw new Error(`Missing version in ${path}`);
     }
@@ -118,7 +127,7 @@ if (claudeMarketplace.name !== 'jev-workflows' || claudeMarketplace.plugins?.len
     claudeMarketplace.plugins[0].name !== 'jev-workflows' || claudeMarketplace.plugins[0].source !== './plugins/jev-workflows-claude') {
   throw new Error('Claude marketplace must select the generated Claude package');
 }
-const version = await verifyVersionParity();
+const version = await verifyIdentityParity();
 let temporaryRoot;
 try {
   temporaryRoot = await mkdtemp(join(tmpdir(), 'jev-distribution-'));
@@ -128,7 +137,7 @@ try {
   const generatedClaude = join(temporaryRoot, 'jev-workflows-claude');
   await execFileAsync(process.execPath, ['scripts/package-claude.mjs', generatedClaude], {cwd: sourceRoot});
   await compareHostPackage(generatedClaude, join(repositoryRoot, 'plugins/jev-workflows-claude'));
-  console.log(`Distribution verified: marketplace path, version ${version}, Codex and Claude generated package parity`);
+  console.log(`Distribution verified: Jev Workflows identity, marketplace paths, version ${version}, Codex and Claude generated package parity`);
 } finally {
   if (temporaryRoot) await rm(temporaryRoot, { recursive: true, force: true });
 }

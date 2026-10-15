@@ -25122,7 +25122,7 @@ function createService(options = {}) {
   function status(policy = DEFAULT_POLICY) {
     const current = credential();
     return {
-      version: "0.5.0",
+      version: "0.5.1",
       provider: "TypeSafe",
       endpoint: ENDPOINT,
       model: model ?? env.JEV_MODEL ?? MODEL,

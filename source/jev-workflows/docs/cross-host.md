@@ -15,7 +15,14 @@ The provider supports more context and options than the ordinary plugin's bounde
 
 ## Claude Code
 
-Install from the repository's `.claude-plugin/marketplace.json`. The generated `plugins/jev-workflows-claude` contains only Claude-compatible manifests, native `${CLAUDE_PLUGIN_ROOT}` references and prebuilt runtime. Validate with `claude plugin validate` and verify a fresh session actually loads its MCP tools and hooks.
+Install from the repository's `.claude-plugin/marketplace.json` using the stable `jev-workflows` plugin ID:
+
+```sh
+claude plugin marketplace add integrate-your-mind/jev-codex-plugin
+claude plugin install jev-workflows@jev-workflows
+```
+
+This is a community Git marketplace route, not an Anthropic official marketplace or directory listing. Claude Code displays the plugin as **Jev Workflows**; the machine identifier and skill/MCP namespace remain `jev-workflows`. The generated `plugins/jev-workflows-claude` contains only Claude-compatible manifests, native `${CLAUDE_PLUGIN_ROOT}` references and prebuilt runtime. Validate with `claude plugin validate` and verify a fresh session actually loads its MCP tools and hooks.
 
 The adapter creates a private local turn ID on UserPromptSubmit and reuses it for subsequent events. Session identities are prefixed with the host name. PostToolUseFailure uses the common result analysis with the original event name restored in output. Missing context, malformed input, disabled policy, unauthorized workspaces and provider failure are fail-open. Permission and completion events never change host permissions or force an additional turn.
 

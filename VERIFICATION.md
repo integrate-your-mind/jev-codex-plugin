@@ -5,6 +5,16 @@ Latest verification date: 2026-10-15
 This report covers the public source and packaged runtime. It records the checks
 below; it does not establish directory approval, provider billing, or model quality.
 
+## Version 0.5.1 naming and CI follow-up
+
+Both host packages use the display name **Jev Workflows** and keep the stable `jev-workflows` ID. The patch version is necessary because Claude's normal updater retained the old manifest when the version stayed at 0.5.0. The normal update command installed 0.5.1 after the version changed.
+
+- `node scripts/verify.mjs` passed on Node 22.23.2, macOS arm64: 195 runtime tests, six distribution/contract tests, typecheck, build, manifest validation and generated package parity. Actions now calls the same command. `actionlint` and native Claude manifest/marketplace validation passed.
+- Two new negative fixtures first failed with `Missing expected rejection`; after the identity check repair, matching source/generated Claude identifier and display-name drift both fail verification. The MCP test also checks that handshake and status versions match the package release.
+- A fresh Codex app-server loaded version 0.5.1, eight tools and twelve trusted/enabled hooks, and successfully called `jev_status`. A fresh Claude session loaded version 0.5.1, connected its plugin MCP server and returned status successfully. Shared state and credential paths, plugin IDs and unlimited policy were preserved. See [sanitized evidence](verification/cross-host-0.5.1.json).
+
+All 21 changed runtime bundles differ only in their release version strings. The 0.5.0 provider and hook execution evidence below remains applicable to the engine; this follow-up adds installation/discovery checks, not a quality benchmark. GitHub Actions is still rejected before jobs start by the account billing lock. Any separately published local commit status identifies its actual platform and tested SHA; it does not replace the failed Actions check. See [CI instructions and limits](docs/ci.md).
+
 ## Version 0.5.0 cross-host update
 
 The current source adds native Claude Code packaging and the October 15 Jev contract while preserving unlimited defaults. Shared fixtures and a deterministic drift check connect the TypeScript plugin and QQ Rust integration; QQ verification is recorded in its own PR.
