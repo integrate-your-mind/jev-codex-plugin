@@ -2,6 +2,7 @@ import {spawnSync} from 'node:child_process';
 import {readFile, readdir} from 'node:fs/promises';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {entryPoints, standaloneSkills} from '../source/jev-workflows/scripts/build-outputs.mjs';
 
 const args = process.argv.slice(2);
 if (args.length && (args.length !== 2 || args[0] !== '--source')) {
@@ -19,9 +20,14 @@ const filesUnder = async (directory, prefix = '') => {
   return files;
 };
 const snapshot = async () => {
+  const distFiles = (await filesUnder(join(source, 'dist'))).sort();
+  const expectedDist = Object.keys(entryPoints).map(name => `${name}.mjs`).sort();
+  if (JSON.stringify(distFiles) !== JSON.stringify(expectedDist)) {
+    throw new Error(`Unexpected retained dist files. Expected ${expectedDist.join(', ')}; found ${distFiles.join(', ')}. Regenerate and commit the release outputs.`);
+  }
   const paths = [
-    ...(await filesUnder(join(source, 'dist'))).map(path => join('dist', path)),
-    ...['classify-decision', 'diagnose-failure', 'check-completion'].map(skill => `skills/${skill}/scripts/jev.mjs`),
+    ...distFiles.map(path => join('dist', path)),
+    ...standaloneSkills.map(skill => `skills/${skill}/scripts/jev.mjs`),
   ];
   return new Map(await Promise.all(paths.map(async path => [path, await readFile(join(source, path))])));
 };

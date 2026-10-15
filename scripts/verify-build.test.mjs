@@ -11,7 +11,7 @@ const exec = promisify(execFile);
 const verifier = fileURLToPath(new URL('./verify-build.mjs', import.meta.url));
 test('build verification rejects source and standalone bundles that a build silently repairs', async () => {
   const fixture = await mkdtemp(join(tmpdir(), 'jev-build-drift-'));
-  const paths = ['dist/server.mjs', ...['classify-decision', 'diagnose-failure', 'check-completion'].map(skill => `skills/${skill}/scripts/jev.mjs`)];
+  const paths = [...['server', 'hook', 'decision-hook', 'claude-hook', 'cli'].map(name => `dist/${name}.mjs`), ...['classify-decision', 'diagnose-failure', 'check-completion'].map(skill => `skills/${skill}/scripts/jev.mjs`)];
   try {
     for (const path of [...paths, 'scripts/build.mjs']) await mkdir(join(fixture, path, '..'), {recursive: true});
     await writeFile(join(fixture, 'scripts/build.mjs'), `import {writeFileSync} from 'node:fs';\nfor (const path of ${JSON.stringify(paths)}) writeFileSync(path, 'generated runtime\\n');\n`);
@@ -22,6 +22,10 @@ test('build verification rejects source and standalone bundles that a build sile
       await assert.rejects(exec(process.execPath, [verifier, '--source', fixture]), /Build changed retained release outputs/);
       assert.equal(await readFile(join(fixture, path), 'utf8'), 'generated runtime\n');
     }
+    const obsolete = join(fixture, 'dist/old-entry.mjs');
+    await writeFile(obsolete, 'obsolete runtime\n');
+    await assert.rejects(exec(process.execPath, [verifier, '--source', fixture]), /Unexpected retained dist files/);
+    await rm(obsolete);
     await writeFile(join(fixture, 'scripts/build.mjs'), 'process.exit(7);\n');
     await assert.rejects(exec(process.execPath, [verifier, '--source', fixture]), error => error.code === 7);
   } finally {
