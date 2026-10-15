@@ -9,19 +9,20 @@
     "platform": "darwin",
     "architecture": "arm64",
     "runtimeTests": 195,
-    "distributionAndContractTests": 6,
     "typecheck": "passed",
     "build": "passed",
     "manifestValidation": "passed",
     "generatedParity": "passed",
     "workflowActionlint": "passed",
-    "claudeNativeManifestValidation": "passed"
+    "claudeNativeManifestValidation": "passed",
+    "buildDistributionAndContractTests": 7
   },
   "regressionEvidence": {
     "beforeIdentityFix": "Both matching Claude name and displayName drift fixtures failed with Missing expected rejection.",
     "afterIdentityFix": "Both drift fixtures reject incompatible names.",
     "runtimeVersion": "Bundled MCP server handshake and jev_status match package.json.",
-    "cacheUpdate": "Claude retained 0.5.0 metadata until the patch version was increased; normal update then installed 0.5.1."
+    "cacheUpdate": "Claude retained 0.5.0 metadata until the patch version was increased; normal update then installed 0.5.1.",
+    "retainedBuildOutputs": "A stale portable source runtime or standalone skill bundle now fails verification even when the build repairs it. Build exit 7 remains exit 7."
   },
   "nativeCodex": {
     "version": "0.5.1",

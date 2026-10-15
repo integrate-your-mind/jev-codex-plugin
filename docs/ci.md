@@ -10,7 +10,7 @@ Use Node.js 22+ and npm, then run from the repository root:
 node scripts/verify.mjs
 ```
 
-The command installs locked dependencies with lifecycle scripts disabled, typechecks, builds, runs the source tests, validates manifests, and checks generated package identity and byte parity. It then runs the distribution and shared-contract regression tests, including deliberate Claude identifier and display-name drift. Any failed step stops verification with a nonzero exit code.
+The command installs locked dependencies with lifecycle scripts disabled, typechecks, builds, runs the source tests, validates manifests, and checks generated package identity and byte parity. It snapshots retained source runtime and standalone skill bundles before building and fails if the build changes them. It then runs the build, distribution and shared-contract regression tests, including deliberate stale bundles and Claude identity drift. Any failed step stops verification with a nonzero exit code.
 
 The GitHub workflow calls this same entrypoint on Node 22. Local checks print their actual Node version, operating system and architecture. A local macOS result does not establish that the Linux Actions job ran. Neither path needs Jev or GitHub credentials or makes provider inference calls. Native host/provider QA is a separate release check recorded in [VERIFICATION.md](../VERIFICATION.md).
 
