@@ -5,7 +5,7 @@ description: Classify a reported command failure with bounded, provenance-preser
 
 # Diagnose a failure
 
-Use this skill when a command, test, build, service connection, or other task action failed and the proximate cause is not already established. It is for a concrete failed command, not a successful command or a general request to guess what might go wrong. The workflow is advisory: Codex remains responsible for investigating the evidence, changing files, and deciding whether a proposed next step is appropriate.
+Use this skill when a command, test, build, service connection, or other task action failed and the proximate cause is not already established. It is for a concrete failed command, not a successful command or a general request to guess what might go wrong. The workflow is advisory: The host agent remains responsible for investigating the evidence, changing files, and deciding whether a proposed next step is appropriate.
 
 ## Runtime selection
 
@@ -35,13 +35,13 @@ Do not send an entire transcript, repository, environment dump, browser tab, cre
 
 In preview, expect `status: "preview"`, a local `preview` payload, the supplied `evidenceIds`, `inputDigest`, and `rubricVersion`. In evaluation, expect a status such as `assessed`, `abstained`, `unavailable`, or `skipped`, and possibly `category`, `workflow`, `confidence`, `probabilities`, `signals`, `evidenceIds`, `model`, `rubricVersion`, `inputDigest`, `receiptId`, `receiptPersisted`, `cached`, `latencyMs`, and `usage`. The result does not provide missing-check text or source provenance; preserve and interpret those from the supplied evidence yourself. Verify that every returned evidence ID belongs to the supplied candidate set.
 
-An exit code of `0` is skipped as `command_succeeded`; a `null` exit code is abstained as `command_not_completed`. Missing keys, disabled evaluation, cancellation, rate limits, timeout, malformed provider responses, and local budget failures fall back to an unavailable, skipped, or abstained result rather than blocking ordinary Codex work.
+An exit code of `0` is skipped as `command_succeeded`; a `null` exit code is abstained as `command_not_completed`. Missing keys, disabled evaluation, cancellation, rate limits, timeout, malformed provider responses, and local budget failures fall back to an unavailable, skipped, or abstained result rather than blocking ordinary agent work.
 
 Use deterministic local facts first. For example, an unavailable executable, nonzero exit status, hash comparison, retry count, or budget calculation should be checked in code or directly from the command result. Use the advisory classification to prioritize semantic investigation, not to replace those checks.
 
 Map a usable workflow ID to a concrete next step such as `inspect_service`, `inspect_dependency`, `inspect_source`, `inspect_assertion`, `inspect_access`, or `gather_evidence`. Render the explanation from the observed evidence and fixed workflow meaning. Do not present a provider suggestion as proof of a root cause.
 
-If the tool abstains, times out, lacks configured access, returns malformed data, or reports insufficient evidence, continue with ordinary Codex diagnosis. Preserve the original failure and collect new evidence before editing when the result does not distinguish the cause.
+If the tool abstains, times out, lacks configured access, returns malformed data, or reports insufficient evidence, continue with ordinary agent diagnosis. Preserve the original failure and collect new evidence before editing when the result does not distinguish the cause.
 
 For a diagnosis that needs several independent signals over the same bounded failure record, the full MCP plugin also exposes `evaluate_decisions`. Keep the questions typed and separate: use Choice for candidate workflows, Noul for a bounded fact such as whether the command reached an assertion, and Score only with an explicit ordinal rubric. Conservative policy may abstain; ranking policy preserves distributions for caller-side prioritization. Do not let a batch result replace direct inspection of the command, exit status, or complete error tail.
 

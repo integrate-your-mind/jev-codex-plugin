@@ -39,10 +39,39 @@ export const RUBRIC_VERSION = '2026-09-17.1';
 export const COMPLETION_RUBRIC_VERSION = 'completion-2026-09-26.1';
 export const MODEL = 'jev-1.13.0';
 export const ENDPOINT = 'https://api.typesafe.ai/v1/systemone';
+export const VERSIONED_MODELS = ['jev-1.13.0', 'jev-1.14.0'] as const;
+export const MODEL_ALIASES = {
+  'jev-latest': 'jev-1.13.0',
+  'jev-preview': 'jev-1.14.0',
+} as const;
+export type VersionedModel = typeof VERSIONED_MODELS[number];
+export type ModelAlias = keyof typeof MODEL_ALIASES;
+export type ModelSelector = VersionedModel | ModelAlias;
+export type ReturnedModel = string & {readonly __jevVersionedModel: unique symbol};
+const versionedModelPattern = /^jev-\d+\.\d+\.\d+$/;
+
+export function resolveModelSelector(value: string | undefined): ModelSelector {
+  const selector = value === undefined || value === '' ? MODEL : value;
+  if (!(VERSIONED_MODELS as readonly string[]).includes(selector) && !Object.hasOwn(MODEL_ALIASES, selector)) {
+    throw new Error('unknown_model_selector');
+  }
+  return selector as ModelSelector;
+}
+
+export function validateReturnedModel(requested: ModelSelector, returned: unknown): returned is ReturnedModel {
+  if (typeof returned !== 'string' || !versionedModelPattern.test(returned)) return false;
+  if (VERSIONED_MODELS.includes(returned as VersionedModel)) {
+    return (requested in MODEL_ALIASES) || returned === requested;
+  }
+  // Aliases are resolved by the provider. Keep the returned versioned identity
+  // instead of replacing it with a local alias mapping.
+  return requested in MODEL_ALIASES;
+}
 export type ChoiceQuestion = {type: 'choice'; instructions: StructuredEntry; criteria: Record<string, StructuredEntry>};
 export type ScoreQuestion = {type: 'score'; instructions: StructuredEntry; criteria: StructuredEntry[]};
 export type NoulQuestion = {type: 'noul'; instructions: StructuredEntry; criteria?: {true: StructuredEntry; false: StructuredEntry}};
-export type Question = ChoiceQuestion | ScoreQuestion | NoulQuestion;
+export type BoxQuestion = {type: 'box'; instructions: StructuredEntry};
+export type Question = ChoiceQuestion | ScoreQuestion | NoulQuestion | BoxQuestion;
 export const failureQuestions: Record<string, Question> = {
   category: {
     type: 'choice',

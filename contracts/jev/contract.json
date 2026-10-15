@@ -1,0 +1,16 @@
+{
+  "revision": "jev-2026-10-15.1",
+  "endpoint": "https://api.typesafe.ai/v1/systemone",
+  "defaultModel": "jev-1.13.0",
+  "versionedModels": ["jev-1.13.0", "jev-1.14.0"],
+  "aliases": {"jev-latest": "jev-1.13.0", "jev-preview": "jev-1.14.0"},
+  "aliasResolution": "Accept a returned versioned Jev model ID; preserve it in receipts. Pinned requests require an exact model match. Alias targets above are documentation snapshots, not permanent mappings.",
+  "usage": {"input_tokens": "nonnegative integer or null", "output_tokens": "nonnegative integer or null"},
+  "primitives": ["choice", "noul", "score"],
+  "experimental": {"images": "explicit opt-in header", "box": "requires images and Jev 1.14", "longContextHeader": "TypeSafe-Danger-Zone-Long-Context"},
+  "providerLimits": {"jsonBytes": 33554432, "maxDepth": 64, "choiceOptions": 255, "scoreMinLevels": 2, "scoreMaxLevels": 10},
+  "validation": {"probabilitySumTolerance": 0.001, "weightedScoreTolerance": 0.001, "toleranceSource": "local defensive policy; provider docs specify normalization but no wire rounding tolerance", "choice": "exact keys, known argmax choice, finite probabilities and confidence in [0,1]", "noul": "finite probability in [0,1], no confidence field", "score": "exact levels and legend, finite weighted mean"},
+  "httpErrors": {"400": "invalid_request", "401": "authentication_failed", "403": "request_forbidden", "408": "request_timeout", "413": "request_too_large", "415": "unsupported_media_type", "422": "invalid_request", "429": "rate_limited", "529": "provider_overloaded"},
+  "quota": "none imposed; organization provider limits remain authoritative",
+  "sources": ["https://docs.typesafe.ai/api", "https://docs.typesafe.ai/models", "https://docs.typesafe.ai/sdk/javascript/changelog", "https://docs.typesafe.ai/primitives/choice", "https://docs.typesafe.ai/primitives/score", "https://docs.typesafe.ai/images"]
+}
