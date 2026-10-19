@@ -1,8 +1,8 @@
 {
   "description": "Advisory Jev consultation across documented Claude Code lifecycle events. Permission decisions remain with Claude Code and the user.",
   "hooks": {
-    "SessionStart": [{"hooks":[{"type":"command","command":"node \"${CLAUDE_PLUGIN_ROOT}/dist/claude-hook.mjs\"","timeout":5}]}],
-    "UserPromptSubmit": [{"hooks":[{"type":"command","command":"node \"${CLAUDE_PLUGIN_ROOT}/dist/claude-hook.mjs\"","timeout":5}]}],
+    "SessionStart": [{"hooks":[{"type":"command","command":"node \"${CLAUDE_PLUGIN_ROOT}/dist/claude-hook.mjs\"","timeout":10}]}],
+    "UserPromptSubmit": [{"hooks":[{"type":"command","command":"node \"${CLAUDE_PLUGIN_ROOT}/dist/claude-hook.mjs\"","timeout":10}]}],
     "PreToolUse": [{"matcher":"*","hooks":[{"type":"command","command":"node \"${CLAUDE_PLUGIN_ROOT}/dist/claude-hook.mjs\"","timeout":5}]}],
     "PostToolUse": [{"matcher":"*","hooks":[{"type":"command","command":"node \"${CLAUDE_PLUGIN_ROOT}/dist/claude-hook.mjs\"","timeout":5}]}],
     "PostToolUseFailure": [{"matcher":"*","hooks":[{"type":"command","command":"node \"${CLAUDE_PLUGIN_ROOT}/dist/claude-hook.mjs\"","timeout":5}]}],

@@ -1,7 +1,7 @@
-import { mkdir, open, rename, unlink, link } from 'node:fs/promises';
+import { mkdir, open, rename, unlink, link, lstat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { homedir } from 'node:os';
-import { isAbsolute, join } from 'node:path';
+import { basename, dirname, isAbsolute, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -42,7 +42,9 @@ async function processIsAlive(pid: number): Promise<boolean> {
   }
 }
 
-async function readLock(path: string): Promise<{owner: LockOwner | null; mtimeMs: number} | null> {
+type ObservedLock = {owner: LockOwner | null; mtimeMs: number; dev: number; ino: number};
+
+async function readLock(path: string): Promise<ObservedLock | null> {
   try {
     const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     try {
@@ -57,7 +59,7 @@ async function readLock(path: string): Promise<{owner: LockOwner | null; mtimeMs
           owner = {pid: value.pid as number, token: value.token, createdAt: value.createdAt};
         }
       } catch { /* malformed locks can only be reclaimed after the age check */ }
-      return {owner, mtimeMs: info.mtimeMs};
+      return {owner, mtimeMs: info.mtimeMs, dev: info.dev, ino: info.ino};
     } finally { await handle.close(); }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
@@ -68,60 +70,49 @@ async function readLock(path: string): Promise<{owner: LockOwner | null; mtimeMs
 async function reclaimStaleLock(path: string): Promise<boolean> {
   const observed = await readLock(path);
   if (!observed) return false;
+  // Never reclaim merely because a short wait elapsed, and never reclaim a lock
+  // whose recorded writer is still alive, however old the lock is.
   if (Date.now() - observed.mtimeMs < STALE_LOCK_MS) return false;
-  // An unreadable lock has no trustworthy owner identity, so leave it in
-  // place. Reclaim only a lock whose recorded writer is definitely gone;
-  // this avoids deleting a live writer that has not finished publishing its
-  // metadata yet.
-  if (!observed.owner || await processIsAlive(observed.owner.pid)) return false;
-  // This remains intentionally conservative: a malformed or dead-owner lock
-  // can be reclaimed only after the age threshold, never merely because a
-  // short wait elapsed.  A competing writer can recreate the lock after this
-  // unlink; acquisition still uses O_EXCL and therefore cannot overwrite it.
-  try { await unlink(path); return true; }
-  catch (error) { return (error as NodeJS.ErrnoException).code === 'ENOENT'; }
-}
-
-async function removeCreatedLockIfStillOwned(
-  path: string,
-  handle: Awaited<ReturnType<typeof open>>,
-  identity: {dev: number; ino: number},
-): Promise<void> {
-  // A metadata write can fail after O_EXCL has created the lock. Compare the
-  // inode before cleanup so a stale-lock reclaimer or another writer cannot be
-  // accidentally unlinked if the pathname has since been replaced.
+  if (observed.owner && await processIsAlive(observed.owner.pid)) return false;
+  // An old lock without readable owner metadata is abandoned as well. Locks are
+  // published only once their metadata is complete (see acquireLock). Releases
+  // up to 0.5.1 created the lock before writing its owner, so an empty or
+  // malformed lock is what a writer killed between those steps leaves behind,
+  // for example by a host hook timeout. Keeping such a lock made every later
+  // writer exhaust its attempts for the rest of the UTC day.
   try {
-    const current = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
-    try {
-      const info = await current.stat();
-      if (info.dev === identity.dev && info.ino === identity.ino) await unlink(path);
-    } finally { await current.close(); }
-  } catch { /* preserve a lock we can no longer prove is ours */ }
-  await handle.close().catch(() => {});
+    // Remove only the inode observed above, never a lock published since then.
+    const current = await lstat(path);
+    if (current.dev !== observed.dev || current.ino !== observed.ino) return false;
+    await unlink(path);
+    return true;
+  } catch (error) { return (error as NodeJS.ErrnoException).code === 'ENOENT'; }
 }
 
 async function acquireLock(path: string, attempts = LOCK_WAIT_ATTEMPTS): Promise<{handle: Awaited<ReturnType<typeof open>>; token: string}> {
   for (let attempt = 0; attempt < attempts; attempt++) {
     const token = randomUUID();
+    // Write the complete owner record to a private temporary file, then publish
+    // it with link(), which fails with EEXIST while another writer holds the
+    // lock. The lock path therefore never exists without its owner, even when
+    // the process is killed or exits part way through acquisition.
+    const temporary = join(dirname(path), `.${basename(path)}-${token}.tmp`);
     let handle: Awaited<ReturnType<typeof open>> | undefined;
-    let identity: {dev: number; ino: number} | undefined;
     try {
-      handle = await open(path, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
-      identity = await handle.stat();
+      handle = await open(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
       await handle.writeFile(JSON.stringify(lockData(token)));
       await handle.sync();
+      await link(temporary, path);
       return {handle, token};
     } catch (error) {
-      if (handle) {
-        // The path was created by this attempt. Clean up only when the inode
-        // is still the one held by this handle; never remove a replacement.
-        if (identity) await removeCreatedLockIfStillOwned(path, handle, identity);
-        else await handle.close().catch(() => {});
-      }
+      await handle?.close().catch(() => {});
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-      await reclaimStaleLock(path);
-      await delay(LOCK_WAIT_MS);
+    } finally {
+      // The published lock keeps the inode; only the private name is removed.
+      await unlink(temporary).catch(() => {});
     }
+    await reclaimStaleLock(path);
+    await delay(LOCK_WAIT_MS);
   }
   throw new Error('budget_busy');
 }

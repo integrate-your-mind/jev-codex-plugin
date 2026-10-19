@@ -914,10 +914,21 @@ function normalizeDecisionAssessment(input: DecisionInput, result: DecisionAsses
 }
 
 function decisionOutput(event: NormalizedEvent, result: DecisionAssessment, input?: DecisionInput): HookResult {
-  const prefix = event.name === 'UserPromptSubmit' ? `${LOCAL_INSTRUCTION} ` : '';
-  const emit = (message: string): HookResult => ['Stop', 'SubagentStop', 'PermissionRequest', 'Interrupt', 'SessionEnd', 'PreCompact', 'PostCompact'].includes(event.name)
+  return advisoryOutput(event.name, result, input);
+}
+
+/** The advisory a host adapter emits when its own process-level deadline
+ * expires before runDecisionHook returns. It is the same `hook_timeout`
+ * advisory the in-process deadline produces, on the event's normal channel. */
+export function deadlineOutput(eventName: string): HookResult {
+  return advisoryOutput(eventName, {status: 'unavailable', reasonCode: 'hook_timeout'});
+}
+
+function advisoryOutput(eventName: string, result: DecisionAssessment, input?: DecisionInput): HookResult {
+  const prefix = eventName === 'UserPromptSubmit' ? `${LOCAL_INSTRUCTION} ` : '';
+  const emit = (message: string): HookResult => ['Stop', 'SubagentStop', 'PermissionRequest', 'Interrupt', 'SessionEnd', 'PreCompact', 'PostCompact'].includes(eventName)
     ? {systemMessage: message}
-    : {hookSpecificOutput: {hookEventName: event.name, additionalContext: message}};
+    : {hookSpecificOutput: {hookEventName: eventName, additionalContext: message}};
   const status = typeof result.status === 'string' && ['assessed', 'abstained', 'unavailable', 'skipped', 'preview'].includes(result.status)
     ? result.status : 'unavailable';
   const fields = [`status=${status}`];
