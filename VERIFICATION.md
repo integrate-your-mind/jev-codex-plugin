@@ -1,9 +1,30 @@
 # Verification
 
-Latest verification date: 2026-10-15
+Latest verification date: 2026-10-19
 
 This report covers the public source and packaged runtime. It records the checks
 below; it does not establish directory approval, provider billing, or model quality.
+
+## Version 0.5.2 Claude hook deadline
+
+Claude Code reported `UserPromptSubmit hook [...] timed out after 5s — output discarded` on a host with a load average above 100 ([#11](https://github.com/integrate-your-mind/jev-codex-plugin/issues/11)). The installed 0.5.1 hook was measured by running the exact `hooks.json` command through `/bin/sh` with realistic payloads and a timing preload. The preload recorded provider status codes and latency, never headers or bodies.
+
+- **The process outlived its output.** With the provider unreachable (fetch routed through an unroutable proxy), 0.5.1 wrote its `hook_timeout` advisory after 3.2–4.8 s, but the process exited only after 10.6–12.2 s. The aborted connect waited out the HTTP client's 10 s connect timeout. Claude Code waits for exit, so it killed the hook and discarded the advisory.
+- **Stale locks stayed for the day.** A hook killed between creating a lock and writing its owner leaves an empty lock. `reclaimStaleLock` never reclaimed an ownerless lock, so every later receipt save spun all 50 lock attempts. At a load average near 40 that meant 112–116 file opens and 0.6–1.0 s extra per hook, against 18–22 opens on clean state. A controlled run with planted empty locks reproduced this, and 0.5.1 left the locks in place.
+
+0.5.2 changes, with evidence on Node 26.10.0, macOS arm64:
+
+- **Hard deadline.** The Claude adapter measures a deadline from process start: 3.5 s for UserPromptSubmit and SessionStart, 1.5 s for SessionEnd, 2.5 s for other events. It hands the remaining budget to the decision hook and exits once its single JSON result is flushed.
+  - With the provider unreachable, the installed 0.5.2 hook exited 3.21–3.26 s (UserPromptSubmit) and 2.25–2.30 s (PreToolUse) after process start, 0–5 ms after writing the `hook_timeout` advisory.
+  - Normal consultations returned HTTP 200 advisories in 0.6–1.7 s wall time at load averages of 98–120.
+- **Locks.** Locks are published complete, through a temporary file and `link()`, with one owner record per acquisition. Ownerless locks older than 30 s are reclaimed after an inode identity check. With planted empty locks, 0.5.2 reclaimed both on first contact.
+- **Receipt index.** A daily receipt index past its size bound is no longer contended for on every save. At high volume it reaches the bound within minutes of the UTC day starting.
+- **Claude `hooks.json`.** UserPromptSubmit and SessionStart timeouts rise to 10 s. Tool events stay at 5 s and SessionEnd at 3 s, so a slow consultation never holds a tool call past its own deadline.
+- **Verification.** `node scripts/verify.mjs` passed: 203 runtime tests, 17 build, distribution, contract and local-CI tests, typecheck, build parity, manifest validation, and Codex and Claude package parity.
+  - New tests spawn the built hook with a preload that hangs fetch (holding a referenced timer like a pending socket) or stalls local state writes. They assert exit within the deadline on the child's own clock.
+  - The existing local-CI test that bounds a fake VM run at 5 s timed out once at a load average above 120 and passed on rerun. This change does not touch it.
+
+At a load average of about 110, shell and process start before node's clock begins took up to about 2 s. The internal budgets leave that headroom below each host timeout but cannot remove it, and under such load more tool-event consultations end with `hook_timeout`. The Codex adapter (`decision-hook-entry.ts`) still lets its process exit naturally and can linger the same way. This change does not alter it.
 
 ## Local Actions migration
 
