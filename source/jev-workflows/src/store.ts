@@ -90,31 +90,35 @@ async function reclaimStaleLock(path: string): Promise<boolean> {
 }
 
 async function acquireLock(path: string, attempts = LOCK_WAIT_ATTEMPTS): Promise<{handle: Awaited<ReturnType<typeof open>>; token: string}> {
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    const token = randomUUID();
-    // Write the complete owner record to a private temporary file, then publish
-    // it with link(), which fails with EEXIST while another writer holds the
-    // lock. The lock path therefore never exists without its owner, even when
-    // the process is killed or exits part way through acquisition.
-    const temporary = join(dirname(path), `.${basename(path)}-${token}.tmp`);
-    let handle: Awaited<ReturnType<typeof open>> | undefined;
-    try {
-      handle = await open(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
-      await handle.writeFile(JSON.stringify(lockData(token)));
-      await handle.sync();
-      await link(temporary, path);
-      return {handle, token};
-    } catch (error) {
-      await handle?.close().catch(() => {});
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-    } finally {
-      // The published lock keeps the inode; only the private name is removed.
-      await unlink(temporary).catch(() => {});
+  const token = randomUUID();
+  // Write the complete owner record once to a private temporary file, then
+  // publish it with link(), which fails with EEXIST while another writer holds
+  // the lock. The lock path therefore never exists without its owner, even when
+  // the process is killed or exits part way through acquisition, and a
+  // contended retry costs a single link() call.
+  const temporary = join(dirname(path), `.${basename(path)}-${token}.tmp`);
+  const handle = await open(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+  let published = false;
+  try {
+    await handle.writeFile(JSON.stringify(lockData(token)));
+    await handle.sync();
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        await link(temporary, path);
+        published = true;
+        return {handle, token};
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      }
+      await reclaimStaleLock(path);
+      if (attempt + 1 < attempts) await delay(LOCK_WAIT_MS);
     }
-    await reclaimStaleLock(path);
-    await delay(LOCK_WAIT_MS);
+    throw new Error('budget_busy');
+  } finally {
+    if (!published) await handle.close().catch(() => {});
+    // The published lock keeps the inode; only the private name is removed.
+    await unlink(temporary).catch(() => {});
   }
-  throw new Error('budget_busy');
 }
 
 async function releaseLock(path: string, handle: Awaited<ReturnType<typeof open>>, token: string): Promise<void> {
@@ -298,6 +302,10 @@ export class FileStore implements Store {
     const date = new Date(timestamp).toISOString().slice(0, 10);
     const path = join(this.directory, `receipt-index-${date}.json`);
     const lockPath = `${path}.lock`;
+    // An index that has outgrown its bound is never updated again (the locked
+    // read below rejects it too), so do not contend for its lock on every save.
+    const existing = await lstat(path).catch(() => undefined);
+    if (existing && (!existing.isFile() || existing.size > MAX_STATE_FILE_BYTES)) return;
     let acquired: Awaited<ReturnType<typeof acquireLock>>;
     try { acquired = await acquireLock(lockPath); }
     catch { return; } // Indexing is observability only; never lose a receipt on a lock failure.

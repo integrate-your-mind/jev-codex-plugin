@@ -134,3 +134,38 @@ test('keeps a recent ownerless lock because its writer may still be publishing',
     assert.deepEqual((await readdir(dir)).filter(name => name.endsWith('.tmp')), []);
   } finally { await rm(dir, {recursive: true, force: true}); }
 });
+
+test('an index past its bound is left alone without blocking the receipt on its lock', async () => {
+  const parent = resolve('../../work/jev-build');
+  await mkdir(parent, {recursive: true});
+  const dir = await mkdtemp(join(parent, 'store-test-'));
+  const index = join(dir, `receipt-index-${new Date().toISOString().slice(0, 10)}.json`);
+  try {
+    const oversized = JSON.stringify({version: 1, date: 'x', receiptIds: [], padding: 'p'.repeat(65_536)});
+    await writeFile(index, oversized);
+    // A busy index lock must not hold up the receipt once the index is full.
+    await writeFile(`${index}.lock`, JSON.stringify({pid: process.pid, token: '12345678-1234-4234-8234-123456789abe', createdAt: new Date().toISOString()}));
+    const receiptId = '12345678-1234-4234-8234-123456789abf';
+    await new FileStore(dir).save({receiptId, status: 'assessed', timestamp: new Date().toISOString()});
+    assert.equal(JSON.parse(await readFile(join(dir, 'receipts', `${receiptId}.json`), 'utf8')).receiptId, receiptId);
+    assert.equal(await readFile(index, 'utf8'), oversized);
+    assert.match(await readFile(`${index}.lock`, 'utf8'), /12345678-1234-4234-8234-123456789abe/);
+  } finally { await rm(dir, {recursive: true, force: true}); }
+});
+
+test('contended lock acquisitions publish complete owners and leave no temporary files', async () => {
+  const parent = resolve('../../work/jev-build');
+  await mkdir(parent, {recursive: true});
+  const dir = await mkdtemp(join(parent, 'store-test-'));
+  try {
+    const limited = Array.from({length: 4}, () => new FileStore(dir, 100, 10_000));
+    const unlimited = Array.from({length: 4}, () => new FileStore(dir));
+    const grants = await Promise.all([...limited, ...unlimited].flatMap(store => [store.reserve(10), store.reserve(10)]));
+    assert.ok(grants.every(Boolean));
+    await Promise.all(Array.from({length: 6}, (_, index) => limited[index % 4]!.save({receiptId: `12345678-1234-4234-8234-1234567890${String(index).padStart(2, '0')}`, status: 'assessed', timestamp: new Date().toISOString()})));
+    const leftovers = (await readdir(dir)).filter(name => name.endsWith('.tmp') || name.endsWith('.lock'));
+    assert.deepEqual(leftovers, []);
+    const usage = JSON.parse(await readFile(join(dir, `budget-${new Date().toISOString().slice(0, 10)}.json`), 'utf8')) as {calls: number};
+    assert.ok(usage.calls >= 8 && usage.calls <= 16);
+  } finally { await rm(dir, {recursive: true, force: true}); }
+});

@@ -35227,28 +35227,31 @@ async function reclaimStaleLock(path) {
   }
 }
 async function acquireLock(path, attempts = LOCK_WAIT_ATTEMPTS) {
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    const token = randomUUID();
-    const temporary = join(dirname(path), `.${basename(path)}-${token}.tmp`);
-    let handle;
-    try {
-      handle = await open2(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 384);
-      await handle.writeFile(JSON.stringify(lockData(token)));
-      await handle.sync();
-      await link(temporary, path);
-      return { handle, token };
-    } catch (error62) {
-      await handle?.close().catch(() => {
-      });
-      if (error62.code !== "EEXIST") throw error62;
-    } finally {
-      await unlink(temporary).catch(() => {
-      });
+  const token = randomUUID();
+  const temporary = join(dirname(path), `.${basename(path)}-${token}.tmp`);
+  const handle = await open2(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 384);
+  let published = false;
+  try {
+    await handle.writeFile(JSON.stringify(lockData(token)));
+    await handle.sync();
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        await link(temporary, path);
+        published = true;
+        return { handle, token };
+      } catch (error62) {
+        if (error62.code !== "EEXIST") throw error62;
+      }
+      await reclaimStaleLock(path);
+      if (attempt + 1 < attempts) await delay(LOCK_WAIT_MS);
     }
-    await reclaimStaleLock(path);
-    await delay(LOCK_WAIT_MS);
+    throw new Error("budget_busy");
+  } finally {
+    if (!published) await handle.close().catch(() => {
+    });
+    await unlink(temporary).catch(() => {
+    });
   }
-  throw new Error("budget_busy");
 }
 async function releaseLock(path, handle, token) {
   await handle.close().catch(() => {
@@ -35416,6 +35419,8 @@ var FileStore = class {
     const date5 = new Date(timestamp).toISOString().slice(0, 10);
     const path = join(this.directory, `receipt-index-${date5}.json`);
     const lockPath = `${path}.lock`;
+    const existing = await lstat(path).catch(() => void 0);
+    if (existing && (!existing.isFile() || existing.size > MAX_STATE_FILE_BYTES)) return;
     let acquired;
     try {
       acquired = await acquireLock(lockPath);
