@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, writeFile, symlink, stat, utimes } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile, symlink, stat, utimes } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { dataDirectory, FileStore } from '../src/store.js';
 
@@ -91,5 +91,46 @@ test('reclaims only an old lock whose recorded writer is definitely gone', async
     await utimes(lock, old, old);
     assert.equal(await new FileStore(dir, 1, 10).reserve(1), true);
     assert.deepEqual(JSON.parse(await readFile(path, 'utf8')), {calls: 1, bytes: 1});
+  } finally { await rm(dir, {recursive: true, force: true}); }
+});
+
+test('reclaims an old ownerless lock left by a writer interrupted before publishing its owner', async () => {
+  const parent = resolve('../../work/jev-build');
+  await mkdir(parent, {recursive: true});
+  const dir = await mkdtemp(join(parent, 'store-test-'));
+  const day = new Date().toISOString().slice(0, 10);
+  const budget = join(dir, `budget-${day}.json`);
+  const index = join(dir, `receipt-index-${day}.json`);
+  try {
+    // Releases up to 0.5.1 created the lock before writing its owner, so a
+    // process killed in between (for example by a host hook timeout) left an
+    // empty lock that every later writer waited on for the rest of the day.
+    const old = new Date(Date.now() - 120_000);
+    for (const lock of [`${budget}.lock`, `${index}.lock`]) {
+      await writeFile(lock, '');
+      await utimes(lock, old, old);
+    }
+    const store = new FileStore(dir, 5, 100);
+    assert.equal(await store.reserve(1), true);
+    assert.deepEqual(JSON.parse(await readFile(budget, 'utf8')), {calls: 1, bytes: 1});
+    const receiptId = '12345678-1234-4234-8234-123456789abd';
+    await store.save({receiptId, status: 'assessed', timestamp: new Date().toISOString()});
+    assert.deepEqual(JSON.parse(await readFile(index, 'utf8')).receiptIds, [receiptId]);
+    for (const lock of [`${budget}.lock`, `${index}.lock`]) await assert.rejects(() => stat(lock), {code: 'ENOENT'});
+    assert.deepEqual((await readdir(dir)).filter(name => name.endsWith('.tmp')), []);
+  } finally { await rm(dir, {recursive: true, force: true}); }
+});
+
+test('keeps a recent ownerless lock because its writer may still be publishing', async () => {
+  const parent = resolve('../../work/jev-build');
+  await mkdir(parent, {recursive: true});
+  const dir = await mkdtemp(join(parent, 'store-test-'));
+  const budget = join(dir, `budget-${new Date().toISOString().slice(0, 10)}.json`);
+  try {
+    await writeFile(`${budget}.lock`, '');
+    await assert.rejects(() => new FileStore(dir, 5, 100).reserve(1), /budget_busy/);
+    assert.equal((await stat(`${budget}.lock`)).size, 0);
+    await assert.rejects(() => stat(budget), {code: 'ENOENT'});
+    assert.deepEqual((await readdir(dir)).filter(name => name.endsWith('.tmp')), []);
   } finally { await rm(dir, {recursive: true, force: true}); }
 });

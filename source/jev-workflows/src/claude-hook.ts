@@ -219,7 +219,9 @@ export async function runClaudeHook(
     if (deadlineAt !== undefined) {
       // Hand the decision hook only the budget left after start-up and the
       // adapter's own local state work, so it aborts the provider in time.
-      const remainingMs = deadlineAt - performance.now();
+      // Whole milliseconds: the budget reaches AbortSignal.timeout(), which
+      // rejects fractional delays.
+      const remainingMs = Math.floor(deadlineAt - performance.now());
       if (remainingMs <= 0) return timedOut;
       hookTimeoutMs = Math.min(hookTimeoutMs ?? remainingMs, remainingMs);
     }

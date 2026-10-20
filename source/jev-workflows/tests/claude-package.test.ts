@@ -33,9 +33,15 @@ test('Claude package carries native paths and protected credential path consiste
     assert.deepEqual(mcp.mcpServers['jev-workflows']?.args, ['${CLAUDE_PLUGIN_ROOT}/dist/server.mjs']);
     assert.equal(mcp.mcpServers['jev-workflows']?.cwd, undefined);
     assert.deepEqual(mcp.mcpServers['jev-workflows']?.env, {JEV_STATE_DIRECTORY: '/tmp/jev-claude-state', JEV_API_KEY_FILE: '/tmp/protected/typesafe.env'});
-    const hooks = JSON.parse(await readFile(join(target, 'hooks/hooks.json'), 'utf8')) as {hooks: Record<string, Array<{hooks: Array<{command: string}>}>>};
+    const hooks = JSON.parse(await readFile(join(target, 'hooks/hooks.json'), 'utf8')) as {hooks: Record<string, Array<{hooks: Array<{command: string; timeout: number}>}>>};
     const commands = Object.values(hooks.hooks).flatMap(groups => groups.flatMap(group => group.hooks.map(hook => hook.command)));
     assert.ok(commands.length > 0);
+    // Prompt and session-start consultations get extra host time; tool-call
+    // hooks keep 5 s so a slow consultation never stalls a tool call longer.
+    assert.deepEqual(Object.fromEntries(Object.entries(hooks.hooks).map(([event, groups]) => [event, groups.flatMap(group => group.hooks.map(hook => hook.timeout))])), {
+      SessionStart: [10], UserPromptSubmit: [10], PreToolUse: [5], PostToolUse: [5], PostToolUseFailure: [5], PermissionRequest: [5],
+      PreCompact: [5], PostCompact: [5], SubagentStart: [5], SubagentStop: [5], Stop: [5], SessionEnd: [3],
+    });
     assert.ok(commands.every(command => command.startsWith("JEV_STATE_DIRECTORY='/tmp/jev-claude-state' JEV_API_KEY_FILE='/tmp/protected/typesafe.env' node \"${CLAUDE_PLUGIN_ROOT}/dist/claude-hook.mjs\"")));
     assert.equal(Object.hasOwn(JSON.parse(await readFile(join(target, '.claude-plugin/plugin.json'), 'utf8')), 'extensions'), false);
     assert.equal(await readFile(join(target, 'README.md'), 'utf8'), await readFile(join(process.cwd(), 'README.md'), 'utf8'));
