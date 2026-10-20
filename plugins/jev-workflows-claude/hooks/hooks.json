@@ -7,7 +7,7 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/claude-hook.mjs\"",
-            "timeout": 5
+            "timeout": 10
           }
         ]
       }
@@ -18,7 +18,7 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/claude-hook.mjs\"",
-            "timeout": 5
+            "timeout": 10
           }
         ]
       }

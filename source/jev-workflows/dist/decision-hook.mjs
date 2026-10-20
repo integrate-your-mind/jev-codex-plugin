@@ -4285,7 +4285,7 @@ import { pathToFileURL } from "node:url";
 // src/decision-hook.ts
 import { createHash as createHash4 } from "node:crypto";
 import { constants as constants5 } from "node:fs";
-import { mkdir as mkdir4, open as open5, realpath as realpath3, readdir, unlink as unlink4, lstat as lstat2, rename as rename4 } from "node:fs/promises";
+import { mkdir as mkdir4, open as open5, realpath as realpath3, readdir, unlink as unlink4, lstat as lstat3, rename as rename4 } from "node:fs/promises";
 import { randomUUID as randomUUID4 } from "node:crypto";
 import { isAbsolute as isAbsolute5, join as join4 } from "node:path";
 
@@ -24624,10 +24624,10 @@ async function evaluateProvider(args) {
 }
 
 // src/store.ts
-import { mkdir, open as open2, rename, unlink, link } from "node:fs/promises";
+import { mkdir, open as open2, rename, unlink, link, lstat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { basename, dirname, isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 var MAX_STATE_FILE_BYTES = 65536;
@@ -24666,7 +24666,7 @@ async function readLock(path) {
         }
       } catch {
       }
-      return { owner, mtimeMs: info.mtimeMs };
+      return { owner, mtimeMs: info.mtimeMs, dev: info.dev, ino: info.ino };
     } finally {
       await handle.close();
     }
@@ -24679,49 +24679,37 @@ async function reclaimStaleLock(path) {
   const observed = await readLock(path);
   if (!observed) return false;
   if (Date.now() - observed.mtimeMs < STALE_LOCK_MS) return false;
-  if (!observed.owner || await processIsAlive(observed.owner.pid)) return false;
+  if (observed.owner && await processIsAlive(observed.owner.pid)) return false;
   try {
+    const current = await lstat(path);
+    if (current.dev !== observed.dev || current.ino !== observed.ino) return false;
     await unlink(path);
     return true;
   } catch (error62) {
     return error62.code === "ENOENT";
   }
 }
-async function removeCreatedLockIfStillOwned(path, handle, identity) {
-  try {
-    const current = await open2(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
-    try {
-      const info = await current.stat();
-      if (info.dev === identity.dev && info.ino === identity.ino) await unlink(path);
-    } finally {
-      await current.close();
-    }
-  } catch {
-  }
-  await handle.close().catch(() => {
-  });
-}
 async function acquireLock(path, attempts = LOCK_WAIT_ATTEMPTS) {
   for (let attempt = 0; attempt < attempts; attempt++) {
     const token = randomUUID();
+    const temporary = join(dirname(path), `.${basename(path)}-${token}.tmp`);
     let handle;
-    let identity;
     try {
-      handle = await open2(path, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 384);
-      identity = await handle.stat();
+      handle = await open2(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 384);
       await handle.writeFile(JSON.stringify(lockData(token)));
       await handle.sync();
+      await link(temporary, path);
       return { handle, token };
     } catch (error62) {
-      if (handle) {
-        if (identity) await removeCreatedLockIfStillOwned(path, handle, identity);
-        else await handle.close().catch(() => {
-        });
-      }
+      await handle?.close().catch(() => {
+      });
       if (error62.code !== "EEXIST") throw error62;
-      await reclaimStaleLock(path);
-      await delay(LOCK_WAIT_MS);
+    } finally {
+      await unlink(temporary).catch(() => {
+      });
     }
+    await reclaimStaleLock(path);
+    await delay(LOCK_WAIT_MS);
   }
   throw new Error("budget_busy");
 }
@@ -24933,7 +24921,7 @@ var FileStore = class {
 
 // src/policy.ts
 import { constants as constants2 } from "node:fs";
-import { mkdir as mkdir2, open as open3, rename as rename2, lstat, realpath, unlink as unlink2 } from "node:fs/promises";
+import { mkdir as mkdir2, open as open3, rename as rename2, lstat as lstat2, realpath, unlink as unlink2 } from "node:fs/promises";
 import { isAbsolute as isAbsolute2, join as join2, sep } from "node:path";
 var POLICY_FILE = "policy.json";
 var MAX_POLICY_BYTES = 8 * 1024;
@@ -25000,7 +24988,7 @@ async function workspaceAllowed(policy, cwd) {
   if (policy.scope === "all-workspaces") return true;
   for (const root of policy.workspaces) {
     try {
-      const rootInfo = await lstat(root);
+      const rootInfo = await lstat2(root);
       if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) continue;
       const resolvedRoot = await realpath(root);
       if (resolvedRoot !== root) continue;
@@ -25150,7 +25138,7 @@ function createService(options = {}) {
   function status(policy = DEFAULT_POLICY) {
     const current = credential();
     return {
-      version: "0.5.1",
+      version: "0.5.2",
       provider: "TypeSafe",
       endpoint: ENDPOINT,
       model: model ?? env.JEV_MODEL ?? MODEL,
@@ -26144,7 +26132,7 @@ async function updatePromptCache(event, env) {
     const prompt = boundedWithEnv(event.prompt, MAX_PROMPT_BYTES, env);
     if (!prompt) {
       try {
-        const existing = await lstat2(path);
+        const existing = await lstat3(path);
         if (existing.isFile()) await unlink4(path);
       } catch {
       }
@@ -26160,7 +26148,7 @@ async function updatePromptCache(event, env) {
     }
     try {
       try {
-        const existing = await lstat2(path);
+        const existing = await lstat3(path);
         if (existing.isSymbolicLink() || !existing.isFile()) throw new Error("unsafe_prompt_cache");
       } catch (error62) {
         if (error62.code !== "ENOENT") throw error62;
@@ -26653,8 +26641,11 @@ function normalizeDecisionAssessment(input2, result) {
   };
 }
 function decisionOutput(event, result, input2) {
-  const prefix = event.name === "UserPromptSubmit" ? `${LOCAL_INSTRUCTION} ` : "";
-  const emit = (message) => ["Stop", "SubagentStop", "PermissionRequest", "Interrupt", "SessionEnd", "PreCompact", "PostCompact"].includes(event.name) ? { systemMessage: message } : { hookSpecificOutput: { hookEventName: event.name, additionalContext: message } };
+  return advisoryOutput(event.name, result, input2);
+}
+function advisoryOutput(eventName, result, input2) {
+  const prefix = eventName === "UserPromptSubmit" ? `${LOCAL_INSTRUCTION} ` : "";
+  const emit = (message) => ["Stop", "SubagentStop", "PermissionRequest", "Interrupt", "SessionEnd", "PreCompact", "PostCompact"].includes(eventName) ? { systemMessage: message } : { hookSpecificOutput: { hookEventName: eventName, additionalContext: message } };
   const status = typeof result.status === "string" && ["assessed", "abstained", "unavailable", "skipped", "preview"].includes(result.status) ? result.status : "unavailable";
   const fields = [`status=${status}`];
   const choice = status === "assessed" ? validatedCandidateChoice(input2, result) : void 0;

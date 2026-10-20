@@ -1,6 +1,6 @@
 # Jev Workflows
 
-A portable Codex and Claude Code plugin that consults Jev for tool, model, task, skill, context, strategy, result, outcome, and custom classification decisions. The current source package is version 0.5.1. It includes eight MCP surfaces, three independently usable skills, bundled JavaScript entrypoints, and scoped lifecycle hooks.
+A portable Codex and Claude Code plugin that consults Jev for tool, model, task, skill, context, strategy, result, outcome, and custom classification decisions. The current source package is version 0.5.2. It includes eight MCP surfaces, three independently usable skills, bundled JavaScript entrypoints, and scoped lifecycle hooks.
 
 ## Capabilities
 
