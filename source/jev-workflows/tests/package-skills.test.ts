@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {copyFile, mkdtemp, mkdir, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -53,12 +54,12 @@ async function fixture() {
 
 async function inspectArchive(archive: string) {
   const python = `
-import json, sys, zipfile
+import hashlib, json, sys, zipfile
 with zipfile.ZipFile(sys.argv[1]) as z:
-    print(json.dumps({"names": z.namelist(), "skill": z.read(sys.argv[2]).decode(), "cli": z.read(sys.argv[3]).decode()}))
+    print(json.dumps({"names": z.namelist(), "skill": z.read(sys.argv[2]).decode(), "cliSha256": hashlib.sha256(z.read(sys.argv[3])).hexdigest()}))
 `;
   const {stdout} = await execFileAsync('/usr/bin/python3', ['-c', python, archive, `${archive.split('/').at(-1)?.replace('.zip', '')}/SKILL.md`, `${archive.split('/').at(-1)?.replace('.zip', '')}/scripts/jev.mjs`]);
-  return JSON.parse(stdout) as {names: string[]; skill: string; cli: string};
+  return JSON.parse(stdout) as {names: string[]; skill: string; cliSha256: string};
 }
 
 describe('standalone skill packaging', () => {
@@ -75,7 +76,7 @@ describe('standalone skill packaging', () => {
         const inspected = await inspectArchive(join(output, item.archive));
         assert.deepEqual(inspected.names.sort(), [`${item.skill}/LICENSE`, `${item.skill}/SKILL.md`, `${item.skill}/references/example.md`, `${item.skill}/scripts/jev.mjs`].sort());
         assert.equal(inspected.skill, `# ${item.skill}\n`);
-        assert.equal(inspected.cli.includes('missing_api_key'), true);
+        assert.equal(inspected.cliSha256, createHash('sha256').update(await readFile(join(source, 'dist-cli.mjs'))).digest('hex'));
         assert.equal(inspected.names.some((name) => name.includes('node_modules') || name.includes('work/')), false);
       }
       const sums = await readFile(join(output, 'SHA256SUMS'), 'utf8');

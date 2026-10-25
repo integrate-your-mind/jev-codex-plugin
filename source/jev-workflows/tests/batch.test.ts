@@ -86,7 +86,13 @@ describe('evaluate_decisions mixed typed batch', () => {
 
     const calls: Array<Record<string, unknown>> = [];
     const evaluated = await service({fetchFn: async (_url, init) => {
-      const payload = JSON.parse(String(init?.body)); calls.push(payload);
+      const form = await new Response(init?.body, {headers: init?.headers}).formData();
+      const payloadPart = [...form.values()].find((part): part is string => typeof part === 'string');
+      assert.ok(payloadPart);
+      const image = [...form.values()].find((part): part is File => typeof part !== 'string');
+      assert.ok(image);
+      assert.deepEqual(Buffer.from(await image.arrayBuffer()), Buffer.from(png(), 'base64'));
+      const payload = JSON.parse(payloadPart); calls.push(payload);
       return new Response(JSON.stringify({model: 'jev-1.14.0', answers: {
         location: {type: 'box', box: {top: 0.1, bottom: 0.9, left: 0.2, right: 0.8}, confidence: null},
       }, usage: {input_tokens: null, output_tokens: 4}}));

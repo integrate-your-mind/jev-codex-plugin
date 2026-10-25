@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
+import { APIConnectionError, APIError, APIUserAbortError, APITimeoutError, Image, TypeSafeClient, TypeSafeError, type EntryType, type Questions } from '@typesafe-ai/sdk';
 import { z } from 'zod';
 import { ENDPOINT, validateReturnedModel, type ModelSelector, type Question } from './contracts.js';
 import { isBoundedJsonStructure, structuredEntrySchema, type StructuredEntry } from './batch.js';
@@ -204,70 +205,89 @@ export async function evaluateProvider(args: {
     retryAfter: null,
     credentialFingerprint: fingerprintCredential(args.apiKey),
   };
-  try {
-    // AbortSignal listeners added after an abort do not fire. Check explicitly
-    // before entering fetch so cancellation during earlier service work cannot
-    // leave a custom transport waiting forever.
-    if (args.signal?.aborted) throw new ProviderError('cancelled', transport);
+  let responseFailure: ProviderError | undefined;
+  const instrumentedFetch = async (input: string, init?: RequestInit): Promise<Response> => {
     transport = {...transport, fetchInvoked: true};
-    const response = await (args.fetchFn ?? fetch)(ENDPOINT, {
-      method: 'POST', redirect: 'error', signal,
-      headers: {
-        'content-type': 'application/json', authorization: `Bearer ${args.apiKey}`,
-        ...(args.longContext ? {'TypeSafe-Danger-Zone-Long-Context': 'true'} : {}),
-        ...(args.experimentalImages ? {'TypeSafe-Danger-Zone-Images': 'true'} : {}),
-      },
-      body: JSON.stringify({model, state: args.state, questions: args.questions, ...(args.assets ? {assets: args.assets} : {})})
-    });
-    const policyError = response.status === 403 ? networkPolicyError(response) : null;
-    transport = {
-      ...transport,
-      responseReceivedAt: new Date().toISOString(),
-      responseStatus: response.status,
-      ...requestIdentifier(response, args.apiKey),
-      retryAfter: retryAfter(response, args.apiKey),
-      ...(policyError ? {networkPolicyError: policyError} : {}),
-    };
-    if (!response.ok) {
-      await response.body?.cancel().catch(() => {});
-      const code = response.status === 400 ? 'invalid_request'
-        : response.status === 401 ? 'authentication_failed'
-        : response.status === 403 && policyError ? 'network_policy_blocked'
-        : response.status === 403 ? 'request_forbidden'
-        : response.status === 408 ? 'request_timeout'
-        : response.status === 413 ? 'request_too_large'
-        : response.status === 415 ? 'unsupported_media_type'
-        : response.status === 422 ? 'invalid_request'
-        : response.status === 429 ? 'rate_limited'
-        : response.status === 529 ? 'provider_overloaded'
-        : 'provider_error';
-      throw new ProviderError(code, transport);
-    }
-    // Bound the response even when content-length is missing or dishonest.
-    if (!response.body) invalidResponse(transport, 'missing_body');
-    const reader = response.body.getReader();
-    const chunks: Uint8Array[] = []; let size = 0;
+    const response = await (args.fetchFn ?? fetch)(input, {...init, redirect: 'error'});
     try {
-      while (true) {
-        const next = await reader.read();
-        if (next.done) break;
-        size += next.value.byteLength;
-        if (size > 65536) { await reader.cancel(); throw new ProviderError('response_too_large', transport); }
-        chunks.push(next.value);
+      const policyError = response.status === 403 ? networkPolicyError(response) : null;
+      transport = {
+        ...transport,
+        responseReceivedAt: new Date().toISOString(),
+        responseStatus: response.status,
+        ...requestIdentifier(response, args.apiKey),
+        retryAfter: retryAfter(response, args.apiKey),
+        ...(policyError ? {networkPolicyError: policyError} : {}),
+      };
+      if (!response.ok) {
+        await response.body?.cancel().catch(() => {});
+        const headers = new Headers(response.headers);
+        headers.delete('content-length');
+        headers.delete('content-encoding');
+        return new Response(null, {status: response.status, statusText: response.statusText, headers});
       }
-    } finally { reader.releaseLock(); }
-    let payload: unknown;
-    try {
-      payload = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-    } catch {
-      invalidResponse(transport, 'invalid_json');
+      // Bound the response even when content-length is missing or dishonest.
+      if (!response.body) invalidResponse(transport, 'missing_body');
+      const reader = response.body.getReader();
+      const chunks: Uint8Array[] = []; let size = 0;
+      try {
+        while (true) {
+          const next = await reader.read();
+          if (next.done) break;
+          size += next.value.byteLength;
+          if (size > 65536) { await reader.cancel(); throw new ProviderError('response_too_large', transport); }
+          chunks.push(next.value);
+        }
+      } finally { reader.releaseLock(); }
+      const bytes = Buffer.concat(chunks);
+      try { JSON.parse(bytes.toString('utf8')); } catch { invalidResponse(transport, 'invalid_json'); }
+      const headers = new Headers(response.headers);
+      headers.delete('content-length');
+      headers.delete('content-encoding');
+      return new Response(bytes, {status: response.status, statusText: response.statusText, headers});
+    } catch (error) {
+      if (error instanceof ProviderError) responseFailure = error;
+      throw error;
     }
-    const evaluation = validateEvaluation(payload, args.questions, transport, model);
+  };
+  try {
+    if (args.signal?.aborted) throw new ProviderError('cancelled', transport);
+    if (!args.apiKey.trim()) throw new ProviderError('authentication_failed', transport);
+    const client = new TypeSafeClient({
+      apiKey: args.apiKey, baseURL: new URL(ENDPOINT).origin, defaultModel: model,
+      fetch: instrumentedFetch, timeout: args.timeoutMs, retry: {maxRetries: 0},
+      compression: false, logLevel: 'off',
+    });
+    const {data} = await client.systemOne({
+      model, state: args.state as NonNullable<EntryType>, questions: args.questions as unknown as Questions,
+      ...(args.assets ? {assets: Object.fromEntries(Object.entries(args.assets).map(([name, asset]) => [name, Image.fromBase64(asset.data_base64)]))} : {}),
+    }, {signal, headers: {
+      ...(args.longContext ? {'TypeSafe-Danger-Zone-Long-Context': 'true'} : {}),
+      ...(args.experimentalImages ? {'TypeSafe-Danger-Zone-Images': 'true'} : {}),
+    }}).withResponse();
+    const evaluation = validateEvaluation(data, args.questions, transport, model);
     return {...evaluation, transport: {...transport, validatedResponse: true}};
   } catch (error) {
     if (args.signal?.aborted) throw new ProviderError('cancelled', transport);
-    if (timeout.aborted) throw new ProviderError('timeout', transport);
+    if (timeout.aborted || error instanceof APITimeoutError) throw new ProviderError('timeout', transport);
+    if (responseFailure) throw responseFailure;
     if (error instanceof ProviderError) throw error;
-    throw new ProviderError('provider_unavailable', transport);
+    if (error instanceof APIUserAbortError) throw new ProviderError('cancelled', transport);
+    if (error instanceof APIError) {
+      const code = error.status === 400 ? 'invalid_request'
+        : error.status === 401 ? 'authentication_failed'
+        : error.status === 403 && transport.networkPolicyError ? 'network_policy_blocked'
+        : error.status === 403 ? 'request_forbidden'
+        : error.status === 408 ? 'request_timeout'
+        : error.status === 413 ? 'request_too_large'
+        : error.status === 415 ? 'unsupported_media_type'
+        : error.status === 422 ? 'invalid_request'
+        : error.status === 429 ? 'rate_limited'
+        : error.status === 529 ? 'provider_overloaded'
+        : 'provider_error';
+      throw new ProviderError(code, transport);
+    }
+    if (error instanceof APIConnectionError) throw new ProviderError('provider_unavailable', transport);
+    throw new ProviderError(error instanceof TypeSafeError ? 'invalid_request' : 'provider_unavailable', transport);
   }
 }
