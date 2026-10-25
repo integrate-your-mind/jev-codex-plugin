@@ -1,0 +1,325 @@
+{
+  "schemaVersion": 3,
+  "generatedAt": "2026-09-26T16:55:56.981Z",
+  "sourceRoot": "source/jev-workflows",
+  "sourceContentSha256": "f9af32b7ab0bbfae8a5c4bc5bf815f0abba792b666a44b704fc36ed992565cda",
+  "providerCalls": false,
+  "serviceInvocations": 16,
+  "mockProviderCalls": 0,
+  "classification": "mixed_fixture_replay_and_synthetic_provider",
+  "fixtureHashes": {
+    "scenarios": "49fea5fd05242006fc13ee76a34127139954652e5892013d285ad2323254cf5c",
+    "truth": "04d975522cacf9938c1c96ee7d680f767e3274d8c566c2d6b1b71cc4293b3bdf",
+    "external": "9db761c3784009b98f3639ae789b7f039cb1c40cd3cc49b52e44e8cf45d1a448"
+  },
+  "externalFixtures": [
+    {
+      "id": "max-size-valid-constraints",
+      "payloadOnly": true,
+      "constraintCount": 9,
+      "evidenceBytes": 15530,
+      "expectedServiceOutcome": "skipped",
+      "expectedReason": "invalid_input",
+      "providerCalled": false,
+      "observed": false
+    },
+    {
+      "id": "dynamic-read-thread-choice",
+      "payloadOnly": true,
+      "candidate": "read_thread",
+      "chosenProbability": 0.97,
+      "expectedHookAdvice": "missing_decision",
+      "providerCalled": false,
+      "observed": false
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "candidate-propagation",
+      "requirement": "dynamic_candidate_is_reflected_in_advice",
+      "executionPassed": true,
+      "behaviorObserved": "observed_requirement_failed",
+      "requirementSatisfied": false,
+      "requirementStatus": "failed",
+      "checks": {
+        "candidate_payload": true,
+        "advice_dynamic_candidate": false
+      },
+      "providerPayloadSha256": "e23176456c170474b6e4d213572a5fe613163cddb7fcd47df797a1204fffda68",
+      "outputSha256": "42406199cc1a30b6c9275a38a84ee8bcfe16cdb85c7bb46fd1cb9f8ac8033530",
+      "serviceInvocations": 1,
+      "mockTransportCalls": 0,
+      "classification": "fixture_replay",
+      "mockLayer": "service-injection-bypasses-response-validation"
+    },
+    {
+      "id": "generic-fallback",
+      "requirement": "fallback_candidates_present",
+      "executionPassed": true,
+      "behaviorObserved": "observed_requirement_satisfied",
+      "requirementSatisfied": true,
+      "requirementStatus": "satisfied",
+      "checks": {
+        "fallback_candidates": true
+      },
+      "providerPayloadSha256": "2de57da502f719bf96c712eb41c9f2abaa13b9e5ccc2920738bf8f85e6c41e1d",
+      "outputSha256": "c6fd969192873cbaab5587ff561511648b6bee479710230b1b30172a5a049b96",
+      "serviceInvocations": 1,
+      "mockTransportCalls": 0,
+      "classification": "fixture_replay",
+      "mockLayer": "service-injection-bypasses-response-validation"
+    },
+    {
+      "id": "missing-evidence-abstention",
+      "requirement": "abstention_neutral",
+      "executionPassed": true,
+      "behaviorObserved": "observed_requirement_satisfied",
+      "requirementSatisfied": true,
+      "requirementStatus": "satisfied",
+      "checks": {
+        "neutral_abstention": true
+      },
+      "providerPayloadSha256": "274c0dd5bed847de47639c7c7269445f777dfd65c0367b4fd7d32b3a96d55e52",
+      "outputSha256": "315540a6f07bad0024d846aa4e5da0846a1bb196aa9ebc0dd53c5cd1bedc35e5",
+      "serviceInvocations": 1,
+      "mockTransportCalls": 0,
+      "classification": "fixture_replay",
+      "mockLayer": "service-injection-bypasses-response-validation"
+    },
+    {
+      "id": "failed-command",
+      "requirement": "failed_evidence_preserved",
+      "executionPassed": true,
+      "behaviorObserved": "observed_requirement_satisfied",
+      "requirementSatisfied": true,
+      "requirementStatus": "satisfied",
+      "checks": {
+        "failure_evidence": true,
+        "advice_choice": true
+      },
+      "providerPayloadSha256": "a04f7639008e85787af9bd4c89dffa05784e4ad9b7172d12bc119bf610f5c160",
+      "outputSha256": "6af590c148a2717b22f62a9e84c6d14b2ad0c01c5b2688d7951ad212c6eca9d6",
+      "serviceInvocations": 1,
+      "mockTransportCalls": 0,
+      "classification": "fixture_replay",
+      "mockLayer": "service-injection-bypasses-response-validation"
+    },
+    {
+      "id": "latest-user-constraints",
+      "requirement": "latest_prompt_visible",
+      "executionPassed": true,
+      "behaviorObserved": "observed_requirement_satisfied",
+      "requirementSatisfied": true,
+      "requirementStatus": "satisfied",
+      "checks": {
+        "prompt_context": true
+      },
+      "providerPayloadSha256": "7265373ac05efeab2a948776883032f62ea38b9b39d045d6333eb4eafa62d4af",
+      "outputSha256": "d78ae79e0219aecdc8e1eb9f488d10bfca512a01efed0a5358765b186ec8ab08",
+      "serviceInvocations": 2,
+      "mockTransportCalls": 0,
+      "classification": "fixture_replay",
+      "mockLayer": "service-injection-bypasses-response-validation"
+    },
+    {
+      "id": "objective-replacement",
+      "requirement": "replacement_objective_visible",
+      "executionPassed": true,
+      "behaviorObserved": "observed_requirement_failed",
+      "requirementSatisfied": false,
+      "requirementStatus": "failed",
+      "checks": {
+        "replacement_context": false
+      },
+      "providerPayloadSha256": "1fcf91ef511e139373f0d40f734738fe363602bf97664668e718c98f80242b12",
+      "outputSha256": "d78ae79e0219aecdc8e1eb9f488d10bfca512a01efed0a5358765b186ec8ab08",
+      "serviceInvocations": 1,
+      "mockTransportCalls": 0,
+      "classification": "fixture_replay",
+      "mockLayer": "service-injection-bypasses-response-validation"
+    },
+    {
+      "id": "large-context-schema",
+      "requirement": "provider_accepts_max_size_valid_context",
+      "executionPassed": true,
+      "behaviorObserved": "hook_input_rejected_before_provider",
+      "requirementSatisfied": false,
+      "requirementStatus": "failed",
+      "checks": {
+        "provider_reached": false,
+        "provider_response_validated": false,
+        "hook_context_bounded": true,
+        "context_bounded": false,
+        "no_secret_egress": true
+      },
+      "providerPayloadSha256": null,
+      "outputSha256": "b38ac2af258187f56ad567aec1976bbad771f470ea5ca8c835a7a86f71aba570",
+      "serviceInvocations": 1,
+      "mockTransportCalls": 0,
+      "classification": "provider_reproduction",
+      "mockLayer": "response-validating-synthetic-fetch",
+      "metadata": {
+        "providerCalls": 0,
+        "serviceInvocations": 1,
+        "responseValidated": false,
+        "hookContextBytes": 1815,
+        "hookContextTruncated": true,
+        "contextTruncated": false
+      }
+    },
+    {
+      "id": "redaction-critical-survival",
+      "requirement": "secret_redacted_critical_preserved",
+      "executionPassed": true,
+      "behaviorObserved": "observed_requirement_satisfied",
+      "requirementSatisfied": true,
+      "requirementStatus": "satisfied",
+      "checks": {
+        "redaction": true,
+        "critical_survives": true
+      },
+      "providerPayloadSha256": "a3c42d898e84f61ce06022c2e1ee0c44e5f95c6e00cb05368d7d95afd908805c",
+      "outputSha256": "c8b7c597612f599d36cde82552f31f04be4ac1414b3a06b87b84d62e1ebd5a98",
+      "serviceInvocations": 1,
+      "mockTransportCalls": 0,
+      "classification": "fixture_replay",
+      "mockLayer": "service-injection-bypasses-response-validation"
+    },
+    {
+      "id": "duplicate-changed-semantics",
+      "requirement": "duplicate_is_deduplicated",
+      "executionPassed": true,
+      "behaviorObserved": "observed_requirement_satisfied",
+      "requirementSatisfied": true,
+      "requirementStatus": "satisfied",
+      "checks": {
+        "duplicate_dedup": true
+      },
+      "providerPayloadSha256": "9f0f1329daf4a6bc9e4d0af6c5b32cb7473bf4aeb999cc2d819da97769791d43",
+      "outputSha256": "346329c2da6ee0228f534ad4ca7bddf818666e74d464fc2e2c5f49b485bf9402",
+      "serviceInvocations": 1,
+      "mockTransportCalls": 0,
+      "classification": "fixture_replay",
+      "mockLayer": "service-injection-bypasses-response-validation"
+    },
+    {
+      "id": "completion-claim",
+      "requirement": "claim_has_evidence_boundary",
+      "executionPassed": true,
+      "behaviorObserved": "observed_requirement_satisfied",
+      "requirementSatisfied": true,
+      "requirementStatus": "satisfied",
+      "checks": {
+        "completion_evidence": true
+      },
+      "providerPayloadSha256": "d3e478f1e8be92fadb23b4ab1e629bb5e5bf23c33e78d76a435eac17d5900654",
+      "outputSha256": "a20977d0dc5cd9872b352415ff2b418d8159a7bdf40f56783d4f3c2ab0f30249",
+      "serviceInvocations": 1,
+      "mockTransportCalls": 0,
+      "classification": "fixture_replay",
+      "mockLayer": "service-injection-bypasses-response-validation"
+    },
+    {
+      "id": "invalid-event",
+      "requirement": "ignored",
+      "executionPassed": true,
+      "behaviorObserved": "observed_requirement_satisfied",
+      "requirementSatisfied": true,
+      "requirementStatus": "satisfied",
+      "checks": {
+        "ignored": true
+      },
+      "providerPayloadSha256": null,
+      "outputSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "serviceInvocations": 0,
+      "mockTransportCalls": 0,
+      "classification": "fixture_replay",
+      "mockLayer": "service-injection-bypasses-response-validation"
+    },
+    {
+      "id": "provider-unavailable",
+      "requirement": "unavailable_neutral",
+      "executionPassed": true,
+      "behaviorObserved": "observed_requirement_satisfied",
+      "requirementSatisfied": true,
+      "requirementStatus": "satisfied",
+      "checks": {
+        "neutral_unavailable": true
+      },
+      "providerPayloadSha256": "d476cc8c87945b1895b7ec802a45af508c692b2e9aa9f0b6c3ebef98855d10bc",
+      "outputSha256": "ffbc01382e0c5fb904c50bf1e4b1c7aef5e2173dda9af6368b235dc1f6d06417",
+      "serviceInvocations": 1,
+      "mockTransportCalls": 0,
+      "classification": "fixture_replay",
+      "mockLayer": "service-injection-bypasses-response-validation"
+    },
+    {
+      "id": "provider-invalid-choice",
+      "requirement": "invalid_choice_filtered",
+      "executionPassed": true,
+      "behaviorObserved": "observed_requirement_failed",
+      "requirementSatisfied": false,
+      "requirementStatus": "failed",
+      "checks": {
+        "choice_filtered": false
+      },
+      "providerPayloadSha256": "d476cc8c87945b1895b7ec802a45af508c692b2e9aa9f0b6c3ebef98855d10bc",
+      "outputSha256": "07347bf0b64b977201a0d92c5029ce326c6288975d0f5d40ef888e01510f1c3b",
+      "serviceInvocations": 1,
+      "mockTransportCalls": 0,
+      "classification": "fixture_replay",
+      "mockLayer": "service-injection-bypasses-response-validation"
+    },
+    {
+      "id": "candidate-schema",
+      "requirement": "invalid_candidate_omitted",
+      "executionPassed": true,
+      "behaviorObserved": "observed_requirement_satisfied",
+      "requirementSatisfied": true,
+      "requirementStatus": "satisfied",
+      "checks": {
+        "candidate_schema": true
+      },
+      "providerPayloadSha256": "2216e823faf08823e0c2e6283d9b989e52eddfb58c90bdd17fa015e5738353f5",
+      "outputSha256": "329aec7e2cf90fb611b1c060777f2468ad8791d4eb01a3cba66125c55e1a4642",
+      "serviceInvocations": 1,
+      "mockTransportCalls": 0,
+      "classification": "fixture_replay",
+      "mockLayer": "service-injection-bypasses-response-validation"
+    },
+    {
+      "id": "successful-result-evidence",
+      "requirement": "success_evidence_preserved",
+      "executionPassed": true,
+      "behaviorObserved": "observed_requirement_satisfied",
+      "requirementSatisfied": true,
+      "requirementStatus": "satisfied",
+      "checks": {
+        "success_evidence": true
+      },
+      "providerPayloadSha256": "67b0e51cd48fdadf098f69d55f55d210a58776ff4a9e0b843665b211c50780dd",
+      "outputSha256": "346329c2da6ee0228f534ad4ca7bddf818666e74d464fc2e2c5f49b485bf9402",
+      "serviceInvocations": 1,
+      "mockTransportCalls": 0,
+      "classification": "fixture_replay",
+      "mockLayer": "service-injection-bypasses-response-validation"
+    },
+    {
+      "id": "concrete-candidate-advice",
+      "requirement": "selected_concrete_candidate_is_emitted_exactly",
+      "executionPassed": true,
+      "behaviorObserved": "observed_requirement_failed",
+      "requirementSatisfied": false,
+      "requirementStatus": "failed",
+      "checks": {
+        "advice_concrete_candidate": false
+      },
+      "providerPayloadSha256": "b4b1400ea87a909e3cda913b2c1c7acc378e7874533a7351e697eacd572b816a",
+      "outputSha256": "ffb0cde0e983e2dfa0be7206ca1bfec91ab32bd4f8210a090947b9ce31e65f1a",
+      "serviceInvocations": 1,
+      "mockTransportCalls": 0,
+      "classification": "fixture_replay",
+      "mockLayer": "service-injection-bypasses-response-validation"
+    }
+  ]
+}

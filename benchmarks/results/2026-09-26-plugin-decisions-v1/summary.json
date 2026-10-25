@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "plugin-decision-results-v1",
+  "plannedAttempts": 72,
+  "finishedAttempts": 72,
+  "uniqueAuthoredEpisodes": 18,
+  "sourceRecords": [
+    {
+      "arm": "baseline",
+      "entrypoint": "src/decision-hook.ts",
+      "gitCommit": "7dfe432d7463bab7186a8dacf50924af282f9a20",
+      "sourceSha256": "7b805b1784720cf18748c4b0c6d727134eb76713c4b0ebe96fa96cc49b9348e8",
+      "entrypointSha256": "c1c42678a526277b8af022dbc279968db29901ff719973fa9db1e746cd5f56dd",
+      "fileCount": 18
+    },
+    {
+      "arm": "repair",
+      "entrypoint": "src/decision-hook.ts",
+      "gitCommit": "7dfe432d7463bab7186a8dacf50924af282f9a20",
+      "sourceSha256": "26958051bf006c7ba490847f21dffa5f9e9f3eb5d1840a4899b9d00485816a3c",
+      "entrypointSha256": "eee9d69bfa8f36a5523c973ff1ca5b700ba3c4f9c18675abc0427a12573b3c8f",
+      "fileCount": 18
+    }
+  ],
+  "runtime": {
+    "node": "v22.23.2",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "fixtureSha256": "501b47356241b357b1d7bc57cc56a8d672c7b51d6e09de701340eea67173f538",
+  "oracleSha256": "a7165b0652007764687f16c9a505e0f6e4cebc700605668299f41667de197db6",
+  "privateRawEvidence": {
+    "bytes": 500547,
+    "sha256": "85c1321b588f34b3443d59a8c0b605b999bee0aaa58e7cb0e906873bee9b4bd0"
+  },
+  "arms": {
+    "baseline": {
+      "scheduled": 36,
+      "completed": 36,
+      "providerDecisionCorrect": 36,
+      "providerStatuses": {
+        "assessed": 32,
+        "abstained": 4
+      },
+      "concreteChoicesDelivered": 0,
+      "correctConcreteChoicesDelivered": 0,
+      "inputTokens": 53522,
+      "outputTokens": 2278,
+      "medianProviderLatencyMs": 207.5,
+      "medianHookInvocationMs": 237.0,
+      "medianPayloadBytes": 3514.0,
+      "actualBilledUsd": null
+    },
+    "repair": {
+      "scheduled": 36,
+      "completed": 36,
+      "providerDecisionCorrect": 36,
+      "providerStatuses": {
+        "assessed": 32,
+        "abstained": 4
+      },
+      "concreteChoicesDelivered": 32,
+      "correctConcreteChoicesDelivered": 32,
+      "inputTokens": 38508,
+      "outputTokens": 2278,
+      "medianProviderLatencyMs": 205.0,
+      "medianHookInvocationMs": 230.0,
+      "medianPayloadBytes": 3377.5,
+      "actualBilledUsd": null
+    }
+  },
+  "limits": [
+    "Authored decision-level episodes; eighteen clusters repeated twice.",
+    "No raw decision-quality separation; both arms reach a correctness ceiling.",
+    "Bundled repair: individual component effects are not isolated.",
+    "Explicit candidate catalogs supplied; automatic catalog discovery untested.",
+    "Direct source invocation; native process startup and Codex task outcomes unmeasured.",
+    "Actual billed dollars unknown."
+  ]
+}

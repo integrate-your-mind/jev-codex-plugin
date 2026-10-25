@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "fixtures": [
+    {"id":"max-size-valid-constraints","payloadOnly":true,"constraintCount":9,"evidenceBytes":15530,"expectedServiceOutcome":"skipped","expectedReason":"invalid_input","providerCalled":false},
+    {"id":"dynamic-read-thread-choice","payloadOnly":true,"candidate":"read_thread","chosenProbability":0.97,"expectedHookAdvice":"missing_decision","providerCalled":false}
+  ]
+}

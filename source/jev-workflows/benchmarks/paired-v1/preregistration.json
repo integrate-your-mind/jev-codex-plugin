@@ -1,0 +1,35 @@
+{
+  "registeredAt": "2026-09-26T14:51:42.489525+00:00",
+  "tasksSha256": "e517029eb95b7c9915544b42edc9d8e853810d54047a2bf11a8815a642b4ba43",
+  "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94",
+  "taskIds": [
+    "interval-repair",
+    "retry-repair",
+    "csv-parser",
+    "changed-route"
+  ],
+  "repeats": 2,
+  "arms": [
+    "codex_only",
+    "codex_jev"
+  ],
+  "plannedTrials": 16,
+  "primaryMetric": "fraction of all scheduled trials passing independent artifact grader",
+  "secondaryMetrics": [
+    "paired task wall time",
+    "Codex tokens including cached input separately",
+    "tool calls and failed commands",
+    "Jev provider attempts and validated responses",
+    "hook wall time",
+    "changed-requirement correctness"
+  ],
+  "failurePolicy": "Timeout, provider unavailability and task failure stay in denominator; no result-based retries or prompt edits. Infrastructure preflight failures reported separately.",
+  "inference": "Descriptive synthetic pilot; no significance or general productivity claim. No model-routing claim: model and effort fixed.",
+  "modelRule": "Resolve native model/list isDefault once before scored trials; pin returned model ID and defaultReasoningEffort for both arms and every repetition; persist resolved profile.",
+  "turnTimeoutMs": 180000,
+  "ordering": "Deterministic seeded counterbalanced arm order; execution plan saved before trial one.",
+  "reset": "Fresh workspace from identical task.files and fresh ephemeral thread per trial; no model-history sharing.",
+  "followup": "For changed-route, deliver the frozen followupPrompt only after initial turn completes; sum both turn durations; grade final artifacts.",
+  "timing": "Measure each turn from dispatch of turn/start through turn/completed; sum within trial. Record process initialization and readiness separately.",
+  "integrity": "Record SHA-256 tasks, grader, runner and tested installed plugin files; immutable task prompts and grader after first scored trial."
+}

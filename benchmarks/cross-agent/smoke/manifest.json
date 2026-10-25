@@ -1,0 +1,155 @@
+{
+  "schemaVersion": "cross-agent-smoke-v1",
+  "label": "smoke-only",
+  "harborTaskSchema": "1.3",
+  "exportedTaskIds": [
+    "interval-repair",
+    "retry-repair",
+    "csv-parser"
+  ],
+  "unsupportedTasks": [
+    {
+      "id": "changed-route",
+      "reason": "multi_turn_followup_not_flattened"
+    }
+  ],
+  "source": {
+    "exporter": "benchmarks/cross-agent/export-smoke.mjs",
+    "exporterSha256": "b7629bfca454d9d3f53496d7be4c246bc08100f37087c62cb8396d3a4e2db6e6",
+    "tasks": "source/jev-workflows/benchmarks/paired-v1/tasks.json",
+    "tasksSha256": "e517029eb95b7c9915544b42edc9d8e853810d54047a2bf11a8815a642b4ba43",
+    "grader": "source/jev-workflows/benchmarks/paired-v1/grade.mjs",
+    "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+  },
+  "upstream": {
+    "deepSWECommit": "0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
+    "pierCommit": "4f3441fb3e7c21ce8a4ed0b6155a8d9a176a645a"
+  },
+  "runtime": {
+    "nodeImage": "node:22.22.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94",
+    "nodeImageTag": "node:22.22.0-bookworm-slim",
+    "nodeImageDigest": "sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94"
+  },
+  "files": [
+    {
+      "path": "csv-parser/environment/Dockerfile",
+      "bytes": 139,
+      "sha256": "1c6c86ebcac6e48485f5f0ba309f2fea3f2e0c5e8fb2fd0bc4aa30e6ecafdb8b"
+    },
+    {
+      "path": "csv-parser/environment/workspace/solution.mjs",
+      "bytes": 87,
+      "sha256": "e779635a234298b0c2335dc1840080018011e8d182de6eca05f83f6535e7c116"
+    },
+    {
+      "path": "csv-parser/instruction.md",
+      "bytes": 713,
+      "sha256": "e22e25125a92d9620e0f1e144b6278fa3e7a97d091c639de7ba5c6bb4fe4c827"
+    },
+    {
+      "path": "csv-parser/task.toml",
+      "bytes": 1332,
+      "sha256": "3ca88b252d2f1f93c7ac122c6945655140ac2386aefc2c6f4b29a0cc3e15172b"
+    },
+    {
+      "path": "csv-parser/tests/Dockerfile",
+      "bytes": 241,
+      "sha256": "961e5965e5b9e8baba141585a2594b6048535133892e8198ab7676e29be44f7d"
+    },
+    {
+      "path": "csv-parser/tests/grade.mjs",
+      "bytes": 3769,
+      "sha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "path": "csv-parser/tests/test.sh",
+      "bytes": 799,
+      "sha256": "94e1f6e1100b192fecdf714111c54cee1d4e12406215f9ddd3493d5135f726be"
+    },
+    {
+      "path": "interval-repair/environment/Dockerfile",
+      "bytes": 139,
+      "sha256": "1c6c86ebcac6e48485f5f0ba309f2fea3f2e0c5e8fb2fd0bc4aa30e6ecafdb8b"
+    },
+    {
+      "path": "interval-repair/environment/workspace/smoke.mjs",
+      "bytes": 165,
+      "sha256": "e8d66939f1c40bebb2f40e029b161a17fa88052f4048182c7aa74d57905e3bfc"
+    },
+    {
+      "path": "interval-repair/environment/workspace/solution.mjs",
+      "bytes": 73,
+      "sha256": "9842bc1c006fd73351a4ebff1692023b3275468dff477800073bb99bcf9a3a75"
+    },
+    {
+      "path": "interval-repair/instruction.md",
+      "bytes": 531,
+      "sha256": "e41329087464e7cdd854e4159dc01a981efbb0b4227d7f5cdc6df685e2d9e9a7"
+    },
+    {
+      "path": "interval-repair/task.toml",
+      "bytes": 1342,
+      "sha256": "daa6b75e09fa3876a5fca957e456d0288b2d6ddae163fce037c8e5f1f39e8f99"
+    },
+    {
+      "path": "interval-repair/tests/Dockerfile",
+      "bytes": 241,
+      "sha256": "961e5965e5b9e8baba141585a2594b6048535133892e8198ab7676e29be44f7d"
+    },
+    {
+      "path": "interval-repair/tests/grade.mjs",
+      "bytes": 3769,
+      "sha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "path": "interval-repair/tests/test.sh",
+      "bytes": 804,
+      "sha256": "971ce38506fd1194c4d1dbe1f02baeaea1dbc5fc87b24b0768286556c522112b"
+    },
+    {
+      "path": "retry-repair/environment/Dockerfile",
+      "bytes": 139,
+      "sha256": "1c6c86ebcac6e48485f5f0ba309f2fea3f2e0c5e8fb2fd0bc4aa30e6ecafdb8b"
+    },
+    {
+      "path": "retry-repair/environment/workspace/smoke.mjs",
+      "bytes": 173,
+      "sha256": "238dac85dc26224340c6a44747da2c8e46eb132e6beedbf784280742c453076b"
+    },
+    {
+      "path": "retry-repair/environment/workspace/solution.mjs",
+      "bytes": 129,
+      "sha256": "9c064d1ba7d03c4a4fdb7a899d4b146493955d196d32c48f8aa379579c1d13df"
+    },
+    {
+      "path": "retry-repair/environment/workspace/verification-notes.txt",
+      "bytes": 100,
+      "sha256": "3b7bb5e8bdda5de686270521fb44c1cdeff4a2dba9965bbd100ffa6ec4dde6dc"
+    },
+    {
+      "path": "retry-repair/instruction.md",
+      "bytes": 714,
+      "sha256": "65495db3c1ee56333dcc3d6c5953975a88e633d1acde873d9579dbb29bdded0e"
+    },
+    {
+      "path": "retry-repair/task.toml",
+      "bytes": 1336,
+      "sha256": "efe74090e2df130651ccda4873d17b6d9715f1c4a7f586c7716fcebd3ba88db5"
+    },
+    {
+      "path": "retry-repair/tests/Dockerfile",
+      "bytes": 241,
+      "sha256": "961e5965e5b9e8baba141585a2594b6048535133892e8198ab7676e29be44f7d"
+    },
+    {
+      "path": "retry-repair/tests/grade.mjs",
+      "bytes": 3769,
+      "sha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+    },
+    {
+      "path": "retry-repair/tests/test.sh",
+      "bytes": 801,
+      "sha256": "d618dc7a476a85664d73298291b9bf05e716ca29b7f3d9be71564f98d96baeb1"
+    }
+  ]
+}

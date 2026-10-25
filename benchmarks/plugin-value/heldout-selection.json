@@ -1,0 +1,588 @@
+{
+  "schemaVersion": "jev-plugin-heldout-metadata-reservation-v1",
+  "immutable": true,
+  "status": "metadata-reservation-only",
+  "executionReady": false,
+  "benchmark": "DeepSWE v1.1",
+  "developmentRule": {
+    "path": "benchmarks/plugin-value/development-selection.md",
+    "sha256": "7e6c99fe0d28eaf4d50cd4d94578ea32d65ecb4e630742e672f41efee47a7681"
+  },
+  "originalCohort": {
+    "path": "benchmarks/cross-agent/deepswe-v1.1.lock.json",
+    "sha256": "759e7f92477158bc0404c9ab686b84ffb15898021b0f3ed85c1625576e893a5a",
+    "seed": "jev-cross-agent-v1",
+    "orderedTaskIds": [
+      "ipython-session-bundle-replay",
+      "testem-bail-on-test-failure",
+      "skrub-duration-encoding",
+      "fd-deterministic-multi-key-sorting",
+      "expr-try-catch-errors",
+      "katex-multicolumn-array-spans",
+      "kgateway-consistent-hash-policy",
+      "sql-formatter-bigquery-pipe-formatting",
+      "koota-entity-snapshot-rollback",
+      "geo-shapeindex-serialization",
+      "task-task-graph-export",
+      "query-persist-restored-query-state",
+      "oxvg-structural-selector-preservation",
+      "kea-atomic-signal-selectors",
+      "csstree-shorthand-expansion-compression",
+      "yaegi-go-embed-directives",
+      "anko-default-function-arguments",
+      "mashumaro-flattened-dataclass-fields",
+      "obsidian-linter-link-format-conversion",
+      "adaptix-name-mapping-aliases"
+    ]
+  },
+  "selection": {
+    "seed": "jev-plugin-heldout-v1",
+    "algorithm": "sha256(seed + taskId), ascending hash, taskId tie-breaker",
+    "availableTaskCount": 93,
+    "count": 20,
+    "attemptsPerTask": 1,
+    "orderedTaskIds": [
+      "dasel-html-document-format",
+      "bandit-interprocedural-taint-checks",
+      "go-critic-doc-link-checker",
+      "fastapi-deprecation-response-headers",
+      "gql-incremental-graphql-delivery",
+      "prometheus-typed-label-sorting",
+      "textual-richlog-follow-state",
+      "boa-hierarchical-evaluation-cancellation",
+      "koota-deferred-mutation-buffer",
+      "sqlite-utils-safe-import-checkpoints",
+      "vulture-persistent-analysis-cache",
+      "httpx-deterministic-cookie-store",
+      "pwntools-tube-multiplexing",
+      "dynamodb-toolbox-lazy-recursive-schemas",
+      "termenv-preserve-ansi-resets",
+      "opa-template-string-reconstruction",
+      "fastapi-implicit-head-options",
+      "kombu-single-active-consumer-priority",
+      "ink-grid-box-layout",
+      "python-statemachine-state-data-scoping"
+    ],
+    "orderedSelectionHashes": [
+      {
+        "taskId": "dasel-html-document-format",
+        "sha256": "0058b261f4d08f32d3af15b7d596cc802702ed7db3f613d527af24b2174ce57c"
+      },
+      {
+        "taskId": "bandit-interprocedural-taint-checks",
+        "sha256": "00df9642df833095295900680b9e8c3c5944171bdbea7ed8f24421f299c78336"
+      },
+      {
+        "taskId": "go-critic-doc-link-checker",
+        "sha256": "05a0a7b54255472146143960760c6a70da0469489aa65597a070d659b5bef769"
+      },
+      {
+        "taskId": "fastapi-deprecation-response-headers",
+        "sha256": "066d6131caf9bbc44dc6705dc32c304b25972021c6b87da6a5d8e96e7f42384e"
+      },
+      {
+        "taskId": "gql-incremental-graphql-delivery",
+        "sha256": "085b691610382ce2d4e326f20ce5e6b6350daa07ffe7f42b9c3bc33fe7447a8b"
+      },
+      {
+        "taskId": "prometheus-typed-label-sorting",
+        "sha256": "09a1fd917ec604dd5bc0a7bc9bbeb4fc94aca44c77181d2700b400f622459015"
+      },
+      {
+        "taskId": "textual-richlog-follow-state",
+        "sha256": "1497031e4cfdd7cf8c7fa013ca194112c290691f94d1eae65d6f399afc1ab92c"
+      },
+      {
+        "taskId": "boa-hierarchical-evaluation-cancellation",
+        "sha256": "1b3f62dc11988d6098954c835eea21d8ef91dfd181e5f6c311fd1ab3700f7898"
+      },
+      {
+        "taskId": "koota-deferred-mutation-buffer",
+        "sha256": "21212a003eba3aef57f98f3187e42bd1ec4aa6375ef03b755133075c501454f6"
+      },
+      {
+        "taskId": "sqlite-utils-safe-import-checkpoints",
+        "sha256": "247ff5eaeff49dc1a7eb9a4851e86d7b4605f767a474bf6d523e81fd9476ce4b"
+      },
+      {
+        "taskId": "vulture-persistent-analysis-cache",
+        "sha256": "255faf0ac4394c651a2c15c3b180e522f08a39c3c955f80deb50214e67de8a50"
+      },
+      {
+        "taskId": "httpx-deterministic-cookie-store",
+        "sha256": "25c967bea24c95670572d942d904ef570dc0294864095dddfb3c8dd48851494f"
+      },
+      {
+        "taskId": "pwntools-tube-multiplexing",
+        "sha256": "26630e948b1581b81bad6f3ae1c336ba1102a721615bc86aaf2c03ba9730c7c3"
+      },
+      {
+        "taskId": "dynamodb-toolbox-lazy-recursive-schemas",
+        "sha256": "29ab0bca6164ddc94df1158ce3d5c293c108c0d55b7e95dde020619f25e19101"
+      },
+      {
+        "taskId": "termenv-preserve-ansi-resets",
+        "sha256": "2a095e9754449c20a14210680af6909e118762b2ef87f93e8752ce970a805528"
+      },
+      {
+        "taskId": "opa-template-string-reconstruction",
+        "sha256": "2c952376da68223aef35e0fe5920733727727f1ebd26f725a4338b5e244dd34d"
+      },
+      {
+        "taskId": "fastapi-implicit-head-options",
+        "sha256": "2d8420f5691495f1d4b6c0c395831694178c4e82dbce7af5566cb29eb4a96012"
+      },
+      {
+        "taskId": "kombu-single-active-consumer-priority",
+        "sha256": "2dec15638c5a04ba064c589d3c4cf8dc9871a307d26d918388de5b286069f3f2"
+      },
+      {
+        "taskId": "ink-grid-box-layout",
+        "sha256": "3250c0025edc2829e935081f7aa0a5d69dc9ac627c23952b6f792c7efda66f7d"
+      },
+      {
+        "taskId": "python-statemachine-state-data-scoping",
+        "sha256": "36ebf41adf2a26212104cccb18138a51d4808f483d5a5cd468e65beda1a20a6e"
+      }
+    ],
+    "catalogTaskCount": 113,
+    "excludedTaskCount": 20
+  },
+  "exclusions": [
+    {
+      "taskId": "adaptix-name-mapping-aliases",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "anko-default-function-arguments",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "csstree-shorthand-expansion-compression",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "expr-try-catch-errors",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "fd-deterministic-multi-key-sorting",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "geo-shapeindex-serialization",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "ipython-session-bundle-replay",
+      "reasons": [
+        "Original frozen 20-task cohort.",
+        "Task content inspected during development preflight; already in the original cohort."
+      ]
+    },
+    {
+      "taskId": "katex-multicolumn-array-spans",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "kea-atomic-signal-selectors",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "kgateway-consistent-hash-policy",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "koota-entity-snapshot-rollback",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "mashumaro-flattened-dataclass-fields",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "obsidian-linter-link-format-conversion",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "oxvg-structural-selector-preservation",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "query-persist-restored-query-state",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "skrub-duration-encoding",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "sql-formatter-bigquery-pipe-formatting",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "task-task-graph-export",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "testem-bail-on-test-failure",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    },
+    {
+      "taskId": "yaegi-go-embed-directives",
+      "reasons": [
+        "Original frozen 20-task cohort."
+      ]
+    }
+  ],
+  "upstream": {
+    "provider": "local-git-checkout",
+    "repository": "https://github.com/datacurve-ai/deep-swe",
+    "commit": "0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
+    "commitUrl": "https://github.com/datacurve-ai/deep-swe/tree/0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
+    "rootTree": "ac0b50d102a97f07f962354a6a67e22d09d83a79",
+    "tasksPath": "tasks/*",
+    "catalogSha256": "73a4869046c4ac96202bc539b036b38d427281eb3735556f63bc1701abda99b7",
+    "pierCommit": "4f3441fb3e7c21ce8a4ed0b6155a8d9a176a645a"
+  },
+  "tasks": [
+    {
+      "id": "dasel-html-document-format",
+      "selectionSha256": "0058b261f4d08f32d3af15b7d596cc802702ed7db3f613d527af24b2174ce57c",
+      "source": {
+        "gitTree": "038b5b0ba52e77ef9490395efe01d1aae7bea630",
+        "taskTomlBlob": "424609a22ba4e15fd6ba65ee4850027ab1deb4e2",
+        "taskTomlSha256": "e178607fca1ac99213f24493abcdbc97c1258decbbd16ee660adc35f29538443"
+      },
+      "metadata": {
+        "language": "go",
+        "repositoryUrl": "https://github.com/TomWright/dasel",
+        "baseCommitHash": "0dd6132e0c58edbd9b1a5f7ffd00dfab1e6085ad"
+      }
+    },
+    {
+      "id": "bandit-interprocedural-taint-checks",
+      "selectionSha256": "00df9642df833095295900680b9e8c3c5944171bdbea7ed8f24421f299c78336",
+      "source": {
+        "gitTree": "14f7d0557cd36554de332c61a455cef5ed5819d9",
+        "taskTomlBlob": "511723c9abf3be4bba35080c722846ce075decb5",
+        "taskTomlSha256": "eb38b1482426d94b804589a67b1632027c0ed9767b41524aabbf2472a2aca067"
+      },
+      "metadata": {
+        "language": "python",
+        "repositoryUrl": "https://github.com/PyCQA/bandit.git",
+        "baseCommitHash": "b46fa3a2723635aa29cc012538df4867ac2ac006"
+      }
+    },
+    {
+      "id": "go-critic-doc-link-checker",
+      "selectionSha256": "05a0a7b54255472146143960760c6a70da0469489aa65597a070d659b5bef769",
+      "source": {
+        "gitTree": "c9dbffcecaa5001b477d747eadd7d893969fb309",
+        "taskTomlBlob": "37c65e33522fb41aeaf04b0bdfafc6dc99c918ed",
+        "taskTomlSha256": "38ca3fb39ac476817895615ce3cf962c223e57e0e2359b64d16f19aa457b747e"
+      },
+      "metadata": {
+        "language": "go",
+        "repositoryUrl": "https://github.com/go-critic/go-critic",
+        "baseCommitHash": "9aea378c4dccd6f4394196ad8f0873b3e84678c8"
+      }
+    },
+    {
+      "id": "fastapi-deprecation-response-headers",
+      "selectionSha256": "066d6131caf9bbc44dc6705dc32c304b25972021c6b87da6a5d8e96e7f42384e",
+      "source": {
+        "gitTree": "13a2651973890280f1e08604b2a2595ff323ab2f",
+        "taskTomlBlob": "7809ae313f23167633fe0548eff177eae03406ff",
+        "taskTomlSha256": "b00b517b6f66358b735c0764dfed3b92a69079e366bb3ee5c6c2a9c6bf1b75c8"
+      },
+      "metadata": {
+        "language": "python",
+        "repositoryUrl": "https://github.com/fastapi/fastapi",
+        "baseCommitHash": "11614be9021aa4ac078d4d0693a8b5250a1010d8"
+      }
+    },
+    {
+      "id": "gql-incremental-graphql-delivery",
+      "selectionSha256": "085b691610382ce2d4e326f20ce5e6b6350daa07ffe7f42b9c3bc33fe7447a8b",
+      "source": {
+        "gitTree": "17e40f22cab89c7fa5e1702dd45f7bd150f69f92",
+        "taskTomlBlob": "e1503af39cf7c95437233703e80dc780759836bf",
+        "taskTomlSha256": "ff09cd73d7d8159825beb009c3f11770d776ed089fc0639b732ea6cd48030793"
+      },
+      "metadata": {
+        "language": "python",
+        "repositoryUrl": "https://github.com/graphql-python/gql",
+        "baseCommitHash": "f07c89f8f065010a36b4263eded209b2b1d37063"
+      }
+    },
+    {
+      "id": "prometheus-typed-label-sorting",
+      "selectionSha256": "09a1fd917ec604dd5bc0a7bc9bbeb4fc94aca44c77181d2700b400f622459015",
+      "source": {
+        "gitTree": "bed46cb55966ea775b692fec4d691fee63e97056",
+        "taskTomlBlob": "940a76b511488484a839ae8bb44739ace2a575c4",
+        "taskTomlSha256": "ee7b6fe19ee8477f8a2eda14bf36da1eba3ab41a52e475a9f7f5118e23e4b1f1"
+      },
+      "metadata": {
+        "language": "go",
+        "repositoryUrl": "https://github.com/prometheus/prometheus",
+        "baseCommitHash": "8b25b26a7653d9c7444f217a7f2ae9b327bda921"
+      }
+    },
+    {
+      "id": "textual-richlog-follow-state",
+      "selectionSha256": "1497031e4cfdd7cf8c7fa013ca194112c290691f94d1eae65d6f399afc1ab92c",
+      "source": {
+        "gitTree": "49acb1561f8d6a1812de05918b77a1a027f19aed",
+        "taskTomlBlob": "59c90434545d7b11cf4c6609e440b6e49a0f378d",
+        "taskTomlSha256": "0a313201a28e646b10a066e0f109ec8ca08f01f676650366c41f336644c57139"
+      },
+      "metadata": {
+        "language": "python",
+        "repositoryUrl": "https://github.com/Textualize/textual",
+        "baseCommitHash": "0f0849fd37fbd0d4d6f81889476c22340129df67"
+      }
+    },
+    {
+      "id": "boa-hierarchical-evaluation-cancellation",
+      "selectionSha256": "1b3f62dc11988d6098954c835eea21d8ef91dfd181e5f6c311fd1ab3700f7898",
+      "source": {
+        "gitTree": "ef5be1d594a12db9f034e1194edd6a4b6d56aa87",
+        "taskTomlBlob": "fd18cda03778b1f6b7134e6d9f458537541c7653",
+        "taskTomlSha256": "01f6340fa9c876a0707f3a71a1196820b2de88d0ae292b7778d5acd3407d1dab"
+      },
+      "metadata": {
+        "language": "rust",
+        "repositoryUrl": "https://github.com/boa-dev/boa",
+        "baseCommitHash": "70409a5052984325dccfdc5f6520818568a81f39"
+      }
+    },
+    {
+      "id": "koota-deferred-mutation-buffer",
+      "selectionSha256": "21212a003eba3aef57f98f3187e42bd1ec4aa6375ef03b755133075c501454f6",
+      "source": {
+        "gitTree": "54032e13108bce00de0467e8d13fceec418be21f",
+        "taskTomlBlob": "f539db898fb805d503386bb33fcb3bc84bce3208",
+        "taskTomlSha256": "0400378a79973f9cce02965ecdf35124fbbbc9a74fca1091d5993c0fe1e06aaa"
+      },
+      "metadata": {
+        "language": "typescript",
+        "repositoryUrl": "https://github.com/pmndrs/koota",
+        "baseCommitHash": "31cbe9a1a26b3822a6c82ad50132508087cd24bc"
+      }
+    },
+    {
+      "id": "sqlite-utils-safe-import-checkpoints",
+      "selectionSha256": "247ff5eaeff49dc1a7eb9a4851e86d7b4605f767a474bf6d523e81fd9476ce4b",
+      "source": {
+        "gitTree": "18227f9733ab2c2fec83c9d6f61a3031129e6d44",
+        "taskTomlBlob": "07ef2e672090005d96b2763186354e1c726cb26c",
+        "taskTomlSha256": "8ec600f3b0672064e193591775650336329f4473f8a87ea6d4ef697ded79a949"
+      },
+      "metadata": {
+        "language": "python",
+        "repositoryUrl": "https://github.com/simonw/sqlite-utils",
+        "baseCommitHash": "8d74ffc93292c604d5827e2b44fffedca0c28c19"
+      }
+    },
+    {
+      "id": "vulture-persistent-analysis-cache",
+      "selectionSha256": "255faf0ac4394c651a2c15c3b180e522f08a39c3c955f80deb50214e67de8a50",
+      "source": {
+        "gitTree": "2721f11d67e01d6ace04b0a2ae94586bfc700150",
+        "taskTomlBlob": "686a59aef08eb4e02cd85e9e1e3ac3bbfbf61d1a",
+        "taskTomlSha256": "490b3c93f86185a690e6fa5c4ec4b08e64f193971b76d2bbec0947955234a9e5"
+      },
+      "metadata": {
+        "language": "python",
+        "repositoryUrl": "https://github.com/jendrikseipp/vulture",
+        "baseCommitHash": "1eb212f0a0707ad6f4c720bb2010c2b7517cf0f9"
+      }
+    },
+    {
+      "id": "httpx-deterministic-cookie-store",
+      "selectionSha256": "25c967bea24c95670572d942d904ef570dc0294864095dddfb3c8dd48851494f",
+      "source": {
+        "gitTree": "f9cff969f52ae665832c8e87748b5f49f4a90cf8",
+        "taskTomlBlob": "a04301805d0e5bba1b44cfcb6b5239dbe87fb58f",
+        "taskTomlSha256": "625136dd58235803eb622abda1855fdc4dc790b4016ce51c9ab987a8067f0b5a"
+      },
+      "metadata": {
+        "language": "typescript",
+        "repositoryUrl": "https://github.com/encode/httpx",
+        "baseCommitHash": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254"
+      }
+    },
+    {
+      "id": "pwntools-tube-multiplexing",
+      "selectionSha256": "26630e948b1581b81bad6f3ae1c336ba1102a721615bc86aaf2c03ba9730c7c3",
+      "source": {
+        "gitTree": "54ba32ad7ac1dd50e94e5292b9447491c7d62c13",
+        "taskTomlBlob": "e3f6c08bbf14de91228bde47c06cf92a4f73917d",
+        "taskTomlSha256": "745d238dd73edca759016a833da57c236901f1461416a2d46844c2bfa933a048"
+      },
+      "metadata": {
+        "language": "python",
+        "repositoryUrl": "https://github.com/Gallopsled/pwntools",
+        "baseCommitHash": "76894a5404a65d2800b6d0adaf3485ecba275caa"
+      }
+    },
+    {
+      "id": "dynamodb-toolbox-lazy-recursive-schemas",
+      "selectionSha256": "29ab0bca6164ddc94df1158ce3d5c293c108c0d55b7e95dde020619f25e19101",
+      "source": {
+        "gitTree": "1a9e48164d578bfaa041ee2f0b960121259cba4c",
+        "taskTomlBlob": "745f0c350d55caaef43b20cf654620834a249caa",
+        "taskTomlSha256": "9d644d0a98f9a8a9a8ec13de600ecdf5914c3aaaded2d37f8d0ea0e4828d4857"
+      },
+      "metadata": {
+        "language": "typescript",
+        "repositoryUrl": "https://github.com/dynamodb-toolbox/dynamodb-toolbox",
+        "baseCommitHash": "1f2a18664f8aded292707fcafb01ff15ea33d3b8"
+      }
+    },
+    {
+      "id": "termenv-preserve-ansi-resets",
+      "selectionSha256": "2a095e9754449c20a14210680af6909e118762b2ef87f93e8752ce970a805528",
+      "source": {
+        "gitTree": "ce31e086e2f4a9d1f0c87670b5fd6b7c4555ea79",
+        "taskTomlBlob": "e06c44c6e74f6ca580ef807d10cb5e081d2f06ee",
+        "taskTomlSha256": "8e0ca91dabb5a1b8fc4ce62bdc3c1ac9f1711aea6e327d80d859361f67382533"
+      },
+      "metadata": {
+        "language": "go",
+        "repositoryUrl": "https://github.com/muesli/termenv",
+        "baseCommitHash": "368a3572b8146cc038b3f240da6792003d7e42c5"
+      }
+    },
+    {
+      "id": "opa-template-string-reconstruction",
+      "selectionSha256": "2c952376da68223aef35e0fe5920733727727f1ebd26f725a4338b5e244dd34d",
+      "source": {
+        "gitTree": "2d433a5c04fffa79a132bcf4cd34dfaffc57aca0",
+        "taskTomlBlob": "98048de008e50b24b11308dd92b4ef87ae712167",
+        "taskTomlSha256": "4e7f300a81a3ba3da7beb92a07bc7bce51c6dea46cb7e8b915ab0b8dbf1c7240"
+      },
+      "metadata": {
+        "language": "go",
+        "repositoryUrl": "https://github.com/open-policy-agent/opa",
+        "baseCommitHash": "1ac64ef1a57a531c2723c59848890b88e816d777"
+      }
+    },
+    {
+      "id": "fastapi-implicit-head-options",
+      "selectionSha256": "2d8420f5691495f1d4b6c0c395831694178c4e82dbce7af5566cb29eb4a96012",
+      "source": {
+        "gitTree": "f0306969ae6b064c29fabcaa3e4825571aa143fa",
+        "taskTomlBlob": "bfa9d931c4fa5580461dea53dbb5388f648dd0db",
+        "taskTomlSha256": "4d48ce45311547285d7ad281ecfd5278abf73d3355305bce88bb889e99980f89"
+      },
+      "metadata": {
+        "language": "python",
+        "repositoryUrl": "https://github.com/fastapi/fastapi",
+        "baseCommitHash": "11614be9021aa4ac078d4d0693a8b5250a1010d8"
+      }
+    },
+    {
+      "id": "kombu-single-active-consumer-priority",
+      "selectionSha256": "2dec15638c5a04ba064c589d3c4cf8dc9871a307d26d918388de5b286069f3f2",
+      "source": {
+        "gitTree": "3d411b98ebb82e260dd73905fd684447334848b7",
+        "taskTomlBlob": "e0cafa0c076613e6bff6d99e57bcddec077898c4",
+        "taskTomlSha256": "9291e2b4b0a6dbbc83a35658943e2c9037bce4170014481b798cbd80b2e2ebff"
+      },
+      "metadata": {
+        "language": "python",
+        "repositoryUrl": "https://github.com/celery/kombu",
+        "baseCommitHash": "3c5c1bd86376ee73d52a4cc770bdaeab15bbc2f3"
+      }
+    },
+    {
+      "id": "ink-grid-box-layout",
+      "selectionSha256": "3250c0025edc2829e935081f7aa0a5d69dc9ac627c23952b6f792c7efda66f7d",
+      "source": {
+        "gitTree": "b9cc37b67a9530b399cf662c067cd3ad26baf2cb",
+        "taskTomlBlob": "de129182f23a2cc69ffbf5de7971bdf07a9303cd",
+        "taskTomlSha256": "c75064d6aa2d3a136ef42d6f56257d32f992eab663caf182c4d17adc4a4e18e8"
+      },
+      "metadata": {
+        "language": "typescript",
+        "repositoryUrl": "https://github.com/vadimdemedes/ink",
+        "baseCommitHash": "0cea59169ef0f3f83e4aa7fbedbff9d165646472"
+      }
+    },
+    {
+      "id": "python-statemachine-state-data-scoping",
+      "selectionSha256": "36ebf41adf2a26212104cccb18138a51d4808f483d5a5cd468e65beda1a20a6e",
+      "source": {
+        "gitTree": "8e7e9eca16e7ae6d299cb72f28fb07140cda46fa",
+        "taskTomlBlob": "18609842f80e213af03f90d9c34dadfab1361f78",
+        "taskTomlSha256": "70834d169bc3d03bb362df6ffd41995fbb5c85abf8cc2b53c63f31562423f83a"
+      },
+      "metadata": {
+        "language": "python",
+        "repositoryUrl": "https://github.com/fgmacedo/python-statemachine",
+        "baseCommitHash": "8d17ba9f6ba8420cf05fddb94013bc221ed9a222"
+      }
+    }
+  ],
+  "readiness": {
+    "taskInstructionsSolutionsAndVerifierBodiesReadForSelection": false,
+    "inspectionInventory": "Known development inspections only; reconcile any additional exposure before inference.",
+    "runtimeAndImageIdentities": {
+      "status": "pending",
+      "value": null
+    },
+    "selectedPluginConfiguration": {
+      "status": "pending",
+      "contentHashes": null
+    },
+    "counterbalancedSchedule": {
+      "status": "pending",
+      "plannedRows": 40,
+      "value": null
+    },
+    "inference": {
+      "status": "not-started",
+      "attempts": 0
+    },
+    "limitation": "This reserves metadata and IDs only. It is not an execution-ready freeze or evidence of benchmark performance."
+  }
+}

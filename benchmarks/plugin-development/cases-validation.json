@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "jev-development-fixtures-validation-v1",
+  "status": "offline-fixture-validation-passed",
+  "rootIndependentCheck": {
+    "command": "node check.mjs",
+    "nodeVersion": "22.23.2",
+    "platform": "darwin",
+    "exitCode": 0,
+    "caseCount": 20,
+    "positiveControls": 20,
+    "negativeControls": 36,
+    "noFitPassingCases": 1,
+    "inputSha256": "c48a992b4977181c2ddfc539db7bae6edfef7785f29de230eb5c098b60297db3",
+    "oracleSha256": "20e92696862b6b0dd131bda35deba8da7d4d3799e66dbd0c468684aa552d7368",
+    "authoredTreeSha256": "ca2168cb61614c8c28309e9713259088f219ef3d10275aa8cc164a28d4091c9f"
+  },
+  "priorFailure": {
+    "runtime": "Node 22.23.2",
+    "cause": "Nested fixture test command used --test-isolation=none, which is unavailable in this runtime.",
+    "repair": "Execute the authored node:test modules directly inside the existing sandbox; retain the same artifact oracle and negative controls."
+  },
+  "independentReview": {
+    "scope": "Functional fixture actions, artifact oracles, negative controls and honest claim boundaries",
+    "priorReviewedTree": "35f78a316a0ceea56ea6f3ca5e7083e21f226de0a9a1fac50d231fcde8e65834",
+    "finalCompatibilityRepair": "Root inspected and reran the final tree on the pinned Node runtime after the review."
+  },
+  "claimLimits": [
+    "Deterministic, transparent authored plumbing fixtures; descriptions cue correct choices.",
+    "No provider request, native MCP execution or task-quality comparison is included.",
+    "Restart cases use seeded durable states, not real process crashes or power loss.",
+    "Caller-report projections are distinct from independent harness verification and are not executable MCP request bodies.",
+    "Abstention grading, provider delivery and the combined six-stratum experiment remain unimplemented here.",
+    "Runner requires macOS sandbox-exec and Node permission support; no Linux CI claim."
+  ],
+  "providerCalls": 0,
+  "nativeAttempts": 0,
+  "frozenForLiveExperiment": false,
+  "installedDefaultsChanged": false
+}

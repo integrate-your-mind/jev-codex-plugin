@@ -1077,7 +1077,7 @@ var require_parser_async = __commonJS({
   "node_modules/pngjs/lib/parser-async.js"(exports, module) {
     "use strict";
     var util = __require("util");
-    var zlib = __require("zlib");
+    var zlib2 = __require("zlib");
     var ChunkStream = require_chunkstream();
     var FilterAsync = require_filter_parse_async();
     var Parser = require_parser();
@@ -1119,15 +1119,15 @@ var require_parser_async = __commonJS({
     ParserAsync.prototype._inflateData = function(data) {
       if (!this._inflate) {
         if (this._bitmapInfo.interlace) {
-          this._inflate = zlib.createInflate();
+          this._inflate = zlib2.createInflate();
           this._inflate.on("error", this.emit.bind(this, "error"));
           this._filter.on("complete", this._complete.bind(this));
           this._inflate.pipe(this._filter);
         } else {
           let rowSize = (this._bitmapInfo.width * this._bitmapInfo.bpp * this._bitmapInfo.depth + 7 >> 3) + 1;
           let imageSize = rowSize * this._bitmapInfo.height;
-          let chunkSize = Math.max(imageSize, zlib.Z_MIN_CHUNK);
-          this._inflate = zlib.createInflate({ chunkSize });
+          let chunkSize = Math.max(imageSize, zlib2.Z_MIN_CHUNK);
+          this._inflate = zlib2.createInflate({ chunkSize });
           let leftToInflate = imageSize;
           let emitError = this.emit.bind(this, "error");
           this._inflate.on("error", function(err) {
@@ -1502,14 +1502,14 @@ var require_packer = __commonJS({
     var CrcStream = require_crc();
     var bitPacker = require_bitpacker();
     var filter = require_filter_pack();
-    var zlib = __require("zlib");
+    var zlib2 = __require("zlib");
     var Packer = module.exports = function(options) {
       this._options = options;
       options.deflateChunkSize = options.deflateChunkSize || 32 * 1024;
       options.deflateLevel = options.deflateLevel != null ? options.deflateLevel : 9;
       options.deflateStrategy = options.deflateStrategy != null ? options.deflateStrategy : 3;
       options.inputHasAlpha = options.inputHasAlpha != null ? options.inputHasAlpha : true;
-      options.deflateFactory = options.deflateFactory || zlib.createDeflate;
+      options.deflateFactory = options.deflateFactory || zlib2.createDeflate;
       options.bitDepth = options.bitDepth || 8;
       options.colorType = typeof options.colorType === "number" ? options.colorType : constants4.COLORTYPE_COLOR_ALPHA;
       options.inputColorType = typeof options.inputColorType === "number" ? options.inputColorType : constants4.COLORTYPE_COLOR_ALPHA;
@@ -1641,17 +1641,17 @@ var require_sync_inflate = __commonJS({
   "node_modules/pngjs/lib/sync-inflate.js"(exports, module) {
     "use strict";
     var assert2 = __require("assert").ok;
-    var zlib = __require("zlib");
+    var zlib2 = __require("zlib");
     var util = __require("util");
     var kMaxLength = __require("buffer").kMaxLength;
     function Inflate(opts) {
       if (!(this instanceof Inflate)) {
         return new Inflate(opts);
       }
-      if (opts && opts.chunkSize < zlib.Z_MIN_CHUNK) {
-        opts.chunkSize = zlib.Z_MIN_CHUNK;
+      if (opts && opts.chunkSize < zlib2.Z_MIN_CHUNK) {
+        opts.chunkSize = zlib2.Z_MIN_CHUNK;
       }
-      zlib.Inflate.call(this, opts);
+      zlib2.Inflate.call(this, opts);
       this._offset = this._offset === void 0 ? this._outOffset : this._offset;
       this._buffer = this._buffer || this._outBuffer;
       if (opts && opts.maxLength != null) {
@@ -1673,7 +1673,7 @@ var require_sync_inflate = __commonJS({
     }
     Inflate.prototype._processChunk = function(chunk, flushFlag, asyncCb) {
       if (typeof asyncCb === "function") {
-        return zlib.Inflate._processChunk.call(this, chunk, flushFlag, asyncCb);
+        return zlib2.Inflate._processChunk.call(this, chunk, flushFlag, asyncCb);
       }
       let self = this;
       let availInBefore = chunk && chunk.length;
@@ -1749,7 +1749,7 @@ var require_sync_inflate = __commonJS({
       _close(this);
       return buf;
     };
-    util.inherits(Inflate, zlib.Inflate);
+    util.inherits(Inflate, zlib2.Inflate);
     function zlibBufferSync(engine, buffer) {
       if (typeof buffer === "string") {
         buffer = Buffer.from(buffer);
@@ -1759,7 +1759,7 @@ var require_sync_inflate = __commonJS({
       }
       let flushFlag = engine._finishFlushFlag;
       if (flushFlag == null) {
-        flushFlag = zlib.Z_FINISH;
+        flushFlag = zlib2.Z_FINISH;
       }
       return engine._processChunk(buffer, flushFlag);
     }
@@ -1840,9 +1840,9 @@ var require_parser_sync = __commonJS({
   "node_modules/pngjs/lib/parser-sync.js"(exports, module) {
     "use strict";
     var hasSyncZlib = true;
-    var zlib = __require("zlib");
+    var zlib2 = __require("zlib");
     var inflateSync2 = require_sync_inflate();
-    if (!zlib.deflateSync) {
+    if (!zlib2.deflateSync) {
       hasSyncZlib = false;
     }
     var SyncReader = require_sync_reader();
@@ -1901,7 +1901,7 @@ var require_parser_sync = __commonJS({
       inflateDataList.length = 0;
       let inflatedData;
       if (metaData.interlace) {
-        inflatedData = zlib.inflateSync(inflateData);
+        inflatedData = zlib2.inflateSync(inflateData);
       } else {
         let rowSize = (metaData.width * metaData.bpp * metaData.depth + 7 >> 3) + 1;
         let imageSize = rowSize * metaData.height;
@@ -1935,8 +1935,8 @@ var require_packer_sync = __commonJS({
   "node_modules/pngjs/lib/packer-sync.js"(exports, module) {
     "use strict";
     var hasSyncZlib = true;
-    var zlib = __require("zlib");
-    if (!zlib.deflateSync) {
+    var zlib2 = __require("zlib");
+    if (!zlib2.deflateSync) {
       hasSyncZlib = false;
     }
     var constants4 = require_constants();
@@ -1960,7 +1960,7 @@ var require_packer_sync = __commonJS({
         metaData.width,
         metaData.height
       );
-      let compressedData = zlib.deflateSync(
+      let compressedData = zlib2.deflateSync(
         filteredData,
         packer.getDeflateOptions()
       );
@@ -3109,7 +3109,7 @@ var require_encoder = __commonJS({
         var quadWidth = width * 4;
         var tripleWidth = width * 3;
         var x, y = 0;
-        var r, g, b;
+        var r, g2, b;
         var start, p, col, row, pos;
         while (y < height) {
           x = 0;
@@ -3129,11 +3129,11 @@ var require_encoder = __commonJS({
                 p -= x + col - quadWidth + 4;
               }
               r = imageData[p++];
-              g = imageData[p++];
+              g2 = imageData[p++];
               b = imageData[p++];
-              YDU[pos] = (RGB_YUV_TABLE[r] + RGB_YUV_TABLE[g + 256 >> 0] + RGB_YUV_TABLE[b + 512 >> 0] >> 16) - 128;
-              UDU[pos] = (RGB_YUV_TABLE[r + 768 >> 0] + RGB_YUV_TABLE[g + 1024 >> 0] + RGB_YUV_TABLE[b + 1280 >> 0] >> 16) - 128;
-              VDU[pos] = (RGB_YUV_TABLE[r + 1280 >> 0] + RGB_YUV_TABLE[g + 1536 >> 0] + RGB_YUV_TABLE[b + 1792 >> 0] >> 16) - 128;
+              YDU[pos] = (RGB_YUV_TABLE[r] + RGB_YUV_TABLE[g2 + 256 >> 0] + RGB_YUV_TABLE[b + 512 >> 0] >> 16) - 128;
+              UDU[pos] = (RGB_YUV_TABLE[r + 768 >> 0] + RGB_YUV_TABLE[g2 + 1024 >> 0] + RGB_YUV_TABLE[b + 1280 >> 0] >> 16) - 128;
+              VDU[pos] = (RGB_YUV_TABLE[r + 1280 >> 0] + RGB_YUV_TABLE[g2 + 1536 >> 0] + RGB_YUV_TABLE[b + 1792 >> 0] >> 16) - 128;
             }
             DCY = processDU(YDU, fdtbl_Y, DCY, YDC_HT, YAC_HT);
             DCU = processDU(UDU, fdtbl_UV, DCU, UVDC_HT, UVAC_HT);
@@ -7808,7 +7808,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
     }
     return propValues;
   });
-  const isObject2 = isObject;
+  const isObject3 = isObject;
   const catchall = def.catchall;
   let value;
   const memo2 = globalConfig.memoizer;
@@ -7816,7 +7816,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
   inst._zod.parse = (payload, ctx) => {
     value ?? (value = _normalized.value);
     const input2 = payload.value;
-    if (!isObject2(input2)) {
+    if (!isObject3(input2)) {
       payload.issues.push({
         expected: "object",
         code: "invalid_type",
@@ -7952,7 +7952,7 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
     return doc.compile();
   };
   let fastpass;
-  const isObject2 = isObject;
+  const isObject3 = isObject;
   const jit = !globalConfig.jitless;
   const allowsEval2 = allowsEval;
   const fastEnabled = jit && allowsEval2.value;
@@ -7961,7 +7961,7 @@ var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) =>
   inst._zod.parse = (payload, ctx) => {
     value ?? (value = _normalized.value);
     const input2 = payload.value;
-    if (!isObject2(input2)) {
+    if (!isObject3(input2)) {
       payload.issues.push({
         expected: "object",
         code: "invalid_type",
@@ -24071,6 +24071,915 @@ function sanitize(value, secrets) {
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 
+// node_modules/@typesafe-ai/sdk/dist/index.mjs
+var requestIdFrom = (headers) => headers.get("x-typesafe-request-id") ?? void 0;
+var APIPromise = class APIPromise2 extends Promise {
+  #responsePromise;
+  #parseResponse;
+  #parsed;
+  constructor(responsePromise, parseResponse) {
+    super((resolve) => resolve(void 0));
+    this.#responsePromise = responsePromise;
+    this.#parseResponse = parseResponse;
+  }
+  /**
+  * Resolves to the raw `Response` without parsing the body. SDK requests buffer the full
+  * body under the request timeout before handoff; reading it afterwards is caller-owned.
+  * The caller owns the body; don't also `await` the parsed result on the same promise.
+  */
+  asResponse() {
+    return this.#responsePromise;
+  }
+  /** Return the parsed result, HTTP response, and request ID. */
+  async withResponse() {
+    const [data, response] = await Promise.all([this.#parse(), this.#responsePromise]);
+    return {
+      data,
+      response,
+      requestId: requestIdFrom(response.headers)
+    };
+  }
+  /** Transform the parsed result, sharing the HTTP response and a single body parse. */
+  map(fn) {
+    return new APIPromise2(this.#responsePromise, () => this.#parse().then(fn));
+  }
+  #parse() {
+    this.#parsed ??= this.#responsePromise.then(this.#parseResponse);
+    return this.#parsed;
+  }
+  then(onfulfilled, onrejected) {
+    return this.#parse().then(onfulfilled, onrejected);
+  }
+  catch(onrejected) {
+    return this.#parse().catch(onrejected);
+  }
+  finally(onfinally) {
+    return this.#parse().finally(onfinally);
+  }
+};
+var range = (from, to) => Array.from({ length: to - from }, (_, i) => from + i);
+var DEFAULT_RETRY_POLICY = {
+  maxRetries: 2,
+  backoffInitialMs: 500,
+  backoffMaxMs: 5e3,
+  backoffJitter: 0.25,
+  /** HTTP 408, 429, and 5xx responses. */
+  httpStatuses: /* @__PURE__ */ new Set([
+    408,
+    429,
+    ...range(500, 600)
+  ]),
+  respectRetryAfter: true,
+  /** Maximum server retry delay before falling back to backoff. */
+  maxRetryAfterMs: 6e4,
+  apiConnectionError: true,
+  apiTimeoutError: true
+};
+DEFAULT_RETRY_POLICY.maxRetries;
+var isRetryableStatus = (status, policy = DEFAULT_RETRY_POLICY) => policy.httpStatuses.has(status);
+var parseRetryAfter = (headers, now = Date.now()) => {
+  const ms = Number(headers.get("retry-after-ms"));
+  if (headers.has("retry-after-ms") && Number.isFinite(ms) && ms >= 0) return ms;
+  const raw = headers.get("retry-after");
+  if (raw === null) return void 0;
+  const seconds = Number(raw);
+  if (Number.isFinite(seconds)) return seconds >= 0 ? seconds * 1e3 : void 0;
+  const date5 = Date.parse(raw);
+  if (!Number.isNaN(date5)) return Math.max(0, date5 - now);
+};
+var retryDelayMs = (attempt, headers, policy = DEFAULT_RETRY_POLICY, random = Math.random) => {
+  if (policy.respectRetryAfter && headers !== void 0) {
+    const retryAfter2 = parseRetryAfter(headers);
+    if (retryAfter2 !== void 0 && retryAfter2 <= policy.maxRetryAfterMs) return retryAfter2;
+  }
+  const exponential = Math.min(policy.backoffInitialMs * 2 ** attempt, policy.backoffMaxMs);
+  return Math.round(exponential * (1 - random() * policy.backoffJitter));
+};
+var sleep = (ms, signal) => new Promise((resolve, reject) => {
+  if (signal?.aborted) return reject(signal.reason);
+  const onAbort = () => {
+    clearTimeout(timer);
+    reject(signal?.reason);
+  };
+  const timer = setTimeout(() => {
+    signal?.removeEventListener("abort", onAbort);
+    resolve();
+  }, ms);
+  signal?.addEventListener("abort", onAbort, { once: true });
+});
+var TypeSafeError = class extends Error {
+  constructor(message, options) {
+    super(message, options);
+    this.name = new.target.name;
+  }
+};
+var isRecord = (value) => typeof value === "object" && value !== null;
+var extractMessage = (body) => {
+  if (typeof body === "string") return body || void 0;
+  if (!isRecord(body)) return void 0;
+  const { error: error62, message, detail } = body;
+  if (typeof error62 === "string") return error62;
+  if (isRecord(error62) && typeof error62.message === "string") return error62.message;
+  if (typeof message === "string") return message;
+  if (typeof detail === "string") return detail;
+  if (isRecord(detail) && typeof detail.message === "string") return detail.message;
+  if (Array.isArray(detail)) return describeValidationErrors(detail);
+};
+var describeValidationErrors = (errors) => {
+  const parts = errors.flatMap((e) => {
+    if (!isRecord(e) || typeof e.msg !== "string") return [];
+    const loc = Array.isArray(e.loc) ? e.loc.filter((x) => x !== "body").join(".") : "";
+    return [loc ? `${loc}: ${e.msg}` : e.msg];
+  });
+  return parts.length > 0 ? parts.join("; ") : void 0;
+};
+var MAX_RAW_BODY_IN_MESSAGE = 200;
+var APIError = class APIError2 extends TypeSafeError {
+  /** HTTP response status code. */
+  status;
+  /** HTTP response headers. */
+  headers;
+  /** Parsed JSON, response text, or `undefined` for an empty body. */
+  body;
+  /** Request ID from `x-typesafe-request-id`, or `undefined` when absent. */
+  requestId;
+  constructor(status, body, headers, message) {
+    super(message ?? APIError2.describe(status, body));
+    this.status = status;
+    this.body = body;
+    this.headers = headers;
+    this.requestId = requestIdFrom(headers);
+  }
+  static describe(status, body) {
+    const detail = extractMessage(body);
+    if (detail) return `${status} ${detail}`;
+    if (body === void 0) return `${status} status code (no body)`;
+    const raw = typeof body === "string" ? body : JSON.stringify(body);
+    return `${status} ${raw.length > MAX_RAW_BODY_IN_MESSAGE ? `${raw.slice(0, MAX_RAW_BODY_IN_MESSAGE)}\u2026` : raw}`;
+  }
+  /** Create the error subclass for an HTTP status code. */
+  static fromResponse(status, body, headers) {
+    if (status === 400) return new BadRequestError(status, body, headers);
+    if (status === 401) return new AuthenticationError(status, body, headers);
+    if (status === 403) return new PermissionDeniedError(status, body, headers);
+    if (status === 404) return new NotFoundError(status, body, headers);
+    if (status === 422) return new UnprocessableEntityError(status, body, headers);
+    if (status === 429) return new RateLimitError(status, body, headers);
+    if (status >= 500) return new InternalServerError(status, body, headers);
+    return new APIError2(status, body, headers);
+  }
+};
+var BadRequestError = class extends APIError {
+};
+var AuthenticationError = class extends APIError {
+};
+var PermissionDeniedError = class extends APIError {
+};
+var NotFoundError = class extends APIError {
+};
+var UnprocessableEntityError = class extends APIError {
+};
+var RateLimitError = class extends APIError {
+  /** Server retry delay in milliseconds, or `undefined` when absent or invalid. */
+  retryAfterMs = parseRetryAfter(this.headers);
+};
+var InternalServerError = class extends APIError {
+};
+var APIConnectionError = class extends TypeSafeError {
+  constructor(message = "Connection error.", options) {
+    super(message, options);
+  }
+};
+var APITimeoutError = class extends APIConnectionError {
+  /** Configured timeout in milliseconds. */
+  timeoutMs;
+  constructor(timeoutMs, options) {
+    super(`Request timed out after ${timeoutMs}ms.`, options);
+    this.timeoutMs = timeoutMs;
+  }
+};
+var APIUserAbortError = class extends TypeSafeError {
+  constructor(message = "Request was aborted.", options) {
+    super(message, options);
+  }
+};
+var CONTENT_TYPES = [["image/png", [
+  137,
+  80,
+  78,
+  71,
+  13,
+  10,
+  26,
+  10
+]], ["image/jpeg", [
+  255,
+  216,
+  255
+]]];
+var REFERENCE = /<image:[0-9a-f]{32}>/g;
+var IMAGE = /* @__PURE__ */ Symbol.for("@typesafe-ai/sdk/image");
+var TEXT_WITH_ASSETS = /* @__PURE__ */ Symbol.for("@typesafe-ai/sdk/text-with-assets");
+var randomHex = () => Array.from(crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, "0")).join("");
+var isImage = (value) => IMAGE in value;
+var isTextWithAssets = (value) => TEXT_WITH_ASSETS in value;
+var typeName = (value) => {
+  if (value === null) return "null";
+  if (typeof value !== "object") return typeof value;
+  return Object.prototype.toString.call(value).slice(8, -1);
+};
+var toBytes = (data) => {
+  if (!ArrayBuffer.isView(data) && Object.prototype.toString.call(data) !== "[object ArrayBuffer]") throw new TypeSafeError(`Image data must be file bytes or a Blob; got ${typeName(data)}.`);
+  return ArrayBuffer.isView(data) ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength) : new Uint8Array(data);
+};
+var contentTypeOf = (bytes) => {
+  for (const [contentType, signature] of CONTENT_TYPES) if (signature.every((byte, i) => bytes[i] === byte)) return contentType;
+  return "application/octet-stream";
+};
+var Image = class Image2 {
+  type = "image";
+  /** The image file bytes, or a `Blob` read when the request is sent. */
+  data;
+  #reference = `<image:${randomHex()}>`;
+  /** @throws {TypeSafeError} `data` is empty or isn't file bytes or a `Blob`. */
+  constructor(data) {
+    this.data = data instanceof Blob ? data : toBytes(data);
+    if ((this.data instanceof Blob ? this.data.size : this.data.byteLength) === 0) throw new TypeSafeError("Image data is empty.");
+  }
+  /**
+  * Create an image from base64-encoded file bytes, decoding them now.
+  *
+  * @param text - The image file bytes, base64-encoded, without a `data:` URL prefix.
+  * @throws {TypeSafeError} `text` isn't valid base64 or decodes to no bytes.
+  *
+  * @example
+  * ```ts
+  * const photo = Image.fromBase64(upload.photoBase64);
+  * ```
+  */
+  static fromBase64(text) {
+    let binary;
+    try {
+      binary = atob(text);
+    } catch (err) {
+      throw new TypeSafeError("Image data must contain valid base64 text.", { cause: err });
+    }
+    return new Image2(Uint8Array.from(binary, (char) => char.charCodeAt(0)));
+  }
+  /** The unique reference this image is sent under, for referencing it inside text. */
+  toString() {
+    return this.#reference;
+  }
+  /** The reference, written by `JSON.stringify` wherever the image appears in a request. */
+  toJSON() {
+    return this.#reference;
+  }
+};
+Object.defineProperty(Image.prototype, IMAGE, { value: true });
+var TextWithAssets = class {
+  /** The text, with each asset replaced by its reference. */
+  text;
+  /** The assets interpolated into the text, including those in nested `withAssets` text. */
+  assets;
+  constructor(text, assets) {
+    this.text = text;
+    this.assets = assets;
+  }
+  toString() {
+    return this.text;
+  }
+  /** The text, written by `JSON.stringify` wherever this value appears in a request. */
+  toJSON() {
+    return this.text;
+  }
+};
+Object.defineProperty(TextWithAssets.prototype, TEXT_WITH_ASSETS, { value: true });
+var textWithAssets = (text, values) => {
+  const interpolated = /* @__PURE__ */ new Map();
+  collectAssets(values, interpolated, /* @__PURE__ */ new Set());
+  const assets = /* @__PURE__ */ new Map();
+  for (const [reference] of text.matchAll(REFERENCE)) {
+    const asset = interpolated.get(reference);
+    if (asset !== void 0) assets.set(reference, asset);
+  }
+  return new TextWithAssets(text, [...assets.values()]);
+};
+var withAssets = Object.assign((strings, ...values) => textWithAssets(strings.reduce((joined, piece, i) => joined + String(values[i - 1]) + piece), values), { join: (values, separator) => textWithAssets(values.join(separator), values) });
+var collectAssets = (value, found, visited) => {
+  if (typeof value !== "object" || value === null || visited.has(value)) return;
+  visited.add(value);
+  if (isImage(value)) found.set(String(value), value);
+  else if (isTextWithAssets(value)) for (const asset of value.assets) found.set(String(asset), asset);
+  else for (const item of Object.values(value)) collectAssets(item, found, visited);
+};
+var serializeRequest = (payload, assets = {}) => {
+  const names = new Map(Object.entries(assets).map(([name, asset]) => [asset, name]));
+  const known = new Map(Object.values(assets).map((asset) => [String(asset), asset]));
+  const json2 = JSON.stringify(payload, function(key, value) {
+    if (typeof value === "number" && !Number.isFinite(value)) return String(value);
+    const original = this[key];
+    if (typeof original !== "object" || original === null) return value;
+    if (isImage(original)) {
+      const name = names.get(original);
+      if (name !== void 0) return name;
+      known.set(String(original), original);
+    } else if (isTextWithAssets(original)) {
+      let text = original.text;
+      for (const asset of original.assets) {
+        const name = names.get(asset);
+        if (name === void 0) known.set(String(asset), asset);
+        else text = text.replaceAll(String(asset), name);
+      }
+      return text;
+    }
+    return value;
+  });
+  const unreferenced = Object.keys(assets).filter((name) => !json2.includes(JSON.stringify(name).slice(1, -1)));
+  if (unreferenced.length > 0) throw new TypeSafeError(`Assets not referenced in the request: ${unreferenced.join(", ")}. Write each name in \`assets\` into \`state\`, question instructions, or criteria.`);
+  const sent = new Map(Object.entries(assets));
+  const missing = /* @__PURE__ */ new Set();
+  for (const [reference] of json2.matchAll(REFERENCE)) {
+    if (sent.has(reference)) continue;
+    const asset = known.get(reference);
+    if (asset === void 0) missing.add(reference);
+    else sent.set(reference, asset);
+  }
+  if (missing.size > 0) throw new TypeSafeError(`Image references without an attached image: ${[...missing].join(", ")}. Tag template literals that interpolate images with \`withAssets\`.`);
+  return {
+    json: json2,
+    assets: sent.size === 0 ? void 0 : Object.fromEntries(sent)
+  };
+};
+var MultipartBody = class {
+  /** The JSON payload, sent as the `request` part. */
+  payload;
+  /** The `Content-Type` header value, including the boundary. */
+  contentType;
+  /** The encoded body. */
+  content;
+  constructor(payload, parts) {
+    const boundary = randomHex();
+    const chunks = [];
+    for (const { name, contentType, content, filename } of [{
+      name: "request",
+      contentType: "application/json",
+      content: JSON.stringify(payload)
+    }, ...parts]) {
+      const disposition = filename === void 0 ? `name="${name}"` : `name="${name}"; filename="${filename}"`;
+      chunks.push(`--${boundary}\r
+Content-Disposition: form-data; ${disposition}\r
+`, `Content-Type: ${contentType}\r
+\r
+`, content, "\r\n");
+    }
+    chunks.push(`--${boundary}--\r
+`);
+    this.payload = payload;
+    this.contentType = `multipart/form-data; boundary=${boundary}`;
+    this.content = new Blob(chunks);
+  }
+};
+var readImage = async (alias, { data }) => {
+  if (!(data instanceof Blob)) return data;
+  try {
+    return new Uint8Array(await data.arrayBuffer());
+  } catch (err) {
+    throw new TypeSafeError(`Asset "${alias}" could not be read: ${err.message}`, { cause: err });
+  }
+};
+var unshared = (bytes) => bytes.buffer instanceof ArrayBuffer ? bytes : bytes.slice();
+var copyAssetBytes = (assets) => Object.fromEntries(Object.entries(assets).map(([alias, asset]) => [alias, asset.data instanceof Uint8Array ? new Image(asset.data.slice()) : asset]));
+var encodeAssets = async (payload, assets) => {
+  const read = await Promise.all(Object.entries(assets).map(async ([alias, asset]) => [
+    alias,
+    asset,
+    await readImage(alias, asset)
+  ]));
+  const parts = [];
+  const entries = [];
+  for (const [alias, { type }, data] of read) {
+    const name = `asset-${parts.length}`;
+    parts.push({
+      name,
+      contentType: contentTypeOf(data),
+      content: unshared(data),
+      filename: name
+    });
+    entries.push([alias, {
+      type,
+      part: name
+    }]);
+  }
+  return new MultipartBody({
+    ...payload,
+    assets: Object.fromEntries(entries)
+  }, parts);
+};
+var g$1 = globalThis;
+var zlib = () => {
+  try {
+    return g$1.process?.getBuiltinModule?.("node:zlib");
+  } catch {
+    return;
+  }
+};
+var hasZstd = () => typeof zlib()?.zstdCompress === "function";
+var resolveCompression = (compression) => {
+  if (compression === void 0) return hasZstd() ? "zstd" : false;
+  if (compression === false) return false;
+  if (compression === "zstd") {
+    if (!hasZstd()) throw new TypeSafeError("zstd compression requires Node.js 22.15 or newer. Pass `compression: false` instead.");
+    return compression;
+  }
+  throw new TypeSafeError(`\`compression\` must be "zstd" or false, got ${JSON.stringify(compression)}.`);
+};
+var zstd = async (body) => {
+  const data = new Uint8Array(await body.arrayBuffer());
+  const compressed = await new Promise((resolve, reject) => {
+    zlib()?.zstdCompress?.(data, (err, result) => err ? reject(err) : resolve(result));
+  });
+  return new Uint8Array(compressed);
+};
+var byteLength = (body) => typeof body === "string" ? new TextEncoder().encode(body).byteLength : body.size;
+var compressBody = (body) => zstd(typeof body === "string" ? new Blob([body]) : body);
+var ENV = {
+  /** Required API key; used when `apiKey` is omitted. */
+  apiKey: "TYPESAFE_API_KEY",
+  /** API root; defaults to `https://api.typesafe.ai`. */
+  baseURL: "TYPESAFE_BASE_URL",
+  /** Default model name; defaults to `jev-latest`. */
+  defaultModel: "TYPESAFE_DEFAULT_MODEL",
+  /** Log level; defaults to `warn`. */
+  logLevel: "TYPESAFE_LOG_LEVEL"
+};
+var readEnv = (name) => {
+  if (typeof process === "undefined" || !process.env) return void 0;
+  return process.env[name]?.trim() || void 0;
+};
+var fromCodeOrEnv = (fromCode, envVar) => fromCode ?? readEnv(envVar);
+var LOG_LEVELS = [
+  "debug",
+  "info",
+  "warn",
+  "error",
+  "off"
+];
+var DEFAULT_LOG_LEVEL = "warn";
+var isLogLevel = (value) => LOG_LEVELS.includes(value);
+var parseLogLevel = (value, source) => {
+  if (isLogLevel(value)) return value;
+  throw new TypeSafeError(`Invalid log level "${value}" from ${source}. Expected one of: ${LOG_LEVELS.join(", ")}.`);
+};
+var PREFIX = "[typesafe-sdk]";
+var consoleLogger = {
+  debug: (message, ...args) => console.debug(`${PREFIX} ${message}`, ...args),
+  info: (message, ...args) => console.info(`${PREFIX} ${message}`, ...args),
+  warn: (message, ...args) => console.warn(`${PREFIX} ${message}`, ...args),
+  error: (message, ...args) => console.error(`${PREFIX} ${message}`, ...args)
+};
+var RANK = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+  off: 4
+};
+var drop = () => {
+};
+var withLevel = (sink, level) => {
+  const enabled = (at) => RANK[at] >= RANK[level];
+  return {
+    debug: enabled("debug") ? (message, ...args) => sink.debug(message, ...args) : drop,
+    info: enabled("info") ? (message, ...args) => sink.info(message, ...args) : drop,
+    warn: enabled("warn") ? (message, ...args) => sink.warn(message, ...args) : drop,
+    error: enabled("error") ? (message, ...args) => sink.error(message, ...args) : drop
+  };
+};
+var KEY_HEADERS = /* @__PURE__ */ new Set([
+  "authorization",
+  "proxy-authorization",
+  "x-api-key"
+]);
+var OPAQUE_HEADERS = /* @__PURE__ */ new Set(["cookie", "set-cookie"]);
+var redactKey = (value) => {
+  const [scheme, secret] = value.includes(" ") ? value.split(/\s+/, 2) : [void 0, value];
+  const tail = secret && secret.length > 8 ? secret.slice(-4) : "";
+  return `${scheme ? `${scheme} ` : ""}***${tail}`;
+};
+var redact = (name, value) => {
+  const lower = name.toLowerCase();
+  if (KEY_HEADERS.has(lower)) return redactKey(value);
+  if (OPAQUE_HEADERS.has(lower)) return "***";
+  return value;
+};
+var redactHeaders = (headers) => Object.fromEntries(Object.entries(headers).map(([name, value]) => [name, redact(name, value)]));
+var isObject2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+var validateChoice = (name, { criteria }) => {
+  if (!isObject2(criteria)) throw new TypeSafeError(`Choice question "${name}" has criteria that are not a map; choice criteria must be a map of labels to descriptions.`);
+  if (Object.keys(criteria).length === 0) throw new TypeSafeError(`Choice question "${name}" has no criteria; at least one choice is required.`);
+};
+var validateNoul = (name, { instructions, criteria }) => {
+  if (criteria != null && !isObject2(criteria)) throw new TypeSafeError(`Noul question "${name}" criteria must be an object.`);
+  if (instructions == null && !Object.values(criteria ?? {}).some((value) => value != null)) throw new TypeSafeError(`Noul question "${name}" has neither instructions nor criteria; at least one is required.`);
+};
+var validateQuestions = (questions) => {
+  if (Object.keys(questions).length === 0) throw new TypeSafeError("At least one question is required.");
+  for (const [name, question] of Object.entries(questions)) {
+    if (question.type === "choice") validateChoice(name, question);
+    if (question.type === "noul") validateNoul(name, question);
+    if (question.type !== "score") continue;
+    if (!Array.isArray(question.criteria)) throw new TypeSafeError(`Score question "${name}" has criteria that are not a list; score criteria must be a list of descriptions indexed by score from zero.`);
+    if (question.criteria.length < 2) throw new TypeSafeError(`Score question "${name}" has ${question.criteria.length} criteria; at least two scores are required.`);
+  }
+};
+var Models = class {
+  #transport;
+  constructor(transport) {
+    this.#transport = transport;
+  }
+  /** List the models available to the account. */
+  list(options = {}) {
+    return this.#transport.request("GET", "/v1/models", options).map(unwrapModels);
+  }
+};
+var unwrapModels = (wire) => {
+  if (Array.isArray(wire?.models)) return wire.models;
+  throw new TypeSafeError("Unexpected response shape from GET /v1/models; expected { models: [...] }.");
+};
+var g = globalThis;
+var isBrowser = () => typeof g.window !== "undefined" && typeof g.window.document !== "undefined" && typeof g.navigator !== "undefined";
+var describeRuntime = () => {
+  const platform = g.process?.platform && g.process?.arch ? ` (${g.process.platform}; ${g.process.arch})` : "";
+  if (g.Bun?.version) return `bun/${g.Bun.version}${platform}`;
+  if (g.Deno?.version?.deno) return `deno/${g.Deno.version.deno}${platform}`;
+  if (g.EdgeRuntime !== void 0) return "vercel-edge";
+  if (g.navigator?.userAgent === "Cloudflare-Workers") return "cloudflare-workers";
+  if (g.process?.versions?.node) return `node/${g.process.versions.node}${platform}`;
+  if (isBrowser()) return "browser";
+  return "unknown";
+};
+var VERSION = "0.7.0";
+var missingApiKey = () => {
+  throw new TypeSafeError(`No API key was provided. Pass \`apiKey\` to the TypeSafeClient constructor or set the ${ENV.apiKey} environment variable.`);
+};
+var missingFetch = () => {
+  throw new TypeSafeError("No global `fetch` is available in this runtime. Pass a `fetch` implementation to the TypeSafeClient constructor.");
+};
+var refuseBrowser = () => {
+  throw new TypeSafeError("TypeSafeClient is running in a browser, which would expose your API key to anyone using the page. Call the API from a server instead, or pass `dangerouslyAllowBrowser: true` if you understand the risk.");
+};
+var defaultFetch = (input2, init) => globalThis.fetch(input2, init);
+var assertNonNegativeInteger = (name, value) => {
+  if (!Number.isInteger(value) || value < 0) throw new TypeSafeError(`\`${name}\` must be a non-negative integer, got ${String(value)}.`);
+  return value;
+};
+var assertPositiveMs = (name, value) => {
+  if (!Number.isFinite(value) || value <= 0) throw new TypeSafeError(`\`${name}\` must be a positive number of milliseconds, got ${String(value)}.`);
+  return value;
+};
+var assertNonNegativeMs = (name, value) => {
+  if (!Number.isFinite(value) || value < 0) throw new TypeSafeError(`\`${name}\` must be a non-negative number of milliseconds, got ${String(value)}.`);
+  return value;
+};
+var assertFraction = (name, value) => {
+  if (!Number.isFinite(value) || value < 0 || value > 1) throw new TypeSafeError(`\`${name}\` must be between 0 and 1, got ${String(value)}.`);
+  return value;
+};
+var assertStatusSet = (name, statuses) => {
+  for (const status of statuses) if (!Number.isInteger(status) || status < 100 || status > 999) throw new TypeSafeError(`\`${name}\` must contain HTTP status codes, got ${String(status)}.`);
+  return statuses;
+};
+var resolveRetryPolicy = (base, overrides) => {
+  const o = overrides ?? {};
+  return {
+    maxRetries: o.maxRetries === void 0 ? base.maxRetries : assertNonNegativeInteger("retry.maxRetries", o.maxRetries),
+    backoffInitialMs: o.backoffInitialMs === void 0 ? base.backoffInitialMs : assertNonNegativeMs("retry.backoffInitialMs", o.backoffInitialMs),
+    backoffMaxMs: o.backoffMaxMs === void 0 ? base.backoffMaxMs : assertNonNegativeMs("retry.backoffMaxMs", o.backoffMaxMs),
+    backoffJitter: o.backoffJitter === void 0 ? base.backoffJitter : assertFraction("retry.backoffJitter", o.backoffJitter),
+    httpStatuses: new Set(o.httpStatuses === void 0 ? base.httpStatuses : assertStatusSet("retry.httpStatuses", o.httpStatuses)),
+    respectRetryAfter: o.respectRetryAfter ?? base.respectRetryAfter,
+    maxRetryAfterMs: o.maxRetryAfterMs === void 0 ? base.maxRetryAfterMs : assertNonNegativeMs("retry.maxRetryAfterMs", o.maxRetryAfterMs),
+    apiConnectionError: o.apiConnectionError ?? base.apiConnectionError,
+    apiTimeoutError: o.apiTimeoutError ?? base.apiTimeoutError
+  };
+};
+var isRetryableError = (err, policy) => {
+  if (err instanceof APITimeoutError) return policy.apiTimeoutError;
+  if (err instanceof APIConnectionError) return policy.apiConnectionError;
+  return false;
+};
+var resolveLogLevel = (fromCode) => {
+  if (fromCode !== void 0) return parseLogLevel(fromCode, "the `logLevel` option");
+  const fromEnv = readEnv(ENV.logLevel);
+  if (fromEnv !== void 0) return parseLogLevel(fromEnv, ENV.logLevel);
+  return DEFAULT_LOG_LEVEL;
+};
+var stripTrailingSlashes = (url2) => url2.replace(/\/+$/, "");
+var mergeHeaders = (...sources) => {
+  const entries = /* @__PURE__ */ new Map();
+  for (const source of sources) for (const [name, value] of Object.entries(source)) if (value === void 0) entries.delete(name.toLowerCase());
+  else entries.set(name.toLowerCase(), [name, value]);
+  return Object.fromEntries(entries.values());
+};
+var bufferResponse = async (response, signal) => {
+  const reader = response.clone().body?.getReader();
+  if (!reader) return;
+  const original = response.body?.getReader();
+  const cancel = () => {
+    reader.cancel(signal.reason).catch(() => {
+    });
+    original?.cancel(signal.reason).catch(() => {
+    });
+  };
+  signal.addEventListener("abort", cancel, { once: true });
+  try {
+    if (signal.aborted) cancel();
+    signal.throwIfAborted();
+    while (!(await reader.read()).done) signal.throwIfAborted();
+    signal.throwIfAborted();
+  } finally {
+    signal.removeEventListener("abort", cancel);
+    reader.releaseLock();
+    original?.releaseLock();
+  }
+};
+var untilAborted = (start, signal) => {
+  if (signal === void 0) return start();
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) return reject(signal.reason);
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener("abort", onAbort, { once: true });
+    start().then((value) => {
+      signal.removeEventListener("abort", onAbort);
+      resolve(value);
+    }, (err) => {
+      signal.removeEventListener("abort", onAbort);
+      reject(err);
+    });
+  });
+};
+var RUNTIME = describeRuntime();
+var rejectedAPIPromise = (err) => {
+  const response = Promise.reject(err);
+  return new APIPromise(response, () => response);
+};
+var TypeSafeClient = class {
+  /** API key excluded from serialization and public properties. */
+  #apiKey;
+  /** API root with trailing slashes removed. */
+  baseURL;
+  /** Model used when a request omits `model`. */
+  defaultModel;
+  /** Configured log verbosity. */
+  logLevel;
+  /** The configured logger, filtered to `logLevel`. */
+  logger;
+  /** Retry settings with constructor overrides applied. */
+  retry;
+  /** Timeout per attempt in milliseconds. */
+  timeout;
+  /** Additional headers sent with each request. */
+  defaultHeaders;
+  /** Request body compression, or `false` when bodies are sent uncompressed. */
+  compression;
+  /** HTTP fetch implementation. */
+  fetch;
+  /** The models available to the account. */
+  models;
+  #requestCount = 0;
+  /**
+  * Create a client for the TypeSafe AI API.
+  *
+  * Explicit options take precedence over environment variables, then SDK defaults.
+  * Empty or whitespace-only environment values are ignored.
+  *
+  * @throws {TypeSafeError} The API key is missing, configuration is invalid, the runtime is
+  *   unsupported, or the runtime lacks the requested compression.
+  */
+  constructor(config2 = {}) {
+    if (isBrowser() && !config2.dangerouslyAllowBrowser) refuseBrowser();
+    this.#apiKey = fromCodeOrEnv(config2.apiKey, ENV.apiKey) ?? missingApiKey();
+    this.baseURL = stripTrailingSlashes(fromCodeOrEnv(config2.baseURL, ENV.baseURL) ?? "https://api.typesafe.ai");
+    this.defaultModel = fromCodeOrEnv(config2.defaultModel, ENV.defaultModel) ?? "jev-latest";
+    this.logLevel = resolveLogLevel(config2.logLevel);
+    this.logger = withLevel(config2.logger ?? consoleLogger, this.logLevel);
+    this.retry = resolveRetryPolicy(DEFAULT_RETRY_POLICY, config2.retry);
+    this.timeout = assertPositiveMs("timeout", config2.timeout ?? 1e4);
+    this.defaultHeaders = { ...config2.defaultHeaders };
+    this.compression = resolveCompression(config2.compression);
+    if (config2.fetch === void 0 && typeof globalThis.fetch !== "function") missingFetch();
+    this.fetch = config2.fetch ?? defaultFetch;
+    const transport = {
+      request: (method, path, options) => this.#request(method, path, options),
+      defaultModel: this.defaultModel
+    };
+    this.models = new Models(transport);
+  }
+  /**
+  * Answer named questions about text, structured state, or assets.
+  *
+  * @param request - State, questions, an optional model override, and optional assets.
+  *   Assets in `state`, question content, or `withAssets` text are sent under their references.
+  * @param options - Per-call timeout, retry, headers, and cancellation settings.
+  * @returns Answers typed by question name and criteria, with model and token usage. Every
+  *   failure below rejects the returned promise; the call itself doesn't throw.
+  * @throws {TypeSafeError} State is `null` or omitted, questions are empty, score criteria are not
+  *   a list of at least two entries, choice criteria are not a nonempty map, a noul question has
+  *   neither instructions nor a described outcome, a string holds the reference of an asset not
+  *   attached to the request, a name in `assets` doesn't appear in the request, or a `Blob`
+  *   asset can't be read.
+  * @throws {APIError} The server returns a non-2xx response after retries.
+  * @throws {APIConnectionError} The request cannot connect or times out after retries.
+  * @throws {APIUserAbortError} The caller aborts the request.
+  *
+  * @example
+  * ```ts
+  * const { answers } = await client.systemOne({
+  *   state: "I was charged twice. Please help.",
+  *   questions: { billing: noul("Is this about billing?") },
+  * });
+  * console.log(answers.billing.noul);
+  * ```
+  */
+  systemOne(request, options = {}) {
+    let body;
+    try {
+      if (request.state == null) throw new TypeSafeError("State is required.");
+      validateQuestions(request.questions);
+      const { assets, ...rest } = request;
+      const { json: json2, assets: sent } = serializeRequest({
+        ...rest,
+        model: request.model ?? this.defaultModel
+      }, assets);
+      const payload = JSON.parse(json2);
+      const copied = sent === void 0 ? void 0 : copyAssetBytes(sent);
+      body = copied === void 0 ? payload : () => encodeAssets(payload, copied);
+    } catch (err) {
+      return rejectedAPIPromise(err);
+    }
+    return this.#request("POST", "/v1/systemone", {
+      ...options,
+      body
+    });
+  }
+  /** Send a request and parse its response body. */
+  #request(method, path, options = {}) {
+    let resolved;
+    try {
+      resolved = {
+        method,
+        path,
+        body: options.body,
+        headers: mergeHeaders(this.defaultHeaders, options.headers ?? {}),
+        signal: options.signal,
+        timeout: options.timeout === void 0 ? this.timeout : assertPositiveMs("timeout", options.timeout),
+        retry: resolveRetryPolicy(this.retry, options.retry)
+      };
+    } catch (err) {
+      return rejectedAPIPromise(err);
+    }
+    const tag = `#${++this.#requestCount} ${method} ${path}`;
+    return new APIPromise(this.fetchWithRetries(tag, resolved), async (res) => {
+      const parsed = await parseBody(res);
+      this.logger.debug(`${tag} <- body`, parsed);
+      return parsed;
+    });
+  }
+  /** Retry eligible failures, logging attempt summaries at `info` and headers and bodies at `debug`. */
+  async fetchWithRetries(tag, req) {
+    const url2 = `${this.baseURL}${req.path}`;
+    let resolved = req.body;
+    if (typeof resolved === "function") try {
+      resolved = await untilAborted(resolved, req.signal);
+    } catch (err) {
+      if (!req.signal?.aborted) throw err;
+      this.logger.info(`${tag} aborted by caller while reading assets`);
+      throw new APIUserAbortError(void 0, { cause: err });
+    }
+    const multipart = resolved instanceof MultipartBody ? resolved : void 0;
+    const payload = multipart === void 0 ? resolved : multipart.payload;
+    const encoded = multipart?.content ?? (payload === void 0 ? void 0 : JSON.stringify(payload));
+    const encoding = encoded === void 0 || byteLength(encoded) < 1024 ? false : this.compression;
+    let body = encoded;
+    if (encoded !== void 0 && encoding !== false) try {
+      body = await untilAborted(() => compressBody(encoded), req.signal);
+    } catch (err) {
+      if (!req.signal?.aborted) throw err;
+      this.logger.info(`${tag} aborted by caller while compressing the body`);
+      throw new APIUserAbortError(void 0, { cause: err });
+    }
+    const headers = mergeHeaders(req.headers, {
+      Authorization: `Bearer ${this.#apiKey}`,
+      Accept: "application/json",
+      "User-Agent": `typesafe-sdk/${VERSION}`,
+      "X-TypeSafe-SDK": `typesafe-sdk/${VERSION}`,
+      "X-TypeSafe-Runtime": RUNTIME,
+      "Content-Type": multipart?.contentType ?? (body === void 0 ? void 0 : "application/json"),
+      "Content-Encoding": encoding === false ? void 0 : encoding,
+      "X-TypeSafe-Retry-Count": void 0
+    });
+    for (let attempt = 0; ; attempt++) {
+      const retriesLeft = req.retry.maxRetries - attempt;
+      const attemptHeaders = attempt === 0 ? headers : {
+        ...headers,
+        "X-TypeSafe-Retry-Count": String(attempt)
+      };
+      this.logger.debug(`${tag} -> ${url2}`, {
+        headers: redactHeaders(attemptHeaders),
+        body: payload
+      });
+      const started = Date.now();
+      let res;
+      try {
+        res = await this.attempt(tag, url2, {
+          method: req.method,
+          headers: attemptHeaders,
+          body
+        }, req);
+      } catch (err) {
+        if (err instanceof APIUserAbortError || retriesLeft <= 0) throw err;
+        if (!isRetryableError(err, req.retry)) throw err;
+        await this.backOff(tag, attempt, retriesLeft, err.message, void 0, req);
+        continue;
+      }
+      const requestId = requestIdFrom(res.headers);
+      this.logger.info(`${tag} <- ${res.status} in ${Date.now() - started}ms${requestId ? ` (request ${requestId})` : ""}`);
+      if (res.ok) return res;
+      const errorBody = await parseBody(res);
+      this.logger.debug(`${tag} <- error body`, errorBody);
+      const error62 = APIError.fromResponse(res.status, errorBody, res.headers);
+      if (retriesLeft <= 0 || !isRetryableStatus(res.status, req.retry)) throw error62;
+      await this.backOff(tag, attempt, retriesLeft, `${res.status}`, res.headers, req);
+    }
+  }
+  /**
+  * One HTTP round trip, including body delivery, with a timeout. The caller's signal and our
+  * timer both abort the same controller; we check which fired to choose the error class.
+  */
+  async attempt(tag, url2, init, { signal, timeout }) {
+    const controller = new AbortController();
+    const abortFromCaller = () => controller.abort(signal?.reason);
+    if (signal?.aborted) abortFromCaller();
+    signal?.addEventListener("abort", abortFromCaller, { once: true });
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeout);
+    const started = Date.now();
+    const elapsed = () => `${Date.now() - started}ms`;
+    try {
+      const response = await this.fetch(url2, {
+        ...init,
+        signal: controller.signal
+      });
+      await bufferResponse(response, controller.signal);
+      return response;
+    } catch (err) {
+      if (signal?.aborted) {
+        this.logger.info(`${tag} aborted by caller after ${elapsed()}`);
+        throw new APIUserAbortError(void 0, { cause: err });
+      }
+      if (timedOut) {
+        this.logger.info(`${tag} timed out after ${elapsed()}`);
+        throw new APITimeoutError(timeout, { cause: err });
+      }
+      this.logger.info(`${tag} connection error after ${elapsed()}`, err);
+      throw new APIConnectionError(err instanceof Error ? `Connection error: ${err.message}` : void 0, { cause: err });
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", abortFromCaller);
+    }
+  }
+  /** Wait before retrying; caller cancellation throws `APIUserAbortError`. */
+  async backOff(tag, attempt, retriesLeft, reason, headers, { retry, signal }) {
+    const delay2 = retryDelayMs(attempt, headers, retry);
+    const nth = attempt + 1;
+    const total = attempt + retriesLeft;
+    this.logger.info(`${tag} retrying in ${delay2}ms (retry ${nth}/${total}) after ${reason}`);
+    try {
+      await sleep(delay2, signal);
+    } catch (err) {
+      this.logger.info(`${tag} aborted by caller while waiting to retry`);
+      throw new APIUserAbortError(void 0, { cause: err });
+    }
+  }
+};
+var parseBody = async (res) => {
+  const text = await res.text();
+  if (text.length === 0) return void 0;
+  if ((res.headers.get("content-type") ?? "").includes("application/json")) try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+};
+
 // src/batch.ts
 var BATCH_RUBRIC_VERSION = "batch-2026-09-26.2";
 var DECISION_POLICY_VERSION = "decision-policy-2026-09-26.1";
@@ -24552,67 +25461,97 @@ async function evaluateProvider(args) {
     retryAfter: null,
     credentialFingerprint: fingerprintCredential(args.apiKey)
   };
+  let responseFailure;
+  const instrumentedFetch = async (input2, init) => {
+    transport = { ...transport, fetchInvoked: true };
+    const response = await (args.fetchFn ?? fetch)(input2, { ...init, redirect: "error" });
+    try {
+      const policyError = response.status === 403 ? networkPolicyError(response) : null;
+      transport = {
+        ...transport,
+        responseReceivedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        responseStatus: response.status,
+        ...requestIdentifier(response, args.apiKey),
+        retryAfter: retryAfter(response, args.apiKey),
+        ...policyError ? { networkPolicyError: policyError } : {}
+      };
+      if (!response.ok) {
+        await response.body?.cancel().catch(() => {
+        });
+        const headers2 = new Headers(response.headers);
+        headers2.delete("content-length");
+        headers2.delete("content-encoding");
+        return new Response(null, { status: response.status, statusText: response.statusText, headers: headers2 });
+      }
+      if (!response.body) invalidResponse(transport, "missing_body");
+      const reader = response.body.getReader();
+      const chunks = [];
+      let size = 0;
+      try {
+        while (true) {
+          const next = await reader.read();
+          if (next.done) break;
+          size += next.value.byteLength;
+          if (size > 65536) {
+            await reader.cancel();
+            throw new ProviderError("response_too_large", transport);
+          }
+          chunks.push(next.value);
+        }
+      } finally {
+        reader.releaseLock();
+      }
+      const bytes = Buffer.concat(chunks);
+      try {
+        JSON.parse(bytes.toString("utf8"));
+      } catch {
+        invalidResponse(transport, "invalid_json");
+      }
+      const headers = new Headers(response.headers);
+      headers.delete("content-length");
+      headers.delete("content-encoding");
+      return new Response(bytes, { status: response.status, statusText: response.statusText, headers });
+    } catch (error62) {
+      if (error62 instanceof ProviderError) responseFailure = error62;
+      throw error62;
+    }
+  };
   try {
     if (args.signal?.aborted) throw new ProviderError("cancelled", transport);
-    transport = { ...transport, fetchInvoked: true };
-    const response = await (args.fetchFn ?? fetch)(ENDPOINT, {
-      method: "POST",
-      redirect: "error",
-      signal,
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${args.apiKey}`,
-        ...args.longContext ? { "TypeSafe-Danger-Zone-Long-Context": "true" } : {},
-        ...args.experimentalImages ? { "TypeSafe-Danger-Zone-Images": "true" } : {}
-      },
-      body: JSON.stringify({ model, state: args.state, questions: args.questions, ...args.assets ? { assets: args.assets } : {} })
+    if (!args.apiKey.trim()) throw new ProviderError("authentication_failed", transport);
+    const client = new TypeSafeClient({
+      apiKey: args.apiKey,
+      baseURL: new URL(ENDPOINT).origin,
+      defaultModel: model,
+      fetch: instrumentedFetch,
+      timeout: args.timeoutMs,
+      retry: { maxRetries: 0 },
+      compression: false,
+      logLevel: "off"
     });
-    const policyError = response.status === 403 ? networkPolicyError(response) : null;
-    transport = {
-      ...transport,
-      responseReceivedAt: (/* @__PURE__ */ new Date()).toISOString(),
-      responseStatus: response.status,
-      ...requestIdentifier(response, args.apiKey),
-      retryAfter: retryAfter(response, args.apiKey),
-      ...policyError ? { networkPolicyError: policyError } : {}
-    };
-    if (!response.ok) {
-      await response.body?.cancel().catch(() => {
-      });
-      const code = response.status === 400 ? "invalid_request" : response.status === 401 ? "authentication_failed" : response.status === 403 && policyError ? "network_policy_blocked" : response.status === 403 ? "request_forbidden" : response.status === 408 ? "request_timeout" : response.status === 413 ? "request_too_large" : response.status === 415 ? "unsupported_media_type" : response.status === 422 ? "invalid_request" : response.status === 429 ? "rate_limited" : response.status === 529 ? "provider_overloaded" : "provider_error";
-      throw new ProviderError(code, transport);
-    }
-    if (!response.body) invalidResponse(transport, "missing_body");
-    const reader = response.body.getReader();
-    const chunks = [];
-    let size = 0;
-    try {
-      while (true) {
-        const next = await reader.read();
-        if (next.done) break;
-        size += next.value.byteLength;
-        if (size > 65536) {
-          await reader.cancel();
-          throw new ProviderError("response_too_large", transport);
-        }
-        chunks.push(next.value);
-      }
-    } finally {
-      reader.releaseLock();
-    }
-    let payload;
-    try {
-      payload = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    } catch {
-      invalidResponse(transport, "invalid_json");
-    }
-    const evaluation = validateEvaluation(payload, args.questions, transport, model);
+    const { data } = await client.systemOne({
+      model,
+      state: args.state,
+      questions: args.questions,
+      ...args.assets ? { assets: Object.fromEntries(Object.entries(args.assets).map(([name, asset]) => [name, Image.fromBase64(asset.data_base64)])) } : {}
+    }, { signal, headers: {
+      ...args.longContext ? { "TypeSafe-Danger-Zone-Long-Context": "true" } : {},
+      ...args.experimentalImages ? { "TypeSafe-Danger-Zone-Images": "true" } : {}
+    } }).withResponse();
+    const evaluation = validateEvaluation(data, args.questions, transport, model);
     return { ...evaluation, transport: { ...transport, validatedResponse: true } };
   } catch (error62) {
     if (args.signal?.aborted) throw new ProviderError("cancelled", transport);
-    if (timeout.aborted) throw new ProviderError("timeout", transport);
+    if (timeout.aborted || error62 instanceof APITimeoutError) throw new ProviderError("timeout", transport);
+    if (responseFailure) throw responseFailure;
     if (error62 instanceof ProviderError) throw error62;
-    throw new ProviderError("provider_unavailable", transport);
+    if (error62 instanceof APIUserAbortError) throw new ProviderError("cancelled", transport);
+    if (error62 instanceof APIError) {
+      const code = error62.status === 400 ? "invalid_request" : error62.status === 401 ? "authentication_failed" : error62.status === 403 && transport.networkPolicyError ? "network_policy_blocked" : error62.status === 403 ? "request_forbidden" : error62.status === 408 ? "request_timeout" : error62.status === 413 ? "request_too_large" : error62.status === 415 ? "unsupported_media_type" : error62.status === 422 ? "invalid_request" : error62.status === 429 ? "rate_limited" : error62.status === 529 ? "provider_overloaded" : "provider_error";
+      throw new ProviderError(code, transport);
+    }
+    if (error62 instanceof APIConnectionError) throw new ProviderError("provider_unavailable", transport);
+    throw new ProviderError(error62 instanceof TypeSafeError ? "invalid_request" : "provider_unavailable", transport);
   }
 }
 

@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ENDPOINT, failureQuestions, type ModelSelector, type Question } from '../src/contracts.js';
+import {validPngBase64} from './media-fixture.js';
 import { evaluateProvider, ProviderError, validateEvaluation, type ProviderTransport, type ResponseValidationFailure } from '../src/provider.js';
 
 function validEvaluation(): Record<string, unknown> {
@@ -216,6 +217,81 @@ describe('provider response validation', () => {
 });
 
 describe('provider transport', () => {
+  it('pins the API origin and resolved model despite SDK environment overrides', async () => {
+    const previousBase = process.env.TYPESAFE_BASE_URL;
+    const previousModel = process.env.TYPESAFE_DEFAULT_MODEL;
+    process.env.TYPESAFE_BASE_URL = 'https://untrusted.invalid';
+    process.env.TYPESAFE_DEFAULT_MODEL = 'wrong-model';
+    try {
+      let request: {input: string; init?: RequestInit} | undefined;
+      const result = await evaluateProvider({
+        state: {message: 'x'.repeat(2048)}, questions: failureQuestions, apiKey: 'provider-key', timeoutMs: 1000, model: 'jev-1.14.0',
+        fetchFn: async (input, init) => {
+          request = {input: String(input), init};
+          return new Response(JSON.stringify({...validEvaluation(), model: 'jev-1.14.0', usage: {input_tokens: null, output_tokens: 8}}));
+        },
+      });
+      assert.equal(request?.input, ENDPOINT);
+      assert.equal(JSON.parse(String(request?.init?.body)).model, 'jev-1.14.0');
+      assert.equal(new Headers(request?.init?.headers).get('content-encoding'), null);
+      assert.equal(new Headers(request?.init?.headers).get('x-typesafe-sdk'), 'typesafe-sdk/0.7.0');
+      assert.deepEqual(result.usage, {input_tokens: null, output_tokens: 8});
+    } finally {
+      if (previousBase === undefined) delete process.env.TYPESAFE_BASE_URL; else process.env.TYPESAFE_BASE_URL = previousBase;
+      if (previousModel === undefined) delete process.env.TYPESAFE_DEFAULT_MODEL; else process.env.TYPESAFE_DEFAULT_MODEL = previousModel;
+    }
+  });
+
+  it('rejects an empty resolved key before the SDK can use its environment', async () => {
+    let calls = 0;
+    await assert.rejects(() => evaluateProvider({
+      state: {}, questions: failureQuestions, apiKey: '', timeoutMs: 1000,
+      fetchFn: async () => { calls++; return new Response(JSON.stringify(validEvaluation())); },
+    }), error => {
+      assertProviderError(error, 'authentication_failed');
+      assert.equal(error.transport?.fetchInvoked, false);
+      return true;
+    });
+    assert.equal(calls, 0);
+  });
+
+  it('sends opted-in image bytes as SDK multipart while preserving Box validation', async () => {
+    const png = Buffer.from(validPngBase64(), 'base64');
+    let request: RequestInit | undefined;
+    const result = await evaluateProvider({
+      state: {photo: '<photo>'}, questions: {target: {type: 'box', instructions: 'Find the target in <photo>'}},
+      assets: {'<photo>': {format: 'png', data_base64: png.toString('base64')}},
+      experimentalImages: true, model: 'jev-preview', apiKey: 'provider-key', timeoutMs: 1000,
+      fetchFn: async (_input, init) => {
+        request = init;
+        return new Response(JSON.stringify({model: 'jev-1.14.0', answers: {target: {type: 'box', box: {top: 0.1, bottom: 0.5, left: 0.2, right: 0.8}, confidence: null}}, usage: {input_tokens: null, output_tokens: null}}));
+      },
+    });
+    const headers = new Headers(request?.headers);
+    assert.equal(headers.get('TypeSafe-Danger-Zone-Images'), 'true');
+    assert.match(headers.get('content-type') ?? '', /^multipart\/form-data; boundary=/);
+    const form = await new Response(request?.body, {headers}).formData();
+    const parts = [...form.values()];
+    const file = parts.find((part): part is File => typeof part !== 'string');
+    assert.ok(file);
+    assert.deepEqual(Buffer.from(await file.arrayBuffer()), png);
+    const payload = parts.find((part): part is string => typeof part === 'string');
+    assert.ok(payload);
+    assert.equal(JSON.parse(payload).model, 'jev-preview');
+    assert.equal(result.answers.target?.type, 'box');
+  });
+
+  it('does not retry server or connection failures through SDK defaults', async () => {
+    for (const failure of ['server', 'connection'] as const) {
+      let calls = 0;
+      await assert.rejects(() => evaluateProvider({
+        state: {}, questions: failureQuestions, apiKey: 'provider-key', timeoutMs: 1000,
+        fetchFn: async () => { calls++; if (failure === 'connection') throw new Error('socket closed'); return new Response(null, {status: 503}); },
+      }), error => { assertProviderError(error, failure === 'server' ? 'provider_error' : 'provider_unavailable'); return true; });
+      assert.equal(calls, 1);
+    }
+  });
+
   it('uses the fixed API endpoint, POST, bearer auth, and redirect error mode', async () => {
     let request: {input: RequestInfo | URL; init: RequestInit | undefined} | undefined;
     const result = await evaluateProvider({
@@ -228,7 +304,7 @@ describe('provider transport', () => {
     assert.equal(String(request?.input), ENDPOINT);
     assert.equal(request?.init?.method, 'POST');
     assert.equal(request?.init?.redirect, 'error');
-    assert.equal((request?.init?.headers as Record<string, string>).authorization, 'Bearer provider-key');
+    assert.equal(new Headers(request?.init?.headers).get('authorization'), 'Bearer provider-key');
     assert.equal(JSON.parse(String(request?.init?.body)).model, 'jev-1.13.0');
     assert.equal(result.transport.responseStatus, 200);
     assert.equal(result.transport.fetchInvoked, true);
