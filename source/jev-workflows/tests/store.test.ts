@@ -1,3 +1,8 @@
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import fs from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, readdir, rm, writeFile, symlink, stat, utimes } from 'node:fs/promises';
@@ -167,5 +172,155 @@ test('contended lock acquisitions publish complete owners and leave no temporary
     assert.deepEqual(leftovers, []);
     const usage = JSON.parse(await readFile(join(dir, `budget-${new Date().toISOString().slice(0, 10)}.json`), 'utf8')) as {calls: number};
     assert.ok(usage.calls >= 8 && usage.calls <= 16);
+  } finally { await rm(dir, {recursive: true, force: true}); }
+});
+
+
+test('a delayed legacy reclaimer cannot delete a replacement owner', async () => {
+  const parent = resolve('../../work/jev-build');
+  await mkdir(parent, {recursive: true});
+  const dir = await mkdtemp(join(parent, 'store-reclaimer-race-'));
+  const budget = join(dir, `budget-${new Date().toISOString().slice(0, 10)}.json`);
+  const lock = `${budget}.lock`;
+  const deferred = () => {
+    let resolve!: () => void;
+    const promise = new Promise<void>(done => { resolve = done; });
+    return {promise, resolve};
+  };
+  const sawA = deferred();
+  const releaseA = deferred();
+  const sawB = deferred();
+  const releaseB = deferred();
+  const originalUnlink = fs.unlink;
+  const originalRename = fs.rename;
+  let unlinks = 0;
+  let writes = 0;
+  try {
+    await writeFile(lock, '');
+    const old = new Date(Date.now() - 120_000);
+    await utimes(lock, old, old);
+    fs.unlink = async path => {
+      if (String(path) === lock && unlinks++ === 0) { sawA.resolve(); await releaseA.promise; }
+      return originalUnlink(path);
+    };
+    fs.rename = async (source, target) => {
+      if (String(target) === budget && writes++ === 0) { sawB.resolve(); await releaseB.promise; }
+      return originalRename(source, target);
+    };
+    syncBuiltinESMExports();
+    const a = new FileStore(dir, 1, 100).reserve(1).catch(error => {
+      assert.match(error.message, /budget_busy/);
+      return false;
+    });
+    await sawA.promise;
+    const b = new FileStore(dir, 1, 100).reserve(1);
+    await sawB.promise;
+    releaseA.resolve();
+    const aGranted = await a;
+    releaseB.resolve();
+    const bGranted = await b;
+    assert.equal(Number(aGranted) + Number(bGranted), 1);
+    assert.deepEqual(JSON.parse(await readFile(budget, 'utf8')), {calls: 1, bytes: 1});
+  } finally {
+    releaseA.resolve();
+    releaseB.resolve();
+    fs.unlink = originalUnlink;
+    fs.rename = originalRename;
+    syncBuiltinESMExports();
+    await rm(dir, {recursive: true, force: true});
+  }
+});
+
+function storeProcess(script: string) {
+  const child = spawn(process.execPath, ['--import', 'tsx', '--input-type=module', '--eval', script], {stdio: ['pipe', 'pipe', 'pipe', 'ipc']});
+  let output = '';
+  let errors = '';
+  assert.ok(child.stdout);
+  assert.ok(child.stderr);
+  child.stdout.on('data', data => { output += data; });
+  child.stderr.on('data', data => { errors += data; });
+  const finished = once(child, 'exit').then(([code, signal]) => ({code, signal, output, errors}));
+  return {child, finished};
+}
+
+const storeModule = pathToFileURL(resolve('src/store.ts')).href;
+
+test('separate processes recover one abandoned lock without losing reservations', async () => {
+  const parent = resolve('../../work/jev-build');
+  await mkdir(parent, {recursive: true});
+  const dir = await mkdtemp(join(parent, 'store-process-race-'));
+  const budget = join(dir, `budget-${new Date().toISOString().slice(0, 10)}.json`);
+  try {
+    await writeFile(`${budget}.lock`, '');
+    const old = new Date(Date.now() - 120_000);
+    await utimes(`${budget}.lock`, old, old);
+    const children = Array.from({length: 8}, () => storeProcess(`
+      import {FileStore} from ${JSON.stringify(storeModule)};
+      await new Promise(resolve => { process.once('message', resolve); process.send('ready'); });
+      process.stdout.write(JSON.stringify(await new FileStore(${JSON.stringify(dir)}, 4, 4).reserve(1)));
+      process.disconnect();
+    `));
+    await Promise.all(children.map(({child}) => once(child, 'message')));
+    for (const {child} of children) child.send('go');
+    const results = await Promise.all(children.map(({finished}) => finished));
+    for (const result of results) assert.equal(result.code, 0, result.errors);
+    assert.equal(results.filter(result => JSON.parse(result.output)).length, 4);
+    assert.deepEqual(JSON.parse(await readFile(budget, 'utf8')), {calls: 4, bytes: 4});
+    assert.deepEqual((await readdir(dir)).filter(name => name.endsWith('.lock') || name.endsWith('.tmp')), []);
+  } finally { await rm(dir, {recursive: true, force: true}); }
+});
+
+test('a killed process releases no lock early and its abandoned directory is recoverable', async () => {
+  const parent = resolve('../../work/jev-build');
+  await mkdir(parent, {recursive: true});
+  const dir = await mkdtemp(join(parent, 'store-killed-owner-'));
+  const budget = join(dir, `budget-${new Date().toISOString().slice(0, 10)}.json`);
+  const lock = `${budget}.lock`;
+  const {child, finished} = storeProcess(`
+    import fs from 'node:fs/promises';
+    import {syncBuiltinESMExports} from 'node:module';
+    const original = fs.rename;
+    fs.rename = async (source, target) => {
+      if (String(target) === ${JSON.stringify(budget)}) { process.send('held'); setInterval(() => {}, 1000); await new Promise(() => {}); }
+      return original(source, target);
+    };
+    syncBuiltinESMExports();
+    const {FileStore} = await import(${JSON.stringify(storeModule)});
+    await new FileStore(${JSON.stringify(dir)}, 1, 100).reserve(1);
+  `);
+  try {
+    await once(child, 'message');
+    const entries = await readdir(lock);
+    assert.equal(entries.length, 1);
+    assert.equal((await stat(lock)).mode & 0o777, 0o700);
+    assert.equal((await stat(join(lock, entries[0]!))).mode & 0o777, 0o600);
+    const old = new Date(Date.now() - 120_000);
+    await utimes(lock, old, old);
+    await assert.rejects(() => new FileStore(dir, 1, 100).reserve(1), /budget_busy/);
+    child.kill('SIGKILL');
+    assert.equal((await finished).signal, 'SIGKILL');
+    assert.equal(await new FileStore(dir, 1, 100).reserve(1), true);
+    assert.deepEqual(JSON.parse(await readFile(budget, 'utf8')), {calls: 1, bytes: 1});
+    await assert.rejects(() => stat(lock), {code: 'ENOENT'});
+  } finally {
+    child.kill('SIGKILL');
+    await finished;
+    await rm(dir, {recursive: true, force: true});
+  }
+});
+
+test('unknown lock directory contents fail closed and remain untouched', async () => {
+  const parent = resolve('../../work/jev-build');
+  await mkdir(parent, {recursive: true});
+  const dir = await mkdtemp(join(parent, 'store-invalid-lock-'));
+  const budget = join(dir, `budget-${new Date().toISOString().slice(0, 10)}.json`);
+  const lock = `${budget}.lock`;
+  try {
+    await mkdir(lock);
+    await writeFile(join(lock, 'unknown'), 'preserve');
+    const old = new Date(Date.now() - 120_000);
+    await utimes(lock, old, old);
+    await assert.rejects(() => new FileStore(dir, 1, 100).reserve(1), /budget_busy/);
+    assert.equal(await readFile(join(lock, 'unknown'), 'utf8'), 'preserve');
   } finally { await rm(dir, {recursive: true, force: true}); }
 });
