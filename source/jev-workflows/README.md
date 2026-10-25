@@ -1,6 +1,6 @@
 # Jev Workflows
 
-A portable Codex plugin that consults Jev for tool, model, task, skill, context, strategy, result, outcome, and custom classification decisions. The current source package is version 0.5.0. It includes eight MCP surfaces, three independently usable skills, bundled JavaScript entrypoints, and scoped lifecycle hooks.
+A portable Codex and Claude Code plugin that consults Jev for tool, model, task, skill, context, strategy, result, outcome, and custom classification decisions. The current source package is version 0.5.1. It includes eight MCP surfaces, three independently usable skills, bundled JavaScript entrypoints, and scoped lifecycle hooks.
 
 ## Capabilities
 
@@ -71,6 +71,17 @@ node scripts/package-host.mjs /absolute/release-directory/jev-workflows
 
 The generated variant retains `.codex-plugin/plugin.json`, `.mcp.json`, skills, hooks and runtime, and omits the two portable root manifests. Install the prebuilt Codex variant from the public repository marketplace and review its hooks. The default generated package aligns MCP and hook state using `JEV_STATE_MODE=user`, without machine-specific absolute paths. Both packages use the same code. The Codex overlay forwards approved environment names only, with no credential values. See [compatibility](docs/compatibility.md).
 
+### Claude Code installation
+
+The same source is packaged for Claude Code with native `.claude-plugin`, MCP and hook files. Add this repository's Git marketplace, then install the stable `jev-workflows` plugin ID:
+
+```sh
+claude plugin marketplace add integrate-your-mind/jev-codex-plugin
+claude plugin install jev-workflows@jev-workflows
+```
+
+Reload plugins or start a fresh session, then inspect `jev_status` and explicitly enable automation if desired. This is a community Git marketplace route, not an Anthropic official marketplace or directory listing. Claude Code displays the installed plugin as **Jev Workflows** while its namespaced skills and MCP server retain the `jev-workflows` identifier. See [cross-host configuration](docs/cross-host.md).
+
 ## Standalone skills and CLI
 
 Each skill includes a prebuilt `scripts/jev.mjs`. When its MCP tool is available, the skill uses it; otherwise it can invoke that local CLI with Node.js 22 or later. No npm install or MCP server is needed. The standalone path supports decision classification, failure diagnosis, completion assessment, and typed batches through evaluate-decisions. It does not install automatic hooks or expose `configure_automation`.
@@ -89,7 +100,7 @@ The public repository and Git marketplace are available distribution routes. Ope
 
 ## Limits and evidence
 
-The endpoint is fixed to `https://api.typesafe.ai/v1/systemone` and the model to `jev-1.13.0`. The plugin applies local safety ceilings of 48,000 bytes to each serialized request and 64 KiB to each response; these are byte limits in this adapter, not TypeSafe's token context limit. TypeSafe documents a 64k-token request context for Jev 1.13, including a 32k-token state-plus-longest-question limit. Explicit evaluations time out after ten seconds. Hook consultations use a five-second host deadline, a four-second adapter deadline, and a three-second provider deadline, with shorter lifecycle paths; they do not retry automatically. Conservative per-question policy defaults to 0.6 confidence and 0.6 selected probability where those signals apply; ranking policy preserves distributions without applying those floors and still honors explicit abstention. These are provisional operating thresholds, not correctness guarantees.
+The endpoint is fixed to `https://api.typesafe.ai/v1/systemone`. The default Jev model is pinned to `jev-1.13.0`; explicit `JEV_MODEL` or batch model selection supports 1.14 and the documented aliases. See [cross-host configuration](docs/cross-host.md) for nullable usage, model selection, experimental media, Claude installation and QQ contract synchronization. The plugin applies local safety ceilings of 48,000 bytes to ordinary text requests (explicit media requests use the provider 32 MiB ceiling) and 64 KiB to each response; these are byte limits in this adapter, not TypeSafe's token context limit. TypeSafe documents a 64k-token request context for Jev 1.13, including a 32k-token state-plus-longest-question limit. Explicit evaluations time out after ten seconds. Hook consultations use a five-second host deadline, a four-second adapter deadline, and a three-second provider deadline, with shorter lifecycle paths; they do not retry automatically. Conservative per-question policy defaults to 0.6 confidence and 0.6 selected probability where those signals apply; ranking policy preserves distributions without applying those floors and still honors explicit abstention. These are provisional operating thresholds, not correctness guarantees.
 
 There is no plugin-imposed daily call, daily byte, or per-session call cap by default (`null` means unlimited). Jev's own API rate limits still apply; rate-limit and overload responses fail open without immediate retries. Usage accounting remains enabled and is never reset when settings change. Optional user-chosen caps can be configured through policy or `JEV_MAX_CALLS_PER_DAY` / `JEV_MAX_BYTES_PER_DAY`; explicit environment values take precedence and accept `unlimited`. An existing persisted numeric policy remains in force until it is explicitly changed to `null`; changing the defaults does not erase prior policy state. `jev_status` labels local reserved attempts separately from retained response evidence, nullable remaining configured caps, and UTC accounting rollover. A reservation is recorded before dispatch and is never a successful-request or billing count. Assessed and abstained responses can both carry provider-reported token usage. New receipts retain observed HTTP status, timestamps, provider request IDs when supplied, and a nonsecret credential fingerprint; historical receipts cannot be retroactively attributed. See [accounting](docs/accounting.md). Repeated unchanged requests can reuse the MCP cache, event IDs deduplicate hook delivery, and `JEV_ENABLED=0` disables provider requests.
 
@@ -115,3 +126,7 @@ npm run validate
 - [Codex hooks](https://developers.openai.com/codex/hooks/)
 - [TypeSafe API](https://docs.typesafe.ai/api)
 - [TypeSafe confidence](https://docs.typesafe.ai/confidence)
+
+## Claude Code and shared QQ contract
+
+See [cross-host configuration](docs/cross-host.md). The native Claude package uses the same runtime, with a dedicated event adapter and no permission changes. The shared contract is checked across the plugin and QQ with `scripts/sync-jev-contract.mjs` from the repository root.

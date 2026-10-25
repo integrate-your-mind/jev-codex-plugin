@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
-import { APIConnectionError, APIError, APIUserAbortError, APITimeoutError, TypeSafeClient, type EntryType, type Questions } from '@typesafe-ai/sdk';
+import { APIConnectionError, APIError, APIUserAbortError, APITimeoutError, Image, TypeSafeClient, TypeSafeError, type EntryType, type Questions } from '@typesafe-ai/sdk';
 import { z } from 'zod';
-import { MODEL, type Question } from './contracts.js';
+import { ENDPOINT, validateReturnedModel, type ModelSelector, type Question } from './contracts.js';
 import { isBoundedJsonStructure, structuredEntrySchema, type StructuredEntry } from './batch.js';
+import { boxAnswerSchema, type ImageAsset } from './media.js';
 
 export type ProviderRequestIdHeader = 'x-typesafe-request-id' | 'x-request-id' | 'request-id';
 export const networkPolicyErrors = [
@@ -36,7 +37,6 @@ export type ResponseValidationDiagnostic = {
 export type ProviderTransport = {
   requestStartedAt: string;
   fetchInvoked: boolean;
-  attempts: number;
   responseReceivedAt: string | null;
   responseStatus: number | null;
   validatedResponse: boolean;
@@ -56,7 +56,7 @@ const number01 = z.number().finite().min(0).max(1);
 const responseSchema = z.strictObject({
   model: z.string(),
   answers: z.record(z.string(), z.unknown()),
-  usage: z.strictObject({input_tokens: z.number().int().nonnegative(), output_tokens: z.number().int().nonnegative()})
+  usage: z.strictObject({input_tokens: z.number().int().nonnegative().nullable(), output_tokens: z.number().int().nonnegative().nullable()})
 });
 const noulAnswerSchema = z.strictObject({type: z.literal('noul'), noul: number01});
 const choiceAnswerSchema = z.strictObject({type: z.literal('choice'), choice: z.string(), probabilities: z.record(z.string(), number01), confidence: number01});
@@ -67,11 +67,12 @@ const scoreAnswerSchema = z.strictObject({
 export type Answer =
   | {type: 'choice'; choice: string; probabilities: Record<string, number>; confidence: number}
   | {type: 'score'; score: number; legend: Record<string, StructuredEntry>; probabilities: Record<string, number>; confidence: number}
-  | {type: 'noul'; noul: number};
+  | {type: 'noul'; noul: number}
+  | {type: 'box'; box: {top: number; bottom: number; left: number; right: number}; confidence: number | null};
 export type Evaluation = {
   model: string;
   answers: Record<string, Answer>;
-  usage: {input_tokens: number; output_tokens: number};
+  usage: {input_tokens: number | null; output_tokens: number | null};
   transport?: ProviderTransport;
 };
 export type ProviderEvaluation = Evaluation & {transport: ProviderTransport};
@@ -80,13 +81,18 @@ export function fingerprintCredential(apiKey: string): string {
   return createHash('sha256').update(apiKey).digest('hex');
 }
 
-function requestIdentifier(requestId: string | undefined, apiKey: string): {
+function requestIdentifier(response: Response, apiKey: string): {
   providerRequestId: string | null;
   providerRequestIdHeader: ProviderRequestIdHeader | null;
 } {
-  // Keep only the SDK's bounded TypeSafe request ID; never retain a reflected credential.
-  if (requestId !== undefined && requestId.length <= 256 && /^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(requestId) && (!apiKey || !requestId.includes(apiKey))) {
-    return {providerRequestId: requestId, providerRequestIdHeader: 'x-typesafe-request-id'};
+  const names: ProviderRequestIdHeader[] = ['x-typesafe-request-id', 'x-request-id', 'request-id'];
+  for (const name of names) {
+    const value = response.headers.get(name);
+    // Keep only bounded opaque identifiers. This excludes whitespace, control
+    // characters, and reflected bearer credentials from receipts.
+    if (value !== null && value.length <= 256 && /^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(value) && !value.includes(apiKey)) {
+      return {providerRequestId: value, providerRequestIdHeader: name};
+    }
   }
   return {providerRequestId: null, providerRequestIdHeader: null};
 }
@@ -123,16 +129,20 @@ function invalidResponse(
   } : null);
 }
 
-export function validateEvaluation(raw: unknown, questions: Record<string, Question>, transport: ProviderTransport | null = null): Evaluation {
+export function validateEvaluation(raw: unknown, questions: Record<string, Question>, transport: ProviderTransport | null = null, requestedModel: ModelSelector = 'jev-1.13.0'): Evaluation {
   if (!isBoundedJsonStructure(raw)) invalidResponse(transport, 'response_schema');
   const parsedResult = responseSchema.safeParse(raw);
   if (!parsedResult.success) invalidResponse(transport, 'response_schema');
   const parsed = parsedResult.data;
-  if (parsed.model !== MODEL) invalidResponse(transport, 'model_mismatch');
+  if (!validateReturnedModel(requestedModel, parsed.model)) invalidResponse(transport, 'model_mismatch');
   if (!exactKeys(parsed.answers, questions)) invalidResponse(transport, 'answer_keys_mismatch');
   const answers: Record<string, Answer> = {};
   for (const [key, q] of Object.entries(questions)) {
-    if (q.type === 'noul') {
+    if (q.type === 'box') {
+      const result = boxAnswerSchema.safeParse(parsed.answers[key]);
+      if (!result.success) invalidResponse(transport, 'answer_schema', {questionId: safeQuestionId(key)});
+      answers[key] = result.data;
+    } else if (q.type === 'noul') {
       const result = noulAnswerSchema.safeParse(parsed.answers[key]);
       if (!result.success) invalidResponse(transport, 'answer_schema', {questionId: safeQuestionId(key)});
       answers[key] = result.data;
@@ -175,12 +185,18 @@ export function validateEvaluation(raw: unknown, questions: Record<string, Quest
 
 export async function evaluateProvider(args: {
   state: unknown; questions: Record<string, Question>; apiKey: string;
-  timeoutMs: number; signal?: AbortSignal; fetchFn?: typeof fetch
+  timeoutMs: number; model?: ModelSelector; longContext?: boolean; assets?: Record<string, ImageAsset>; experimentalImages?: boolean; signal?: AbortSignal; fetchFn?: typeof fetch
 }): Promise<ProviderEvaluation> {
+  const model = args.model ?? 'jev-1.13.0';
+  const hasBoxQuestion = Object.values(args.questions).some(question => question.type === 'box');
+  if (args.assets && !args.experimentalImages) throw new ProviderError('experimental_images_required', null);
+  if (hasBoxQuestion && !args.assets) throw new ProviderError('box_requires_image', null);
+  if (hasBoxQuestion && model !== 'jev-1.14.0' && model !== 'jev-preview') throw new ProviderError('box_model_unsupported', null);
+  const timeout = AbortSignal.timeout(args.timeoutMs);
+  const signal = args.signal ? AbortSignal.any([args.signal, timeout]) : timeout;
   let transport: ProviderTransport = {
     requestStartedAt: new Date().toISOString(),
     fetchInvoked: false,
-    attempts: 0,
     responseReceivedAt: null,
     responseStatus: null,
     validatedResponse: false,
@@ -189,111 +205,89 @@ export async function evaluateProvider(args: {
     retryAfter: null,
     credentialFingerprint: fingerprintCredential(args.apiKey),
   };
-  let missingBody = false;
-  let responseTooLarge = false;
-  let invalidJson = false;
-  const fetchFn = args.fetchFn ?? fetch;
+  let responseFailure: ProviderError | undefined;
   const instrumentedFetch = async (input: string, init?: RequestInit): Promise<Response> => {
-    transport = {...transport, fetchInvoked: true, attempts: transport.attempts + 1};
-    const response = await fetchFn(input, {...init, redirect: 'error'});
-    const policyError = response.status === 403 ? networkPolicyError(response) : null;
-    transport = {
-      ...transport,
-      responseReceivedAt: new Date().toISOString(),
-      responseStatus: response.status,
-      ...requestIdentifier(response.headers.get('x-typesafe-request-id') ?? undefined, args.apiKey),
-      retryAfter: retryAfter(response, args.apiKey),
-      ...(policyError ? {networkPolicyError: policyError} : {}),
-    };
-    if (!response.ok) {
-      await response.body?.cancel().catch(() => {});
-      const headers = new Headers(response.headers);
-      headers.delete('content-length');
-      return new Response(null, {status: response.status, statusText: response.statusText, headers});
-    }
-    if (!response.body) {
-      missingBody = true;
-      return response;
-    }
-
-    const reader = response.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-    let tooLarge = false;
+    transport = {...transport, fetchInvoked: true};
+    const response = await (args.fetchFn ?? fetch)(input, {...init, redirect: 'error'});
     try {
-      while (true) {
-        const next = await reader.read();
-        if (next.done) break;
-        size += next.value.byteLength;
-        if (size > 65536) {
-          tooLarge = true;
-          await reader.cancel().catch(() => {});
-          break;
-        }
-        chunks.push(next.value);
+      const policyError = response.status === 403 ? networkPolicyError(response) : null;
+      transport = {
+        ...transport,
+        responseReceivedAt: new Date().toISOString(),
+        responseStatus: response.status,
+        ...requestIdentifier(response, args.apiKey),
+        retryAfter: retryAfter(response, args.apiKey),
+        ...(policyError ? {networkPolicyError: policyError} : {}),
+      };
+      if (!response.ok) {
+        await response.body?.cancel().catch(() => {});
+        const headers = new Headers(response.headers);
+        headers.delete('content-length');
+        headers.delete('content-encoding');
+        return new Response(null, {status: response.status, statusText: response.statusText, headers});
       }
-    } finally {
-      reader.releaseLock();
-    }
-    if (tooLarge) {
-      responseTooLarge = true;
+      // Bound the response even when content-length is missing or dishonest.
+      if (!response.body) invalidResponse(transport, 'missing_body');
+      const reader = response.body.getReader();
+      const chunks: Uint8Array[] = []; let size = 0;
+      try {
+        while (true) {
+          const next = await reader.read();
+          if (next.done) break;
+          size += next.value.byteLength;
+          if (size > 65536) { await reader.cancel(); throw new ProviderError('response_too_large', transport); }
+          chunks.push(next.value);
+        }
+      } finally { reader.releaseLock(); }
+      const bytes = Buffer.concat(chunks);
+      try { JSON.parse(bytes.toString('utf8')); } catch { invalidResponse(transport, 'invalid_json'); }
       const headers = new Headers(response.headers);
       headers.delete('content-length');
-      return new Response(null, {status: response.status, statusText: response.statusText, headers});
+      headers.delete('content-encoding');
+      return new Response(bytes, {status: response.status, statusText: response.statusText, headers});
+    } catch (error) {
+      if (error instanceof ProviderError) responseFailure = error;
+      throw error;
     }
-
-    const bytes = new Uint8Array(size);
-    let offset = 0;
-    for (const chunk of chunks) {
-      bytes.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-    try {
-      JSON.parse(new TextDecoder().decode(bytes));
-    } catch {
-      invalidJson = true;
-    }
-    return new Response(bytes, {status: response.status, statusText: response.statusText, headers: response.headers});
   };
-
-  const requestSignal = args.signal;
-  if (requestSignal?.aborted) throw new ProviderError('cancelled', transport);
-  if (!args.apiKey.trim()) throw new ProviderError('authentication_failed', transport);
   try {
+    if (args.signal?.aborted) throw new ProviderError('cancelled', transport);
+    if (!args.apiKey.trim()) throw new ProviderError('authentication_failed', transport);
     const client = new TypeSafeClient({
-      apiKey: args.apiKey,
-      defaultModel: MODEL,
-      fetch: instrumentedFetch,
-      timeout: args.timeoutMs,
-      retry: {maxRetries: 0},
-      logLevel: 'off',
+      apiKey: args.apiKey, baseURL: new URL(ENDPOINT).origin, defaultModel: model,
+      fetch: instrumentedFetch, timeout: args.timeoutMs, retry: {maxRetries: 0},
+      compression: false, logLevel: 'off',
     });
-    const result = await client.systemOne(
-      {state: args.state as EntryType, questions: args.questions as unknown as Questions, model: MODEL},
-      {signal: requestSignal, timeout: args.timeoutMs},
-    ).withResponse();
-    transport = {...transport, ...requestIdentifier(result.requestId, args.apiKey)};
-    if (responseTooLarge) throw new ProviderError('response_too_large', transport);
-    if (missingBody) invalidResponse(transport, 'missing_body');
-    if (invalidJson) invalidResponse(transport, 'invalid_json');
-    const evaluation = validateEvaluation(result.data, args.questions, transport);
+    const {data} = await client.systemOne({
+      model, state: args.state as NonNullable<EntryType>, questions: args.questions as unknown as Questions,
+      ...(args.assets ? {assets: Object.fromEntries(Object.entries(args.assets).map(([name, asset]) => [name, Image.fromBase64(asset.data_base64)]))} : {}),
+    }, {signal, headers: {
+      ...(args.longContext ? {'TypeSafe-Danger-Zone-Long-Context': 'true'} : {}),
+      ...(args.experimentalImages ? {'TypeSafe-Danger-Zone-Images': 'true'} : {}),
+    }}).withResponse();
+    const evaluation = validateEvaluation(data, args.questions, transport, model);
     return {...evaluation, transport: {...transport, validatedResponse: true}};
   } catch (error) {
-    if (requestSignal?.aborted || error instanceof APIUserAbortError) throw new ProviderError('cancelled', transport);
+    if (args.signal?.aborted) throw new ProviderError('cancelled', transport);
+    if (timeout.aborted || error instanceof APITimeoutError) throw new ProviderError('timeout', transport);
+    if (responseFailure) throw responseFailure;
     if (error instanceof ProviderError) throw error;
+    if (error instanceof APIUserAbortError) throw new ProviderError('cancelled', transport);
     if (error instanceof APIError) {
-      transport = {...transport, ...requestIdentifier(error.requestId, args.apiKey)};
-      const code = error.status === 401 ? 'authentication_failed'
+      const code = error.status === 400 ? 'invalid_request'
+        : error.status === 401 ? 'authentication_failed'
         : error.status === 403 && transport.networkPolicyError ? 'network_policy_blocked'
         : error.status === 403 ? 'request_forbidden'
+        : error.status === 408 ? 'request_timeout'
+        : error.status === 413 ? 'request_too_large'
+        : error.status === 415 ? 'unsupported_media_type'
         : error.status === 422 ? 'invalid_request'
         : error.status === 429 ? 'rate_limited'
         : error.status === 529 ? 'provider_overloaded'
         : 'provider_error';
       throw new ProviderError(code, transport);
     }
-    if (error instanceof APITimeoutError) throw new ProviderError('timeout', transport);
     if (error instanceof APIConnectionError) throw new ProviderError('provider_unavailable', transport);
-    throw new ProviderError('provider_unavailable', transport);
+    throw new ProviderError(error instanceof TypeSafeError ? 'invalid_request' : 'provider_unavailable', transport);
   }
 }

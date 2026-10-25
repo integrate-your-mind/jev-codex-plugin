@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -50,6 +50,9 @@ describe('bundled MCP server', () => {
       assert.equal(statusText.includes('apiKey'), false);
       assert.equal(statusText.includes('TYPESAFE_API_KEY'), false);
       const statusData = JSON.parse(statusText);
+      const releaseVersion = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')).version;
+      assert.equal(client.getServerVersion()?.version, releaseVersion);
+      assert.equal(statusData.version, releaseVersion);
       assert.equal(statusData.budget.countingBasis, 'local_pre_dispatch_reservations');
       assert.equal(statusData.budget.reservedAttempts, 0);
       assert.equal(statusData.evaluations.providerBilledRequests, null);

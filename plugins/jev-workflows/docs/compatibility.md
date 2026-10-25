@@ -142,3 +142,17 @@ The MCP server exposes eight tools. Typed batches accept independent Choice, Nou
 Task context is versioned and scoped by workspace, session, and agent. Continue preserves the original objective; callers must explicitly replace or reset it when the task changes. Hooks preserve bounded structured argument values, omission and truncation metadata, evidence freshness, and origin/correlation identifiers. An abstained response emits no selected action in host guidance. Pure Jev wrapper calls are excluded from recursive consultation; mixed wrappers containing other work still receive consultation.
 
 Evidence identifiers are stable opaque labels. Context evidence IDs use 1–80 letters, digits, periods, underscores, colons, or hyphens; put paths, URLs, and line references in the separate source field. Outcome evidence IDs follow the tool schema and link to retained evidence; recording them is a caller report, never independent verification.
+
+## Version 0.4.1 hook delivery repair
+
+An assessed hook decision is emitted only when its ID belongs to an available candidate in that exact request. Concrete tool, task, context, strategy and result candidate IDs now reach host guidance and the compact invocation receipt. Unknown, unavailable, reserved or unsafe IDs are rejected. Abstention remains neutral; a provider choice retained for diagnosis is not emitted as selected advice.
+
+Current event candidate catalogs take precedence over saved task catalogs. Duplicate IDs and malformed availability do not silently choose a winner. Supplied catalogs receive a concrete selection question; events without a usable catalog retain the generic advisory question. This does not add catalog discovery to host events that do not supply one. Use `classify_decision` with actual candidates for choices the host does not expose.
+
+Hook context carries one structured task view and bounded current-prompt evidence. When compaction is necessary, it retains excerpts of the objective, latest step, recent constraints and corrections with explicit truncation and omission metadata. JSON encoding is included in the byte budget. This is a bounded view, not the entire conversation.
+
+This repair changes delivery and input preparation. It does not establish improved task completion or calibrate Jev confidence, alter the model or thresholds, or impose usage quotas.
+
+## Version 0.5.0 cross-host contract
+
+[Cross-host configuration](cross-host.md) describes native Claude support, current Jev models and nullable usage, explicit media support, and QQ conformance checks. The default remains pinned; current model aliases are not permanent mappings. Legacy payload bounds above describe the ordinary text path. Explicit media batches use a separate validated 32 MiB boundary.

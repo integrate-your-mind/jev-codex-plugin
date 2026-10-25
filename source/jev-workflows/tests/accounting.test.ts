@@ -18,7 +18,7 @@ async function receipt(root: string, n: number, fields: Record<string, unknown>)
   await writeFile(join(root, 'receipts', `${id(n)}.json`), JSON.stringify({receiptId:id(n),timestamp:now.toISOString(),...fields}));
 }
 function transport(responseStatus: number | null, validatedResponse = false, fingerprint = key) {
-  return {requestStartedAt:now.toISOString(), fetchInvoked:true, attempts:1, responseReceivedAt:responseStatus === null ? null : now.toISOString(), responseStatus, validatedResponse, credentialFingerprint:fingerprint, providerRequestId:null};
+  return {requestStartedAt:now.toISOString(), fetchInvoked:true, responseReceivedAt:responseStatus === null ? null : now.toISOString(), responseStatus, validatedResponse, credentialFingerprint:fingerprint, providerRequestId:null};
 }
 const countFields = [
   'receipts', 'assessed', 'abstained', 'unavailable', 'other',
@@ -26,6 +26,7 @@ const countFields = [
   'dispatchAttemptsWithMetadata', 'preDispatchFailures', 'httpResponses', 'httpSuccessResponses',
   'unknownNetworkOutcomes', 'providerRequestIdsPresent',
   'reportedInputTokens', 'reportedOutputTokens',
+  'unknownInputTokenCounts', 'unknownOutputTokenCounts',
 ] as const;
 function assertCredentialPartition(result: Awaited<ReturnType<typeof readEvaluationUsage>>) {
   for (const field of countFields) {
@@ -70,6 +71,19 @@ test('separates reservations, validated and legacy evaluations, HTTP errors, and
     assert.equal(result.countsIncomplete,false);
     assert.equal(result.countsIncompleteReason,null);
   } finally { await rm(root,{recursive:true,force:true}); }
+});
+
+test('accounts known token fields independently and preserves unknown counts', async () => {
+  const root = await fixture();
+  try {
+    await receipt(root, 1, {status: 'assessed', usage: {input_tokens: null, output_tokens: 7}, transport: transport(200, true)});
+    await receipt(root, 2, {status: 'abstained', usage: {input_tokens: 5, output_tokens: null}, transport: transport(200, true)});
+    const result = await readEvaluationUsage(root, key, now);
+    assert.equal(result.totals.reportedInputTokens, 5);
+    assert.equal(result.totals.reportedOutputTokens, 7);
+    assert.equal(result.totals.unknownInputTokenCounts, 1);
+    assert.equal(result.totals.unknownOutputTokenCounts, 1);
+  } finally { await rm(root, {recursive: true, force: true}); }
 });
 
 test('counts duplicate provider IDs separately and flags malformed receipts without reading symlinks', async () => {

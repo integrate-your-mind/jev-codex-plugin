@@ -18,6 +18,8 @@ const copyFixture = async (targetRoot) => {
     filter: (source) => !source.includes('/node_modules/') && !source.includes('/work/') && !source.includes('/receipts/'),
   });
   await cp(join(repositoryRoot, 'plugins/jev-workflows'), join(targetRoot, 'plugins/jev-workflows'), { recursive: true });
+  await cp(join(repositoryRoot, '.claude-plugin'), join(targetRoot, '.claude-plugin'), {recursive: true});
+  await cp(join(repositoryRoot, 'plugins/jev-workflows-claude'), join(targetRoot, 'plugins/jev-workflows-claude'), {recursive: true});
   await cp(verifier, join(targetRoot, 'scripts/verify-distribution.mjs'));
   await cp(join(repositoryRoot, 'source/jev-workflows/scripts/package-host.mjs'), join(targetRoot, 'source/jev-workflows/scripts/package-host.mjs'));
 };
@@ -41,3 +43,36 @@ test('distribution verifier rejects drift in a disposable fixture', async () => 
     await rm(temporaryRoot, { recursive: true, force: true });
   }
 });
+
+test('distribution verifier rejects Claude package drift', async () => {
+  const temporaryRoot = await mkdtemp(join(tmpdir(), 'jev-claude-drift-test-'));
+  try {
+    await copyFixture(temporaryRoot);
+    await writeFile(join(temporaryRoot, 'plugins/jev-workflows-claude/.mcp.json'), '{}\n');
+    await assert.rejects(execFileAsync(process.execPath, [verifier, '--root', temporaryRoot]), /Generated host file differs: \.mcp\.json/);
+  } finally { await rm(temporaryRoot, {recursive: true, force: true}); }
+});
+
+for (const [field, value, expected] of [
+  ['name', 'jev-for-claude', /Plugin identity must remain jev-workflows/],
+  ['displayName', 'Different product', /Display name must remain Jev Workflows/],
+]) {
+  test(`distribution verifier rejects matching Claude ${field} drift`, async () => {
+    const temporaryRoot = await mkdtemp(join(tmpdir(), 'jev-identity-test-'));
+    try {
+      await copyFixture(temporaryRoot);
+      for (const path of [
+        'source/jev-workflows/templates/claude/.claude-plugin/plugin.json',
+        'plugins/jev-workflows-claude/.claude-plugin/plugin.json',
+      ]) {
+        const absolute = join(temporaryRoot, path);
+        const manifest = JSON.parse(await readFile(absolute, 'utf8'));
+        manifest[field] = value;
+        await writeFile(absolute, `${JSON.stringify(manifest, null, 2)}\n`);
+      }
+      await assert.rejects(execFileAsync(process.execPath, [verifier, '--root', temporaryRoot]), expected);
+    } finally {
+      await rm(temporaryRoot, {recursive: true, force: true});
+    }
+  });
+}

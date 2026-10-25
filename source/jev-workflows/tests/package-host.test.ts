@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { test } from 'node:test';
 
 type ChildResult = {code: number | null; stdout: string; stderr: string};
 
-async function runPackageHost(args: string[]): Promise<ChildResult> {
+async function runPackageHost(args: string[], injectFailure = false): Promise<ChildResult> {
   return await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [join(process.cwd(), 'scripts/package-host.mjs'), ...args], {
       cwd: process.cwd(),
-      env: process.env,
+      env: {...process.env, ...(injectFailure ? {JEV_PACKAGE_TEST_FAIL_AFTER_STAGE: '1'} : {})},
     });
     let stdout = '';
     let stderr = '';
@@ -92,4 +92,36 @@ test('explicit legacy state directory remains shared by MCP and hooks', async ()
   } finally {
     await rm(parent, {recursive: true, force: true});
   }
+});
+
+test('marked legacy package regeneration removes stale generated files and preserves refusal state', async () => {
+  const parent = await mkdtemp('/tmp/jev-package-host-reconcile-');
+  const target = join(parent, 'jev-workflows');
+  try {
+    assert.equal((await runPackageHost([target])).code, 0);
+    await mkdir(join(target, 'skills', 'removed-skill', 'scripts'), {recursive: true});
+    await writeFile(join(target, 'skills', 'removed-skill', 'scripts', 'old.mjs'), 'stale\n');
+    assert.equal((await runPackageHost([target])).code, 0);
+    await assert.rejects(access(join(target, 'skills', 'removed-skill', 'scripts', 'old.mjs')));
+    await writeFile(join(target, 'unexpected.txt'), 'preserve\n');
+    const readme = await readFile(join(target, 'README.md'), 'utf8');
+    const refused = await runPackageHost([target]);
+    assert.notEqual(refused.code, 0);
+    assert.match(refused.stderr, /unrecognized path|unrecognized target entry/);
+    assert.equal(await readFile(join(target, 'README.md'), 'utf8'), readme);
+    assert.equal(await readFile(join(target, 'unexpected.txt'), 'utf8'), 'preserve\n');
+  } finally {
+    await rm(parent, {recursive: true, force: true});
+  }
+});
+
+
+test('fresh legacy package failure leaves no partial target and retry succeeds', async () => {
+  const parent = await mkdtemp('/tmp/jev-codex-fresh-failure-');
+  const target = join(parent, 'jev-workflows');
+  try {
+    assert.notEqual((await runPackageHost([target], true)).code, 0);
+    assert.deepEqual(await readdir(parent), []);
+    assert.equal((await runPackageHost([target])).code, 0);
+  } finally { await rm(parent, {recursive: true, force: true}); }
 });

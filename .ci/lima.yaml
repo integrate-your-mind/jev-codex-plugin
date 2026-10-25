@@ -1,0 +1,20 @@
+minimumLimaVersion: 2.0.0
+images:
+  - location: https://cloud-images.ubuntu.com/releases/resolute/release-20260927/ubuntu-26.04-server-cloudimg-arm64.img
+    arch: aarch64
+    digest: sha256:63a93bd5a8d76e33b15ceb5daa3657bd79be804748051ab178e643b0f5da22e7
+vmType: vz
+arch: aarch64
+cpus: 2
+memory: 3GiB
+disk: 15GiB
+plain: true
+propagateProxyEnv: false
+mounts: []
+ssh:
+  overVsock: false
+  loadDotSSHPubKeys: false
+  forwardAgent: false
+containerd:
+  system: false
+  user: false

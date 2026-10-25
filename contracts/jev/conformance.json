@@ -1,0 +1,14 @@
+{
+  "revision": "jev-2026-10-15.1",
+  "questions": {"route": {"type":"choice","instructions":"Choose the available candidate supported by state.","criteria":{"inspect":"Inspect the code","test":"Run the focused test","insufficient_evidence":"Evidence is missing"}}},
+  "cases": [
+    {"id":"pinned-normal","requestedModel":"jev-1.13.0","valid":true,"response":{"model":"jev-1.13.0","answers":{"route":{"type":"choice","choice":"test","probabilities":{"inspect":0.1,"test":0.8,"insufficient_evidence":0.1},"confidence":0.7}},"usage":{"input_tokens":100,"output_tokens":12}}},
+    {"id":"nullable-usage-preview","requestedModel":"jev-preview","valid":true,"response":{"model":"jev-1.14.0","answers":{"route":{"type":"choice","choice":"test","probabilities":{"inspect":0.1,"test":0.8,"insufficient_evidence":0.1},"confidence":0.7}},"usage":{"input_tokens":null,"output_tokens":null}}},
+    {"id":"independent-nullable-usage","requestedModel":"jev-latest","valid":true,"response":{"model":"jev-1.13.0","answers":{"route":{"type":"choice","choice":"test","probabilities":{"inspect":0.1,"test":0.8,"insufficient_evidence":0.1},"confidence":0.7}},"usage":{"input_tokens":100,"output_tokens":null}}},
+    {"id":"pinned-model-mismatch","requestedModel":"jev-1.13.0","valid":false,"response":{"model":"jev-1.14.0","answers":{"route":{"type":"choice","choice":"test","probabilities":{"inspect":0.1,"test":0.8,"insufficient_evidence":0.1},"confidence":0.7}},"usage":{"input_tokens":100,"output_tokens":12}}},
+    {"id":"foreign-model","requestedModel":"jev-preview","valid":false,"response":{"model":"foreign-1.14.0","answers":{"route":{"type":"choice","choice":"test","probabilities":{"inspect":0.1,"test":0.8,"insufficient_evidence":0.1},"confidence":0.7}},"usage":{"input_tokens":100,"output_tokens":12}}},
+    {"id":"unknown-choice","requestedModel":"jev-1.13.0","valid":false,"response":{"model":"jev-1.13.0","answers":{"route":{"type":"choice","choice":"delete","probabilities":{"inspect":0.1,"test":0.8,"insufficient_evidence":0.1},"confidence":0.7}},"usage":{"input_tokens":100,"output_tokens":12}}},
+    {"id":"missing-probability","requestedModel":"jev-1.13.0","valid":false,"response":{"model":"jev-1.13.0","answers":{"route":{"type":"choice","choice":"test","probabilities":{"inspect":0.2,"test":0.8},"confidence":0.7}},"usage":{"input_tokens":100,"output_tokens":12}}},
+    {"id":"negative-usage","requestedModel":"jev-1.13.0","valid":false,"response":{"model":"jev-1.13.0","answers":{"route":{"type":"choice","choice":"test","probabilities":{"inspect":0.1,"test":0.8,"insufficient_evidence":0.1},"confidence":0.7}},"usage":{"input_tokens":-1,"output_tokens":12}}}
+  ]
+}

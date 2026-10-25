@@ -1,10 +1,10 @@
 <img src="assets/jev-workflows-mark.svg" width="80" height="80" alt="Jev Workflows branching decision icon">
 
-# Jev Workflows for Codex
+# Jev Workflows for Codex and Claude Code
 
-An open-source Codex plugin for consulting [TypeSafe Jev](https://docs.typesafe.ai/) about tools, models, tasks, skills, context, strategies, and custom decisions. It also diagnoses failed commands and checks completion claims against evidence.
+An open-source Codex and Claude Code plugin for consulting [TypeSafe Jev](https://docs.typesafe.ai/) about tools, models, tasks, skills, context, strategies, and custom decisions. It also diagnoses failed commands and checks completion claims against evidence.
 
-The current source package is version **0.5.0**. It includes the full MCP plugin, eight MCP tools, twelve lifecycle adapters, and three standalone skills that work without MCP. See [verification results](VERIFICATION.md) for tests and independent agent QA. This community Git marketplace is publicly installable; OpenAI Directory review is separate.
+The current source package is version **0.5.1**. It includes the full MCP plugin, eight MCP tools, twelve lifecycle adapters, and three standalone skills that work without MCP. See [verification results](VERIFICATION.md) for tests and independent agent QA. This community Git marketplace is publicly installable; OpenAI Directory review is separate.
 
 **Official catalog status:** the catalog contribution is [prepared in a public fork](https://github.com/openai/plugins/compare/main...integrate-your-mind:codex-official-plugins:jev-workflows-marketplace-entry), but OpenAI restricts upstream PR creation to repository collaborators. No official store listing is live. The separate directory draft also needs local-plugin compatibility review; [publication requirements](source/jev-workflows/docs/publication.md) record the remaining dependencies.
 
@@ -20,6 +20,25 @@ codex plugin add jev-workflows@jev-workflows
 Start a fresh Codex task and ask: **“Check Jev status, then use Jev to help choose tools and review my work.”** Review and trust the installed hooks when prompted. To enable automatic consultation, ask: **“Enable Jev automation for all my workspaces.”** Fresh installs keep automation disabled until you enable it.
 
 There is no plugin-imposed daily, byte, or session quota by default. TypeSafe's API charges and rate limits apply. Prebuilt entrypoints are included; users do not need to run npm install.
+
+## Claude Code
+
+The same engine is packaged with native Claude manifests, hooks and MCP configuration:
+
+```sh
+claude plugin marketplace add integrate-your-mind/jev-codex-plugin
+claude plugin install jev-workflows@jev-workflows
+```
+
+Restart or reload plugins, then use `jev_status`. Enable automation explicitly through `configure_automation`, as in Codex. Claude's host adapter supplies local turn identities and converts failed-tool events; it never approves permissions or forces a Stop continuation. See [cross-host configuration](source/jev-workflows/docs/cross-host.md).
+
+This uses the repository's Git marketplace and the stable plugin ID `jev-workflows`; it is not an Anthropic official marketplace or directory listing. The manifest displays the plugin as **Jev Workflows** in Claude Code.
+
+## Jev protocol updates
+
+The default remains pinned to `jev-1.13.0`. Select `JEV_MODEL=jev-1.14.0`, `jev-preview`, or `jev-latest` explicitly; receipts retain the actual model returned. Nullable token counts remain unknown, never fabricated zeros. Experimental images and Box questions require explicit batch opt-in; ordinary hooks send text only. Neither model availability nor transport compatibility establishes an improvement in decision quality.
+
+The plugin and QQ share [versioned contract fixtures](contracts/jev). Run `node scripts/sync-jev-contract.mjs /path/to/qq` to detect drift; after reviewing a contract update use `--write` and run both clients' tests. This is a deterministic source check, not a scheduled updater.
 
 ## Standalone skills
 
@@ -38,7 +57,7 @@ The CLI defaults to a local preview. Authorized evaluation requires `--evaluate`
 - `classify_decision`: compare your actual available candidates across eight domains or any custom taxonomy.
 - `classify_failure`: diagnose a failed command using selected evidence.
 - `check_completion`: assess whether evidence supports a claim.
-- `evaluate_decisions`: evaluate independent typed Choice, Noul, and Score questions against one shared structured state.
+- `evaluate_decisions`: evaluate independent typed Choice, Noul, Score, and opt-in Box questions against one shared structured state.
 - `update_task_context`: maintain bounded, provenance-bearing context for one workspace, session, and agent, with explicit continue, replace, and reset operations.
 - `record_decision_outcome`: link a caller-reported observation to an existing local receipt and evidence IDs without treating it as independent verification.
 - `jev_status` and `configure_automation`: inspect and control local operation.
@@ -54,8 +73,10 @@ Task context is local and scoped to the actual workspace, session, and agent. `c
 
 - [Complete source and development instructions](source/jev-workflows/README.md)
 - [Installable Codex package](plugins/jev-workflows)
+- [Installable Claude Code package](plugins/jev-workflows-claude)
 - [Release downloads](https://github.com/integrate-your-mind/jev-codex-plugin/releases)
 - [Verification report](VERIFICATION.md)
+- [Run GitHub Actions locally without hosted minutes](docs/ci.md)
 - [Compatibility and event contract](source/jev-workflows/docs/compatibility.md)
 - [Privacy and local retention](source/jev-workflows/docs/privacy.md)
 - [Distribution and official-directory status](source/jev-workflows/docs/distribution.md)
@@ -68,6 +89,16 @@ official directory approval or partner acceptance of local execution and
 persistent credential handling.
 
 ## Development
+
+CI runs locally through `act`, with an installed pre-push hook verifying each exact commit in an isolated Linux VM. See [setup and execution](docs/ci.md). GitHub-hosted scheduling is disabled.
+
+Run the shared checks directly during development:
+
+```sh
+node scripts/verify.mjs
+```
+
+For focused source changes:
 
 ```sh
 cd source/jev-workflows
