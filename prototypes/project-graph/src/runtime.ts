@@ -35,14 +35,21 @@ function cursorDecode(value: string): {version: string; source: string; queryHas
 
 class TraceWriter {
   readonly #path: string;
+  #pending = Promise.resolve();
   constructor(stateDirectory: string) { this.#path = resolve(stateDirectory, 'trace.jsonl'); }
-  async append(event: TraceEvent): Promise<void> {
-    await mkdir(dirname(this.#path), {recursive: true, mode: 0o700});
-    const handle = await open(this.#path, constants.O_WRONLY | constants.O_APPEND | constants.O_CREAT | constants.O_NOFOLLOW, 0o600);
-    try { await handle.writeFile(`${JSON.stringify(event)}\n`); }
-    finally { await handle.close(); }
+  append(event: TraceEvent): Promise<void> {
+    const pending = this.#pending.then(async () => {
+      await mkdir(dirname(this.#path), {recursive: true, mode: 0o700});
+      const handle = await open(this.#path, constants.O_WRONLY | constants.O_APPEND | constants.O_CREAT | constants.O_NOFOLLOW, 0o600);
+      try { await handle.writeFile(`${JSON.stringify(event)}\n`); }
+      finally { await handle.close(); }
+    });
+    this.#pending = pending.catch(() => {});
+    return pending;
   }
 }
+
+type FrozenExpansion = {orderedNodeIds: string[]; requiredNodeIds: string[]; rankAudit: RankAudit};
 
 export type RuntimeOptions = {
   root: string;
@@ -59,7 +66,10 @@ export class ProjectGraphRuntime {
   readonly #trace: TraceWriter;
   #snapshot?: GraphSnapshot;
   #visited = new Set<string>();
-  #expansionOrders = new Map<string, {orderedNodeIds: string[]; requiredNodeIds: string[]; rankAudit: RankAudit}>();
+  #expansionOrders = new Map<string, Promise<FrozenExpansion>>();
+  #deliveredNodePackets = new Map<string, Set<string>>();
+  #deliveredPackets = new Set<string>();
+  #deliverySequence = 0;
 
   constructor(options: RuntimeOptions) {
     this.#root = options.root;
@@ -139,13 +149,16 @@ export class ProjectGraphRuntime {
     const packetHash = sha({graphVersion: graph.graphVersion, operation: 'search', query, nodeIds: nodes.map(node => node.nodeId)});
     await this.#trace.append(this.#event('rank', graph, packetHash, rank.audit.orderedNodeIds, started, rank.audit));
     const result: SearchResult = {operation: 'search', graphVersion: graph.graphVersion, packetHash, cards: nodes.map(cardOf)};
-    await this.#trace.append(this.#event('search', graph, packetHash, nodes.map(node => node.nodeId), started, {queryHash: sha(query)}));
+    await this.#trace.append(this.#event('search', graph, packetHash, nodes.map(node => node.nodeId), started, {query, queryHash: sha(query)}));
     return result;
   }
 
   async expand(nodeId: string, query = '', cursor?: string, signal?: AbortSignal): Promise<ExpandResult> {
     const started = process.hrtime.bigint();
     const graph = await this.#fresh();
+    const queryHash = sha(query);
+    const decoded = cursor === undefined ? undefined : cursorDecode(cursor);
+    if (decoded && (decoded.version !== graph.graphVersion || decoded.source !== nodeId || decoded.queryHash !== queryHash)) throw new Error('stale or mismatched cursor');
     this.#requireNode(graph, nodeId);
     const requiredIds = new Set<string>();
     const optionalIds = new Set<string>();
@@ -157,24 +170,30 @@ export class ProjectGraphRuntime {
     }
     for (const id of requiredIds) optionalIds.delete(id);
     const expansionKey = `${graph.graphVersion}\0${nodeId}\0${query}`;
-    let frozen = this.#expansionOrders.get(expansionKey);
+    let pending = this.#expansionOrders.get(expansionKey);
     let rankedNow = false;
-    if (!frozen) {
+    if (!pending) {
       const required = [...requiredIds].map(id => graph.nodes.get(id)!).sort((a, b) => this.#edgePriority(edges, nodeId, a.nodeId) - this.#edgePriority(edges, nodeId, b.nodeId) || a.nodeId.localeCompare(b.nodeId));
       const optional = [...optionalIds].map(id => graph.nodes.get(id)!);
-      const rank = await this.#ranker.rank(optional, this.#rankContext('expand', query, graph, nodeId), signal);
-      frozen = {orderedNodeIds: [...required, ...rank.nodes].map(node => node.nodeId), requiredNodeIds: required.map(node => node.nodeId), rankAudit: rank.audit};
-      this.#expansionOrders.set(expansionKey, frozen);
+      pending = this.#ranker.rank(optional, this.#rankContext('expand', query, graph, nodeId), signal).then(rank => ({
+        orderedNodeIds: [...required, ...rank.nodes].map(node => node.nodeId), requiredNodeIds: required.map(node => node.nodeId), rankAudit: rank.audit,
+      }));
+      this.#expansionOrders.set(expansionKey, pending);
       rankedNow = true;
+    }
+    let frozen: FrozenExpansion;
+    try { frozen = await pending; }
+    catch (error) {
+      if (this.#expansionOrders.get(expansionKey) === pending) this.#expansionOrders.delete(expansionKey);
+      throw error;
     }
     const ordered = frozen.orderedNodeIds.map(id => graph.nodes.get(id)!);
     const orderHash = sha(ordered.map(node => node.nodeId));
-    const queryHash = sha(query);
     let offset = 0;
-    if (cursor) {
-      const decoded = cursorDecode(cursor);
-      if (decoded.version !== graph.graphVersion || decoded.source !== nodeId || decoded.queryHash !== queryHash || decoded.orderHash !== orderHash) throw new Error('stale or mismatched cursor');
+    if (decoded) {
+      if (decoded.orderHash !== orderHash) throw new Error('stale or mismatched cursor');
       offset = decoded.offset;
+      if (offset === 0 || offset % PAGE_SIZE !== 0 || offset >= ordered.length) throw new Error('invalid cursor offset');
     }
     const page = ordered.slice(offset, offset + PAGE_SIZE);
     page.forEach(node => this.#visited.add(node.nodeId));
@@ -186,7 +205,9 @@ export class ProjectGraphRuntime {
     const result: ExpandResult = {operation: 'expand', graphVersion: graph.graphVersion, packetHash, sourceNodeId: nodeId, cards: page.map(cardOf), ...(nextCursor ? {nextCursor} : {})};
     await this.#trace.append(this.#event('expand', graph, packetHash, page.map(node => node.nodeId), started, {
       sourceNodeId: nodeId,
+      query,
       queryHash,
+      exposedByPacketHashes: [...(this.#deliveredNodePackets.get(nodeId) ?? [])],
       orderHash,
       offset,
       candidateNodeIds: [...frozen.requiredNodeIds, ...frozen.rankAudit.candidateNodeIds],
@@ -205,7 +226,7 @@ export class ProjectGraphRuntime {
     this.#visited.add(nodeId);
     const packetHash = sha({graphVersion: graph.graphVersion, operation: 'read', nodeId, contentHash: node.contentHash});
     const result: ReadResult = {operation: 'read', graphVersion: graph.graphVersion, packetHash, card: cardOf(node)};
-    await this.#trace.append(this.#event('read', graph, packetHash, [nodeId], started));
+    await this.#trace.append(this.#event('read', graph, packetHash, [nodeId], started, {exposedByPacketHashes: [...(this.#deliveredNodePackets.get(nodeId) ?? [])]}));
     return result;
   }
 
@@ -213,7 +234,18 @@ export class ProjectGraphRuntime {
     const nodeIds = result.operation === 'read' ? [result.card.nodeId] : result.cards.map(card => card.nodeId);
     const graph = this.#snapshot;
     if (!graph || graph.graphVersion !== result.graphVersion) return;
-    await this.#trace.append(this.#event('tool_output', graph, result.packetHash, nodeIds, process.hrtime.bigint(), {operation: result.operation}));
+    const event = this.#event('tool_output', graph, result.packetHash, nodeIds, process.hrtime.bigint(), {
+      operation: result.operation,
+      deliverySequence: ++this.#deliverySequence,
+      duplicateDelivery: this.#deliveredPackets.has(result.packetHash),
+    });
+    this.#deliveredPackets.add(result.packetHash);
+    for (const nodeId of nodeIds) {
+      const packets = this.#deliveredNodePackets.get(nodeId) ?? new Set<string>();
+      packets.add(result.packetHash);
+      this.#deliveredNodePackets.set(nodeId, packets);
+    }
+    await this.#trace.append(event);
   }
 
   async #fresh(): Promise<GraphSnapshot> {
@@ -231,6 +263,8 @@ export class ProjectGraphRuntime {
       this.#snapshot = snapshot;
       this.#visited.clear();
       this.#expansionOrders.clear();
+      this.#deliveredNodePackets.clear();
+      this.#deliveredPackets.clear();
       const packetHash = sha({graphVersion: this.#snapshot.graphVersion, nodeIds: [...this.#snapshot.nodes.keys()], edges: this.#snapshot.edges});
       await this.#trace.append(this.#event('graph_built', this.#snapshot, packetHash, [...this.#snapshot.nodes.keys()], started, {
         sourceFiles: this.#snapshot.sourceFiles,
@@ -270,6 +304,7 @@ export class ProjectGraphRuntime {
       atMonotonicNs: String(process.hrtime.bigint()),
       durationNs: String(process.hrtime.bigint() - started),
       graphVersion: graph.graphVersion,
+      objective: this.#objective,
       packetHash,
       nodeIds,
       providerReceiptIds: rankAudit.providerReceiptIds ?? [],

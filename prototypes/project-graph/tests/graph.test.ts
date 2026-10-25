@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {mkdir, rm, symlink, writeFile} from 'node:fs/promises';
+import {mkdir, readFile, rm, symlink, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {afterEach, describe, it} from 'node:test';
 import {buildGraph} from '../src/graph.js';
@@ -84,6 +84,85 @@ describe('TypeScript project graph', () => {
     const delivered = [...first.cards, ...second.cards];
     assert.equal(new Set(delivered.map(card => card.nodeId)).size, 13);
     assert.equal(delivered.filter(card => card.name.startsWith('target')).length, 12);
+  });
+
+  it('shares the first frontier rank across concurrent expansion requests', async () => {
+    const setup = await fixture(); owned.push(setup.parent);
+    await writeFile(join(setup.root, 'frontier.ts'), [
+      ...Array.from({length: 12}, (_, index) => `export function target${index}(): number { return ${index}; }`),
+      `export function hub(): number { return ${Array.from({length: 12}, (_, index) => `target${index}()`).join(' + ')}; }`,
+    ].join('\n'));
+    let evaluations = 0;
+    let block = false;
+    let release!: () => void;
+    let entered!: () => void;
+    const waiting = new Promise<void>(resolve => { release = resolve; });
+    const ranking = new Promise<void>(resolve => { entered = resolve; });
+    const runtime = new ProjectGraphRuntime({
+      root: setup.root, stateDirectory: setup.state, arm: 'jev', objective: 'inspect hub',
+      evaluate: async () => {
+        evaluations += 1;
+        if (block) {
+          entered();
+          await waiting;
+        }
+        return {status: 'unavailable', reasonCode: 'offline-fixture'};
+      },
+    });
+    const found = await runtime.search('hub');
+    const hub = found.cards.find(card => card.name === 'hub')!;
+    evaluations = 0;
+    block = true;
+    const first = runtime.expand(hub.nodeId, 'target');
+    await ranking;
+    const second = runtime.expand(hub.nodeId, 'target');
+    release();
+    const pages = await Promise.all([first, second]);
+    assert.equal(evaluations, 1);
+    assert.deepEqual(pages[0], pages[1]);
+    const remaining = await runtime.expand(hub.nodeId, 'target', pages[0]!.nextCursor);
+    assert.deepEqual([...pages[0]!.cards, ...remaining.cards].map(card => card.name).sort(), ['frontier.ts', ...Array.from({length: 12}, (_, index) => `target${index}`)].sort());
+  });
+
+  it('rejects stale, mismatched, and skipped-page cursors before ranking a new frontier', async () => {
+    const setup = await fixture(); owned.push(setup.parent);
+    await writeFile(join(setup.root, 'many.ts'), Array.from({length: 12}, (_, index) => `export const item${index} = ${index};`).join('\n'));
+    const runtime = new ProjectGraphRuntime({root: setup.root, stateDirectory: setup.state, arm: 'graph', objective: 'inspect all exports'});
+    const file = (await runtime.search('many')).cards.find(card => card.name === 'many.ts')!;
+    const first = await runtime.expand(file.nodeId, 'item');
+    const decoded = JSON.parse(Buffer.from(first.nextCursor!, 'base64url').toString('utf8'));
+    const skipped = Buffer.from(JSON.stringify({...decoded, offset: 9})).toString('base64url');
+    await assert.rejects(runtime.expand(file.nodeId, 'item', skipped), /invalid cursor offset/);
+    await assert.rejects(runtime.expand(file.nodeId, 'another query', first.nextCursor), /stale or mismatched cursor/);
+    await writeFile(join(setup.root, 'many.ts'), 'export const replacement = 1;\n');
+    await assert.rejects(runtime.expand(file.nodeId, 'item', first.nextCursor), /stale or mismatched cursor/);
+    assert.equal((await runtime.search('replacement')).cards.some(card => card.name === 'replacement'), true);
+  });
+
+  it('links reads and expansion to delivered packets while retaining duplicate sends as distinct events', async () => {
+    const setup = await fixture(); owned.push(setup.parent);
+    const runtime = new ProjectGraphRuntime({root: setup.root, stateDirectory: setup.state, arm: 'graph', objective: 'repair greeting intent'});
+    const found = await runtime.search('greeting source intent');
+    const greeting = found.cards.find(card => card.name === 'greeting')!;
+    await runtime.read(greeting.nodeId);
+    await runtime.recordToolOutput(found);
+    await runtime.recordToolOutput(found);
+    const read = await runtime.read(greeting.nodeId);
+    const expansion = await runtime.expand(greeting.nodeId, 'format exact source intent');
+    const trace = (await readFile(join(setup.state, 'trace.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+    assert.equal(trace.find(event => event.type === 'search').query, 'greeting source intent');
+    assert.equal(trace.find(event => event.type === 'search').objective, 'repair greeting intent');
+    assert.deepEqual(trace.filter(event => event.type === 'read').map(event => event.exposedByPacketHashes), [[], [found.packetHash]]);
+    const outputs = trace.filter(event => event.type === 'tool_output');
+    assert.deepEqual(outputs.map(event => [event.deliverySequence, event.duplicateDelivery]), [[1, false], [2, true]]);
+    assert.deepEqual(outputs.map(event => event.nodeIds), [found.cards.map(card => card.nodeId), found.cards.map(card => card.nodeId)]);
+    const expanded = trace.find(event => event.type === 'expand');
+    assert.deepEqual(expanded.exposedByPacketHashes, [found.packetHash]);
+    assert.equal(expanded.query, 'format exact source intent');
+    for (const result of [found, read, expansion]) {
+      const publicText = JSON.stringify(result);
+      for (const field of ['objective', 'query', 'exposedByPacketHashes', 'provider', 'requestedArm', 'appliedArm', 'deliverySequence', 'duplicateDelivery']) assert.equal(publicText.includes(`"${field}`), false);
+    }
   });
 
   it('does not index symlinked source or turn an import outside the workspace into a semantic edge', async () => {
