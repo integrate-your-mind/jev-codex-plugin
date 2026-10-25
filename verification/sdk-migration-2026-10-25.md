@@ -35,7 +35,9 @@ tests, retained-build integrity and both generated host-package checks.
 The focused provider and service suite passed 34 tests on 2026-10-25. The original
 header assertions assumed a lowercase JavaScript object key; the SDK emits
 case-insensitive HTTP headers, so those assertions now use `Headers.get()`.
-Full verification and exact-head local CI remain pending at this checkpoint.
+The full `node scripts/verify.mjs` verifier passed on Node 26.10.0, macOS arm64: 199 runtime tests and 17 root verification tests, typecheck, retained-build integrity, manifests and Codex/Claude package parity. Exact-head local Linux CI remains pending before push.
+
+The full suite exposed two old test-transport assumptions: image requests were parsed as JSON instead of multipart, and one credential-rotation mock read a lowercase object key. Both fixtures now inspect the actual wire representation. The skill ZIP inspection also returns a SHA-256 digest instead of printing a bundle larger than the child-process output limit; it compares the entire archived CLI against the source bundle. Ten batch/rotation regressions and three packaging regressions passed after those repairs.
 
 All transport tests use injected responses and a fake credential. No real Jev
 request, coding trial, installation or benchmark was run. The previous live
