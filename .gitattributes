@@ -1,2 +1,5 @@
 # Preserve the byte-locked patch, including unified-diff blank context markers.
 benchmarks/plugin-development/experiment/variants/repair-bundled/repair-source.patch -whitespace
+benchmarks/plugin-development/restart/restart-source.patch -whitespace
+benchmarks/plugin-development/usage/usage-accounting.patch -whitespace
+benchmarks/results/2026-09-26-plugin-decisions-v1/repair-source.patch -whitespace
