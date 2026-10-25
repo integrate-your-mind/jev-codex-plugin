@@ -1,0 +1,16 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "project-graph",
+  "version": "0.1.0",
+  "description": "Experimental read-only TypeScript project graph MCP server",
+  "author": {"name": "Romy Mondello"},
+  "keywords": ["codex", "typescript", "graph"],
+  "extensions": {"com.openai": {"interface": {
+    "displayName": "Project Graph Prototype",
+    "shortDescription": "Traverse a TypeScript project graph",
+    "longDescription": "Search, expand, and read compiler-derived project nodes through an experimental read-only MCP server.",
+    "developerName": "Romy Mondello",
+    "category": "Developer Tools",
+    "capabilities": ["Read"]
+  }}}
+}

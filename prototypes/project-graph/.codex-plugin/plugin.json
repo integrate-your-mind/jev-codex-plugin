@@ -1,0 +1,15 @@
+{
+  "name": "project-graph",
+  "version": "0.1.0",
+  "description": "Experimental read-only TypeScript project graph MCP server",
+  "author": {"name": "Romy Mondello"},
+  "interface": {
+    "displayName": "Project Graph Prototype",
+    "shortDescription": "Traverse a TypeScript project graph",
+    "longDescription": "Search, expand, and read compiler-derived project nodes through an experimental read-only MCP server.",
+    "developerName": "Romy Mondello",
+    "category": "Developer Tools",
+    "capabilities": ["Read"]
+  },
+  "mcpServers": "./.mcp.json"
+}

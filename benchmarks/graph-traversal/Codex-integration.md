@@ -1,0 +1,7 @@
+# Codex graph adapter
+
+The graph adapter launches Codex 0.155.0 with a private `CODEX_HOME`, a symlink to the existing protected `auth.json`, and `--ignore-user-config`. It injects the experimental stdio MCP server through native `-c mcp_servers.project_graph.*` overrides. The server receives `PROJECT_GRAPH_ROOT`, `PROJECT_GRAPH_STATE`, `PROJECT_GRAPH_ARM`, and `PROJECT_GRAPH_OBJECTIVE`, plus its own `JEV_STATE_DIRECTORY` under the trial's `jev` directory. The coding process receives no Jev credentials or Jev hooks; an explicit `authorizeProvider` option is required before the graph server receives the existing `JEV_API_KEY_FILE` path.
+
+The three arms use the same `gpt-6-astra` and `high` settings. `graph`, `cheap`, and `jev` are passed as graph-server arm metadata; Jev calls are intentionally zero in this Codex adapter. Graph tool calls are retained from the native JSON event stream, with model/effort, usage, timing, raw paths, and nullable cost recorded in the private receipt.
+
+The adapter does not claim that a configured MCP entry was actually exercised unless the native stream includes a native `mcp_tool_call` item with the `project_graph` server/tool and operation arguments. Model and effort are resolved from the private Codex session's `turn_context` before cleanup when available; unknown values remain unknown and make the trial ineligible. Provider execution and independent grading remain the root runner's responsibilities.

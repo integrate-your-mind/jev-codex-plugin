@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "project-graph": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${PLUGIN_ROOT}/dist/server.mjs"],
+      "cwd": "${PLUGIN_ROOT}",
+      "env_vars": [
+        "PROJECT_GRAPH_ROOT",
+        "PROJECT_GRAPH_STATE",
+        "PROJECT_GRAPH_ARM",
+        "PROJECT_GRAPH_OBJECTIVE",
+        "JEV_STATE_DIRECTORY",
+        "JEV_API_KEY_FILE"
+      ]
+    }
+  }
+}
