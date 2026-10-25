@@ -112,3 +112,7 @@ npm run validate
 Tests use disposable local fixtures. Live evaluation is separately gated and requires an authorized TypeSafe key. No credentials, private receipts, or user transcripts belong in commits or issue reports.
 
 [MIT license](LICENSE). Independent community integration by Romy Mondello; not an official OpenAI or TypeSafe product.
+
+## Paired agent benchmarks
+
+The [reusable agent-quality harness](benchmarks/agent-quality/README.md) compares Jev off/on on the same coding tasks and fixed model settings within Codex, Claude Code and QQ. It records independent correctness, completion, all-attempt time, usage and nullable cost coverage. Small diagnostic cohorts do not establish a general quality improvement. Raw transcripts and credentials stay private.

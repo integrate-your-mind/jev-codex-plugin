@@ -26557,7 +26557,9 @@ function decisionInput(event, env, currentPrompt, taskContext, turnResults) {
     if (text) evidence.push({ id: safeId("result.tool_summaries"), text, source: "hook" });
   }
   const question = catalog.provided ? concreteCandidateQuestion(event, catalog) : event.name === "UserPromptSubmit" ? "Does the current user prompt support proceeding with the ordinary workflow, reconsidering direction, or gathering evidence first?" : event.name === "PreToolUse" ? "Should this tool action proceed, be reconsidered, or gather evidence?" : event.name === "PostToolUse" ? "After this tool result, should the next step proceed, be reconsidered, or gather evidence?" : event.name === "PermissionRequest" ? "What advisory feedback best fits this approval request without granting or denying it?" : event.name === "PreCompact" || event.name === "PostCompact" ? "Does this context-compaction lifecycle point support proceeding, reconsidering, or gathering evidence?" : event.name === "SubagentStart" ? "Does this subagent start fit the current task, or should the workflow be reconsidered or gather evidence?" : "Should this task result proceed, be reconsidered, or gather evidence?";
-  return { domain: domain2, question, context, candidates: catalog.candidates, evidence, mode: "evaluate" };
+  const input2 = { domain: domain2, question, context, candidates: catalog.candidates, evidence, mode: "evaluate" };
+  Object.defineProperty(input2, "candidateCatalogProvided", { value: catalog.provided, enumerable: false });
+  return input2;
 }
 function eventKey(event) {
   const promptIdentity = event.turnId || (typeof event.raw.event_id === "string" ? event.raw.event_id : hash2(event.prompt ?? "prompt"));
@@ -26657,12 +26659,15 @@ function normalizeDecisionAssessment(input2, result) {
     ...result.receiptPersisted === true && typeof result.receiptId === "string" ? { receiptPersisted: true, receiptId: result.receiptId } : {}
   };
 }
-function decisionOutput(event, result, input2) {
-  const prefix = event.name === "UserPromptSubmit" ? `${LOCAL_INSTRUCTION} ` : "";
+function decisionOutput(event, result, input2, env) {
+  const actionable = env?.JEV_HOOK_ADVICE_MODE === "actionable";
+  const prefix = !actionable && event.name === "UserPromptSubmit" ? `${LOCAL_INSTRUCTION} ` : "";
   const emit = (message) => ["Stop", "SubagentStop", "PermissionRequest", "Interrupt", "SessionEnd", "PreCompact", "PostCompact"].includes(event.name) ? { systemMessage: message } : { hookSpecificOutput: { hookEventName: event.name, additionalContext: message } };
   const status = typeof result.status === "string" && ["assessed", "abstained", "unavailable", "skipped", "preview"].includes(result.status) ? result.status : "unavailable";
   const fields = [`status=${status}`];
   const choice = status === "assessed" ? validatedCandidateChoice(input2, result) : void 0;
+  if (actionable && status !== "assessed") return {};
+  if (actionable && choice === "proceed" && input2?.candidateCatalogProvided !== true) return {};
   if (choice) fields.push(`decision=${choice}`);
   if (typeof result.confidence === "number" && Number.isFinite(result.confidence) && result.confidence >= 0 && result.confidence <= 1) {
     fields.push(`confidence=${result.confidence.toFixed(2)}`);
@@ -26763,7 +26768,7 @@ async function runDecisionHook(raw, options = {}) {
     const timeoutMs = options.hookTimeoutMs === void 0 ? eventTimeoutMs : Math.min(Math.max(options.hookTimeoutMs, 1), eventTimeoutMs);
     const deadline = startedAt + timeoutMs;
     const timeoutAssessment = { status: "unavailable", reasonCode: "hook_timeout" };
-    const timedOut = () => decisionOutput(event, timeoutAssessment);
+    const timedOut = () => decisionOutput(event, timeoutAssessment, void 0, env);
     if (Date.now() >= deadline) return timedOut();
     const allowedResult = await withinHookDeadline(deadline, () => workspaceAllowed(policy, event.cwd));
     if (allowedResult.expired) return timedOut();
@@ -26829,7 +26834,7 @@ async function runDecisionHook(raw, options = {}) {
     else result = normalizeDecisionAssessment(input2, result);
     const receipt = await withinHookDeadline(deadline, () => writeInvocationReceipt(event, env, input2, response, result));
     if (receipt.expired || Date.now() >= deadline) return timedOut();
-    return decisionOutput(event, result, input2);
+    return decisionOutput(event, result, input2, env);
   } catch {
     return {};
   }

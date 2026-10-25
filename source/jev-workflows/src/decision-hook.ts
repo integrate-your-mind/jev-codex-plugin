@@ -52,6 +52,7 @@ export type DecisionInput = {
   question: string;
   context: string;
   candidates: Array<{id: string; description: string; available?: boolean; metadata?: Record<string, string | number | boolean>}>;
+  candidateCatalogProvided?: boolean;
   evidence: Array<{id: string; text: string; source?: string}>;
   mode: 'preview' | 'evaluate';
 };
@@ -803,7 +804,9 @@ function decisionInput(event: NormalizedEvent, env: NodeJS.ProcessEnv, currentPr
           : event.name === 'SubagentStart'
             ? 'Does this subagent start fit the current task, or should the workflow be reconsidered or gather evidence?'
       : 'Should this task result proceed, be reconsidered, or gather evidence?';
-  return {domain, question, context, candidates: catalog.candidates, evidence, mode: 'evaluate'};
+  const input: DecisionInput = {domain, question, context, candidates: catalog.candidates, evidence, mode: 'evaluate'};
+  Object.defineProperty(input, 'candidateCatalogProvided', {value: catalog.provided, enumerable: false});
+  return input;
 }
 
 function eventKey(event: NormalizedEvent): string {
@@ -913,8 +916,9 @@ function normalizeDecisionAssessment(input: DecisionInput, result: DecisionAsses
   };
 }
 
-function decisionOutput(event: NormalizedEvent, result: DecisionAssessment, input?: DecisionInput): HookResult {
-  const prefix = event.name === 'UserPromptSubmit' ? `${LOCAL_INSTRUCTION} ` : '';
+function decisionOutput(event: NormalizedEvent, result: DecisionAssessment, input?: DecisionInput, env?: NodeJS.ProcessEnv): HookResult {
+  const actionable = env?.JEV_HOOK_ADVICE_MODE === 'actionable';
+  const prefix = !actionable && event.name === 'UserPromptSubmit' ? `${LOCAL_INSTRUCTION} ` : '';
   const emit = (message: string): HookResult => ['Stop', 'SubagentStop', 'PermissionRequest', 'Interrupt', 'SessionEnd', 'PreCompact', 'PostCompact'].includes(event.name)
     ? {systemMessage: message}
     : {hookSpecificOutput: {hookEventName: event.name, additionalContext: message}};
@@ -924,6 +928,8 @@ function decisionOutput(event: NormalizedEvent, result: DecisionAssessment, inpu
   // An abstention is intentionally neutral. The provider choice remains in
   // the private receipt for diagnosis, but must not nudge the host workflow.
   const choice = status === 'assessed' ? validatedCandidateChoice(input, result) : undefined;
+  if (actionable && status !== 'assessed') return {};
+  if (actionable && choice === 'proceed' && input?.candidateCatalogProvided !== true) return {};
   if (choice) fields.push(`decision=${choice}`);
   if (typeof result.confidence === 'number' && Number.isFinite(result.confidence) && result.confidence >= 0 && result.confidence <= 1) {
     fields.push(`confidence=${result.confidence.toFixed(2)}`);
@@ -1033,7 +1039,7 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
     const timeoutMs = options.hookTimeoutMs === undefined ? eventTimeoutMs : Math.min(Math.max(options.hookTimeoutMs, 1), eventTimeoutMs);
     const deadline = startedAt + timeoutMs;
     const timeoutAssessment: DecisionAssessment = {status: 'unavailable', reasonCode: 'hook_timeout'};
-    const timedOut = (): HookResult => decisionOutput(event, timeoutAssessment);
+    const timedOut = (): HookResult => decisionOutput(event, timeoutAssessment, undefined, env);
     if (Date.now() >= deadline) return timedOut();
     const allowedResult = await withinHookDeadline(deadline, () => workspaceAllowed(policy, event.cwd));
     if (allowedResult.expired) return timedOut();
@@ -1097,7 +1103,7 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
     else result = normalizeDecisionAssessment(input, result);
     const receipt = await withinHookDeadline(deadline, () => writeInvocationReceipt(event, env, input, response, result));
     if (receipt.expired || Date.now() >= deadline) return timedOut();
-    return decisionOutput(event, result, input);
+    return decisionOutput(event, result, input, env);
   } catch {
     return {};
   }

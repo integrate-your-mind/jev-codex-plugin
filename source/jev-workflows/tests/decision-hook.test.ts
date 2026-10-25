@@ -891,4 +891,30 @@ describe('decision hook', () => {
     assert.equal(abstain.hookSpecificOutput?.additionalContext,
       'JEV advisory: status=abstained; confidence=0.37; reason=low_confidence; receipt=11111111-1111-1111-1111-111111111111; continue ordinary reasoning and gather authorized evidence if useful.');
   });
+
+  it('keeps all consultations and receipts while actionable mode quiets neutral built-in output', async () => {
+    const environment = env(join(root, 'actionable-advice'));
+    environment.JEV_HOOK_ADVICE_MODE = 'actionable';
+    await enabledPolicy(environment);
+    let calls = 0;
+    const assessed = (choice: string): DecisionService => ({classifyDecision: async () => { calls += 1; return {status: 'assessed', choice, confidence: 0.91}; }});
+    const quietProceed = await runDecisionHook(JSON.stringify(toolEvent({tool_use_id: 'actionable-proceed'})), {env: environment, service: assessed('proceed')});
+    assert.deepEqual(quietProceed, {});
+    const quietReceiptPath = join(environment.PLUGIN_DATA!, 'decision-hook-v1', digest(process.cwd()), digest('session-1'), 'invocations', `${digest('PreToolUse\0session-1\0turn-1\0actionable-proceed')}.json`);
+    assert.equal((JSON.parse(await readFile(quietReceiptPath, 'utf8')) as Record<string, unknown>).assessmentStatus, 'assessed');
+
+    const custom = await runDecisionHook(JSON.stringify(toolEvent({tool_use_id: 'actionable-custom', task_context: {candidateCatalog: {tool: [{id: 'run_tests', description: 'Run the focused tests.'}]}}})), {env: environment, service: assessed('run_tests')});
+    assert.match(custom.hookSpecificOutput?.additionalContext ?? '', /status=assessed; decision=run_tests/);
+    assert.doesNotMatch(custom.hookSpecificOutput?.additionalContext ?? '', /Before choosing a tool/);
+
+    const reconsider = await runDecisionHook(JSON.stringify(toolEvent({hook_event_name: 'PostToolUse', tool_use_id: 'actionable-reconsider'})), {env: environment, service: assessed('reconsider')});
+    assert.match(reconsider.hookSpecificOutput?.additionalContext ?? '', /status=assessed; decision=reconsider/);
+
+    const abstained = await runDecisionHook(JSON.stringify(toolEvent({tool_use_id: 'actionable-abstained'})), {env: environment, service: {classifyDecision: async () => { calls += 1; return {status: 'abstained', confidence: 0.2, reasonCode: 'low_confidence'}; }}});
+    assert.deepEqual(abstained, {});
+
+    const session = await runDecisionHook(JSON.stringify(toolEvent({hook_event_name: 'SessionStart', tool_name: undefined, tool_use_id: undefined, turn_id: undefined})), {env: environment, service: assessed('proceed')});
+    assert.match(session.hookSpecificOutput?.additionalContext ?? '', /Before choosing a tool/);
+    assert.equal(calls, 4);
+  });
 });

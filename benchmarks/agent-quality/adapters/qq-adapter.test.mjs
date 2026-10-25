@@ -3,17 +3,18 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parseDiscovery, runTrial } from './qq.mjs';
+import { approvalDecision, parseDiscovery, runTrial } from './qq.mjs';
 
 function fakeTransport({ profiles = [{ id: 'default', approval_mode: 'read_only' }, { id: 'jev', approval_mode: 'read_only' }], events = [] } = {}) {
   const calls = [];
   return {
     calls,
-    async request(method, url, body) {
-      calls.push({ method, url, body });
+    async request(method, url, body, _headers, timeoutMs) {
+      calls.push({ method, url, body, timeoutMs });
       if (url.endsWith('/v1/capabilities')) return { status: 200, body: { profiles, protocol_version: 32 } };
       if (url.endsWith('/v1/workspaces/resolve')) return { status: 200, body: { outcome: { workspace_id: 'w1' } } };
       if (url.endsWith('/v1/sessions')) return { status: 200, body: { outcome: { session_id: 's1' } } };
+      if (url.endsWith('/v1/workspaces/snapshot')) return { status: 200, body: { focused: { session_id: 's1', model: 'openai-codex/gpt-6-astra', reasoning_effort: 'high' } } };
       if (url.endsWith('/v1/sessions/prompts')) return { status: 200, body: { outcome: { run_id: 'r1', queue_position: 0 } } };
       throw new Error(`unexpected route ${url}`);
     },
@@ -42,6 +43,7 @@ test('provider execution is explicit and off arm has no Jev prompt', async () =>
     assert.equal(receipt.error, 'provider execution requires explicit authorizeProvider:true');
     assert.equal(receipt.configuration.profile, 'default');
     assert.equal(transport.calls.some((call) => call.url.endsWith('/v1/sessions/prompts')), false);
+    assert.ok(transport.calls.every((call) => call.timeoutMs > 1_000), 'whole-trial requests must not receive a 1ms timeout');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
@@ -63,7 +65,7 @@ test('on arm requires the trusted Jev profile and preserves fixed model, effort,
     const create = transport.calls.find((call) => call.url.endsWith('/v1/sessions'));
     assert.equal(create.body.command.model.model, 'openai-codex/gpt-6.1-sol');
     assert.equal(create.body.command.reasoning_effort, 'medium');
-    assert.equal(create.body.command.approval_mode, 'read_only');
+    assert.equal(create.body.command.approval_mode, 'auto');
     assert.equal(create.body.command.profile, 'jev');
     const text = await readFile(join(root, 'on', 'receipt.json'), 'utf8');
     assert.doesNotMatch(text, /secret-never-receipted/);
@@ -78,5 +80,67 @@ test('on arm reports an unavailable treatment instead of claiming a causal Jev r
     assert.equal(receipt.completion, false);
     assert.match(receipt.error, /treatment unavailable/);
     assert.equal(transport.calls.some((call) => call.url.endsWith('/v1/sessions/prompts')), false);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('interruption cancels only the owned run and leaves the session intact', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'qq-adapter-'));
+  try {
+    const transport = fakeTransport();
+    transport.stream = async () => { throw new Error('stream interrupted'); };
+    const receipt = await runTrial({ workspace: root, prompt: 'repair fixture', arm: 'off', outputDir: root, runId: 'cancel', discoveryPath: await discoveryFile(root), transport, authorizeProvider: true });
+    assert.equal(receipt.completion, false);
+    const cancel = transport.calls.find((call) => call.url.endsWith('/v1/runs/cancel'));
+    assert.equal(cancel.body.command.type, 'cancel_run');
+    assert.equal(cancel.body.command.run_id, 'r1');
+    assert.equal(transport.calls.some((call) => call.url.endsWith('/v1/sessions/delete')), false);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('followups are rejected until QQ native continuation is implemented', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'qq-adapter-'));
+  try {
+    await assert.rejects(() => runTrial({ workspace: root, prompt: 'repair', followups: ['continue'], arm: 'off', outputDir: root }), /native continuation/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('SSE completion stops at the owned RunFinished envelope', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'qq-adapter-'));
+  try {
+    const transport = fakeTransport({ events: [
+      { cursor: { sequence: 1 }, session_id: 's1', run_id: 'r1', event: { type: 'run_finished', run_id: 'r1', outcome: 'completed', usage: { input_tokens: 1, output_tokens: 1 } } },
+      { cursor: { sequence: 2 }, session_id: 's1', run_id: 'other', event: { type: 'run_finished', run_id: 'other', outcome: 'completed' } },
+    ] });
+    let observed = 0;
+    transport.stream = async (_url, _headers, _timeout, onEvent) => {
+      for (const event of [
+        { cursor: { sequence: 1 }, session_id: 's1', run_id: 'r1', event: { type: 'run_finished', run_id: 'r1', outcome: 'completed', usage: { input_tokens: 1, output_tokens: 1 } } },
+        { cursor: { sequence: 2 }, session_id: 's1', run_id: 'other', event: { type: 'run_finished', run_id: 'other', outcome: 'completed' } },
+      ]) { observed += 1; if (await onEvent(event)) break; }
+    };
+    const receipt = await runTrial({ workspace: root, prompt: 'repair', arm: 'off', outputDir: root, runId: 'sse', discoveryPath: await discoveryFile(root), transport, authorizeProvider: true });
+    assert.equal(receipt.completion, true);
+    assert.equal(observed, 1);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+
+test('approval allowlist matches captured QQ study tools and rejects escapes/unknown executables', () => {
+  const workspace = '/private/tmp/cedar-study';
+  const event = (argumentsValue, shell, name = 'exec') => ({ run_id: 'run', event: { type: 'tool_approval_requested', run_id: 'run', tool_call: { id: 'tool', name, arguments: JSON.stringify(argumentsValue) }, shell: { command: shell } } });
+  assert.equal(approvalDecision(event({ program: 'node', args: ['--test', 'solution.test.mjs'], cwd: '.' }, 'node --test solution.test.mjs'), workspace).decision.type, 'approve_once');
+  assert.equal(approvalDecision(event({ program: 'node', args: ['--input-type=module', '-e', "import assert from 'node:assert/strict'; import { mergeIntervals } from './solution.mjs';"], cwd: '.' }, 'node -e ...'), workspace).decision.type, 'approve_once');
+  assert.equal(approvalDecision(event({ program: 'cat', args: ['/private/etc/passwd'], cwd: '.' }, 'cat /private/etc/passwd'), workspace).decision.type, 'deny');
+  assert.equal(approvalDecision(event({ program: 'node', args: ['--test', '../outside.test.mjs'], cwd: '.' }, 'node --test ../outside.test.mjs'), workspace).decision.type, 'deny');
+  assert.equal(approvalDecision(event({ program: 'node', args: ['--test', 'solution.test.mjs'], cwd: '.' }, 'node --test solution.test.mjs && cat secret'), workspace).decision.type, 'deny');
+  assert.equal(approvalDecision(event({ program: 'node', args: [], cwd: '.' }, 'node', 'python'), workspace).decision.type, 'deny');
+});
+
+test('cancelled terminal outcome is not completion', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'qq-adapter-'));
+  try {
+    const transport = fakeTransport({ events: [{ run_id: 'r1', event: { type: 'run_finished', run_id: 'r1', outcome: { type: 'cancelled' } } }] });
+    const receipt = await runTrial({ workspace: root, prompt: 'repair', arm: 'off', outputDir: root, runId: 'cancelled-terminal', discoveryPath: await discoveryFile(root), transport, authorizeProvider: true });
+    assert.equal(receipt.completion, false);
   } finally { await rm(root, { recursive: true, force: true }); }
 });

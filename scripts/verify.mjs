@@ -15,6 +15,7 @@ const steps = [
   [process.execPath, ['scripts/verify-build.mjs'], root],
   ...['test', 'validate'].map(name => ['npm', ['run', name], source]),
   [process.execPath, ['scripts/verify-distribution.mjs'], root],
+  [process.execPath, ['--test', 'benchmarks/agent-quality/runner.test.mjs', 'benchmarks/agent-quality/analyze.test.mjs', 'benchmarks/agent-quality/corpus.test.mjs', 'benchmarks/agent-quality/adapters/codex-adapter.test.mjs', 'benchmarks/agent-quality/adapters/claude-adapter.test.mjs', 'benchmarks/agent-quality/adapters/qq-adapter.test.mjs'], root],
   [process.execPath, ['--test', 'scripts/verify-build.test.mjs', 'scripts/verify-distribution.test.mjs', 'scripts/sync-jev-contract.test.mjs', 'scripts/local-ci.test.mjs'], root],
 ];
 
