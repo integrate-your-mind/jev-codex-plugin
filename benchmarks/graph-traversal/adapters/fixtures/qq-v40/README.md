@@ -1,0 +1,1 @@
+These unchanged headless golden fixtures come from `retsu-AI/qq` revision `77cd903ddee8381c47b13c01fb1547cba261ac73`, under `crates/qq-protocol/tests/fixtures/headless/v40/`. They use synthetic fixture identities. Their configured model is deliberately different from the matched study. Tests must not relabel that as successful study execution.
