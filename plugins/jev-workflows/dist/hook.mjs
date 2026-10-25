@@ -25559,10 +25559,10 @@ async function evaluateProvider(args) {
 }
 
 // src/store.ts
-import { mkdir, open as open2, rename, unlink, link } from "node:fs/promises";
+import { mkdir, open as open2, rename, unlink, link, rmdir, readdir, lstat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { basename, dirname, isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 var MAX_STATE_FILE_BYTES = 65536;
@@ -25587,85 +25587,96 @@ async function processIsAlive(pid) {
     return error62.code === "EPERM";
   }
 }
+var OWNER_FILE = /^owner-[a-f0-9-]{36}\.json$/;
 async function readLock(path) {
   try {
-    const handle = await open2(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    const info = await lstat(path);
+    if (info.isSymbolicLink()) return null;
+    const directory = info.isDirectory();
+    let entry = null;
+    if (directory) {
+      const entries = await readdir(path);
+      if (entries.length === 0) return { owner: null, mtimeMs: info.mtimeMs, dev: info.dev, ino: info.ino, directory, entry };
+      if (entries.length !== 1 || !OWNER_FILE.test(entries[0])) return null;
+      entry = entries[0];
+    } else if (!info.isFile()) return null;
+    const handle = await open2(entry ? join(path, entry) : path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     try {
-      const info = await handle.stat();
-      if (!info.isFile() || info.size > 2048) return null;
+      const file2 = await handle.stat();
+      if (!file2.isFile() || file2.size > 2048) return null;
       let owner = null;
       try {
         const value = JSON.parse(await handle.readFile("utf8"));
-        if (Number.isSafeInteger(value.pid) && value.pid > 0 && typeof value.token === "string" && /^[a-f0-9-]{36}$/.test(value.token) && typeof value.createdAt === "string" && Number.isFinite(Date.parse(value.createdAt))) {
+        if (Number.isSafeInteger(value.pid) && value.pid > 0 && typeof value.token === "string" && /^[a-f0-9-]{36}$/.test(value.token) && typeof value.createdAt === "string" && Number.isFinite(Date.parse(value.createdAt)) && (!entry || entry === `owner-${value.token}.json`)) {
           owner = { pid: value.pid, token: value.token, createdAt: value.createdAt };
         }
       } catch {
       }
-      return { owner, mtimeMs: info.mtimeMs };
+      if (directory && !owner) return null;
+      return { owner, mtimeMs: info.mtimeMs, dev: info.dev, ino: info.ino, directory, entry };
     } finally {
       await handle.close();
     }
-  } catch (error62) {
-    if (error62.code === "ENOENT") return null;
+  } catch {
     return null;
   }
 }
 async function reclaimStaleLock(path) {
   const observed = await readLock(path);
-  if (!observed) return false;
-  if (Date.now() - observed.mtimeMs < STALE_LOCK_MS) return false;
-  if (!observed.owner || await processIsAlive(observed.owner.pid)) return false;
+  if (!observed || Date.now() - observed.mtimeMs < STALE_LOCK_MS) return false;
+  if (observed.owner && await processIsAlive(observed.owner.pid)) return false;
   try {
-    await unlink(path);
-    return true;
-  } catch (error62) {
-    return error62.code === "ENOENT";
-  }
-}
-async function removeCreatedLockIfStillOwned(path, handle, identity) {
-  try {
-    const current = await open2(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
-    try {
-      const info = await current.stat();
-      if (info.dev === identity.dev && info.ino === identity.ino) await unlink(path);
-    } finally {
-      await current.close();
+    if (observed.directory) {
+      if (observed.entry) await unlink(join(path, observed.entry));
+      await rmdir(path);
+    } else {
+      const current = await lstat(path);
+      if (current.dev !== observed.dev || current.ino !== observed.ino) return false;
+      await unlink(path);
     }
+    return true;
   } catch {
+    return false;
   }
-  await handle.close().catch(() => {
-  });
 }
 async function acquireLock(path, attempts = LOCK_WAIT_ATTEMPTS) {
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    const token = randomUUID();
-    let handle;
-    let identity;
-    try {
-      handle = await open2(path, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 384);
-      identity = await handle.stat();
-      await handle.writeFile(JSON.stringify(lockData(token)));
-      await handle.sync();
-      return { handle, token };
-    } catch (error62) {
-      if (handle) {
-        if (identity) await removeCreatedLockIfStillOwned(path, handle, identity);
-        else await handle.close().catch(() => {
-        });
+  const token = randomUUID();
+  const entry = `owner-${token}.json`;
+  const temporary = join(dirname(path), `.${basename(path)}-${token}.tmp`);
+  await mkdir(temporary, { mode: 448 });
+  let handle;
+  let published = false;
+  try {
+    handle = await open2(join(temporary, entry), constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 384);
+    await handle.writeFile(JSON.stringify(lockData(token)));
+    await handle.sync();
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        await rename(temporary, path);
+        published = true;
+        return { handle, token };
+      } catch (error62) {
+        if (!["EEXIST", "ENOTEMPTY", "ENOTDIR"].includes(error62.code ?? "")) throw error62;
       }
-      if (error62.code !== "EEXIST") throw error62;
       await reclaimStaleLock(path);
-      await delay(LOCK_WAIT_MS);
+      if (attempt + 1 < attempts) await delay(LOCK_WAIT_MS);
     }
+    throw new Error("budget_busy");
+  } finally {
+    if (!published) await handle?.close().catch(() => {
+    });
+    await unlink(join(temporary, entry)).catch(() => {
+    });
+    await rmdir(temporary).catch(() => {
+    });
   }
-  throw new Error("budget_busy");
 }
 async function releaseLock(path, handle, token) {
   await handle.close().catch(() => {
   });
   try {
-    const observed = await readLock(path);
-    if (observed?.owner?.token === token) await unlink(path);
+    await unlink(join(path, `owner-${token}.json`));
+    await rmdir(path);
   } catch {
   }
 }
@@ -25826,6 +25837,8 @@ var FileStore = class {
     const date5 = new Date(timestamp).toISOString().slice(0, 10);
     const path = join(this.directory, `receipt-index-${date5}.json`);
     const lockPath = `${path}.lock`;
+    const existing = await lstat(path).catch(() => void 0);
+    if (existing && (!existing.isFile() || existing.size > MAX_STATE_FILE_BYTES)) return;
     let acquired;
     try {
       acquired = await acquireLock(lockPath);
@@ -25868,7 +25881,7 @@ var FileStore = class {
 
 // src/policy.ts
 import { constants as constants2 } from "node:fs";
-import { mkdir as mkdir2, open as open3, rename as rename2, lstat, realpath, unlink as unlink2 } from "node:fs/promises";
+import { mkdir as mkdir2, open as open3, rename as rename2, lstat as lstat2, realpath, unlink as unlink2 } from "node:fs/promises";
 import { isAbsolute as isAbsolute2, join as join2, sep } from "node:path";
 var POLICY_FILE = "policy.json";
 var MAX_POLICY_BYTES = 8 * 1024;
@@ -26064,7 +26077,7 @@ function createService(options = {}) {
   function status(policy = DEFAULT_POLICY) {
     const current = credential();
     return {
-      version: "0.5.1",
+      version: "0.5.2",
       provider: "TypeSafe",
       endpoint: ENDPOINT,
       model: model ?? env.JEV_MODEL ?? MODEL,

@@ -4280,16 +4280,16 @@ var require_jpeg_js = __commonJS({
 
 // src/claude-hook.ts
 import { constants as constants6 } from "node:fs";
-import { mkdir as mkdir5, open as open6, realpath as realpath4, rename as rename5, unlink as unlink5, lstat as lstat3 } from "node:fs/promises";
+import { mkdir as mkdir5, open as open6, realpath as realpath4, rename as rename5, unlink as unlink5, lstat as lstat4 } from "node:fs/promises";
 import { randomUUID as randomUUID5, createHash as createHash5 } from "node:crypto";
 import { join as join5, isAbsolute as isAbsolute6 } from "node:path";
 import { pathToFileURL } from "node:url";
 
 // src/store.ts
-import { mkdir, open, rename, unlink, link } from "node:fs/promises";
+import { mkdir, open, rename, unlink, link, rmdir, readdir, lstat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { basename, dirname, isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 var MAX_STATE_FILE_BYTES = 65536;
@@ -4314,85 +4314,96 @@ async function processIsAlive(pid) {
     return error62.code === "EPERM";
   }
 }
+var OWNER_FILE = /^owner-[a-f0-9-]{36}\.json$/;
 async function readLock(path) {
   try {
-    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    const info = await lstat(path);
+    if (info.isSymbolicLink()) return null;
+    const directory = info.isDirectory();
+    let entry = null;
+    if (directory) {
+      const entries = await readdir(path);
+      if (entries.length === 0) return { owner: null, mtimeMs: info.mtimeMs, dev: info.dev, ino: info.ino, directory, entry };
+      if (entries.length !== 1 || !OWNER_FILE.test(entries[0])) return null;
+      entry = entries[0];
+    } else if (!info.isFile()) return null;
+    const handle = await open(entry ? join(path, entry) : path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     try {
-      const info = await handle.stat();
-      if (!info.isFile() || info.size > 2048) return null;
+      const file2 = await handle.stat();
+      if (!file2.isFile() || file2.size > 2048) return null;
       let owner = null;
       try {
         const value = JSON.parse(await handle.readFile("utf8"));
-        if (Number.isSafeInteger(value.pid) && value.pid > 0 && typeof value.token === "string" && /^[a-f0-9-]{36}$/.test(value.token) && typeof value.createdAt === "string" && Number.isFinite(Date.parse(value.createdAt))) {
+        if (Number.isSafeInteger(value.pid) && value.pid > 0 && typeof value.token === "string" && /^[a-f0-9-]{36}$/.test(value.token) && typeof value.createdAt === "string" && Number.isFinite(Date.parse(value.createdAt)) && (!entry || entry === `owner-${value.token}.json`)) {
           owner = { pid: value.pid, token: value.token, createdAt: value.createdAt };
         }
       } catch {
       }
-      return { owner, mtimeMs: info.mtimeMs };
+      if (directory && !owner) return null;
+      return { owner, mtimeMs: info.mtimeMs, dev: info.dev, ino: info.ino, directory, entry };
     } finally {
       await handle.close();
     }
-  } catch (error62) {
-    if (error62.code === "ENOENT") return null;
+  } catch {
     return null;
   }
 }
 async function reclaimStaleLock(path) {
   const observed = await readLock(path);
-  if (!observed) return false;
-  if (Date.now() - observed.mtimeMs < STALE_LOCK_MS) return false;
-  if (!observed.owner || await processIsAlive(observed.owner.pid)) return false;
+  if (!observed || Date.now() - observed.mtimeMs < STALE_LOCK_MS) return false;
+  if (observed.owner && await processIsAlive(observed.owner.pid)) return false;
   try {
-    await unlink(path);
-    return true;
-  } catch (error62) {
-    return error62.code === "ENOENT";
-  }
-}
-async function removeCreatedLockIfStillOwned(path, handle, identity) {
-  try {
-    const current = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
-    try {
-      const info = await current.stat();
-      if (info.dev === identity.dev && info.ino === identity.ino) await unlink(path);
-    } finally {
-      await current.close();
+    if (observed.directory) {
+      if (observed.entry) await unlink(join(path, observed.entry));
+      await rmdir(path);
+    } else {
+      const current = await lstat(path);
+      if (current.dev !== observed.dev || current.ino !== observed.ino) return false;
+      await unlink(path);
     }
+    return true;
   } catch {
+    return false;
   }
-  await handle.close().catch(() => {
-  });
 }
 async function acquireLock(path, attempts = LOCK_WAIT_ATTEMPTS) {
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    const token = randomUUID();
-    let handle;
-    let identity;
-    try {
-      handle = await open(path, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 384);
-      identity = await handle.stat();
-      await handle.writeFile(JSON.stringify(lockData(token)));
-      await handle.sync();
-      return { handle, token };
-    } catch (error62) {
-      if (handle) {
-        if (identity) await removeCreatedLockIfStillOwned(path, handle, identity);
-        else await handle.close().catch(() => {
-        });
+  const token = randomUUID();
+  const entry = `owner-${token}.json`;
+  const temporary = join(dirname(path), `.${basename(path)}-${token}.tmp`);
+  await mkdir(temporary, { mode: 448 });
+  let handle;
+  let published = false;
+  try {
+    handle = await open(join(temporary, entry), constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 384);
+    await handle.writeFile(JSON.stringify(lockData(token)));
+    await handle.sync();
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        await rename(temporary, path);
+        published = true;
+        return { handle, token };
+      } catch (error62) {
+        if (!["EEXIST", "ENOTEMPTY", "ENOTDIR"].includes(error62.code ?? "")) throw error62;
       }
-      if (error62.code !== "EEXIST") throw error62;
       await reclaimStaleLock(path);
-      await delay(LOCK_WAIT_MS);
+      if (attempt + 1 < attempts) await delay(LOCK_WAIT_MS);
     }
+    throw new Error("budget_busy");
+  } finally {
+    if (!published) await handle?.close().catch(() => {
+    });
+    await unlink(join(temporary, entry)).catch(() => {
+    });
+    await rmdir(temporary).catch(() => {
+    });
   }
-  throw new Error("budget_busy");
 }
 async function releaseLock(path, handle, token) {
   await handle.close().catch(() => {
   });
   try {
-    const observed = await readLock(path);
-    if (observed?.owner?.token === token) await unlink(path);
+    await unlink(join(path, `owner-${token}.json`));
+    await rmdir(path);
   } catch {
   }
 }
@@ -4553,6 +4564,8 @@ var FileStore = class {
     const date5 = new Date(timestamp).toISOString().slice(0, 10);
     const path = join(this.directory, `receipt-index-${date5}.json`);
     const lockPath = `${path}.lock`;
+    const existing = await lstat(path).catch(() => void 0);
+    if (existing && (!existing.isFile() || existing.size > MAX_STATE_FILE_BYTES)) return;
     let acquired;
     try {
       acquired = await acquireLock(lockPath);
@@ -4595,7 +4608,7 @@ var FileStore = class {
 
 // src/policy.ts
 import { constants as constants2 } from "node:fs";
-import { mkdir as mkdir2, open as open3, rename as rename2, lstat, realpath, unlink as unlink2 } from "node:fs/promises";
+import { mkdir as mkdir2, open as open3, rename as rename2, lstat as lstat2, realpath, unlink as unlink2 } from "node:fs/promises";
 import { isAbsolute as isAbsolute2, join as join2, sep } from "node:path";
 
 // node_modules/zod/v4/classic/external.js
@@ -24332,7 +24345,7 @@ async function workspaceAllowed(policy, cwd) {
   if (policy.scope === "all-workspaces") return true;
   for (const root of policy.workspaces) {
     try {
-      const rootInfo = await lstat(root);
+      const rootInfo = await lstat2(root);
       if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) continue;
       const resolvedRoot = await realpath(root);
       if (resolvedRoot !== root) continue;
@@ -24346,7 +24359,7 @@ async function workspaceAllowed(policy, cwd) {
 // src/decision-hook.ts
 import { createHash as createHash4 } from "node:crypto";
 import { constants as constants5 } from "node:fs";
-import { mkdir as mkdir4, open as open5, realpath as realpath3, readdir, unlink as unlink4, lstat as lstat2, rename as rename4 } from "node:fs/promises";
+import { mkdir as mkdir4, open as open5, realpath as realpath3, readdir as readdir2, unlink as unlink4, lstat as lstat3, rename as rename4 } from "node:fs/promises";
 import { randomUUID as randomUUID4 } from "node:crypto";
 import { isAbsolute as isAbsolute5, join as join4 } from "node:path";
 
@@ -26094,7 +26107,7 @@ function createService(options = {}) {
   function status(policy = DEFAULT_POLICY) {
     const current = credential();
     return {
-      version: "0.5.1",
+      version: "0.5.2",
       provider: "TypeSafe",
       endpoint: ENDPOINT,
       model: model ?? env.JEV_MODEL ?? MODEL,
@@ -27088,7 +27101,7 @@ async function updatePromptCache(event, env) {
     const prompt = boundedWithEnv(event.prompt, MAX_PROMPT_BYTES, env);
     if (!prompt) {
       try {
-        const existing = await lstat2(path);
+        const existing = await lstat3(path);
         if (existing.isFile()) await unlink4(path);
       } catch {
       }
@@ -27104,7 +27117,7 @@ async function updatePromptCache(event, env) {
     }
     try {
       try {
-        const existing = await lstat2(path);
+        const existing = await lstat3(path);
         if (existing.isSymbolicLink() || !existing.isFile()) throw new Error("unsafe_prompt_cache");
       } catch (error62) {
         if (error62.code !== "ENOENT") throw error62;
@@ -27210,7 +27223,7 @@ async function readTurnResultCache(event, env) {
     }
   } catch {
     try {
-      const entries = await readdir(directory, { withFileTypes: true });
+      const entries = await readdir2(directory, { withFileTypes: true });
       if (entries.some((entry) => entry.isFile() && /^[a-f0-9]{64}\.json$/.test(entry.name))) return { status: "out_of_turn", results: [] };
     } catch {
     }
@@ -27560,7 +27573,7 @@ async function claimEvent(event, policy, env) {
     return false;
   }
   try {
-    const entries = await readdir(sessionDirectory, { withFileTypes: true });
+    const entries = await readdir2(sessionDirectory, { withFileTypes: true });
     if (entries.some((entry) => entry.isFile() && entry.name === eventName)) return false;
     const count = entries.filter((entry) => entry.isFile() && /^[a-f0-9]{64}$/.test(entry.name)).length;
     if (policy.maxHookCallsPerSession !== null && count >= policy.maxHookCallsPerSession) return false;
@@ -27597,8 +27610,14 @@ function normalizeDecisionAssessment(input2, result) {
   };
 }
 function decisionOutput(event, result, input2) {
-  const prefix = event.name === "UserPromptSubmit" ? `${LOCAL_INSTRUCTION} ` : "";
-  const emit = (message) => ["Stop", "SubagentStop", "PermissionRequest", "Interrupt", "SessionEnd", "PreCompact", "PostCompact"].includes(event.name) ? { systemMessage: message } : { hookSpecificOutput: { hookEventName: event.name, additionalContext: message } };
+  return advisoryOutput(event.name, result, input2);
+}
+function deadlineOutput(eventName) {
+  return advisoryOutput(eventName, { status: "unavailable", reasonCode: "hook_timeout" });
+}
+function advisoryOutput(eventName, result, input2) {
+  const prefix = eventName === "UserPromptSubmit" ? `${LOCAL_INSTRUCTION} ` : "";
+  const emit = (message) => ["Stop", "SubagentStop", "PermissionRequest", "Interrupt", "SessionEnd", "PreCompact", "PostCompact"].includes(eventName) ? { systemMessage: message } : { hookSpecificOutput: { hookEventName: eventName, additionalContext: message } };
   const status = typeof result.status === "string" && ["assessed", "abstained", "unavailable", "skipped", "preview"].includes(result.status) ? result.status : "unavailable";
   const fields = [`status=${status}`];
   const choice = status === "assessed" ? validatedCandidateChoice(input2, result) : void 0;
@@ -27775,6 +27794,10 @@ async function runDecisionHook(raw, options = {}) {
 }
 
 // src/claude-hook.ts
+var DEFAULT_DEADLINE_MS = 2500;
+var EVENT_DEADLINE_MS = /* @__PURE__ */ new Map([["UserPromptSubmit", 3500], ["SessionStart", 3500], ["SessionEnd", 1500]]);
+var OUTPUT_RESERVE_MS = 250;
+var FLUSH_GRACE_MS = 250;
 var SUPPORTED_EVENTS2 = /* @__PURE__ */ new Set([
   "SessionStart",
   "SessionEnd",
@@ -27823,7 +27846,7 @@ async function turnStatePath(raw, env) {
   if (!isAbsolute6(directory) || directory.includes("\0")) return void 0;
   try {
     const canonicalDirectory = await realpath4(directory);
-    const info = await lstat3(canonicalDirectory);
+    const info = await lstat4(canonicalDirectory);
     if (!info.isDirectory() || info.isSymbolicLink()) return void 0;
     return join5(canonicalDirectory, TURN_DIRECTORY, hash3(raw.cwd), hash3(`${HOST_PREFIX}${raw.session_id}`), "turn.json");
   } catch {
@@ -27838,12 +27861,12 @@ async function ensurePrivateDirectory(path) {
     for (const part of parts) {
       current = join5(current, part);
       try {
-        const info = await lstat3(current);
+        const info = await lstat4(current);
         if (info.isSymbolicLink() || !info.isDirectory()) return false;
       } catch (error62) {
         if (!(error62 instanceof Error && "code" in error62 && error62.code === "ENOENT")) return false;
         await mkdir5(current, { mode: 448 });
-        const info = await lstat3(current);
+        const info = await lstat4(current);
         if (info.isSymbolicLink() || !info.isDirectory()) return false;
       }
     }
@@ -27871,7 +27894,7 @@ async function writeStoredTurn(path, turnId) {
   const directory = join5(path, "..");
   try {
     if (!await ensurePrivateDirectory(directory)) return false;
-    const existing = await lstat3(path).catch(() => void 0);
+    const existing = await lstat4(path).catch(() => void 0);
     if (existing && (!existing.isFile() || existing.isSymbolicLink())) return false;
     const temporary = join5(directory, `.turn-${randomUUID5()}.tmp`);
     const handle = await open6(temporary, constants6.O_WRONLY | constants6.O_CREAT | constants6.O_EXCL | constants6.O_NOFOLLOW, 384);
@@ -27925,6 +27948,12 @@ function restoreOutput(result, originalName) {
   }
   return result;
 }
+function claudeHookDeadlineMs(eventName) {
+  return (typeof eventName === "string" ? EVENT_DEADLINE_MS.get(eventName) : void 0) ?? DEFAULT_DEADLINE_MS;
+}
+function deadlineResult(originalName) {
+  return restoreOutput(deadlineOutput(originalName === "PostToolUseFailure" ? "PostToolUse" : originalName), originalName);
+}
 async function runClaudeHook(raw, options = {}) {
   try {
     if (typeof raw === "string" && Buffer.byteLength(raw) > MAX_STDIN_BYTES2 || raw instanceof Uint8Array && raw.byteLength > MAX_STDIN_BYTES2) return {};
@@ -27937,7 +27966,16 @@ async function runClaudeHook(raw, options = {}) {
     if (isClaudeInternalTool(parsed)) return {};
     const turnId = await resolveTurn(parsed, env);
     if (TURN_EVENTS.has(originalName) && !turnId) return {};
-    const result = await runDecisionHook(commonEvent(parsed, turnId), options);
+    const { deadlineAt, onConsult, ...decisionOptions } = options;
+    const timedOut = deadlineResult(originalName);
+    onConsult?.(timedOut);
+    let hookTimeoutMs = decisionOptions.hookTimeoutMs;
+    if (deadlineAt !== void 0) {
+      const remainingMs = Math.floor(deadlineAt - performance.now());
+      if (remainingMs <= 0) return timedOut;
+      hookTimeoutMs = Math.min(hookTimeoutMs ?? remainingMs, remainingMs);
+    }
+    const result = await runDecisionHook(commonEvent(parsed, turnId), { ...decisionOptions, hookTimeoutMs });
     return restoreOutput(result, originalName);
   } catch {
     return {};
@@ -27954,11 +27992,48 @@ async function readStdin() {
   }
   return Buffer.concat(chunks);
 }
-async function main() {
-  process.stdout.write(JSON.stringify(await runClaudeHook(await readStdin())));
+var finished = false;
+function finish(result) {
+  if (finished) return;
+  finished = true;
+  const exit = () => process.exit(0);
+  setTimeout(exit, FLUSH_GRACE_MS);
+  process.stdout.once("error", exit);
+  try {
+    process.stdout.write(JSON.stringify(result), exit);
+  } catch {
+    exit();
+  }
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(await realpath4(process.argv[1])).href) void main().catch(() => process.stdout.write("{}"));
+async function main() {
+  let fallback = {};
+  let deadline = DEFAULT_DEADLINE_MS;
+  const arm = () => setTimeout(() => finish(fallback), Math.max(0, deadline - performance.now()));
+  let timer = arm();
+  const input2 = await readStdin();
+  let event = input2;
+  if (input2.byteLength <= MAX_STDIN_BYTES2) {
+    try {
+      event = JSON.parse(Buffer.from(input2).toString("utf8"));
+    } catch {
+    }
+  }
+  const eventDeadline = claudeHookDeadlineMs(isRecord3(event) ? event.hook_event_name : void 0);
+  if (eventDeadline !== deadline) {
+    clearTimeout(timer);
+    deadline = eventDeadline;
+    timer = arm();
+  }
+  finish(await runClaudeHook(event, {
+    deadlineAt: deadline - OUTPUT_RESERVE_MS,
+    onConsult: (value) => {
+      fallback = value;
+    }
+  }));
+}
+if (process.argv[1] && import.meta.url === pathToFileURL(await realpath4(process.argv[1])).href) void main().catch(() => finish({}));
 export {
+  claudeHookDeadlineMs,
   ensurePrivateDirectory,
   runClaudeHook
 };

@@ -1,20 +1,22 @@
 import assert from 'node:assert/strict';
 import { constants } from 'node:fs';
-import { access, lstat, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises';
+import { access, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import { configurePolicy } from '../src/policy.js';
-import { runClaudeHook } from '../src/claude-hook.js';
+import { claudeHookDeadlineMs, runClaudeHook } from '../src/claude-hook.js';
 
 const cwd = process.cwd();
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 
-async function runBuilt(entrypoint: string, event: Record<string, unknown>, env: NodeJS.ProcessEnv): Promise<{code: number | null; stdout: string; stderr: string}> {
+async function runBuilt(entrypoint: string, event: Record<string, unknown>, env: NodeJS.ProcessEnv, nodeArgs: string[] = []): Promise<{code: number | null; stdout: string; stderr: string; wallMs: number}> {
   return await new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [entrypoint], {cwd, env});
+    const startedAt = Date.now();
+    const child = spawn(process.execPath, [...nodeArgs, entrypoint], {cwd, env});
     let stdout = '';
     let stderr = '';
     child.stdout.setEncoding('utf8');
@@ -22,7 +24,7 @@ async function runBuilt(entrypoint: string, event: Record<string, unknown>, env:
     child.stdout.on('data', value => { stdout += value; });
     child.stderr.on('data', value => { stderr += value; });
     child.once('error', reject);
-    child.once('close', code => resolve({code, stdout, stderr}));
+    child.once('close', code => resolve({code, stdout, stderr, wallMs: Date.now() - startedAt}));
     child.stdin.end(JSON.stringify(event));
   });
 }
@@ -171,4 +173,122 @@ test('built Claude and Codex hook entrypoints each emit exactly one JSON object'
   } finally {
     await rm(root, {recursive: true, force: true});
   }
+});
+
+const FAKE_KEY = Array.from({length: 96}, (_, index) => 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[index % 62]).join('');
+
+/** A child preload that applies `setup` and records the child's own clock at
+ * exit. Deadline assertions then do not depend on process spawn latency, which
+ * grows with host load and which no in-process deadline can observe. */
+async function deadlinePreload(root: string, name: string, setup: string[]): Promise<{nodeArgs: string[]; exitFile: string}> {
+  const exitFile = join(root, `${name}.exit`);
+  const preload = join(root, `${name}.mjs`);
+  await writeFile(preload, [
+    "import { writeFileSync } from 'node:fs';",
+    ...setup,
+    `process.on('exit', () => writeFileSync(${JSON.stringify(exitFile)}, String(performance.now())));`,
+  ].join('\n') + '\n');
+  return {nodeArgs: ['--import', pathToFileURL(preload).href], exitFile};
+}
+
+test('built Claude hook answers within its hard deadline and exits while the provider hangs', async () => {
+  const {root, env} = await fixture();
+  try {
+    const keyFile = join(root, 'typesafe.env');
+    await writeFile(keyFile, `TYPESAFE_API_KEY=${FAKE_KEY}\n`, {mode: 0o600});
+    // The provider never answers and ignores cancellation, while a referenced
+    // timer stands in for a socket that keeps the event loop alive (an aborted
+    // connect otherwise waits out the HTTP client's connect timeout).
+    const {nodeArgs, exitFile} = await deadlinePreload(root, 'hung-fetch', [
+      'globalThis.fetch = () => new Promise(() => { setTimeout(() => {}, 60_000); });',
+    ]);
+    const entry = join(cwd, 'dist', 'claude-hook.mjs');
+    const sessionId = `built-deadline-${randomUUID()}`;
+    const events: Array<Record<string, unknown>> = [
+      prompt(sessionId, 'run the parser tests'),
+      {hook_event_name: 'PreToolUse', session_id: sessionId, cwd, tool_name: 'Bash', tool_use_id: `tool-${randomUUID()}`, tool_input: {command: 'npm test'}},
+    ];
+    for (const event of events) {
+      const name = String(event.hook_event_name);
+      const run = await runBuilt(entry, event, {...env, JEV_API_KEY_FILE: keyFile}, nodeArgs);
+      assert.equal(run.code, 0);
+      assert.equal(run.stderr, '');
+      const output = JSON.parse(run.stdout) as {hookSpecificOutput?: {hookEventName: string; additionalContext: string}};
+      assert.equal(output.hookSpecificOutput?.hookEventName, name);
+      assert.match(output.hookSpecificOutput?.additionalContext ?? '', /JEV advisory: status=unavailable; reason=hook_timeout;/);
+      // Exit follows the deadline on the child's own clock instead of waiting
+      // out the 60 s hang; the wall-clock bound is only a backstop.
+      const exitAt = Number(await readFile(exitFile, 'utf8'));
+      assert.ok(exitAt < claudeHookDeadlineMs(name) + 1_000, `${name} exited at ${Math.round(exitAt)} ms`);
+      assert.ok(run.wallMs < 30_000, `${name} took ${run.wallMs} ms`);
+    }
+  } finally {
+    await rm(root, {recursive: true, force: true});
+  }
+});
+
+test('built Claude hook exits silently at its hard deadline when local work stalls before consultation', async () => {
+  const {root, env} = await fixture();
+  try {
+    // Stall the private turn-state publish that precedes any consultation.
+    const {nodeArgs, exitFile} = await deadlinePreload(root, 'stalled-rename', [
+      "import fsp from 'node:fs/promises';",
+      "import { syncBuiltinESMExports } from 'node:module';",
+      'fsp.rename = () => new Promise(() => { setTimeout(() => {}, 60_000); });',
+      'syncBuiltinESMExports();',
+    ]);
+    const run = await runBuilt(join(cwd, 'dist', 'claude-hook.mjs'), prompt(`built-stall-${randomUUID()}`, 'stall locally'), env, nodeArgs);
+    assert.equal(run.code, 0);
+    assert.equal(run.stderr, '');
+    assert.deepEqual(JSON.parse(run.stdout), {});
+    const deadlineMs = claudeHookDeadlineMs('UserPromptSubmit');
+    const exitAt = Number(await readFile(exitFile, 'utf8'));
+    assert.ok(exitAt >= deadlineMs - 50 && exitAt < deadlineMs + 1_000, `stalled hook exited at ${Math.round(exitAt)} ms`);
+    assert.ok(run.wallMs < 30_000, `stalled hook took ${run.wallMs} ms`);
+  } finally {
+    await rm(root, {recursive: true, force: true});
+  }
+});
+
+test('runClaudeHook bounds consultation by its deadline and reports the matching fallback', async () => {
+  const {root, env} = await fixture();
+  try {
+    await runClaudeHook(prompt('session-deadline', 'start a turn'), {env, service: {classifyDecision: async () => ({status: 'assessed', choice: 'proceed'})}});
+    let fallback: unknown;
+    const startedAt = performance.now();
+    const result = await runClaudeHook({hook_event_name: 'PostToolUseFailure', session_id: 'session-deadline', cwd, tool_name: 'Bash', tool_use_id: 'tool-deadline', tool_input: {command: 'npm test'}, error: 'Exit code 1'}, {
+      env,
+      service: {classifyDecision: () => new Promise<never>(() => {})},
+      deadlineAt: performance.now() + 300,
+      onConsult: value => { fallback = value; },
+    });
+    assert.ok(performance.now() - startedAt < 2_000);
+    assert.equal(result.hookSpecificOutput?.hookEventName, 'PostToolUseFailure');
+    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /status=unavailable; reason=hook_timeout/);
+    assert.deepEqual(fallback, result);
+    let called = false;
+    const expired = await runClaudeHook({hook_event_name: 'PreToolUse', session_id: 'session-deadline', cwd, tool_name: 'Read', tool_use_id: 'tool-expired', tool_input: {}}, {
+      env,
+      service: {classifyDecision: async () => { called = true; return {status: 'assessed', choice: 'proceed'}; }},
+      deadlineAt: performance.now() - 1,
+    });
+    assert.equal(called, false);
+    assert.equal(expired.hookSpecificOutput?.hookEventName, 'PreToolUse');
+    assert.match(expired.hookSpecificOutput?.additionalContext ?? '', /status=unavailable; reason=hook_timeout/);
+  } finally {
+    await rm(root, {recursive: true, force: true});
+  }
+});
+
+test('Claude hook deadlines leave start-up headroom below every hooks.json timeout', async () => {
+  const hooks = JSON.parse(await readFile(join(cwd, 'templates/claude/hooks/hooks.json'), 'utf8')) as {hooks: Record<string, Array<{hooks: Array<{timeout: number}>}>>};
+  for (const [event, groups] of Object.entries(hooks.hooks)) {
+    const timeoutMs = (groups[0]?.hooks[0]?.timeout ?? 0) * 1000;
+    assert.ok(claudeHookDeadlineMs(event) <= timeoutMs - 1_500, `${event}: ${claudeHookDeadlineMs(event)} ms deadline vs ${timeoutMs} ms timeout`);
+  }
+  assert.equal(claudeHookDeadlineMs('UserPromptSubmit'), 3_500);
+  assert.equal(claudeHookDeadlineMs('SessionStart'), 3_500);
+  assert.equal(claudeHookDeadlineMs('PreToolUse'), 2_500);
+  assert.equal(claudeHookDeadlineMs('SessionEnd'), 1_500);
+  assert.equal(claudeHookDeadlineMs(undefined), 2_500);
 });

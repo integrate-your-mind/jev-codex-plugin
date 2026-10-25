@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "jev-workflows",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Jev Workflows provides evidence-grounded advisory decisions for tools, models, tasks and arbitrary decisions, with host lifecycle consultation.",
   "author": {
     "name": "Romy Mondello"

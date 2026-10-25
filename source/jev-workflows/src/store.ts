@@ -1,7 +1,7 @@
-import { mkdir, open, rename, unlink, link } from 'node:fs/promises';
+import { mkdir, open, rename, unlink, link, rmdir, readdir, lstat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { homedir } from 'node:os';
-import { isAbsolute, join } from 'node:path';
+import { basename, dirname, isAbsolute, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -42,95 +42,98 @@ async function processIsAlive(pid: number): Promise<boolean> {
   }
 }
 
-async function readLock(path: string): Promise<{owner: LockOwner | null; mtimeMs: number} | null> {
+type ObservedLock = {owner: LockOwner | null; mtimeMs: number; dev: number; ino: number; directory: boolean; entry: string | null};
+const OWNER_FILE = /^owner-[a-f0-9-]{36}\.json$/;
+
+async function readLock(path: string): Promise<ObservedLock | null> {
   try {
-    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    const info = await lstat(path);
+    if (info.isSymbolicLink()) return null;
+    const directory = info.isDirectory();
+    let entry: string | null = null;
+    if (directory) {
+      const entries = await readdir(path);
+      if (entries.length === 0) return {owner: null, mtimeMs: info.mtimeMs, dev: info.dev, ino: info.ino, directory, entry};
+      if (entries.length !== 1 || !OWNER_FILE.test(entries[0]!)) return null;
+      entry = entries[0]!;
+    } else if (!info.isFile()) return null;
+    const handle = await open(entry ? join(path, entry) : path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     try {
-      const info = await handle.stat();
-      if (!info.isFile() || info.size > 2048) return null;
+      const file = await handle.stat();
+      if (!file.isFile() || file.size > 2048) return null;
       let owner: LockOwner | null = null;
       try {
         const value = JSON.parse(await handle.readFile('utf8')) as Partial<LockOwner>;
         if (Number.isSafeInteger(value.pid) && (value.pid as number) > 0 &&
             typeof value.token === 'string' && /^[a-f0-9-]{36}$/.test(value.token) &&
-            typeof value.createdAt === 'string' && Number.isFinite(Date.parse(value.createdAt))) {
+            typeof value.createdAt === 'string' && Number.isFinite(Date.parse(value.createdAt)) &&
+            (!entry || entry === `owner-${value.token}.json`)) {
           owner = {pid: value.pid as number, token: value.token, createdAt: value.createdAt};
         }
-      } catch { /* malformed locks can only be reclaimed after the age check */ }
-      return {owner, mtimeMs: info.mtimeMs};
+      } catch { /* malformed legacy files can only be reclaimed after the age check */ }
+      if (directory && !owner) return null;
+      return {owner, mtimeMs: info.mtimeMs, dev: info.dev, ino: info.ino, directory, entry};
     } finally { await handle.close(); }
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
-    return null;
-  }
+  } catch { return null; }
 }
 
 async function reclaimStaleLock(path: string): Promise<boolean> {
   const observed = await readLock(path);
-  if (!observed) return false;
-  if (Date.now() - observed.mtimeMs < STALE_LOCK_MS) return false;
-  // An unreadable lock has no trustworthy owner identity, so leave it in
-  // place. Reclaim only a lock whose recorded writer is definitely gone;
-  // this avoids deleting a live writer that has not finished publishing its
-  // metadata yet.
-  if (!observed.owner || await processIsAlive(observed.owner.pid)) return false;
-  // This remains intentionally conservative: a malformed or dead-owner lock
-  // can be reclaimed only after the age threshold, never merely because a
-  // short wait elapsed.  A competing writer can recreate the lock after this
-  // unlink; acquisition still uses O_EXCL and therefore cannot overwrite it.
-  try { await unlink(path); return true; }
-  catch (error) { return (error as NodeJS.ErrnoException).code === 'ENOENT'; }
-}
-
-async function removeCreatedLockIfStillOwned(
-  path: string,
-  handle: Awaited<ReturnType<typeof open>>,
-  identity: {dev: number; ino: number},
-): Promise<void> {
-  // A metadata write can fail after O_EXCL has created the lock. Compare the
-  // inode before cleanup so a stale-lock reclaimer or another writer cannot be
-  // accidentally unlinked if the pathname has since been replaced.
+  if (!observed || Date.now() - observed.mtimeMs < STALE_LOCK_MS) return false;
+  if (observed.owner && await processIsAlive(observed.owner.pid)) return false;
   try {
-    const current = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
-    try {
-      const info = await current.stat();
-      if (info.dev === identity.dev && info.ino === identity.ino) await unlink(path);
-    } finally { await current.close(); }
-  } catch { /* preserve a lock we can no longer prove is ours */ }
-  await handle.close().catch(() => {});
+    if (observed.directory) {
+      // Each generation has a different filename. A delayed reclaimer cannot
+      // remove a replacement owner's file, and rmdir cannot remove its nonempty directory.
+      if (observed.entry) await unlink(join(path, observed.entry));
+      await rmdir(path);
+    } else {
+      // Legacy locks were files. unlink cannot remove a newly published directory.
+      const current = await lstat(path);
+      if (current.dev !== observed.dev || current.ino !== observed.ino) return false;
+      await unlink(path);
+    }
+    return true;
+  } catch { return false; }
 }
 
 async function acquireLock(path: string, attempts = LOCK_WAIT_ATTEMPTS): Promise<{handle: Awaited<ReturnType<typeof open>>; token: string}> {
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    const token = randomUUID();
-    let handle: Awaited<ReturnType<typeof open>> | undefined;
-    let identity: {dev: number; ino: number} | undefined;
-    try {
-      handle = await open(path, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
-      identity = await handle.stat();
-      await handle.writeFile(JSON.stringify(lockData(token)));
-      await handle.sync();
-      return {handle, token};
-    } catch (error) {
-      if (handle) {
-        // The path was created by this attempt. Clean up only when the inode
-        // is still the one held by this handle; never remove a replacement.
-        if (identity) await removeCreatedLockIfStillOwned(path, handle, identity);
-        else await handle.close().catch(() => {});
+  const token = randomUUID();
+  const entry = `owner-${token}.json`;
+  const temporary = join(dirname(path), `.${basename(path)}-${token}.tmp`);
+  await mkdir(temporary, {mode: 0o700});
+  let handle: Awaited<ReturnType<typeof open>> | undefined;
+  let published = false;
+  try {
+    handle = await open(join(temporary, entry), constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+    await handle.writeFile(JSON.stringify(lockData(token)));
+    await handle.sync();
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        // A complete nonempty directory is published in one operation. rename
+        // cannot replace another owner's nonempty directory.
+        await rename(temporary, path);
+        published = true;
+        return {handle, token};
+      } catch (error) {
+        if (!['EEXIST', 'ENOTEMPTY', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
       }
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
       await reclaimStaleLock(path);
-      await delay(LOCK_WAIT_MS);
+      if (attempt + 1 < attempts) await delay(LOCK_WAIT_MS);
     }
+    throw new Error('budget_busy');
+  } finally {
+    if (!published) await handle?.close().catch(() => {});
+    await unlink(join(temporary, entry)).catch(() => {});
+    await rmdir(temporary).catch(() => {});
   }
-  throw new Error('budget_busy');
 }
 
 async function releaseLock(path: string, handle: Awaited<ReturnType<typeof open>>, token: string): Promise<void> {
   await handle.close().catch(() => {});
   try {
-    const observed = await readLock(path);
-    if (observed?.owner?.token === token) await unlink(path);
+    await unlink(join(path, `owner-${token}.json`));
+    await rmdir(path);
   } catch { /* preserve a lock owned by a different writer */ }
 }
 
@@ -307,6 +310,10 @@ export class FileStore implements Store {
     const date = new Date(timestamp).toISOString().slice(0, 10);
     const path = join(this.directory, `receipt-index-${date}.json`);
     const lockPath = `${path}.lock`;
+    // An index that has outgrown its bound is never updated again (the locked
+    // read below rejects it too), so do not contend for its lock on every save.
+    const existing = await lstat(path).catch(() => undefined);
+    if (existing && (!existing.isFile() || existing.size > MAX_STATE_FILE_BYTES)) return;
     let acquired: Awaited<ReturnType<typeof acquireLock>>;
     try { acquired = await acquireLock(lockPath); }
     catch { return; } // Indexing is observability only; never lose a receipt on a lock failure.
