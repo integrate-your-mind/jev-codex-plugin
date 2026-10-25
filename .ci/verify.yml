@@ -1,0 +1,24 @@
+name: Verify plugin locally
+on: [push, workflow_dispatch]
+permissions: {}
+jobs:
+  test:
+    runs-on: jev-local
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Verify execution boundary
+        shell: bash
+        run: |
+          test ! -S /var/run/docker.sock
+          test ! -e /Users
+          test -z "${SSH_AUTH_SOCK:-}"
+          test -z "${GITHUB_TOKEN:-}"
+          test -z "${GH_TOKEN:-}"
+          test -z "${JEV_API_KEY:-}"
+          test -z "${TYPESAFE_API_KEY:-}"
+          test "$(node -p 'process.versions.node.split(".")[0]')" = 22
+      - name: Verify both host packages
+        run: node scripts/verify.mjs

@@ -1,7 +1,7 @@
 {
   "name": "jev-workflows",
-  "version": "0.4.0",
-  "description": "Jev classification for tools, models, tasks and arbitrary decisions, with evidence review and automatic Codex lifecycle consultation.",
+  "version": "0.5.1",
+  "description": "Jev Workflows provides evidence-grounded advisory decisions for tools, models, tasks and arbitrary decisions, with host lifecycle consultation.",
   "author": {
     "name": "Romy Mondello"
   },

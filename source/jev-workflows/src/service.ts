@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { failureSchema, completionSchema, failureQuestions, completionQuestionsFor, RUBRIC_VERSION, COMPLETION_RUBRIC_VERSION, MODEL, ENDPOINT, workflowByCategory, type Category, type Question } from './contracts.js';
+import { failureSchema, completionSchema, failureQuestions, completionQuestionsFor, RUBRIC_VERSION, COMPLETION_RUBRIC_VERSION, MODEL, ENDPOINT, resolveModelSelector, workflowByCategory, type Category, type ModelSelector, type Question } from './contracts.js';
 import { sanitize, redactText } from './redact.js';
 import { evaluateProvider, fingerprintCredential, ProviderError, type ProviderTransport } from './provider.js';
 import { FileStore, dataDirectory, readBudgetUsage, type Store } from './store.js';
@@ -11,11 +11,13 @@ import {
   resolveDecisionPolicy, INSUFFICIENT_EVIDENCE_ID, type BatchQuestion, type DecisionDomain, type DecisionPolicy, type EvaluateDecisionsInput,
 } from './batch.js';
 import type { Answer } from './provider.js';
+import { MediaValidationError, validateMediaAssets, type ImageAsset } from './media.js';
 
 export type BatchAnswerAssessment =
   | {type: 'choice'; domain?: DecisionDomain; providerChoice: string; bestCandidate?: string; probabilities: Record<string, number>; confidence: number; disposition: 'recommendation' | 'ranking' | 'abstained'; recommendation?: string; reasonCode?: 'insufficient_evidence' | 'low_confidence'; policy: DecisionPolicy}
   | {type: 'score'; domain?: DecisionDomain; score: number; legend: Record<string, unknown>; probabilities: Record<string, number>; confidence: number; disposition: 'advisory' | 'ranking' | 'abstained'; policy: DecisionPolicy}
-  | {type: 'noul'; domain?: DecisionDomain; noul: number; disposition: 'advisory'; policy: DecisionPolicy};
+  | {type: 'noul'; domain?: DecisionDomain; noul: number; disposition: 'advisory'; policy: DecisionPolicy}
+  | {type: 'box'; domain?: DecisionDomain; box: {top: number; bottom: number; left: number; right: number}; confidence: number | null; disposition: 'advisory'; policy: DecisionPolicy};
 
 export type Assessment = {
   status: 'preview' | 'assessed' | 'abstained' | 'unavailable' | 'skipped';
@@ -25,7 +27,7 @@ export type Assessment = {
   evidenceIds?: string[]; model?: string; rubricVersion?: string; inputDigest?: string;
   receiptId?: string; receiptPersisted?: boolean; cached?: boolean; latencyMs?: number;
   transport?: ProviderTransport;
-  usage?: {input_tokens: number; output_tokens: number}; preview?: unknown; budget?: Awaited<ReturnType<typeof readBudgetUsage>>;
+  usage?: {input_tokens: number | null; output_tokens: number | null}; preview?: unknown; budget?: Awaited<ReturnType<typeof readBudgetUsage>>;
   answers?: Record<string, BatchAnswerAssessment>; questionIds?: string[]; policy?: DecisionPolicy; policies?: Record<string, DecisionPolicy>;
   origin?: EvaluateDecisionsInput['origin']; correlation?: EvaluateDecisionsInput['correlation'];
   authority?: 'advisory_only';
@@ -56,6 +58,34 @@ function positiveLimit(value: string | undefined, fallback: number | null): numb
   return Number.isSafeInteger(n) && n >= 0 ? n : 0;
 }
 
+function referencedAssetNames(value: unknown, names: readonly string[], output: string[]): void {
+  if (typeof value === 'string') {
+    if (names.includes(value)) { output.push(value); return; }
+    let cursor = 0;
+    while (cursor < value.length) {
+      let found: {name: string; index: number} | undefined;
+      for (const name of names) {
+        const index = value.indexOf(name, cursor);
+        if (index >= 0 && (!found || index < found.index || (index === found.index && name.length > found.name.length))) found = {name, index};
+      }
+      if (!found) break;
+      output.push(found.name);
+      cursor = found.index + found.name.length;
+    }
+    return;
+  }
+  if (Array.isArray(value)) { for (const item of value) referencedAssetNames(item, names, output); return; }
+  if (value && typeof value === 'object') for (const item of Object.values(value)) referencedAssetNames(item, names, output);
+}
+
+function mediaPreviewAssets(assets: Record<string, ImageAsset>): Record<string, {format: string; bytes: number; sha256: string}> {
+  return Object.fromEntries(Object.entries(assets).map(([name, asset]) => [name, {
+    format: asset.format,
+    bytes: Buffer.byteLength(asset.data_base64, 'base64'),
+    sha256: createHash('sha256').update(Buffer.from(asset.data_base64, 'base64')).digest('hex'),
+  }]));
+}
+
 export function createService(options: ServiceOptions = {}) {
   const env = options.env ?? process.env;
   const staticApiKey = options.apiKey ?? env.TYPESAFE_API_KEY ?? '';
@@ -65,6 +95,9 @@ export function createService(options: ServiceOptions = {}) {
     return {apiKey, fingerprint: apiKey ? fingerprintCredential(apiKey) : null};
   };
   const enabled = options.enabled ?? env.JEV_ENABLED !== '0';
+  let model: ModelSelector | null;
+  try { model = resolveModelSelector(env.JEV_MODEL); }
+  catch { model = null; }
   const timeoutMs = Math.min(Math.max(options.timeoutMs ?? 10000, 1), 10000);
   const confidenceFloor = options.confidenceFloor ?? 0.6;
   const cache = new Map<string, Assessment>();
@@ -72,7 +105,7 @@ export function createService(options: ServiceOptions = {}) {
   const digestOf = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
   function status(policy: HookPolicy = DEFAULT_POLICY) {
     const current = credential();
-    return {version: '0.4.0', provider: 'TypeSafe', endpoint: ENDPOINT, model: MODEL,
+    return {version: '0.5.1', provider: 'TypeSafe', endpoint: ENDPOINT, model: model ?? env.JEV_MODEL ?? MODEL,
       credentialConfigured: Boolean(current.apiKey), credentialFingerprint: current.fingerprint, enabled,
       stateDirectory: dataDirectory(env), defaultMode: 'preview', rubricVersion: RUBRIC_VERSION, completionRubricVersion: COMPLETION_RUBRIC_VERSION, decisionRubricVersion: DECISION_RUBRIC_VERSION, batchRubricVersion: BATCH_RUBRIC_VERSION, maxPayloadBytes,
       maxCallsPerDay: positiveLimit(env.JEV_MAX_CALLS_PER_DAY, policy.maxCallsPerDay),
@@ -126,7 +159,9 @@ export function createService(options: ServiceOptions = {}) {
         : completionQuestionsFor(input);
     const questions = sanitize(rawQuestions, secrets) as Record<string, Question>;
     const rubricVersion = tool === 'classify_decision' ? DECISION_RUBRIC_VERSION : tool === 'check_completion' ? COMPLETION_RUBRIC_VERSION : RUBRIC_VERSION;
-    const payload = {state, questions, model: MODEL};
+    if (!model) return {status: 'unavailable', reasonCode: 'unknown_model_selector', ...originMeta};
+    const selectedModel = model;
+    const payload = {state, questions, model: selectedModel};
     const bytes = Buffer.byteLength(JSON.stringify(payload));
     if (bytes > maxPayloadBytes) return {status: 'skipped', reasonCode: 'payload_too_large', ...originMeta};
     const evidenceIds = input.evidence.map(e => e.id);
@@ -161,7 +196,7 @@ export function createService(options: ServiceOptions = {}) {
         if (!(await store.reserve(bytes))) return {status: 'skipped', reasonCode: 'budget_exhausted', ...meta, receiptPersisted: false, ...(options.store ? {} : {budget: await readBudgetUsage(dataDirectory(env), limits.maxCallsPerDay, limits.maxBytesPerDay)})};
       } catch { return {status: 'unavailable', reasonCode: 'budget_store_unavailable', ...meta, receiptPersisted: false}; }
       try {
-        const evaluation = await evaluateProvider({state, questions: questions as Record<string, Question>, apiKey, timeoutMs, signal, fetchFn: options.fetchFn});
+        const evaluation = await evaluateProvider({state, questions: questions as Record<string, Question>, apiKey, timeoutMs, model: selectedModel, longContext: env.JEV_LONG_CONTEXT === '1', signal, fetchFn: options.fetchFn});
         const answer = evaluation.answers[tool === 'classify_failure' ? 'category' : tool === 'check_completion' ? 'support' : 'decision'];
         if (!answer || answer.type !== 'choice') throw new ProviderError('invalid_response', evaluation.transport);
         // Confidence and selected probability are separate signals; neither alone is a correctness guarantee.
@@ -233,16 +268,36 @@ export function createService(options: ServiceOptions = {}) {
     const state = sanitize(input.state, secrets);
     const questions = sanitize(providerQuestions(input), secrets) as Record<string, Question>;
     const policies = policiesByQuestion(input, {minConfidence: confidenceFloor, minProbability: confidenceFloor});
-    const payload = {state, questions, model: MODEL};
+    let selectedModel: ModelSelector;
+    try { selectedModel = resolveModelSelector(input.model ?? (model ?? undefined)); }
+    catch { return {status: 'unavailable', reasonCode: 'unknown_model_selector'}; }
+    const experimentalImages = input.experimental?.images === true;
+    const hasAssets = Boolean(input.assets && Object.keys(input.assets).length);
+    const hasBox = Object.values(input.questions).some(question => question.type === 'box');
+    if ((hasAssets || hasBox) && !experimentalImages) return {status: 'skipped', reasonCode: 'experimental_images_required', questionIds};
+    if (hasBox && selectedModel !== 'jev-1.14.0' && selectedModel !== 'jev-preview') return {status: 'skipped', reasonCode: 'box_model_unsupported', questionIds};
+    const assetNames = Object.keys(input.assets ?? {});
+    if (assetNames.some(name => redactText(name, secrets) !== name)) return {status: 'skipped', reasonCode: 'unsafe_asset_id', questionIds};
+    const references: string[] = [];
+    referencedAssetNames(state, assetNames, references);
+    referencedAssetNames(questions, assetNames, references);
+    let assets: Record<string, ImageAsset> = {};
+    try { assets = validateMediaAssets(input.assets ?? {}, [...references]); }
+    catch (error) { return {status: 'skipped', reasonCode: error instanceof MediaValidationError ? error.code : 'invalid_media', questionIds}; }
+    if (hasBox && Object.keys(assets).length === 0) return {status: 'skipped', reasonCode: 'box_requires_image', questionIds};
+    const selectedLongContext = input.longContext ?? env.JEV_LONG_CONTEXT === '1';
+    const payload = {state, questions, model: selectedModel, ...(Object.keys(assets).length ? {assets} : {})};
+    const mediaEnabled = experimentalImages || Object.keys(assets).length > 0;
     const bytes = Buffer.byteLength(JSON.stringify(payload));
-    if (bytes > maxPayloadBytes) return {status: 'skipped', reasonCode: 'payload_too_large', questionIds};
-    const inputDigest = digestOf({payload, rubric: BATCH_RUBRIC_VERSION, policies});
+    if (bytes > (mediaEnabled ? 32 * 1024 * 1024 : maxPayloadBytes)) return {status: 'skipped', reasonCode: 'payload_too_large', questionIds};
+    const metadata = {model: selectedModel, longContext: selectedLongContext, experimentalImages};
+    const inputDigest = digestOf({payload, rubric: BATCH_RUBRIC_VERSION, policies, metadata});
     const localMeta = {
       questionIds, inputDigest, rubricVersion: BATCH_RUBRIC_VERSION, policies, authority: 'advisory_only' as const,
       ...(input.origin ? {origin: input.origin} : {}),
       ...(input.correlation ? {correlation: input.correlation} : {}),
     };
-    if (input.mode === 'preview') return {status: 'preview', preview: payload, ...localMeta};
+    if (input.mode === 'preview') return {status: 'preview', preview: {...payload, ...(Object.keys(assets).length ? {assets: mediaPreviewAssets(assets)} : {})}, ...localMeta};
     if (!enabled) return {status: 'skipped', reasonCode: 'disabled', ...localMeta};
     if (!apiKey) return {status: 'unavailable', reasonCode: 'missing_api_key', ...localMeta};
     if (signal?.aborted) return {status: 'unavailable', reasonCode: 'cancelled', ...localMeta};
@@ -267,7 +322,7 @@ export function createService(options: ServiceOptions = {}) {
         if (!(await store.reserve(bytes))) return {status: 'skipped', reasonCode: 'budget_exhausted', ...meta, receiptPersisted: false, ...(options.store ? {} : {budget: await readBudgetUsage(dataDirectory(env), limits.maxCallsPerDay, limits.maxBytesPerDay)})};
       } catch { return {status: 'unavailable', reasonCode: 'budget_store_unavailable', ...meta, receiptPersisted: false}; }
       try {
-        const evaluation = await evaluateProvider({state, questions, apiKey, timeoutMs, signal, fetchFn: options.fetchFn});
+        const evaluation = await evaluateProvider({state, questions, apiKey, timeoutMs, model: selectedModel, longContext: selectedLongContext, assets: Object.keys(assets).length ? assets : undefined, experimentalImages, signal, fetchFn: options.fetchFn});
         const answers = Object.fromEntries(Object.entries(evaluation.answers).map(([questionId, answer]) => [
           questionId, assessBatchAnswer(answer, policies[questionId]!, input.questions[questionId]!),
         ])) as Record<string, BatchAnswerAssessment>;
@@ -304,6 +359,7 @@ export function createService(options: ServiceOptions = {}) {
   function assessBatchAnswer(answer: Answer, policy: DecisionPolicy, question: BatchQuestion): BatchAnswerAssessment {
     const domain = question.domain;
     const domainMeta = domain ? {domain} : {};
+    if (answer.type === 'box') return {type: 'box', ...domainMeta, box: answer.box, confidence: answer.confidence, disposition: 'advisory', policy};
     if (answer.type === 'noul') return {type: 'noul', ...domainMeta, noul: answer.noul, disposition: 'advisory', policy};
     if (answer.type === 'score') {
       const lowConfidence = policy.mode === 'conservative' && answer.confidence < policy.minConfidence;

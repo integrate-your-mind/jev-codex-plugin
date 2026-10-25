@@ -1,0 +1,184 @@
+{
+  "recordedAt": "2026-10-15T21:42:10.799Z",
+  "note": "Transport and schema compatibility, not a quality benchmark.",
+  "reports": [
+    {
+      "scenario": "text",
+      "requestedModel": "jev-1.13.0",
+      "status": "assessed",
+      "model": "jev-1.13.0",
+      "answers": {
+        "next": {
+          "type": "choice",
+          "providerChoice": "inspect",
+          "bestCandidate": "inspect",
+          "probabilities": {
+            "inspect": 0.99,
+            "repeat": 0,
+            "insufficient_evidence": 0.01
+          },
+          "confidence": 0.98,
+          "disposition": "recommendation",
+          "recommendation": "inspect",
+          "policy": {
+            "version": "decision-policy-2026-09-26.1",
+            "mode": "conservative",
+            "minConfidence": 0.6,
+            "minProbability": 0.6,
+            "calibration": "not_locally_calibrated"
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 393,
+        "output_tokens": 44
+      },
+      "receiptId": "3b934d17-86cc-4374-bfd4-4ff85b5d46dd",
+      "receiptPersisted": true,
+      "transport": {
+        "responseStatus": 200,
+        "validatedResponse": true,
+        "providerRequestId": "req_01a14183f905746b9b4873176a26ba28"
+      }
+    },
+    {
+      "scenario": "text",
+      "requestedModel": "jev-1.14.0",
+      "status": "assessed",
+      "model": "jev-1.14.0",
+      "answers": {
+        "next": {
+          "type": "choice",
+          "providerChoice": "inspect",
+          "bestCandidate": "inspect",
+          "probabilities": {
+            "inspect": 0.99,
+            "repeat": 0,
+            "insufficient_evidence": 0.01
+          },
+          "confidence": 0.98,
+          "disposition": "recommendation",
+          "recommendation": "inspect",
+          "policy": {
+            "version": "decision-policy-2026-09-26.1",
+            "mode": "conservative",
+            "minConfidence": 0.6,
+            "minProbability": 0.6,
+            "calibration": "not_locally_calibrated"
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 393,
+        "output_tokens": 44
+      },
+      "receiptId": "eacd5051-9e60-4b45-9fc3-1cb8b08a143c",
+      "receiptPersisted": true,
+      "transport": {
+        "responseStatus": 200,
+        "validatedResponse": true,
+        "providerRequestId": "req_01a14183f9c770e0830273691a9617ff"
+      }
+    },
+    {
+      "scenario": "synthetic-image-box",
+      "requestedModel": "jev-1.14.0",
+      "status": "assessed",
+      "model": "jev-1.14.0",
+      "answers": {
+        "frame": {
+          "type": "box",
+          "box": {
+            "top": 0.01,
+            "bottom": 1,
+            "left": 0,
+            "right": 1
+          },
+          "confidence": 0.72,
+          "disposition": "advisory",
+          "policy": {
+            "version": "decision-policy-2026-09-26.1",
+            "mode": "conservative",
+            "minConfidence": 0.6,
+            "minProbability": 0.6,
+            "calibration": "not_locally_calibrated"
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 496,
+        "output_tokens": 20
+      },
+      "receiptId": "12c3f571-c7bc-4f60-b193-33be9f2fe8be",
+      "receiptPersisted": true,
+      "transport": {
+        "responseStatus": 200,
+        "validatedResponse": true,
+        "providerRequestId": "req_01a14183fa267d9a8130c83595d10f17"
+      }
+    },
+    {
+      "scenario": "synthetic-png-256x307",
+      "requestedModel": "jev-1.14.0",
+      "status": "unavailable",
+      "reasonCode": "invalid_request",
+      "receiptId": "a2b128da-c5bf-4827-8ff4-5179072c5d12",
+      "receiptPersisted": true,
+      "transport": {
+        "responseStatus": 400,
+        "validatedResponse": false,
+        "providerRequestId": "req_01a1419004547359b46bfa9bfe127b88"
+      }
+    },
+    {
+      "scenario": "synthetic-png-256x307",
+      "requestedModel": "jev-1.14.0",
+      "status": "unavailable",
+      "reasonCode": "invalid_request",
+      "receiptId": "8f032b85-bc14-4f9a-8248-f8cdf2909de9",
+      "receiptPersisted": true,
+      "transport": {
+        "responseStatus": 400,
+        "validatedResponse": false,
+        "providerRequestId": "req_01a1419041a47ac4af1fc4e865db7530"
+      }
+    },
+    {
+      "scenario": "synthetic-png-280x280-final",
+      "requestedModel": "jev-1.14.0",
+      "status": "assessed",
+      "model": "jev-1.14.0",
+      "receiptId": "813e8b8b-b4e3-435e-b0c3-53c3649c663d",
+      "receiptPersisted": true,
+      "transport": {
+        "responseStatus": 200,
+        "validatedResponse": true,
+        "providerRequestId": "req_01a14190816e7937b347b007c6deeb13"
+      }
+    },
+    {
+      "scenario": "synthetic-jpeg",
+      "requestedModel": "jev-1.14.0",
+      "status": "assessed",
+      "model": "jev-1.14.0",
+      "receiptId": "460a661d-c0d6-4b62-baf7-65c7eca8dda5",
+      "receiptPersisted": true,
+      "transport": {
+        "responseStatus": 200,
+        "validatedResponse": true,
+        "providerRequestId": "req_01a1419081f575339df60b44db13ee7a"
+      }
+    }
+  ],
+  "observations": {
+    "imageBoundaryMismatch": {
+      "documented": "256..1568 per edge and at least 78400 pixels",
+      "fixture": "256x307 PNG, 78592 pixels",
+      "observedError": "HTTP 400 api_usage_error: Invalid image dimensions.",
+      "attempts": 2,
+      "successfulComparison": "280x280 PNG and JPEG returned validated HTTP 200"
+    },
+    "successfulValidatedResponses": 5,
+    "failedResponses": 2
+  }
+}

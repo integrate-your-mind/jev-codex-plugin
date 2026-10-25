@@ -1,9 +1,39 @@
 # Verification
 
-Latest verification date: 2026-09-26
+Latest verification date: 2026-10-15
 
 This report covers the public source and packaged runtime. It records the checks
 below; it does not establish directory approval, provider billing, or model quality.
+
+## Local Actions migration
+
+The first real `act` run on `b65422cdda1a538c3f944c4afd4be23a5ba3bacd` passed all 202 existing tests, typecheck, bundle integrity, manifests and package parity on Node 22.23.2/Linux ARM64. The installed hook rejected an intentionally failing commit during a real push to a disposable local bare repository; the destination ref was absent. Ten controller regressions cover exact archives, annotated tags, receipt identity, failed jobs, timeouts, hook preservation, transactional installation and isolation admission. See [sanitized evidence](verification/local-ci-2026-10-15.json).
+
+The old hosted workflow is disabled. The candidate stores its Actions workflow in `.ci/verify.yml` and runs it locally through a pre-push hook. No GitHub-hosted minutes or Actions scheduler is used. Final-commit execution is recorded in a separate `local-ci / act Linux ARM64` status. Local hooks apply to this installation; other clones and web edits need their own checks.
+
+## Version 0.5.1 naming and CI follow-up
+
+Both host packages use the display name **Jev Workflows** and keep the stable `jev-workflows` ID. The patch version is necessary because Claude's normal updater retained the old manifest when the version stayed at 0.5.0. The normal update command installed 0.5.1 after the version changed.
+
+- `node scripts/verify.mjs` passed on Node 22.23.2, macOS arm64: 195 runtime tests, seven build/distribution/contract tests, typecheck, build, manifest validation and generated package parity. The local Actions workflow calls the same command. `actionlint` and native Claude manifest/marketplace validation passed.
+- Two new negative fixtures first failed with `Missing expected rejection`; after the identity check repair, matching source/generated Claude identifier and display-name drift both fail verification. The MCP test also checks that handshake and status versions match the package release. Independent review reproduced a build silently repairing stale checked-in source bundles; the build verifier now snapshots source runtime and standalone skill bytes before building and rejects those repairs. Its regression also preserves a failed build exit code.
+- A fresh Codex app-server loaded version 0.5.1, eight tools and twelve trusted/enabled hooks, and successfully called `jev_status`. A fresh Claude session loaded version 0.5.1, connected its plugin MCP server and returned status successfully. Shared state and credential paths, plugin IDs and unlimited policy were preserved. See [sanitized evidence](verification/cross-host-0.5.1.json).
+
+All 21 changed runtime bundles differ only in their release version strings. The 0.5.0 provider and hook execution evidence below remains applicable to the engine; this follow-up adds installation/discovery checks, not a quality benchmark. The historical GitHub Actions attempts were rejected before jobs started by the account billing lock. The hosted workflow is now disabled, and the candidate branch moves verification to local Actions through `act`. A separately published local commit status identifies its actual platform and tested SHA. See [CI instructions and limits](docs/ci.md).
+
+## Version 0.5.0 cross-host update
+
+The current source adds native Claude Code packaging and the October 15 Jev contract while preserving unlimited defaults. Shared fixtures and a deterministic drift check connect the TypeScript plugin and QQ Rust integration; QQ verification is recorded in its own PR.
+
+- The full source suite passed 195 tests on Node 22.23.2, with typecheck, build and manifest validation. Production dependency audit reported zero vulnerabilities. Generated distribution parity and all four root distribution/contract tests passed.
+- Real Jev 1.13 and 1.14 text requests and an explicit synthetic image/Box request returned validated HTTP 200 responses with provider request IDs. See [provider evidence](verification/cross-host-0.5.0-provider.json).
+- The documented 256×307 image boundary returned HTTP 400 twice (`Invalid image dimensions.`); the final 280×280 PNG and JPEG checks passed. Those failed attempts remain in the provider evidence, separate from the five successful requests.
+- A fresh installed Codex session loaded the plugin, executed its command and correlated four lifecycle evaluations with retained provider receipts.
+- Fresh Claude Code 2.1.301 sessions loaded the user-scoped plugin and exercised command success and expected exit-7 failure. The failure run confirmed that the plugin does not recursively classify its own MCP call. Explicit diagnosis abstained on insufficient evidence while ordinary execution continued. See [native runtime evidence](verification/cross-host-0.5.0-runtime.json).
+- Native QA caught and repaired duplicate hook JSON output and Claude MCP self-recursion. Independent source review also led to bounded PNG/JPEG decoding, animated-PNG rejection, and regeneration that removes stale Claude package files.
+- Existing credentials, receipt storage and unlimited policy were reused. No existing user chat was restarted, no host model was changed, and no QQ installation or authentication was changed.
+
+These are compatibility and execution checks, not a decision-quality benchmark. Source tests, exact-head review and hosted CI are reported with the release PR; official directory approval remains separate. Image payloads are explicit opt-in, never automatic capture or upload.
 
 ## Version 0.4.0
 
@@ -113,10 +143,12 @@ corrected in the docs; runtime behavior was unchanged.
 
 ## Hosted CI
 
+The [0.5.0 run for ec4561f](https://github.com/integrate-your-mind/jev-codex-plugin/actions/runs/38814474977) did not start: GitHub reports the account is locked due to a billing issue. Hosted CI is not passed; local checks and independent review are separate evidence.
+
 The [0.4.0 GitHub Actions run](https://github.com/integrate-your-mind/jev-codex-plugin/actions/runs/36225421255)
 for revision `913bb7fbea73efbdb37535d02debae7a0b28485c` was blocked before
 any test step executed: GitHub reported that the account is locked due to a
-billing issue. Hosted CI is **not passed**. The workflow is enabled and can be
+billing issue. Hosted CI is **not passed**. The historical hosted workflow is now disabled and will not be
 run manually after the account restriction is resolved. Local Node 22 tests,
 native runtime checks, and independent QA are separate evidence.
 
@@ -174,8 +206,7 @@ Those test cases exercise redaction and contain no live credential. The exact
 literal and exact public test path are allowlisted in [.gitleaks.toml](.gitleaks.toml);
 the scan was rerun with that narrowly scoped rule and produced a clean result.
 
-No private counts, request identifiers, fingerprints, account emails, home paths,
-transcripts, or model accuracy/performance benchmarks are included here.
+Public verification records include provider request IDs for the attributed synthetic tests. Private counts, credential fingerprints, account emails, home paths and raw transcripts remain excluded.
 
 ## Release status
 

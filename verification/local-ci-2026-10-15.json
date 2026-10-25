@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-15",
+  "purpose": "Local Actions migration verification",
+  "runner": {
+    "engine": "act 0.2.89",
+    "node": "22.23.2",
+    "platform": "linux/arm64",
+    "vm": "dedicated Lima plain-mode VM",
+    "image": "node@sha256:dd5847a04b0deee391fa145f1f4c6d214196668b6bcc7988ebed67249f226844"
+  },
+  "pilot": {
+    "sha": "b65422cdda1a538c3f944c4afd4be23a5ba3bacd",
+    "runtimeTests": 195,
+    "rootTests": 7,
+    "result": "passed",
+    "boundaryChecks": "no host directories, Docker socket, SSH agent, or provider/GitHub credentials in job"
+  },
+  "negativePush": {
+    "fixtureSha": "b14cf1f75646f8d64629143e9a0b83261f3ca39d",
+    "destination": "disposable local bare repository",
+    "intentionalFailureExecuted": true,
+    "pushExitCode": 1,
+    "destinationRefCreated": false
+  },
+  "controllerRegressionTests": 10,
+  "hostedWorkflow": {
+    "id": 361467094,
+    "state": "disabled_manually"
+  },
+  "limitations": [
+    "Local pre-push execution; not a GitHub Actions service or server-side merge policy.",
+    "No untrusted fork auto-execution, provider call, quality benchmark, merge or marketplace approval.",
+    "The final pushed commit has its own local CI receipt and separate GitHub commit status."
+  ]
+}

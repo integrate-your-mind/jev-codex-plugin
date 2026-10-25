@@ -2,6 +2,7 @@ import {describe, it} from 'node:test';
 import assert from 'node:assert/strict';
 import {createService, type ServiceOptions} from '../src/service.js';
 import type {Receipt, Store} from '../src/store.js';
+import {validPngBase64 as png} from './media-fixture.js';
 
 class MemoryStore implements Store {
   receipts: Receipt[] = [];
@@ -67,6 +68,56 @@ function service(options: Partial<ServiceOptions> = {}) {
 }
 
 describe('evaluate_decisions mixed typed batch', () => {
+  it('keeps media opt-in local, redacts preview assets, and validates Box responses', async () => {
+    const mediaInput = input({
+      model: 'jev-preview',
+      experimental: {images: true},
+      assets: {photo: {format: 'png', data_base64: png()}},
+      state: {image: 'attach photo here and photo again'},
+      questions: {location: {type: 'box', instructions: 'Locate the object.'}},
+      mode: 'preview',
+    });
+    const preview = await service().evaluateDecisions(mediaInput);
+    assert.equal(preview.status, 'preview');
+    const previewJson = JSON.stringify(preview.preview);
+    assert.equal(previewJson.includes(png()), false);
+    assert.match(previewJson, /sha256/);
+    assert.match(previewJson, /"bytes"/);
+
+    const calls: Array<Record<string, unknown>> = [];
+    const evaluated = await service({fetchFn: async (_url, init) => {
+      const payload = JSON.parse(String(init?.body)); calls.push(payload);
+      return new Response(JSON.stringify({model: 'jev-1.14.0', answers: {
+        location: {type: 'box', box: {top: 0.1, bottom: 0.9, left: 0.2, right: 0.8}, confidence: null},
+      }, usage: {input_tokens: null, output_tokens: 4}}));
+    }}).evaluateDecisions({...mediaInput, mode: 'evaluate'});
+    assert.equal(evaluated.status, 'assessed');
+    assert.equal(evaluated.answers?.location?.type, 'box');
+    assert.equal(calls.length, 1);
+    assert.equal((calls[0]?.assets as Record<string, unknown>).photo !== undefined, true);
+  });
+
+  it('rejects Box without explicit images or an image reference before network', async () => {
+    let calls = 0;
+    const svc = service({fetchFn: async () => { calls++; throw new Error('no network'); }});
+    const noFlag = await svc.evaluateDecisions(input({questions: {location: {type: 'box', instructions: 'Locate'}}}));
+    assert.equal(noFlag.reasonCode, 'experimental_images_required');
+    const noAsset = await svc.evaluateDecisions(input({model: 'jev-preview', experimental: {images: true}, questions: {location: {type: 'box', instructions: 'Locate'}}}));
+    assert.equal(noAsset.reasonCode, 'box_requires_image');
+    assert.equal(calls, 0);
+  });
+
+  it('rejects credential-bearing asset names before preview metadata is returned', async () => {
+    const result = await service().evaluateDecisions(input({
+      experimental: {images: true},
+      assets: {'batch-test-key': {format: 'png', data_base64: png()}},
+      state: 'batch-test-key',
+      questions: {location: {type: 'box', instructions: 'Locate'}},
+      model: 'jev-preview', mode: 'preview',
+    }));
+    assert.equal(result.reasonCode, 'unsafe_asset_id');
+  });
+
   it('filters unavailable candidates, validates mixed answers, and separates best candidate from local policy', async () => {
     const calls: Array<Record<string, unknown>> = [];
     const store = new MemoryStore();

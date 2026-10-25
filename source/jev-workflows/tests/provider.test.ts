@@ -1,7 +1,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { ENDPOINT, failureQuestions, type Question } from '../src/contracts.js';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { ENDPOINT, failureQuestions, type ModelSelector, type Question } from '../src/contracts.js';
 import { evaluateProvider, ProviderError, validateEvaluation, type ProviderTransport, type ResponseValidationFailure } from '../src/provider.js';
 
 function validEvaluation(): Record<string, unknown> {
@@ -52,6 +54,31 @@ function assertValidationFailure(raw: unknown, failure: ResponseValidationFailur
 }
 
 describe('provider response validation', () => {
+  it('consumes the shared conformance fixtures for pinned and aliased model selectors', () => {
+    const fixture = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../../contracts/jev/conformance.json'), 'utf8')) as {
+      cases: Array<{requestedModel: ModelSelector; valid: boolean; response: unknown}>;
+    };
+    for (const testCase of fixture.cases) {
+      const questions = {route: {type: 'choice' as const, instructions: 'Choose', criteria: {
+        inspect: 'Inspect the code', test: 'Run the focused test', insufficient_evidence: 'Evidence is missing',
+      }}};
+      if (testCase.valid) {
+        const result = validateEvaluation(testCase.response, questions, null, testCase.requestedModel);
+        assert.equal(result.model, (testCase.response as {model: string}).model, testCase.requestedModel);
+      } else {
+        assert.throws(() => validateEvaluation(testCase.response, questions, null, testCase.requestedModel), ProviderError);
+      }
+    }
+  });
+
+  it('accepts independently nullable usage fields', () => {
+    const value = validEvaluation();
+    value.usage = {input_tokens: null, output_tokens: 8};
+    assert.equal(validateEvaluation(value, failureQuestions).usage.input_tokens, null);
+    value.usage = {input_tokens: 4, output_tokens: null};
+    assert.equal(validateEvaluation(value, failureQuestions).usage.output_tokens, null);
+  });
+
   it('rejects malformed probabilities, wrong choices, malformed noul, and schema-invalid responses', () => {
     const malformed = validEvaluation();
     ((malformed.answers as Record<string, unknown>).category as Record<string, unknown>).probabilities = {
@@ -214,6 +241,15 @@ describe('provider transport', () => {
     assert.match(result.transport.responseReceivedAt!, /^\d{4}-\d{2}-\d{2}T/);
   });
 
+  it('adds the opt-in long-context header without changing the request bound', async () => {
+    let request: RequestInit | undefined;
+    await evaluateProvider({
+      state: {}, questions: failureQuestions, apiKey: 'provider-key', timeoutMs: 1000, model: 'jev-1.14.0', longContext: true,
+      fetchFn: async (_input, init) => { request = init; return new Response(JSON.stringify({...validEvaluation(), model: 'jev-1.14.0'})); },
+    });
+    assert.equal((request?.headers as Record<string, string>)['TypeSafe-Danger-Zone-Long-Context'], 'true');
+  });
+
   it('records only safe IDs from the three allowlisted response headers', async () => {
     const evaluate = (headers?: HeadersInit) => evaluateProvider({
       state: {}, questions: failureQuestions, apiKey: 'provider-key', timeoutMs: 1000,
@@ -263,7 +299,7 @@ describe('provider transport', () => {
   });
 
   it('maps HTTP failures to sanitized provider codes without echoing provider bodies', async () => {
-    for (const [status, code] of [[401, 'authentication_failed'], [403, 'request_forbidden'], [422, 'invalid_request'], [429, 'rate_limited'], [529, 'provider_overloaded'], [500, 'provider_error']] as const) {
+    for (const [status, code] of [[400, 'invalid_request'], [401, 'authentication_failed'], [403, 'request_forbidden'], [408, 'request_timeout'], [413, 'request_too_large'], [415, 'unsupported_media_type'], [422, 'invalid_request'], [429, 'rate_limited'], [529, 'provider_overloaded'], [500, 'provider_error']] as const) {
       const body = 'provider secret body must never escape';
       await assert.rejects(() => evaluateProvider({
         state: {}, questions: failureQuestions, apiKey: 'key', timeoutMs: 1000,

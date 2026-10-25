@@ -6,6 +6,8 @@ import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { configurePolicy } from '../src/policy.js';
 import { normalizeDecisionEvent, runDecisionHook, type DecisionInput, type DecisionService } from '../src/decision-hook.js';
+import { createService } from '../src/service.js';
+import { updateTaskContext } from '../src/task-context.js';
 
 let root: string;
 
@@ -52,6 +54,28 @@ function fakeService(calls: {count: number; inputs: DecisionInput[]}): DecisionS
       calls.inputs.push(input);
       return {status: 'assessed', choice: 'proceed'};
     },
+  };
+}
+
+type ProviderPayload = {
+  state: DecisionInput;
+  questions: {decision: {criteria: Record<string, string>}};
+};
+
+function providerSelecting(choice: string, calls: ProviderPayload[] = []): typeof fetch {
+  return async (_input, init) => {
+    const payload = JSON.parse(String(init?.body)) as ProviderPayload;
+    calls.push(payload);
+    const labels = Object.keys(payload.questions.decision.criteria);
+    assert.ok(labels.includes(choice));
+    const selectedProbability = 0.91;
+    const remainder = labels.length > 1 ? (1 - selectedProbability) / (labels.length - 1) : 0;
+    const probabilities = Object.fromEntries(labels.map(label => [label, label === choice ? selectedProbability : remainder]));
+    return new Response(JSON.stringify({
+      model: 'jev-1.13.0',
+      answers: {decision: {type: 'choice', choice, probabilities, confidence: 0.96}},
+      usage: {input_tokens: 31, output_tokens: 11},
+    }));
   };
 }
 
@@ -377,13 +401,103 @@ describe('decision hook', () => {
       hook_event_name: 'Stop', tool_name: undefined, tool_use_id: undefined, turn_id: turnId, last_assistant_message: `final-${'f'.repeat(2000)}`,
     })), {env: environment, service});
     const stopInput = calls.inputs.at(-1)!;
-    const parsedContext = JSON.parse(stopInput.context) as {contextTruncated?: boolean};
+    const parsedContext = JSON.parse(stopInput.context) as {contextTruncated?: boolean; turnResults?: {status?: string; resultCount?: number}};
     assert.equal(parsedContext.contextTruncated, true);
+    assert.equal(parsedContext.turnResults?.status, 'available');
+    assert.equal(parsedContext.turnResults?.resultCount, 8);
     assert.ok(Buffer.byteLength(stopInput.context) < 5_000);
     const receiptPath = join(environment.PLUGIN_DATA!, 'decision-hook-v1', digest(process.cwd()), digest('session-1'), 'invocations', `${digest(`Stop\0session-1\0${turnId}`)}.json`);
     const receipt = JSON.parse(await readFile(receiptPath, 'utf8')) as {contextTruncated: boolean; evidenceTruncated: boolean};
     assert.equal(receipt.contextTruncated, true);
     assert.equal(receipt.evidenceTruncated, true);
+  });
+
+  it('bounds a valid large saved task context before the real service validates and calls the provider', async () => {
+    const environment = env(join(root, 'large-saved-context'));
+    await enabledPolicy(environment);
+    const sessionId = 'large-saved-context-session';
+    const opaqueSecret = 'sk-123456789012345';
+    const segment = 'context-segment '.repeat(100);
+    const saved = await updateTaskContext({cwd: process.cwd(), sessionId}, {
+      operation: 'replace',
+      rootObjective: `root-${segment}`,
+      constraints: Array.from({length: 9}, (_, index) => `constraint-${index}-${index === 0 ? opaqueSecret : ''}${segment}`),
+      criteria: [`Retain the latest constraint and result metadata ${segment}-LATEST_CRITERION_KEEP`],
+      corrections: Array.from({length: 3}, (_, index) => `correction-${index}-${segment}${index === 2 ? '-LATEST_CORRECTION_DECISIVE' : ''}`),
+      provenance: {source: 'system'},
+    }, {env: environment});
+    assert.ok(saved);
+
+    const providerCalls: ProviderPayload[] = [];
+    const service = createService({apiKey: 'dummy-key', env: environment, fetchFn: providerSelecting('proceed', providerCalls)});
+    const result = await runDecisionHook(JSON.stringify(toolEvent({
+      hook_event_name: 'UserPromptSubmit', session_id: sessionId, turn_id: 'large-saved-context-turn',
+      tool_name: undefined, tool_use_id: undefined, prompt: `Continue the bounded task ${opaqueSecret}`,
+    })), {env: environment, service});
+    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /status=assessed; decision=proceed/);
+    assert.equal(providerCalls.length, 1);
+
+    const state = providerCalls[0]!.state;
+    const promptEvidence = state.evidence.find(item => item.id === 'task.prompt');
+    assert.equal(promptEvidence?.text, 'Continue the bounded task [REDACTED]');
+    assert.ok(Buffer.byteLength(promptEvidence?.text ?? '') < 12_000);
+    assert.doesNotMatch(promptEvidence?.text ?? '', /rootObjective|constraints/);
+    const context = JSON.parse(state.context) as {
+      contextTruncated?: boolean;
+      taskContext?: Record<string, unknown>;
+      truncation?: {taskContext?: boolean};
+    };
+    assert.equal(context.contextTruncated, true);
+    assert.equal(context.truncation?.taskContext, true);
+    assert.equal('taskPrompt' in context, false);
+    assert.equal(typeof context.taskContext, 'object');
+    assert.match(JSON.stringify(context.taskContext), /constraint-8/);
+    assert.match(JSON.stringify(context.taskContext), /LATEST_CRITERION_KEEP/);
+    assert.match(JSON.stringify(context.taskContext), /LATEST_CORRECTION_DECISIVE/);
+    assert.ok(Buffer.byteLength(JSON.stringify(context.taskContext)) <= 1_400);
+    const taskTruncation = context.taskContext?.truncation as {omitted?: {constraints?: number; corrections?: number}};
+    assert.equal(taskTruncation.omitted?.constraints, 7);
+    assert.equal(taskTruncation.omitted?.corrections, 2);
+    assert.doesNotMatch(JSON.stringify(providerCalls[0]), /sk-123456789012345|dummy-key/);
+  });
+
+  it('retains the newest constraint and correction in the strict fallback context budget', async () => {
+    const environment = env(join(root, 'strict-context-fallback'));
+    await enabledPolicy(environment);
+    const sessionId = 'strict-context-fallback-session';
+    const segment = 'bounded-context '.repeat(100);
+    await updateTaskContext({cwd: process.cwd(), sessionId}, {
+      operation: 'replace',
+      rootObjective: `root ${segment}`,
+      latestStep: `latest ${segment}`,
+      constraints: Array.from({length: 9}, (_, index) => `constraint-${index} ${segment}${index === 8 ? 'LATEST_CONSTRAINT_DECISIVE' : ''}`),
+      criteria: [`criterion ${segment}LATEST_CRITERION_DECISIVE`],
+      corrections: Array.from({length: 3}, (_, index) => `correction-${index} ${segment}${index === 2 ? 'LATEST_CORRECTION_DECISIVE' : ''}`),
+      provenance: {source: 'system'},
+    }, {env: environment});
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    const escapeHeavy = '\\"'.repeat(900);
+    await runDecisionHook(JSON.stringify(toolEvent({
+      hook_event_name: 'Stop', session_id: sessionId, turn_id: 'strict-context-turn', tool_name: undefined, tool_use_id: undefined,
+      tool_input: {command: escapeHeavy},
+      tool_response: {status: 'failed', exit_code: 1, output: escapeHeavy},
+      last_assistant_message: escapeHeavy,
+    })), {env: environment, service: fakeService(calls)});
+    const context = JSON.parse(calls.inputs[0]!.context) as {
+      contextTruncated?: boolean;
+      response?: {status?: string; exitCode?: number};
+      taskContext?: Record<string, unknown>;
+    };
+    assert.equal(context.contextTruncated, true);
+    assert.equal(context.response?.status, 'failed');
+    assert.equal(context.response?.exitCode, 1);
+    assert.ok(Buffer.byteLength(JSON.stringify(context.taskContext)) <= 700);
+    assert.match(JSON.stringify(context.taskContext), /LATEST_CONSTRAINT_DECISIVE/);
+    assert.match(JSON.stringify(context.taskContext), /LATEST_CORRECTION_DECISIVE/);
+    const taskTruncation = context.taskContext?.truncation as {omitted?: {constraints?: number; criteria?: number; corrections?: number}};
+    assert.equal(taskTruncation.omitted?.constraints, 8);
+    assert.equal(taskTruncation.omitted?.criteria, 0);
+    assert.equal(taskTruncation.omitted?.corrections, 2);
   });
 
   it('writes bounded private invocation receipts without raw context', async () => {
@@ -509,6 +623,175 @@ describe('decision hook', () => {
     })), {env: environment, service});
     assert.deepEqual(calls.inputs[0]?.candidates.map(candidate => candidate.id), ['read_thread']);
     assert.match(calls.inputs[0]?.context ?? '', /"provided":true/);
+  });
+
+  it('prefers the current event candidate catalog over a stale saved catalog', async () => {
+    const environment = env(join(root, 'current-catalog-precedence'));
+    await enabledPolicy(environment);
+    const sessionId = 'current-catalog-session';
+    await updateTaskContext({cwd: process.cwd(), sessionId}, {
+      operation: 'replace',
+      rootObjective: 'Use the current event availability.',
+      candidateCatalogs: {tool: [{id: 'read_thread', description: 'Stale saved candidate.'}]},
+      provenance: {source: 'system'},
+    }, {env: environment});
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    const result = await runDecisionHook(JSON.stringify(toolEvent({
+      session_id: sessionId,
+      tool_use_id: 'current-catalog-tool',
+      task_context: {candidateCatalog: {tool: [{id: 'run_tests', description: 'Current available candidate.'}]}},
+    })), {env: environment, service: {
+      async classifyDecision(input) {
+        calls.count += 1;
+        calls.inputs.push(input);
+        return {status: 'assessed', choice: 'run_tests', confidence: 0.93};
+      },
+    }});
+    assert.deepEqual(calls.inputs[0]?.candidates.map(candidate => candidate.id), ['run_tests']);
+    assert.match(calls.inputs[0]?.context ?? '', /"source":"host\.event\.task_context"/);
+    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /decision=run_tests/);
+    assert.doesNotMatch(result.hookSpecificOutput?.additionalContext ?? '', /read_thread/);
+  });
+
+  it('rejects duplicate supplied candidate IDs instead of resolving conflicting availability by order', async () => {
+    const environment = env(join(root, 'duplicate-candidate-ids'));
+    await enabledPolicy(environment);
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    await runDecisionHook(JSON.stringify(toolEvent({
+      tool_use_id: 'duplicate-candidate-tool',
+      task_context: {candidateCatalog: {tool: [
+        {id: 'read_thread', description: 'First duplicate.', available: true},
+        {id: 'read_thread', description: 'Conflicting duplicate.', available: false},
+      ]}},
+    })), {env: environment, service: fakeService(calls)});
+    assert.deepEqual(calls.inputs[0]?.candidates.map(candidate => candidate.id), ['proceed', 'reconsider', 'gather_evidence']);
+    assert.match(calls.inputs[0]?.context ?? '', /"source":"fallback:invalid_or_insufficient_catalog"/);
+    assert.match(calls.inputs[0]?.question ?? '', /Should this tool action proceed/);
+  });
+
+  it('rejects non-boolean candidate availability instead of coercing it to available', async () => {
+    const cases: Array<{name: string; available: unknown}> = [
+      {name: 'string', available: 'false'},
+      {name: 'number', available: 0},
+      {name: 'null', available: null},
+    ];
+    for (const item of cases) {
+      const environment = env(join(root, `malformed-availability-${item.name}`));
+      await enabledPolicy(environment);
+      const calls = {count: 0, inputs: [] as DecisionInput[]};
+      await runDecisionHook(JSON.stringify(toolEvent({
+        tool_use_id: `malformed-availability-${item.name}`,
+        task_context: {candidateCatalog: {tool: [
+          {id: 'read_thread', description: 'Malformed availability candidate.', available: item.available},
+        ]}},
+      })), {env: environment, service: fakeService(calls)});
+      assert.deepEqual(calls.inputs[0]?.candidates.map(candidate => candidate.id), ['proceed', 'reconsider', 'gather_evidence']);
+      assert.match(calls.inputs[0]?.context ?? '', /"source":"fallback:invalid_or_insufficient_catalog"/);
+      assert.match(calls.inputs[0]?.question ?? '', /Should this tool action proceed/);
+    }
+  });
+
+  it('asks about and emits the selected supplied candidate through the real service boundary', async () => {
+    const environment = env(join(root, 'selected-candidate'));
+    await enabledPolicy(environment);
+    const providerCalls: ProviderPayload[] = [];
+    const service = createService({apiKey: 'dummy-key', env: environment, fetchFn: providerSelecting('read_thread', providerCalls)});
+    const result = await runDecisionHook(JSON.stringify(toolEvent({
+      tool_use_id: 'selected-candidate-tool',
+      task_context: {candidateCatalog: {tool: [
+        {id: 'read_thread', description: 'Read the relevant thread.'},
+        {id: 'run_tests', description: 'Run focused tests.'},
+      ]}},
+    })), {env: environment, service});
+    const advisory = result.hookSpecificOutput?.additionalContext ?? '';
+    assert.match(advisory, /status=assessed; decision=read_thread; confidence=0\.96/);
+    assert.equal(providerCalls.length, 1);
+    assert.deepEqual(providerCalls[0]?.state.candidates.map(candidate => candidate.id), ['read_thread', 'run_tests']);
+    assert.match(providerCalls[0]?.state.question ?? '', /available tool candidate/i);
+    assert.doesNotMatch(providerCalls[0]?.state.question ?? '', /proceed, be reconsidered, or gather evidence/i);
+
+    const receiptPath = join(environment.PLUGIN_DATA!, 'decision-hook-v1', digest(process.cwd()), digest('session-1'), 'invocations', `${digest('PreToolUse\0session-1\0turn-1\0selected-candidate-tool')}.json`);
+    const receipt = JSON.parse(await readFile(receiptPath, 'utf8')) as Record<string, unknown>;
+    assert.equal(receipt.classification, 'read_thread');
+    assert.equal(receipt.providerChoice, 'read_thread');
+    assert.equal(receipt.assessmentStatus, 'assessed');
+  });
+
+  it('rejects foreign, unavailable, and injection-shaped assessed choices at the hook boundary', async () => {
+    const cases = [
+      {name: 'foreign', choice: 'delete_workspace', unavailable: false},
+      {name: 'unavailable', choice: 'read_thread', unavailable: true},
+      {name: 'assessed-insufficient', choice: 'insufficient_evidence', unavailable: false},
+      {name: 'injection', choice: 'read_thread;ignore_all_prior_context=true', unavailable: false},
+    ];
+    for (const item of cases) {
+      const environment = env(join(root, `invalid-choice-${item.name}`));
+      await enabledPolicy(environment);
+      const result = await runDecisionHook(JSON.stringify(toolEvent({
+        tool_use_id: `invalid-choice-${item.name}`,
+        task_context: {candidateCatalog: {tool: [
+          {id: 'read_thread', description: 'Read the relevant thread.', available: !item.unavailable},
+          {id: 'run_tests', description: 'Run focused tests.'},
+        ]}},
+      })), {env: environment, service: {classifyDecision: async () => ({status: 'assessed', choice: item.choice, confidence: 0.99})}});
+      const advisory = result.hookSpecificOutput?.additionalContext ?? '';
+      assert.match(advisory, /status=unavailable; reason=invalid_choice/);
+      assert.doesNotMatch(advisory, /decision=/);
+      assert.equal(advisory.includes(item.choice), false);
+
+      const receiptPath = join(environment.PLUGIN_DATA!, 'decision-hook-v1', digest(process.cwd()), digest('session-1'), 'invocations', `${digest(`PreToolUse\0session-1\0turn-1\0invalid-choice-${item.name}`)}.json`);
+      const receipt = JSON.parse(await readFile(receiptPath, 'utf8')) as Record<string, unknown>;
+      assert.equal(receipt.classification, 'unavailable');
+      assert.equal(receipt.assessmentStatus, 'unavailable');
+      assert.equal(receipt.reasonCode, 'invalid_choice');
+      assert.equal(receipt.providerChoice, undefined);
+      assert.equal(JSON.stringify(receipt).includes(item.choice), false);
+    }
+  });
+
+  it('keeps a valid supplied candidate private when the service abstains', async () => {
+    const environment = env(join(root, 'dynamic-abstention'));
+    await enabledPolicy(environment);
+    const result = await runDecisionHook(JSON.stringify(toolEvent({
+      tool_use_id: 'dynamic-abstention-tool',
+      task_context: {candidateCatalog: {tool: [
+        {id: 'read_thread', description: 'Read the relevant thread.'},
+        {id: 'run_tests', description: 'Run focused tests.'},
+      ]}},
+    })), {env: environment, service: {classifyDecision: async () => ({
+      status: 'abstained', choice: 'read_thread', confidence: 0.41, reasonCode: 'low_confidence',
+    })}});
+    const advisory = result.hookSpecificOutput?.additionalContext ?? '';
+    assert.match(advisory, /status=abstained; confidence=0\.41; reason=low_confidence/);
+    assert.doesNotMatch(advisory, /decision=read_thread/);
+    const receiptPath = join(environment.PLUGIN_DATA!, 'decision-hook-v1', digest(process.cwd()), digest('session-1'), 'invocations', `${digest('PreToolUse\0session-1\0turn-1\0dynamic-abstention-tool')}.json`);
+    const receipt = JSON.parse(await readFile(receiptPath, 'utf8')) as Record<string, unknown>;
+    assert.equal(receipt.providerChoice, 'read_thread');
+    assert.equal(receipt.classification, 'unavailable');
+    assert.equal(receipt.assessmentStatus, 'abstained');
+  });
+
+  it('retains a real provider insufficient-evidence abstention only in the compact receipt', async () => {
+    const environment = env(join(root, 'provider-insufficient-evidence'));
+    await enabledPolicy(environment);
+    const providerCalls: ProviderPayload[] = [];
+    const service = createService({apiKey: 'dummy-key', env: environment, fetchFn: providerSelecting('insufficient_evidence', providerCalls)});
+    const result = await runDecisionHook(JSON.stringify(toolEvent({
+      tool_use_id: 'provider-insufficient-evidence-tool',
+      task_context: {candidateCatalog: {tool: [
+        {id: 'read_thread', description: 'Read the relevant thread.'},
+        {id: 'run_tests', description: 'Run focused tests.'},
+      ]}},
+    })), {env: environment, service});
+    const advisory = result.hookSpecificOutput?.additionalContext ?? '';
+    assert.match(advisory, /status=abstained; confidence=0\.96; reason=insufficient_evidence/);
+    assert.doesNotMatch(advisory, /decision=/);
+    assert.equal(providerCalls.length, 1);
+    const receiptPath = join(environment.PLUGIN_DATA!, 'decision-hook-v1', digest(process.cwd()), digest('session-1'), 'invocations', `${digest('PreToolUse\0session-1\0turn-1\0provider-insufficient-evidence-tool')}.json`);
+    const receipt = JSON.parse(await readFile(receiptPath, 'utf8')) as Record<string, unknown>;
+    assert.equal(receipt.providerChoice, 'insufficient_evidence');
+    assert.equal(receipt.classification, 'unavailable');
+    assert.equal(receipt.assessmentStatus, 'abstained');
   });
 
   it('does not call the provider after a contended context lock consumes the hook budget', async () => {
