@@ -1,0 +1,267 @@
+{
+  "schemaVersion": "paired-v1-public-manifest-1",
+  "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94",
+  "solutionCount": 16,
+  "files": [
+    {
+      "trialId": "retry-repair.r1.baseline",
+      "taskId": "retry-repair",
+      "repeat": 1,
+      "arm": "baseline",
+      "path": "solutions/retry-repair.r1.baseline/solution.mjs",
+      "sha256": "47f313091624ab540a33cb1653814b0bac5edd31e0d3fed70046ceb536d40df1",
+      "bytes": 1138
+    },
+    {
+      "trialId": "retry-repair.r1.treatment",
+      "taskId": "retry-repair",
+      "repeat": 1,
+      "arm": "treatment",
+      "path": "solutions/retry-repair.r1.treatment/solution.mjs",
+      "sha256": "6c72cbf76423a6f55b693d9c1621767417c763d9722ed4fdd88a8493737874df",
+      "bytes": 1277
+    },
+    {
+      "trialId": "interval-repair.r2.treatment",
+      "taskId": "interval-repair",
+      "repeat": 2,
+      "arm": "treatment",
+      "path": "solutions/interval-repair.r2.treatment/solution.mjs",
+      "sha256": "58b728870ea70abc8cfb255b56d67bea962f65a52da37c06360fc7c306a18cbd",
+      "bytes": 457
+    },
+    {
+      "trialId": "interval-repair.r2.baseline",
+      "taskId": "interval-repair",
+      "repeat": 2,
+      "arm": "baseline",
+      "path": "solutions/interval-repair.r2.baseline/solution.mjs",
+      "sha256": "8d821d4e3895388c9279935b2ca61bef479d63fab267cbdf5ebaf1480a656992",
+      "bytes": 463
+    },
+    {
+      "trialId": "csv-parser.r2.baseline",
+      "taskId": "csv-parser",
+      "repeat": 2,
+      "arm": "baseline",
+      "path": "solutions/csv-parser.r2.baseline/solution.mjs",
+      "sha256": "358ec9424c3806916ef9ed2127b2728793569c4dafc84da4f960265164a7c190",
+      "bytes": 1066
+    },
+    {
+      "trialId": "csv-parser.r2.treatment",
+      "taskId": "csv-parser",
+      "repeat": 2,
+      "arm": "treatment",
+      "path": "solutions/csv-parser.r2.treatment/solution.mjs",
+      "sha256": "26c3e73c987b28318b74179b335e2f82601a9a7221dfffdb0261059ab2dbf1d3",
+      "bytes": 1102
+    },
+    {
+      "trialId": "retry-repair.r2.treatment",
+      "taskId": "retry-repair",
+      "repeat": 2,
+      "arm": "treatment",
+      "path": "solutions/retry-repair.r2.treatment/solution.mjs",
+      "sha256": "169dfdb6a813899223ad3248745cd8cde52bb24dcdaa768dbb683edba3f12983",
+      "bytes": 1152
+    },
+    {
+      "trialId": "retry-repair.r2.baseline",
+      "taskId": "retry-repair",
+      "repeat": 2,
+      "arm": "baseline",
+      "path": "solutions/retry-repair.r2.baseline/solution.mjs",
+      "sha256": "050b7fc084343e1a7de87d2b30d3dc75d7f948193a8f34835fbdba60d1f235ac",
+      "bytes": 1308
+    },
+    {
+      "trialId": "changed-route.r2.baseline",
+      "taskId": "changed-route",
+      "repeat": 2,
+      "arm": "baseline",
+      "path": "solutions/changed-route.r2.baseline/solution.mjs",
+      "sha256": "d882d138828abc9c18b775786d5f8a1078a87241e70bf227dfce3229c44802ba",
+      "bytes": 534
+    },
+    {
+      "trialId": "changed-route.r2.treatment",
+      "taskId": "changed-route",
+      "repeat": 2,
+      "arm": "treatment",
+      "path": "solutions/changed-route.r2.treatment/solution.mjs",
+      "sha256": "d882d138828abc9c18b775786d5f8a1078a87241e70bf227dfce3229c44802ba",
+      "bytes": 534
+    },
+    {
+      "trialId": "csv-parser.r1.treatment",
+      "taskId": "csv-parser",
+      "repeat": 1,
+      "arm": "treatment",
+      "path": "solutions/csv-parser.r1.treatment/solution.mjs",
+      "sha256": "1ed154790975a6cab7652275f34b6238e1f7212ea7d88d04c895bafaa7bc0db0",
+      "bytes": 1100
+    },
+    {
+      "trialId": "csv-parser.r1.baseline",
+      "taskId": "csv-parser",
+      "repeat": 1,
+      "arm": "baseline",
+      "path": "solutions/csv-parser.r1.baseline/solution.mjs",
+      "sha256": "34179ddef9a3d8a896de3da4538725b67db582721ec6aa436d320a0e41133e17",
+      "bytes": 1104
+    },
+    {
+      "trialId": "changed-route.r1.baseline",
+      "taskId": "changed-route",
+      "repeat": 1,
+      "arm": "baseline",
+      "path": "solutions/changed-route.r1.baseline/solution.mjs",
+      "sha256": "d882d138828abc9c18b775786d5f8a1078a87241e70bf227dfce3229c44802ba",
+      "bytes": 534
+    },
+    {
+      "trialId": "changed-route.r1.treatment",
+      "taskId": "changed-route",
+      "repeat": 1,
+      "arm": "treatment",
+      "path": "solutions/changed-route.r1.treatment/solution.mjs",
+      "sha256": "e788720e878532194123f6434af517511f87bf10d4827c679be43db85d896ba0",
+      "bytes": 560
+    },
+    {
+      "trialId": "interval-repair.r1.treatment",
+      "taskId": "interval-repair",
+      "repeat": 1,
+      "arm": "treatment",
+      "path": "solutions/interval-repair.r1.treatment/solution.mjs",
+      "sha256": "9a7ceb79fdb88d5a075e94012e0000a08736dc02c0dfec478e8e5620ca345d73",
+      "bytes": 458
+    },
+    {
+      "trialId": "interval-repair.r1.baseline",
+      "taskId": "interval-repair",
+      "repeat": 1,
+      "arm": "baseline",
+      "path": "solutions/interval-repair.r1.baseline/solution.mjs",
+      "sha256": "58b728870ea70abc8cfb255b56d67bea962f65a52da37c06360fc7c306a18cbd",
+      "bytes": 457
+    }
+  ],
+  "publicFiles": [
+    {
+      "path": "README.md",
+      "sha256": "9abbd94a095b1152019ec7565a6d8f95074cb4c0e7dac3becee548c61587cb10",
+      "bytes": 5261
+    },
+    {
+      "path": "summary.json",
+      "sha256": "df70ca054cb420c981f938d8c6f62893529eb00ae0724b89910de4c24e082b99",
+      "bytes": 17195
+    },
+    {
+      "path": "receipt-metrics.json",
+      "sha256": "87526769626ae6a91b552c58ae9c53f5a759bfeec80d6dc8c966833d2467a4aa",
+      "bytes": 5884
+    },
+    {
+      "path": "plan.json",
+      "sha256": "e6e2f6fc63195a1c706671dc1b310bc31b85256d3e989eada3ef2cb28e796eaa",
+      "bytes": 3674
+    },
+    {
+      "path": "regrade-results.json",
+      "sha256": "7efa9351782e39310c6f117721f2764e0852c24030d61de761c16567193b69b7",
+      "bytes": 4804
+    },
+    {
+      "path": "runtime-provenance.json",
+      "sha256": "00d01005bf081f7f0266aba8cc5bcb45d93770c7e4992accdf85a6695c1b53e8",
+      "bytes": 4142
+    },
+    {
+      "path": "solutions/retry-repair.r1.baseline/solution.mjs",
+      "sha256": "47f313091624ab540a33cb1653814b0bac5edd31e0d3fed70046ceb536d40df1",
+      "bytes": 1138
+    },
+    {
+      "path": "solutions/retry-repair.r1.treatment/solution.mjs",
+      "sha256": "6c72cbf76423a6f55b693d9c1621767417c763d9722ed4fdd88a8493737874df",
+      "bytes": 1277
+    },
+    {
+      "path": "solutions/interval-repair.r2.treatment/solution.mjs",
+      "sha256": "58b728870ea70abc8cfb255b56d67bea962f65a52da37c06360fc7c306a18cbd",
+      "bytes": 457
+    },
+    {
+      "path": "solutions/interval-repair.r2.baseline/solution.mjs",
+      "sha256": "8d821d4e3895388c9279935b2ca61bef479d63fab267cbdf5ebaf1480a656992",
+      "bytes": 463
+    },
+    {
+      "path": "solutions/csv-parser.r2.baseline/solution.mjs",
+      "sha256": "358ec9424c3806916ef9ed2127b2728793569c4dafc84da4f960265164a7c190",
+      "bytes": 1066
+    },
+    {
+      "path": "solutions/csv-parser.r2.treatment/solution.mjs",
+      "sha256": "26c3e73c987b28318b74179b335e2f82601a9a7221dfffdb0261059ab2dbf1d3",
+      "bytes": 1102
+    },
+    {
+      "path": "solutions/retry-repair.r2.treatment/solution.mjs",
+      "sha256": "169dfdb6a813899223ad3248745cd8cde52bb24dcdaa768dbb683edba3f12983",
+      "bytes": 1152
+    },
+    {
+      "path": "solutions/retry-repair.r2.baseline/solution.mjs",
+      "sha256": "050b7fc084343e1a7de87d2b30d3dc75d7f948193a8f34835fbdba60d1f235ac",
+      "bytes": 1308
+    },
+    {
+      "path": "solutions/changed-route.r2.baseline/solution.mjs",
+      "sha256": "d882d138828abc9c18b775786d5f8a1078a87241e70bf227dfce3229c44802ba",
+      "bytes": 534
+    },
+    {
+      "path": "solutions/changed-route.r2.treatment/solution.mjs",
+      "sha256": "d882d138828abc9c18b775786d5f8a1078a87241e70bf227dfce3229c44802ba",
+      "bytes": 534
+    },
+    {
+      "path": "solutions/csv-parser.r1.treatment/solution.mjs",
+      "sha256": "1ed154790975a6cab7652275f34b6238e1f7212ea7d88d04c895bafaa7bc0db0",
+      "bytes": 1100
+    },
+    {
+      "path": "solutions/csv-parser.r1.baseline/solution.mjs",
+      "sha256": "34179ddef9a3d8a896de3da4538725b67db582721ec6aa436d320a0e41133e17",
+      "bytes": 1104
+    },
+    {
+      "path": "solutions/changed-route.r1.baseline/solution.mjs",
+      "sha256": "d882d138828abc9c18b775786d5f8a1078a87241e70bf227dfce3229c44802ba",
+      "bytes": 534
+    },
+    {
+      "path": "solutions/changed-route.r1.treatment/solution.mjs",
+      "sha256": "e788720e878532194123f6434af517511f87bf10d4827c679be43db85d896ba0",
+      "bytes": 560
+    },
+    {
+      "path": "solutions/interval-repair.r1.treatment/solution.mjs",
+      "sha256": "9a7ceb79fdb88d5a075e94012e0000a08736dc02c0dfec478e8e5620ca345d73",
+      "bytes": 458
+    },
+    {
+      "path": "solutions/interval-repair.r1.baseline/solution.mjs",
+      "sha256": "58b728870ea70abc8cfb255b56d67bea962f65a52da37c06360fc7c306a18cbd",
+      "bytes": 457
+    }
+  ],
+  "pathBase": "package root (benchmarks/results/2026-09-26-paired-v1)",
+  "runtimeProvenance": "runtime-provenance.json",
+  "privateInstalledManifestFilesVerified": 31,
+  "publishedSemanticPackageFiles": 30
+}

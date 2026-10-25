@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "restart-journal-v2",
+  "operationId": "op-restart-conflict",
+  "sequence": 2,
+  "phase": "send_uncertain",
+  "context": {"workspaceRevision": "rev-b", "requirementsRevision": "req-b", "catalogRevision": "cat-b"},
+  "request": {"requestId": "req-conflict-1", "idempotencyKey": "request-conflict-1", "status": "send_attempted", "attempts": 1},
+  "response": null,
+  "action": {"actionId": "external-effect", "idempotencyKey": "action-conflict-1", "status": "not_started", "attempts": 0},
+  "acknowledgement": {"status": "pending"}
+}

@@ -1,0 +1,155 @@
+{
+  "schemaVersion": "paired-codex-v1",
+  "runnerVersion": "paired-codex-benchmark-v1",
+  "createdAt": "2026-09-26T15:18:50.650Z",
+  "seed": "paired-codex-v1",
+  "taskCount": 4,
+  "repeats": 2,
+  "trialCount": 16,
+  "timeoutMs": 180000,
+  "oracleTimeoutMs": 60000,
+  "armMapping": {
+    "baseline": "codex_only",
+    "treatment": "codex_jev"
+  },
+  "artifacts": {
+    "runnerSha256": "30137d3e8c5cb8fd6a5246510cd8a01e16de21251724a033fc59169b2833a503",
+    "tasksSha256": "e517029eb95b7c9915544b42edc9d8e853810d54047a2bf11a8815a642b4ba43",
+    "graderSha256": "a91d0dfa79bd27f858f18e8e9dd8e4b6155287ee0a963aec457d0839dd7c8b94"
+  },
+  "plan": [
+    {
+      "trialId": "retry-repair.r1.baseline",
+      "taskId": "retry-repair",
+      "repeat": 1,
+      "arm": "baseline",
+      "pairIndex": 0,
+      "armPosition": 0
+    },
+    {
+      "trialId": "retry-repair.r1.treatment",
+      "taskId": "retry-repair",
+      "repeat": 1,
+      "arm": "treatment",
+      "pairIndex": 0,
+      "armPosition": 1
+    },
+    {
+      "trialId": "interval-repair.r2.treatment",
+      "taskId": "interval-repair",
+      "repeat": 2,
+      "arm": "treatment",
+      "pairIndex": 1,
+      "armPosition": 0
+    },
+    {
+      "trialId": "interval-repair.r2.baseline",
+      "taskId": "interval-repair",
+      "repeat": 2,
+      "arm": "baseline",
+      "pairIndex": 1,
+      "armPosition": 1
+    },
+    {
+      "trialId": "csv-parser.r2.baseline",
+      "taskId": "csv-parser",
+      "repeat": 2,
+      "arm": "baseline",
+      "pairIndex": 2,
+      "armPosition": 0
+    },
+    {
+      "trialId": "csv-parser.r2.treatment",
+      "taskId": "csv-parser",
+      "repeat": 2,
+      "arm": "treatment",
+      "pairIndex": 2,
+      "armPosition": 1
+    },
+    {
+      "trialId": "retry-repair.r2.treatment",
+      "taskId": "retry-repair",
+      "repeat": 2,
+      "arm": "treatment",
+      "pairIndex": 3,
+      "armPosition": 0
+    },
+    {
+      "trialId": "retry-repair.r2.baseline",
+      "taskId": "retry-repair",
+      "repeat": 2,
+      "arm": "baseline",
+      "pairIndex": 3,
+      "armPosition": 1
+    },
+    {
+      "trialId": "changed-route.r2.baseline",
+      "taskId": "changed-route",
+      "repeat": 2,
+      "arm": "baseline",
+      "pairIndex": 4,
+      "armPosition": 0
+    },
+    {
+      "trialId": "changed-route.r2.treatment",
+      "taskId": "changed-route",
+      "repeat": 2,
+      "arm": "treatment",
+      "pairIndex": 4,
+      "armPosition": 1
+    },
+    {
+      "trialId": "csv-parser.r1.treatment",
+      "taskId": "csv-parser",
+      "repeat": 1,
+      "arm": "treatment",
+      "pairIndex": 5,
+      "armPosition": 0
+    },
+    {
+      "trialId": "csv-parser.r1.baseline",
+      "taskId": "csv-parser",
+      "repeat": 1,
+      "arm": "baseline",
+      "pairIndex": 5,
+      "armPosition": 1
+    },
+    {
+      "trialId": "changed-route.r1.baseline",
+      "taskId": "changed-route",
+      "repeat": 1,
+      "arm": "baseline",
+      "pairIndex": 6,
+      "armPosition": 0
+    },
+    {
+      "trialId": "changed-route.r1.treatment",
+      "taskId": "changed-route",
+      "repeat": 1,
+      "arm": "treatment",
+      "pairIndex": 6,
+      "armPosition": 1
+    },
+    {
+      "trialId": "interval-repair.r1.treatment",
+      "taskId": "interval-repair",
+      "repeat": 1,
+      "arm": "treatment",
+      "pairIndex": 7,
+      "armPosition": 0
+    },
+    {
+      "trialId": "interval-repair.r1.baseline",
+      "taskId": "interval-repair",
+      "repeat": 1,
+      "arm": "baseline",
+      "pairIndex": 7,
+      "armPosition": 1
+    }
+  ],
+  "publicDisclosure": {
+    "localFrozenPlan": true,
+    "externalPreregistration": false,
+    "providerCallsExcluded": true
+  }
+}

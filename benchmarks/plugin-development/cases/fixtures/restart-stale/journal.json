@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "restart-journal-v2",
+  "operationId": "op-restart-stale",
+  "sequence": 3,
+  "phase": "decision_persisted",
+  "context": {"workspaceRevision": "rev-17", "requirementsRevision": "req-17", "catalogRevision": "cat-17"},
+  "request": {"requestId": "req-stale-1", "idempotencyKey": "request-stale-1", "status": "response_persisted", "attempts": 1},
+  "response": {"receiptId": "response-stale-1", "choiceId": "apply-rev-17", "status": "persisted"},
+  "action": {"actionId": "apply-rev-17", "idempotencyKey": "action-stale-1", "status": "not_started", "attempts": 0},
+  "acknowledgement": {"status": "pending"}
+}

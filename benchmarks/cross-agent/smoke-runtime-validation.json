@@ -1,0 +1,159 @@
+{
+  "schemaVersion": "cross-agent-smoke-runtime-validation-v1",
+  "status": "passed",
+  "scope": "docker-runtime-smoke-only",
+  "modelCalls": 0,
+  "networkPolicy": {
+    "imageResolution": "registry-access-required",
+    "build": "none",
+    "runtimeControls": "none"
+  },
+  "baseImage": {
+    "tag": "node:22.22.0-bookworm-slim",
+    "indexDigest": "sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94",
+    "mediaType": "application/vnd.oci.image.index.v1+json",
+    "platform": "linux/arm64/v8",
+    "platformManifestDigest": "sha256:5e22e6fb4448236070fdb260662e49fd58779876855baf95388534475c3dcd11"
+  },
+  "tasks": [
+    {
+      "id": "interval-repair",
+      "agentImage": {
+        "id": "sha256:1f2cd0360a59086209069e5092d9fef9098c330253d402ce6f14624c071ab74e",
+        "architecture": "arm64",
+        "os": "linux",
+        "rootFsLayerCount": 7
+      },
+      "verifierImage": {
+        "id": "sha256:9aba996509fce71a09d8a91e64819a4e6a9a30372e73b7e6275bbf63b8f23985",
+        "architecture": "arm64",
+        "os": "linux",
+        "rootFsLayerCount": 9
+      },
+      "agentIsolation": {
+        "networkMode": "none",
+        "initialSolutionPresent": true,
+        "testsDirectoryPresent": false,
+        "graderFileMatches": 0,
+        "passed": true
+      },
+      "controls": {
+        "negative": {
+          "expected": "fail",
+          "exitCode": 1,
+          "reward": "0",
+          "passed": true
+        },
+        "positive": {
+          "expected": "pass",
+          "exitCode": 0,
+          "reward": "1",
+          "passed": true
+        },
+        "missingArtifact": {
+          "expected": "fail",
+          "exitCode": 1,
+          "reward": "0",
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "retry-repair",
+      "agentImage": {
+        "id": "sha256:ef47d9cecdace109ee427922de2f26aa80bc0b916bd8aaea1d9de6aa22c049ea",
+        "architecture": "arm64",
+        "os": "linux",
+        "rootFsLayerCount": 7
+      },
+      "verifierImage": {
+        "id": "sha256:fab942430e71d7b774953ef8cf522f4c6ecb5beed8e754e876dba15268fd29aa",
+        "architecture": "arm64",
+        "os": "linux",
+        "rootFsLayerCount": 9
+      },
+      "agentIsolation": {
+        "networkMode": "none",
+        "initialSolutionPresent": true,
+        "testsDirectoryPresent": false,
+        "graderFileMatches": 0,
+        "passed": true
+      },
+      "controls": {
+        "negative": {
+          "expected": "fail",
+          "exitCode": 1,
+          "reward": "0",
+          "passed": true
+        },
+        "positive": {
+          "expected": "pass",
+          "exitCode": 0,
+          "reward": "1",
+          "passed": true
+        },
+        "missingArtifact": {
+          "expected": "fail",
+          "exitCode": 1,
+          "reward": "0",
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "csv-parser",
+      "agentImage": {
+        "id": "sha256:30cc4512a63935541aeb24d00721d506837b080660a38d86ac1e17069baa3f34",
+        "architecture": "arm64",
+        "os": "linux",
+        "rootFsLayerCount": 7
+      },
+      "verifierImage": {
+        "id": "sha256:df882198cf036297d323fcc8264cb203e55fa8e9797fb8f71be9cf4800bed447",
+        "architecture": "arm64",
+        "os": "linux",
+        "rootFsLayerCount": 9
+      },
+      "agentIsolation": {
+        "networkMode": "none",
+        "initialSolutionPresent": true,
+        "testsDirectoryPresent": false,
+        "graderFileMatches": 0,
+        "passed": true
+      },
+      "controls": {
+        "negative": {
+          "expected": "fail",
+          "exitCode": 1,
+          "reward": "0",
+          "passed": true
+        },
+        "positive": {
+          "expected": "pass",
+          "exitCode": 0,
+          "reward": "1",
+          "passed": true
+        },
+        "missingArtifact": {
+          "expected": "fail",
+          "exitCode": 1,
+          "reward": "0",
+          "passed": true
+        }
+      }
+    }
+  ],
+  "cleanup": {
+    "containersRemovedByRunRm": true,
+    "ownedImagesRemoved": true,
+    "ownedTemporaryDirectoryRemoved": true,
+    "imageRemovalFailures": 0
+  },
+  "docker": {
+    "clientVersion": "29.7.1",
+    "serverVersion": "29.8.0",
+    "serverOs": "linux",
+    "serverArchitecture": "arm64"
+  },
+  "generatedManifestSha256": "f67c1339ae11568ba08ff161513dc4cb45630bf00fad809f169d6721c25fea3f"
+}

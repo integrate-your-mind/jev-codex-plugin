@@ -1,0 +1,220 @@
+{
+  "schemaVersion": "plugin-development-independent-validation-v1",
+  "validatedAt": "2026-09-26T23:24:38.391Z",
+  "node": "v22.23.2",
+  "tests": {
+    "passed": 25,
+    "failed": 0,
+    "independentlyRunByRoot": true
+  },
+  "liveCallsDuringTests": 0,
+  "frozenManifestSha256": "7fdfc1bd957bce1397af9f62028017ac31e9a18962a86bedae9266e468d72c39",
+  "frozenContentSha256": "9a3c66cae32858d6591139a23b0f4bc73278262ef4e3d4f9375d4f71bae53948",
+  "sourceTrees": {
+    "control-released": {
+      "path": "benchmarks/plugin-development/experiment/variants/baseline/source/src",
+      "sha256": "7efd4ddd8fa62694d591cffb5070dc7a2eecda3f0affbb83400a645db0b0aa60",
+      "files": [
+        {
+          "path": "accounting.ts",
+          "mode": "100644",
+          "bytes": 14292,
+          "sha256": "df50cf6370b2d46cbe9e7fc144e0c7eda6b8de36e175e7900614773bce346e90"
+        },
+        {
+          "path": "batch.ts",
+          "mode": "100644",
+          "bytes": 7537,
+          "sha256": "aff6973404e3f5db6b6fd975954b100a74118bd4bf7f9850297aa040c9643609"
+        },
+        {
+          "path": "cli.ts",
+          "mode": "100644",
+          "bytes": 6822,
+          "sha256": "325ad045cb6ade424654e1a77d5117cd129af2996b7cb4320620b135d6b63f68"
+        },
+        {
+          "path": "contracts.ts",
+          "mode": "100644",
+          "bytes": 7102,
+          "sha256": "c6e095f34db25fdfde7becb8acb7d53920ba316085d409dbbe66207b992fdbc8"
+        },
+        {
+          "path": "credential.ts",
+          "mode": "100644",
+          "bytes": 1512,
+          "sha256": "f86ca09cc996854c6c8ffb15ca9ef2d529267d99205bfd94b9613a79abaf29d3"
+        },
+        {
+          "path": "decision-hook.ts",
+          "mode": "100644",
+          "bytes": 56279,
+          "sha256": "c1c42678a526277b8af022dbc279968db29901ff719973fa9db1e746cd5f56dd"
+        },
+        {
+          "path": "decision.ts",
+          "mode": "100644",
+          "bytes": 2393,
+          "sha256": "8e2de3b8f5226a83205d7bb790bef8617fd09c6a0cb38945cd32510395641a98"
+        },
+        {
+          "path": "hook.ts",
+          "mode": "100644",
+          "bytes": 11445,
+          "sha256": "048a1df6a4c4b85e7326a851865f7dd16499fb9d21f29a03791063b8350b4803"
+        },
+        {
+          "path": "outcomes.ts",
+          "mode": "100644",
+          "bytes": 7106,
+          "sha256": "3b13c11650a9e0cfaac34c2c3826fcd0543c8e4c1a0182f65553164bad423475"
+        },
+        {
+          "path": "policy.ts",
+          "mode": "100644",
+          "bytes": 5700,
+          "sha256": "7461651d5d990f6c404ee96d299d3cbf1c0f41f2f03cddc693477ccc978b05e7"
+        },
+        {
+          "path": "provider.ts",
+          "mode": "100644",
+          "bytes": 12399,
+          "sha256": "fede727db8dc3c23fec236a2f77668fb7eabba25e3032e0db109d1ef73792372"
+        },
+        {
+          "path": "redact.ts",
+          "mode": "100644",
+          "bytes": 1950,
+          "sha256": "96c828fe8cc275b1aca002f1b4b3b994753f6cf939c2d2edf6def281cad915e9"
+        },
+        {
+          "path": "server.ts",
+          "mode": "100644",
+          "bytes": 7470,
+          "sha256": "5f3f12f1085aae520d3db3d35507527caf3d33982752b82a8b7624b0a599a06c"
+        },
+        {
+          "path": "service.ts",
+          "mode": "100644",
+          "bytes": 23609,
+          "sha256": "e1e2faf16da1cd0a367491fcc18f7005d90168594c4d128a74d0cc105af5e79b"
+        },
+        {
+          "path": "store.ts",
+          "mode": "100644",
+          "bytes": 15913,
+          "sha256": "2e61c9282d2b25a145b60f0cd293afba641739622075b62ffa598ad6b82bc293"
+        },
+        {
+          "path": "task-context.ts",
+          "mode": "100644",
+          "bytes": 18415,
+          "sha256": "9cd808e817abcabae48303b2099db276dc1a81d99d6b7a1161bffeb86ffffd2d"
+        }
+      ]
+    },
+    "candidate-bundled-repair": {
+      "path": "benchmarks/plugin-development/experiment/variants/repair-bundled/source/jev-workflows/src",
+      "sha256": "b7dbd37edf96e187aa42e3ef949fe9073464fe703ba13456899990affe94782b",
+      "files": [
+        {
+          "path": "accounting.ts",
+          "mode": "100644",
+          "bytes": 14292,
+          "sha256": "df50cf6370b2d46cbe9e7fc144e0c7eda6b8de36e175e7900614773bce346e90"
+        },
+        {
+          "path": "batch.ts",
+          "mode": "100644",
+          "bytes": 7537,
+          "sha256": "aff6973404e3f5db6b6fd975954b100a74118bd4bf7f9850297aa040c9643609"
+        },
+        {
+          "path": "cli.ts",
+          "mode": "100644",
+          "bytes": 6822,
+          "sha256": "325ad045cb6ade424654e1a77d5117cd129af2996b7cb4320620b135d6b63f68"
+        },
+        {
+          "path": "contracts.ts",
+          "mode": "100644",
+          "bytes": 7102,
+          "sha256": "c6e095f34db25fdfde7becb8acb7d53920ba316085d409dbbe66207b992fdbc8"
+        },
+        {
+          "path": "credential.ts",
+          "mode": "100644",
+          "bytes": 1512,
+          "sha256": "f86ca09cc996854c6c8ffb15ca9ef2d529267d99205bfd94b9613a79abaf29d3"
+        },
+        {
+          "path": "decision-hook.ts",
+          "mode": "100644",
+          "bytes": 62536,
+          "sha256": "eee9d69bfa8f36a5523c973ff1ca5b700ba3c4f9c18675abc0427a12573b3c8f"
+        },
+        {
+          "path": "decision.ts",
+          "mode": "100644",
+          "bytes": 2393,
+          "sha256": "8e2de3b8f5226a83205d7bb790bef8617fd09c6a0cb38945cd32510395641a98"
+        },
+        {
+          "path": "hook.ts",
+          "mode": "100644",
+          "bytes": 11445,
+          "sha256": "048a1df6a4c4b85e7326a851865f7dd16499fb9d21f29a03791063b8350b4803"
+        },
+        {
+          "path": "outcomes.ts",
+          "mode": "100644",
+          "bytes": 7106,
+          "sha256": "3b13c11650a9e0cfaac34c2c3826fcd0543c8e4c1a0182f65553164bad423475"
+        },
+        {
+          "path": "policy.ts",
+          "mode": "100644",
+          "bytes": 5700,
+          "sha256": "7461651d5d990f6c404ee96d299d3cbf1c0f41f2f03cddc693477ccc978b05e7"
+        },
+        {
+          "path": "provider.ts",
+          "mode": "100644",
+          "bytes": 12399,
+          "sha256": "fede727db8dc3c23fec236a2f77668fb7eabba25e3032e0db109d1ef73792372"
+        },
+        {
+          "path": "redact.ts",
+          "mode": "100644",
+          "bytes": 1950,
+          "sha256": "96c828fe8cc275b1aca002f1b4b3b994753f6cf939c2d2edf6def281cad915e9"
+        },
+        {
+          "path": "server.ts",
+          "mode": "100644",
+          "bytes": 7470,
+          "sha256": "5f3f12f1085aae520d3db3d35507527caf3d33982752b82a8b7624b0a599a06c"
+        },
+        {
+          "path": "service.ts",
+          "mode": "100644",
+          "bytes": 23609,
+          "sha256": "e1e2faf16da1cd0a367491fcc18f7005d90168594c4d128a74d0cc105af5e79b"
+        },
+        {
+          "path": "store.ts",
+          "mode": "100644",
+          "bytes": 15913,
+          "sha256": "2e61c9282d2b25a145b60f0cd293afba641739622075b62ffa598ad6b82bc293"
+        },
+        {
+          "path": "task-context.ts",
+          "mode": "100644",
+          "bytes": 18415,
+          "sha256": "9cd808e817abcabae48303b2099db276dc1a81d99d6b7a1161bffeb86ffffd2d"
+        }
+      ]
+    }
+  },
+  "scope": "16-row authored hook-component study; no native-host or Codex task-quality claim"
+}

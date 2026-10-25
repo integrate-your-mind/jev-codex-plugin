@@ -1,0 +1,69 @@
+{
+  "denominator": {
+    "derivedReceiptIds": 100,
+    "fetchInvokedTrue": 100,
+    "found": 100,
+    "http200": 100,
+    "missing": 0,
+    "providerRequestIdPresent": 100,
+    "statuses": {
+      "abstained": 15,
+      "assessed": 81,
+      "other": 0,
+      "unavailable": 4
+    },
+    "unreadable": 0,
+    "validatedFalse": 4,
+    "validatedTrue": 96
+  },
+  "generatedAt": "2026-09-26T16:57:26.354224Z",
+  "invalidReceipts": {
+    "count": 4,
+    "knownFields": [],
+    "reason": "Bounded reads of the private trials.jsonl and linked receipt bodies stalled in the Documents directory; the underlying cause was not established by this audit. The readable private aggregate receipt-metrics file contains counts only and no IDs or diagnostics. No failure class is inferred from the validator enum or unrelated historical QA.",
+    "records": [],
+    "status": "unknown",
+    "unknownFields": [
+      "receipt IDs",
+      "transport.responseValidationFailure",
+      "transport.responseValidationDiagnostic",
+      "provider status/reason",
+      "event and timestamp"
+    ]
+  },
+  "measurementConclusion": "The four are provider responses that reached HTTP 200 but failed Jev response validation; they are not counted as validated evaluations. Their exact parser failure, event timing, and per-receipt provenance remain unknown pending a successful bounded read of the private linked receipts.",
+  "privacy": "No provider IDs, credential fingerprints, keys, raw bodies, prompts, or transcripts copied.",
+  "schemaVersion": "invalid-response-audit-v1",
+  "scope": "Final paired pilot v1; bounded read-only audit of the four receipts counted as validatedResponse=false.",
+  "separation": {
+    "correctAdviceNotMeasuredByThisField": true,
+    "http200IsTransportOnly": true,
+    "observed": "100 HTTP 200 responses; 96 accepted by response validation; 4 rejected as invalid_response/unavailable; 81 assessed, 15 abstained, 4 unavailable.",
+    "validatedResponseIsParserAcceptance": true
+  },
+  "sourceArtifacts": {
+    "privateMetrics": "read aggregate successfully; no per-receipt IDs or diagnostics exposed",
+    "privateTrials": "failed_bounded_read_timeout",
+    "publicMetrics": "benchmarks/results/2026-09-26-paired-v1/receipt-metrics.json",
+    "publicMetricsSha256": "87526769626ae6a91b552c58ae9c53f5a759bfeec80d6dc8c966833d2467a4aa"
+  },
+  "validatorEvidence": {
+    "actualClassForTheseFour": "unknown",
+    "currentSource": "source/jev-workflows/src/provider.ts",
+    "noSchemaRelaxationOrFix": true,
+    "possibleFailureClasses": [
+      "missing_body",
+      "invalid_json",
+      "response_schema",
+      "model_mismatch",
+      "answer_keys_mismatch",
+      "answer_schema",
+      "probability_keys_mismatch",
+      "choice_unknown",
+      "probability_sum_invalid",
+      "choice_not_argmax",
+      "score_legend_mismatch",
+      "score_value_invalid"
+    ]
+  }
+}

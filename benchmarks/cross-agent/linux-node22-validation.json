@@ -1,0 +1,36 @@
+{
+  "baseCommit": "699d3a41c6b49012c70d01e59231026042976677",
+  "changedFiles": {
+    "scripts/verify-distribution.test.mjs": "715589e5f5b932045a1dea11cfdc3855a7e49546642c975c49828e6f1d9d6b54"
+  },
+  "exitCode": 0,
+  "log": "linux-node22-regression.log",
+  "logSha256": "6382c4906627e3aca1eddb32aa4415795d62ee1556bdfbeee284e67084f961ce",
+  "environment": "Docker Linux arm64 Node22 pinned image; no provider credentials",
+  "checks": [
+    "distribution parity",
+    "distribution regressions",
+    "cross-agent benchmarks"
+  ],
+  "hostedCI": "not started: account locked due to billing",
+  "schemaVersion": "benchmark-linux-validation-v1",
+  "initialFullPipeline": {
+    "exitCode": 1,
+    "passedBeforeFailure": [
+      "npm ci --ignore-scripts",
+      "typecheck",
+      "build",
+      "163 plugin tests",
+      "manifest validation",
+      "distribution parity"
+    ],
+    "failure": "Distribution test fixture excluded its entire source tree because the checkout ancestor was /work",
+    "logSha256": "a7db7e1b8923b958574dba6bf6d183cb7d92e186b464dd6646e0a2685459e058"
+  },
+  "correctedCheckCounts": {
+    "distribution": 3,
+    "crossAgent": 21
+  },
+  "baseImage": "node:22.22.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94",
+  "scope": "Software validation only; no model calls or new benchmark scores"
+}

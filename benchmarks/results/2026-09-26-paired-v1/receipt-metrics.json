@@ -1,0 +1,235 @@
+{
+  "schemaVersion": "paired-receipt-metrics-v1",
+  "trialCount": 16,
+  "receiptIds": {
+    "derived": 100,
+    "found": 100,
+    "missing": 0,
+    "unreadable": 0
+  },
+  "attempts": {
+    "fetchInvoked": {
+      "true": 100,
+      "false": 0,
+      "unknown": 0
+    },
+    "observedReceiptFiles": 100
+  },
+  "responses": {
+    "observed": 100,
+    "withoutHttpStatus": 0,
+    "byHttpStatus": {
+      "200": 100
+    }
+  },
+  "validated": {
+    "true": 96,
+    "false": 4,
+    "unknown": 0
+  },
+  "statuses": {
+    "assessed": 81,
+    "abstained": 15,
+    "unavailable": 4,
+    "other": 0
+  },
+  "latencyMs": {
+    "observed": 100,
+    "min": 224,
+    "median": 275,
+    "p95": 339,
+    "max": 476,
+    "mean": 278.87
+  },
+  "usage": {
+    "inputTokenReceipts": 96,
+    "outputTokenReceipts": 96,
+    "inputTokens": 192106,
+    "outputTokens": 5689
+  },
+  "providerRequestIdPresence": {
+    "present": 100,
+    "absent": 0,
+    "unknown": 0
+  },
+  "missingIds": {
+    "count": 0,
+    "trials": 0
+  },
+  "mcpCoverage": {
+    "complete": false,
+    "trialsWithMcpCalls": 7,
+    "mcpCallCount": 7,
+    "trialsWithUnlinkedCalls": 7,
+    "limitation": "MCP call telemetry has no per-call result-receipt association. Receipt-derived metrics are a lower bound and cannot establish coverage or attribution for those calls."
+  },
+  "byTrial": [
+    {
+      "trialId": "retry-repair.r1.baseline",
+      "taskId": "retry-repair",
+      "arm": "baseline",
+      "derivedReceiptCount": 0,
+      "foundReceiptCount": 0,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 0
+    },
+    {
+      "trialId": "retry-repair.r1.treatment",
+      "taskId": "retry-repair",
+      "arm": "treatment",
+      "derivedReceiptCount": 10,
+      "foundReceiptCount": 10,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 1
+    },
+    {
+      "trialId": "interval-repair.r2.treatment",
+      "taskId": "interval-repair",
+      "arm": "treatment",
+      "derivedReceiptCount": 12,
+      "foundReceiptCount": 12,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 1
+    },
+    {
+      "trialId": "interval-repair.r2.baseline",
+      "taskId": "interval-repair",
+      "arm": "baseline",
+      "derivedReceiptCount": 0,
+      "foundReceiptCount": 0,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 0
+    },
+    {
+      "trialId": "csv-parser.r2.baseline",
+      "taskId": "csv-parser",
+      "arm": "baseline",
+      "derivedReceiptCount": 0,
+      "foundReceiptCount": 0,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 0
+    },
+    {
+      "trialId": "csv-parser.r2.treatment",
+      "taskId": "csv-parser",
+      "arm": "treatment",
+      "derivedReceiptCount": 10,
+      "foundReceiptCount": 10,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 1
+    },
+    {
+      "trialId": "retry-repair.r2.treatment",
+      "taskId": "retry-repair",
+      "arm": "treatment",
+      "derivedReceiptCount": 10,
+      "foundReceiptCount": 10,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 1
+    },
+    {
+      "trialId": "retry-repair.r2.baseline",
+      "taskId": "retry-repair",
+      "arm": "baseline",
+      "derivedReceiptCount": 0,
+      "foundReceiptCount": 0,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 0
+    },
+    {
+      "trialId": "changed-route.r2.baseline",
+      "taskId": "changed-route",
+      "arm": "baseline",
+      "derivedReceiptCount": 0,
+      "foundReceiptCount": 0,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 0
+    },
+    {
+      "trialId": "changed-route.r2.treatment",
+      "taskId": "changed-route",
+      "arm": "treatment",
+      "derivedReceiptCount": 18,
+      "foundReceiptCount": 18,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 0
+    },
+    {
+      "trialId": "csv-parser.r1.treatment",
+      "taskId": "csv-parser",
+      "arm": "treatment",
+      "derivedReceiptCount": 10,
+      "foundReceiptCount": 10,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 1
+    },
+    {
+      "trialId": "csv-parser.r1.baseline",
+      "taskId": "csv-parser",
+      "arm": "baseline",
+      "derivedReceiptCount": 0,
+      "foundReceiptCount": 0,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 0
+    },
+    {
+      "trialId": "changed-route.r1.baseline",
+      "taskId": "changed-route",
+      "arm": "baseline",
+      "derivedReceiptCount": 0,
+      "foundReceiptCount": 0,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 0
+    },
+    {
+      "trialId": "changed-route.r1.treatment",
+      "taskId": "changed-route",
+      "arm": "treatment",
+      "derivedReceiptCount": 18,
+      "foundReceiptCount": 18,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 1
+    },
+    {
+      "trialId": "interval-repair.r1.treatment",
+      "taskId": "interval-repair",
+      "arm": "treatment",
+      "derivedReceiptCount": 12,
+      "foundReceiptCount": 12,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 1
+    },
+    {
+      "trialId": "interval-repair.r1.baseline",
+      "taskId": "interval-repair",
+      "arm": "baseline",
+      "derivedReceiptCount": 0,
+      "foundReceiptCount": 0,
+      "missingReceiptCount": 0,
+      "unreadableReceiptCount": 0,
+      "mcpCallCount": 0
+    }
+  ],
+  "publicDisclosure": {
+    "hookReceiptLowerBound": 100,
+    "invalidValidatedResponses": 4,
+    "unreadableReceiptFiles": 0,
+    "providerRequestIds": "presence_only",
+    "sensitiveFields": "omitted"
+  }
+}
