@@ -231,6 +231,63 @@ test('a delayed legacy reclaimer cannot delete a replacement owner', async () =>
   }
 });
 
+test('a delayed directory reclaimer cannot remove a replacement nonempty directory', async () => {
+  const parent = resolve('../../work/jev-build');
+  await mkdir(parent, {recursive: true});
+  const dir = await mkdtemp(join(parent, 'store-directory-reclaimer-race-'));
+  const budget = join(dir, `budget-${new Date().toISOString().slice(0, 10)}.json`);
+  const lock = `${budget}.lock`;
+  const deferred = () => {
+    let resolve!: () => void;
+    const promise = new Promise<void>(done => { resolve = done; });
+    return {promise, resolve};
+  };
+  const sawA = deferred();
+  const releaseA = deferred();
+  const sawB = deferred();
+  const releaseB = deferred();
+  const originalUnlink = fs.rmdir;
+  const originalRename = fs.rename;
+  let unlinks = 0;
+  let writes = 0;
+  try {
+    await mkdir(lock, {mode: 0o700});
+    const token = '12345678-1234-4234-8234-123456789abc';
+    await writeFile(join(lock, `owner-${token}.json`), JSON.stringify({pid: 99999999, token, createdAt: '2020-01-01T00:00:00.000Z'}));
+    const old = new Date(Date.now() - 120_000);
+    await utimes(lock, old, old);
+    fs.rmdir = async path => {
+      if (String(path) === lock && unlinks++ === 0) { sawA.resolve(); await releaseA.promise; }
+      return originalUnlink(path);
+    };
+    fs.rename = async (source, target) => {
+      if (String(target) === budget && writes++ === 0) { sawB.resolve(); await releaseB.promise; }
+      return originalRename(source, target);
+    };
+    syncBuiltinESMExports();
+    const a = new FileStore(dir, 1, 100).reserve(1).catch(error => {
+      assert.match(error.message, /budget_busy/);
+      return false;
+    });
+    await sawA.promise;
+    const b = new FileStore(dir, 1, 100).reserve(1);
+    await sawB.promise;
+    releaseA.resolve();
+    const aGranted = await a;
+    releaseB.resolve();
+    const bGranted = await b;
+    assert.equal(Number(aGranted) + Number(bGranted), 1);
+    assert.deepEqual(JSON.parse(await readFile(budget, 'utf8')), {calls: 1, bytes: 1});
+  } finally {
+    releaseA.resolve();
+    releaseB.resolve();
+    fs.rmdir = originalUnlink;
+    fs.rename = originalRename;
+    syncBuiltinESMExports();
+    await rm(dir, {recursive: true, force: true});
+  }
+});
+
 function storeProcess(script: string) {
   const child = spawn(process.execPath, ['--import', 'tsx', '--input-type=module', '--eval', script], {stdio: ['pipe', 'pipe', 'pipe', 'ipc']});
   let output = '';

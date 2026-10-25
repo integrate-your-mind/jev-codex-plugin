@@ -4286,7 +4286,7 @@ import { join as join5, isAbsolute as isAbsolute6 } from "node:path";
 import { pathToFileURL } from "node:url";
 
 // src/store.ts
-import { mkdir, open, rename, unlink, link, lstat } from "node:fs/promises";
+import { mkdir, open, rename, unlink, link, rmdir, readdir, lstat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join } from "node:path";
@@ -4314,67 +4314,87 @@ async function processIsAlive(pid) {
     return error62.code === "EPERM";
   }
 }
+var OWNER_FILE = /^owner-[a-f0-9-]{36}\.json$/;
 async function readLock(path) {
   try {
-    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    const info = await lstat(path);
+    if (info.isSymbolicLink()) return null;
+    const directory = info.isDirectory();
+    let entry = null;
+    if (directory) {
+      const entries = await readdir(path);
+      if (entries.length === 0) return { owner: null, mtimeMs: info.mtimeMs, dev: info.dev, ino: info.ino, directory, entry };
+      if (entries.length !== 1 || !OWNER_FILE.test(entries[0])) return null;
+      entry = entries[0];
+    } else if (!info.isFile()) return null;
+    const handle = await open(entry ? join(path, entry) : path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     try {
-      const info = await handle.stat();
-      if (!info.isFile() || info.size > 2048) return null;
+      const file2 = await handle.stat();
+      if (!file2.isFile() || file2.size > 2048) return null;
       let owner = null;
       try {
         const value = JSON.parse(await handle.readFile("utf8"));
-        if (Number.isSafeInteger(value.pid) && value.pid > 0 && typeof value.token === "string" && /^[a-f0-9-]{36}$/.test(value.token) && typeof value.createdAt === "string" && Number.isFinite(Date.parse(value.createdAt))) {
+        if (Number.isSafeInteger(value.pid) && value.pid > 0 && typeof value.token === "string" && /^[a-f0-9-]{36}$/.test(value.token) && typeof value.createdAt === "string" && Number.isFinite(Date.parse(value.createdAt)) && (!entry || entry === `owner-${value.token}.json`)) {
           owner = { pid: value.pid, token: value.token, createdAt: value.createdAt };
         }
       } catch {
       }
-      return { owner, mtimeMs: info.mtimeMs, dev: info.dev, ino: info.ino };
+      if (directory && !owner) return null;
+      return { owner, mtimeMs: info.mtimeMs, dev: info.dev, ino: info.ino, directory, entry };
     } finally {
       await handle.close();
     }
-  } catch (error62) {
-    if (error62.code === "ENOENT") return null;
+  } catch {
     return null;
   }
 }
 async function reclaimStaleLock(path) {
   const observed = await readLock(path);
-  if (!observed) return false;
-  if (Date.now() - observed.mtimeMs < STALE_LOCK_MS) return false;
+  if (!observed || Date.now() - observed.mtimeMs < STALE_LOCK_MS) return false;
   if (observed.owner && await processIsAlive(observed.owner.pid)) return false;
   try {
-    const current = await lstat(path);
-    if (current.dev !== observed.dev || current.ino !== observed.ino) return false;
-    await unlink(path);
+    if (observed.directory) {
+      if (observed.entry) await unlink(join(path, observed.entry));
+      await rmdir(path);
+    } else {
+      const current = await lstat(path);
+      if (current.dev !== observed.dev || current.ino !== observed.ino) return false;
+      await unlink(path);
+    }
     return true;
-  } catch (error62) {
-    return error62.code === "ENOENT";
+  } catch {
+    return false;
   }
 }
 async function acquireLock(path, attempts = LOCK_WAIT_ATTEMPTS) {
   const token = randomUUID();
+  const entry = `owner-${token}.json`;
   const temporary = join(dirname(path), `.${basename(path)}-${token}.tmp`);
-  const handle = await open(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 384);
+  await mkdir(temporary, { mode: 448 });
+  let handle;
   let published = false;
   try {
+    handle = await open(join(temporary, entry), constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 384);
     await handle.writeFile(JSON.stringify(lockData(token)));
     await handle.sync();
     for (let attempt = 0; attempt < attempts; attempt++) {
       try {
-        await link(temporary, path);
+        await rename(temporary, path);
         published = true;
         return { handle, token };
       } catch (error62) {
-        if (error62.code !== "EEXIST") throw error62;
+        if (!["EEXIST", "ENOTEMPTY", "ENOTDIR"].includes(error62.code ?? "")) throw error62;
       }
       await reclaimStaleLock(path);
       if (attempt + 1 < attempts) await delay(LOCK_WAIT_MS);
     }
     throw new Error("budget_busy");
   } finally {
-    if (!published) await handle.close().catch(() => {
+    if (!published) await handle?.close().catch(() => {
     });
-    await unlink(temporary).catch(() => {
+    await unlink(join(temporary, entry)).catch(() => {
+    });
+    await rmdir(temporary).catch(() => {
     });
   }
 }
@@ -4382,8 +4402,8 @@ async function releaseLock(path, handle, token) {
   await handle.close().catch(() => {
   });
   try {
-    const observed = await readLock(path);
-    if (observed?.owner?.token === token) await unlink(path);
+    await unlink(join(path, `owner-${token}.json`));
+    await rmdir(path);
   } catch {
   }
 }
@@ -24339,7 +24359,7 @@ async function workspaceAllowed(policy, cwd) {
 // src/decision-hook.ts
 import { createHash as createHash4 } from "node:crypto";
 import { constants as constants5 } from "node:fs";
-import { mkdir as mkdir4, open as open5, realpath as realpath3, readdir, unlink as unlink4, lstat as lstat3, rename as rename4 } from "node:fs/promises";
+import { mkdir as mkdir4, open as open5, realpath as realpath3, readdir as readdir2, unlink as unlink4, lstat as lstat3, rename as rename4 } from "node:fs/promises";
 import { randomUUID as randomUUID4 } from "node:crypto";
 import { isAbsolute as isAbsolute5, join as join4 } from "node:path";
 
@@ -26264,7 +26284,7 @@ async function readTurnResultCache(event, env) {
     }
   } catch {
     try {
-      const entries = await readdir(directory, { withFileTypes: true });
+      const entries = await readdir2(directory, { withFileTypes: true });
       if (entries.some((entry) => entry.isFile() && /^[a-f0-9]{64}\.json$/.test(entry.name))) return { status: "out_of_turn", results: [] };
     } catch {
     }
@@ -26614,7 +26634,7 @@ async function claimEvent(event, policy, env) {
     return false;
   }
   try {
-    const entries = await readdir(sessionDirectory, { withFileTypes: true });
+    const entries = await readdir2(sessionDirectory, { withFileTypes: true });
     if (entries.some((entry) => entry.isFile() && entry.name === eventName)) return false;
     const count = entries.filter((entry) => entry.isFile() && /^[a-f0-9]{64}$/.test(entry.name)).length;
     if (policy.maxHookCallsPerSession !== null && count >= policy.maxHookCallsPerSession) return false;

@@ -235,3 +235,13 @@ This repository is a release candidate for the public Git marketplace. Provider
 dashboard reconciliation and official directory review remain open. A public
 source repository or prerelease does not establish final acceptance
 or OpenAI Directory approval.
+
+## October 25 PR 12 lock recovery review repair
+
+Independent review reproduced a stale-lock recovery race in the initial 0.5.2 candidate. A delayed reclaimer checked a legacy inode and then unlinked its pathname after a second writer had published a live replacement. The controlled test granted two reservations under an explicit one-call test limit while the JSON ledger recorded one. Product usage remains unlimited by default.
+
+Lock acquisition now atomically renames a complete nonempty directory into place. Each owner record has a unique token in its filename. Recovery and release unlink only that filename and then call `rmdir`; a replacement owner's file has another name, and its nonempty directory cannot be removed. Old abandoned file locks remain recoverable because file unlink cannot delete the replacement directory. Budget and receipt JSON formats are unchanged. Unknown directory contents, fresh locks and live owners remain protected. Directory and owner-file permissions are 0700 and 0600.
+
+The committed regression fails against the original PR head with `2 !== 1` and passes after this repair. Sixteen focused store tests pass, including both delayed-reclaimer interleavings, eight real child-process contenders, a killed owner, legacy ownerless locks and malformed directory contents. Typecheck and both rebuilt host packages pass. Full verification and exact-head CI are recorded separately by the PR readiness pass. No provider request, coding trial, benchmark, global installation or credential change occurred.
+
+Upgrading clients should use the new bundle together. Old binaries still contain their original recovery algorithm and cannot be retroactively repaired. They cannot unlink the new directory-shaped lock, and their bounded attempts may fail while a new writer owns it.

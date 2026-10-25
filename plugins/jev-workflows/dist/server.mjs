@@ -35161,7 +35161,7 @@ async function evaluateProvider(args) {
 }
 
 // src/store.ts
-import { mkdir, open as open2, rename, unlink, link, lstat } from "node:fs/promises";
+import { mkdir, open as open2, rename, unlink, link, rmdir, readdir, lstat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join } from "node:path";
@@ -35189,67 +35189,87 @@ async function processIsAlive(pid) {
     return error62.code === "EPERM";
   }
 }
+var OWNER_FILE = /^owner-[a-f0-9-]{36}\.json$/;
 async function readLock(path) {
   try {
-    const handle = await open2(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    const info = await lstat(path);
+    if (info.isSymbolicLink()) return null;
+    const directory = info.isDirectory();
+    let entry = null;
+    if (directory) {
+      const entries = await readdir(path);
+      if (entries.length === 0) return { owner: null, mtimeMs: info.mtimeMs, dev: info.dev, ino: info.ino, directory, entry };
+      if (entries.length !== 1 || !OWNER_FILE.test(entries[0])) return null;
+      entry = entries[0];
+    } else if (!info.isFile()) return null;
+    const handle = await open2(entry ? join(path, entry) : path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     try {
-      const info = await handle.stat();
-      if (!info.isFile() || info.size > 2048) return null;
+      const file2 = await handle.stat();
+      if (!file2.isFile() || file2.size > 2048) return null;
       let owner = null;
       try {
         const value = JSON.parse(await handle.readFile("utf8"));
-        if (Number.isSafeInteger(value.pid) && value.pid > 0 && typeof value.token === "string" && /^[a-f0-9-]{36}$/.test(value.token) && typeof value.createdAt === "string" && Number.isFinite(Date.parse(value.createdAt))) {
+        if (Number.isSafeInteger(value.pid) && value.pid > 0 && typeof value.token === "string" && /^[a-f0-9-]{36}$/.test(value.token) && typeof value.createdAt === "string" && Number.isFinite(Date.parse(value.createdAt)) && (!entry || entry === `owner-${value.token}.json`)) {
           owner = { pid: value.pid, token: value.token, createdAt: value.createdAt };
         }
       } catch {
       }
-      return { owner, mtimeMs: info.mtimeMs, dev: info.dev, ino: info.ino };
+      if (directory && !owner) return null;
+      return { owner, mtimeMs: info.mtimeMs, dev: info.dev, ino: info.ino, directory, entry };
     } finally {
       await handle.close();
     }
-  } catch (error62) {
-    if (error62.code === "ENOENT") return null;
+  } catch {
     return null;
   }
 }
 async function reclaimStaleLock(path) {
   const observed = await readLock(path);
-  if (!observed) return false;
-  if (Date.now() - observed.mtimeMs < STALE_LOCK_MS) return false;
+  if (!observed || Date.now() - observed.mtimeMs < STALE_LOCK_MS) return false;
   if (observed.owner && await processIsAlive(observed.owner.pid)) return false;
   try {
-    const current = await lstat(path);
-    if (current.dev !== observed.dev || current.ino !== observed.ino) return false;
-    await unlink(path);
+    if (observed.directory) {
+      if (observed.entry) await unlink(join(path, observed.entry));
+      await rmdir(path);
+    } else {
+      const current = await lstat(path);
+      if (current.dev !== observed.dev || current.ino !== observed.ino) return false;
+      await unlink(path);
+    }
     return true;
-  } catch (error62) {
-    return error62.code === "ENOENT";
+  } catch {
+    return false;
   }
 }
 async function acquireLock(path, attempts = LOCK_WAIT_ATTEMPTS) {
   const token = randomUUID();
+  const entry = `owner-${token}.json`;
   const temporary = join(dirname(path), `.${basename(path)}-${token}.tmp`);
-  const handle = await open2(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 384);
+  await mkdir(temporary, { mode: 448 });
+  let handle;
   let published = false;
   try {
+    handle = await open2(join(temporary, entry), constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 384);
     await handle.writeFile(JSON.stringify(lockData(token)));
     await handle.sync();
     for (let attempt = 0; attempt < attempts; attempt++) {
       try {
-        await link(temporary, path);
+        await rename(temporary, path);
         published = true;
         return { handle, token };
       } catch (error62) {
-        if (error62.code !== "EEXIST") throw error62;
+        if (!["EEXIST", "ENOTEMPTY", "ENOTDIR"].includes(error62.code ?? "")) throw error62;
       }
       await reclaimStaleLock(path);
       if (attempt + 1 < attempts) await delay(LOCK_WAIT_MS);
     }
     throw new Error("budget_busy");
   } finally {
-    if (!published) await handle.close().catch(() => {
+    if (!published) await handle?.close().catch(() => {
     });
-    await unlink(temporary).catch(() => {
+    await unlink(join(temporary, entry)).catch(() => {
+    });
+    await rmdir(temporary).catch(() => {
     });
   }
 }
@@ -35257,8 +35277,8 @@ async function releaseLock(path, handle, token) {
   await handle.close().catch(() => {
   });
   try {
-    const observed = await readLock(path);
-    if (observed?.owner?.token === token) await unlink(path);
+    await unlink(join(path, `owner-${token}.json`));
+    await rmdir(path);
   } catch {
   }
 }
@@ -36037,7 +36057,7 @@ function createService(options = {}) {
 
 // src/accounting.ts
 import { constants as constants4 } from "node:fs";
-import { open as open4, readdir, link as link2, unlink as unlink3 } from "node:fs/promises";
+import { open as open4, readdir as readdir2, link as link2, unlink as unlink3 } from "node:fs/promises";
 import { randomUUID as randomUUID4 } from "node:crypto";
 import { join as join3 } from "node:path";
 var receiptName = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.json$/i;
@@ -36156,7 +36176,7 @@ async function readEvaluationUsage(directory, credentialFingerprint, now = /* @_
   let duplicateProviderRequestIds = 0;
   let files;
   try {
-    files = (await readdir(join3(directory, "receipts"), { withFileTypes: true })).filter((f) => f.isFile() && receiptName.test(f.name)).map((f) => f.name).sort();
+    files = (await readdir2(join3(directory, "receipts"), { withFileTypes: true })).filter((f) => f.isFile() && receiptName.test(f.name)).map((f) => f.name).sort();
   } catch (error62) {
     if (error62.code !== "ENOENT") malformedOrUnreadable++;
     files = [];
