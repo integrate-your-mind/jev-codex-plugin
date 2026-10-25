@@ -1,9 +1,11 @@
 import {mkdir, mkdtemp, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
-import {tmpdir} from 'node:os';
+import {fileURLToPath} from 'node:url';
 
 export async function fixture(): Promise<{root: string; state: string; parent: string}> {
-  const parent = await mkdtemp(join(tmpdir(), 'project-graph-'));
+  const directory = fileURLToPath(new URL('../../../.agent-work/tests/', import.meta.url));
+  await mkdir(directory, {recursive: true});
+  const parent = await mkdtemp(join(directory, 'project-graph-'));
   const root = join(parent, 'workspace');
   const state = join(parent, 'private-state');
   await mkdir(root);
