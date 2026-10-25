@@ -1,23 +1,11 @@
-import {createService} from '../../../source/jev-workflows/src/service.js';
-import {sanitize} from '../../../source/jev-workflows/src/redact.js';
-import type {Arm, GraphNode, JevAssessment, NodeCard, RankAudit, RankContext} from './types.js';
+import {pinnedJevEvaluator} from './jev.js';
+import {expectedRelevance} from './relevance.js';
+import {type Arm, type GraphNode, type RankAudit, type RankContext, type RelevanceEvaluator} from './types.js';
+export {pinnedJevEvaluator} from './jev.js';
+export type {RelevanceEvaluator} from './types.js';
 
 const BM25_K1 = 1.2;
 const BM25_B = 0.75;
-const MAX_BATCH = 16;
-const RELEVANCE_LEVELS = ['relevance_0', 'relevance_1', 'relevance_2', 'relevance_3', 'relevance_4'] as const;
-
-export type EvaluateDecisions = (input: unknown, signal?: AbortSignal) => Promise<JevAssessment>;
-
-export function pinnedJevEvaluator(env: NodeJS.ProcessEnv = process.env): EvaluateDecisions {
-  const service = createService({env: {
-    JEV_ENABLED: '1',
-    JEV_MODEL: 'jev-1.13.0',
-    JEV_STATE_DIRECTORY: env.JEV_STATE_DIRECTORY,
-    JEV_API_KEY_FILE: env.JEV_API_KEY_FILE,
-  }});
-  return service.evaluateDecisions;
-}
 
 function tokens(value: string): string[] {
   return value
@@ -70,56 +58,13 @@ function cheapOrder(query: string, nodes: readonly GraphNode[]): GraphNode[] {
   return [...nodes].sort((a, b) => (scores.get(b.nodeId)! - scores.get(a.nodeId)!) || a.nodeId.localeCompare(b.nodeId));
 }
 
-function compactCard(node: GraphNode): NodeCard {
-  const {key: _key, ...card} = node;
-  return card;
-}
-
-function jevInput(nodes: readonly GraphNode[], context: RankContext, offset: number): unknown {
-  const questions = Object.fromEntries(nodes.map((node, index) => {
-    const questionId = `node_${String(offset + index).padStart(3, '0')}`;
-    return [questionId, {
-      type: 'choice',
-      domain: 'context',
-      policy: {mode: 'ranking'},
-      instructions: {
-        task: 'Choose the ordinal relevance level for this code node against the stated coding objective and current traversal query.',
-        nodeId: node.nodeId,
-      },
-      candidates: [
-        {id: 'relevance_0', description: 'Unrelated to the objective and current query.', available: true},
-        {id: 'relevance_1', description: 'Weakly related context.', available: true},
-        {id: 'relevance_2', description: 'Plausibly useful supporting context.', available: true},
-        {id: 'relevance_3', description: 'Directly useful to localize or repair the objective.', available: true},
-        {id: 'relevance_4', description: 'Essential to the next repair step.', available: true},
-      ],
-    }];
-  }));
-  return {
-    state: {
-      objective: context.objective,
-      query: context.query,
-      operation: context.operation,
-      graphVersion: context.graphVersion,
-      sourceNodeId: context.sourceNodeId ?? null,
-      visitedNodeIds: context.visitedNodeIds,
-      candidates: nodes.map(compactCard),
-    },
-    questions,
-    policy: {mode: 'ranking'},
-    origin: {source: 'service', eventId: context.packetSeed.slice(0, 64)},
-    correlation: {requestId: context.packetSeed.slice(0, 64)},
-    mode: 'evaluate',
-  };
-}
-
 export class Ranker {
   readonly #arm: Arm;
-  readonly #evaluate?: EvaluateDecisions;
+  readonly #evaluate?: RelevanceEvaluator;
 
-  constructor(arm: Arm, evaluate?: EvaluateDecisions) {
+  constructor(arm: Arm, evaluate?: RelevanceEvaluator) {
     this.#arm = arm;
-    this.#evaluate = evaluate;
+    this.#evaluate = evaluate ?? (arm === 'jev' ? pinnedJevEvaluator() : undefined);
   }
 
   async rank(nodes: readonly GraphNode[], context: RankContext, signal?: AbortSignal): Promise<{nodes: GraphNode[]; audit: RankAudit}> {
@@ -128,70 +73,40 @@ export class Ranker {
     let ordered = this.#arm === 'graph' ? graphOrder(nodes) : cheap;
     let appliedArm: RankAudit['appliedArm'] = this.#arm === 'graph' ? 'graph' : 'cheap';
     let fallbackReason: string | undefined;
-    const providerReceiptIds: string[] = [];
-    const providerUsage: RankAudit['providerUsage'] = [];
-    const providerLatencyMs: number[] = [];
-    const providerTransports: RankAudit['providerTransports'] = [];
+    let providerAttempts: RankAudit['providerAttempts'] = [];
     const providerRankings: RankAudit['providerRankings'] = [];
-    let providerModel: string | undefined;
-
     if (this.#arm === 'jev' && nodes.length) {
-      const scores = new Map<string, number>();
-      const evaluate = this.#evaluate ?? pinnedJevEvaluator();
       try {
-        for (let offset = 0; offset < nodes.length; offset += MAX_BATCH) {
-          const batch = nodes.slice(offset, offset + MAX_BATCH);
-          const assessment = await evaluate(sanitize(jevInput(batch, context, offset), []), signal);
-          if (assessment.receiptId) providerReceiptIds.push(assessment.receiptId);
-          if (assessment.usage) providerUsage.push(assessment.usage);
-          if (typeof assessment.latencyMs === 'number') providerLatencyMs.push(assessment.latencyMs);
-          if (assessment.model) providerModel = assessment.model;
-          if (assessment.transport) {
-            const {requestStartedAt, fetchInvoked, responseReceivedAt, responseStatus, validatedResponse, providerRequestId, providerRequestIdHeader} = assessment.transport;
-            providerTransports.push({requestStartedAt, fetchInvoked, responseReceivedAt, responseStatus, validatedResponse, providerRequestId, providerRequestIdHeader});
-          }
-          if (assessment.status !== 'assessed' || !assessment.answers) throw new Error(`jev_${assessment.status}_${assessment.reasonCode ?? 'unknown'}`);
-          const retainedAnswers: Record<string, {providerChoice: string; probabilities: Record<string, number>}> = {};
-          for (let index = 0; index < batch.length; index += 1) {
-            const answer = assessment.answers[`node_${String(offset + index).padStart(3, '0')}`];
-            if (!answer || answer.type !== 'choice' || answer.disposition === 'abstained' || typeof answer.providerChoice !== 'string' || !answer.probabilities) throw new Error('jev_invalid_answer');
-            let expected = 0;
-            for (let level = 0; level < RELEVANCE_LEVELS.length; level += 1) {
-              const probability = answer.probabilities[RELEVANCE_LEVELS[level]!];
-              if (!Number.isFinite(probability) || probability! < 0 || probability! > 1) throw new Error('jev_invalid_answer');
-              expected += level * probability!;
-            }
-            retainedAnswers[`node_${String(offset + index).padStart(3, '0')}`] = {providerChoice: answer.providerChoice, probabilities: Object.fromEntries(Object.entries(answer.probabilities).sort(([a], [b]) => a.localeCompare(b)))};
-            scores.set(batch[index]!.nodeId, expected);
-          }
-          providerRankings.push({...(assessment.receiptId ? {receiptId: assessment.receiptId} : {}), answers: retainedAnswers});
-        }
-        if (scores.size !== nodes.length) throw new Error('jev_incomplete_answers');
+        const result = await this.#evaluate!({cards: nodes.map(({key: _key, ...card}) => card), context}, signal);
+        providerAttempts = result.attempts;
+        if (result.status !== 'assessed') throw new Error(result.reasonCode);
+        if (Object.keys(result.assessments).length !== nodes.length) throw new Error('incomplete_relevance_answers');
+        const scores = new Map(nodes.map(node => [node.nodeId, expectedRelevance(result.assessments[node.nodeId]!)]));
+        providerRankings.push({answers: result.assessments});
         ordered = [...nodes].sort((a, b) => scores.get(b.nodeId)! - scores.get(a.nodeId)! || a.nodeId.localeCompare(b.nodeId));
         appliedArm = 'jev';
       } catch (error) {
-        fallbackReason = error instanceof Error ? error.message.slice(0, 160) : 'jev_unknown_failure';
+        fallbackReason = error instanceof Error && /^[a-z0-9_]+$/.test(error.message) ? error.message.slice(0, 160) : 'relevance_evaluator_failure';
         ordered = cheap;
         appliedArm = 'cheap';
       }
     }
-
-    return {
-      nodes: ordered,
-      audit: {
-        requestedArm: this.#arm,
-        appliedArm,
-        ...(fallbackReason ? {fallbackReason} : {}),
-        candidateNodeIds: nodes.map(node => node.nodeId),
-        orderedNodeIds: ordered.map(node => node.nodeId),
-        providerReceiptIds,
-        ...(providerModel ? {providerModel} : {}),
-        providerUsage,
-        providerLatencyMs,
-        providerTransports,
-        providerRankings,
-        durationNs: String(process.hrtime.bigint() - start),
-      },
-    };
+    const actualAttempts = providerAttempts.filter(attempt => attempt.actualFetchInvoked);
+    const model = [...providerAttempts].reverse().find(attempt => attempt.model)?.model;
+    return {nodes: ordered, audit: {
+      requestedArm: this.#arm,
+      appliedArm,
+      ...(fallbackReason ? {fallbackReason} : {}),
+      candidateNodeIds: nodes.map(node => node.nodeId),
+      orderedNodeIds: ordered.map(node => node.nodeId),
+      providerReceiptIds: [...new Set(providerAttempts.flatMap(attempt => attempt.receiptId ? [attempt.receiptId] : []))],
+      ...(model ? {providerModel: model} : {}),
+      providerUsage: actualAttempts.map(attempt => attempt.usage),
+      providerLatencyMs: actualAttempts.flatMap(attempt => attempt.latencyMs === undefined ? [] : [attempt.latencyMs]),
+      providerAttempts,
+      providerTransports: providerAttempts.flatMap(attempt => attempt.transport ? [{...attempt.transport, fetchInvoked: attempt.actualFetchInvoked}] : []),
+      providerRankings,
+      durationNs: String(process.hrtime.bigint() - start),
+    }};
   }
 }

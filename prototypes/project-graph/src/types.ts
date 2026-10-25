@@ -94,24 +94,42 @@ export type RankContext = {
   packetSeed: string;
 };
 
-export type JevAssessment = {
+export const RELEVANCE_LEVELS = ['relevance_0', 'relevance_1', 'relevance_2', 'relevance_3', 'relevance_4'] as const;
+export type RelevanceLevel = typeof RELEVANCE_LEVELS[number];
+export type RelevanceAssessment = {
+  providerChoice: RelevanceLevel;
+  probabilities: Record<RelevanceLevel, number>;
+};
+
+export type ProviderTransport = {
+  requestStartedAt?: string;
+  fetchInvoked?: boolean;
+  responseReceivedAt?: string | null;
+  responseStatus?: number | null;
+  validatedResponse?: boolean;
+  providerRequestId?: string | null;
+  providerRequestIdHeader?: string | null;
+};
+
+export type ProviderAttempt = {
+  provider: string;
   status: string;
   reasonCode?: string;
   receiptId?: string;
-  latencyMs?: number;
+  requestedModel?: string;
   model?: string;
-  usage?: {input_tokens: number | null; output_tokens: number | null};
-  transport?: {
-    requestStartedAt?: string;
-    fetchInvoked?: boolean;
-    responseReceivedAt?: string | null;
-    responseStatus?: number | null;
-    validatedResponse?: boolean;
-    providerRequestId?: string | null;
-    providerRequestIdHeader?: string | null;
-  };
-  answers?: Record<string, {type: string; score?: number; disposition?: string}>;
+  cached: boolean;
+  actualFetchInvoked: boolean;
+  usage: {input_tokens: number | null; output_tokens: number | null};
+  latencyMs?: number;
+  transport?: ProviderTransport;
 };
+
+export type RelevanceRequest = {cards: readonly NodeCard[]; context: RankContext};
+export type RelevanceResult =
+  | {status: 'assessed'; assessments: Record<string, RelevanceAssessment>; attempts: ProviderAttempt[]}
+  | {status: 'unavailable'; reasonCode: string; attempts: ProviderAttempt[]};
+export type RelevanceEvaluator = (request: RelevanceRequest, signal?: AbortSignal) => Promise<RelevanceResult>;
 
 export type RankAudit = {
   requestedArm: Arm;
@@ -123,15 +141,8 @@ export type RankAudit = {
   providerModel?: string;
   providerUsage: Array<{input_tokens: number | null; output_tokens: number | null}>;
   providerLatencyMs: number[];
-  providerTransports: Array<{
-    requestStartedAt?: string;
-    fetchInvoked?: boolean;
-    responseReceivedAt?: string | null;
-    responseStatus?: number | null;
-    validatedResponse?: boolean;
-    providerRequestId?: string | null;
-    providerRequestIdHeader?: string | null;
-  }>;
+  providerAttempts: ProviderAttempt[];
+  providerTransports: ProviderTransport[];
   providerRankings: Array<{
     receiptId?: string;
     answers: Record<string, {providerChoice: string; probabilities: Record<string, number>}>;
