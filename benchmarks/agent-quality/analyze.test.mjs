@@ -146,4 +146,3 @@ test('does not pool different cohort phases or host configurations', async () =>
     await fs.rm(second, { recursive: true, force: true });
   }
 });
-

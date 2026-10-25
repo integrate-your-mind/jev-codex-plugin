@@ -186,4 +186,3 @@ function makeTask(record) {
 export const developmentTasks = Object.freeze(developmentDefinitions.map(makeTask));
 export const confirmationTasks = Object.freeze(confirmationDefinitions.map(makeTask));
 export const allTasks = Object.freeze([...developmentTasks, ...confirmationTasks]);
-

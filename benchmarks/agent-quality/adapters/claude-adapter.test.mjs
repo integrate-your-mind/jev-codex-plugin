@@ -120,6 +120,8 @@ test('both arms use the same task allowlist and never pass credential values', a
 
 test('staged Claude plugin rewrites every hook command to the private state path', async () => {
   const root = await mkdtemp(join(tmpdir(), 'jev-claude-adapter-'));
+  const previousKeyFile = process.env.JEV_API_KEY_FILE;
+  process.env.JEV_API_KEY_FILE = join(root, 'fixture-provider-key.env');
   try {
     const source = join(root, 'source');
     const destination = join(root, 'staged');
@@ -137,7 +139,11 @@ test('staged Claude plugin rewrites every hook command to the private state path
       assert.equal((command.match(/JEV_API_KEY_FILE=/g) ?? []).length, 1);
       assert.doesNotMatch(command, /\/global\/state|\/global\/key/);
     }
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally {
+    if (previousKeyFile === undefined) delete process.env.JEV_API_KEY_FILE;
+    else process.env.JEV_API_KEY_FILE = previousKeyFile;
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('provider accounting deduplicates duplicate receipt files and separates local attempts', async () => {
