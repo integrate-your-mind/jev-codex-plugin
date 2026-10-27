@@ -5,6 +5,14 @@ Latest verification date: 2026-10-19
 This report covers the public source and packaged runtime. It records the checks
 below; it does not establish directory approval, provider billing, or model quality.
 
+## Version 0.5.3 bounded status
+
+Routine `jev_status {}` now reads only today's bounded receipt index and its referenced files. It does not enumerate history, fall back to a full scan or repair an index. An explicit `fullReceiptScan: true` requests the historical audit with cancellation. Both MCP modes are read-only. Indexed results label unknown coverage with null inventory census fields and incomplete counts; reservations and provider billing retain their prior meanings. See the [design](docs/status-accounting-design.md) and [accounting contract](source/jev-workflows/docs/accounting.md).
+
+A deterministic two-file regression failed on the previous implementation with `1 !== 0` historical directory enumerations. The repaired source passes 17 focused accounting and bundled-MCP regressions, including missing/corrupt/duplicate/oversized/symlinked indexes, omitted receipts, strict audit arguments, unchanged data and cancellation that closes active handles without starting queued reads. Typecheck and both generated host-package checks pass. Full repository verification and exact-head local CI are recorded on the PR.
+
+These synthetic checks use fake credentials and temporary fixture data inside the owned worktree. No live provider call, historical receipt audit, data migration, coding benchmark or accuracy improvement is claimed.
+
 ## Version 0.5.2 Claude hook deadline
 
 Claude Code reported `UserPromptSubmit hook [...] timed out after 5s — output discarded` on a host with a load average above 100 ([#11](https://github.com/integrate-your-mind/jev-codex-plugin/issues/11)). The installed 0.5.1 hook was measured by running the exact `hooks.json` command through `/bin/sh` with realistic payloads and a timing preload. The preload recorded provider status codes and latency, never headers or bodies.

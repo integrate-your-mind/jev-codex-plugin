@@ -13,9 +13,9 @@ import { updateTaskContextInputSchema, updateTaskContext } from './task-context.
 import { decisionOutcomeSchema, recordDecisionOutcome } from './outcomes.js';
 
 const service = createService();
-const server = new Server({name: 'jev-workflows', version: '0.5.2'}, {capabilities: {tools: {}}});
+const server = new Server({name: 'jev-workflows', version: '0.5.3'}, {capabilities: {tools: {}}});
 server.setRequestHandler(ListToolsRequestSchema, async () => ({tools: [
-  {name: 'jev_status', description: 'Read local Jev plugin readiness and limits. Does not contact TypeSafe or expose credentials.', inputSchema: {type: 'object', properties: {}, additionalProperties: false}, annotations: {readOnlyHint: true, destructiveHint: false, openWorldHint: false}},
+  {name: 'jev_status', description: 'Read local Jev readiness, limits and receipts referenced by today\'s index without scanning historical files. Indexed counts have unknown coverage outside that index. Set fullReceiptScan=true only for an explicit, potentially slow local receipt audit. Never contacts TypeSafe, exposes credentials or establishes provider billing.', inputSchema: {type: 'object', properties: {fullReceiptScan: {type: 'boolean', default: false}}, additionalProperties: false}, annotations: {readOnlyHint: true, destructiveHint: false, openWorldHint: false}},
   {name: 'classify_failure', description: 'Preview selected redacted command evidence locally, or evaluate an authorized payload with TypeSafe Jev. Evaluate sends data externally in a billable provider API request. Advisory failure classification; never edits files, approves permissions, or certifies a fix.', inputSchema: z.toJSONSchema(failureSchema, {io: 'input'}) as any, annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: true}},
   {name: 'check_completion', description: 'Preview a completion claim and selected evidence locally, or evaluate an authorized payload with TypeSafe Jev. Returns support, partial support, contradiction, or insufficient evidence. Advisory assessment, not a substitute for independent tests or user acceptance.', inputSchema: z.toJSONSchema(completionSchema, {io: 'input'}) as any, annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: true}},
   {name: 'classify_decision', description: 'Consult Jev for any classification or choice: tools, models and effort, tasks/delegation, skills, context, strategy, outcomes, or a caller-defined taxonomy. Supply the actual available candidates, question, evidence, and context containing the objective and constraints. Preview is local; evaluate sends a bounded redacted payload to TypeSafe. Returns a validated candidate ID or abstention, never permission or proof of execution. Use before consequential choices when the user has enabled Jev consultation.', inputSchema: z.toJSONSchema(decisionSchema, {io: 'input'}) as any, annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: true}},
@@ -27,12 +27,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({tools: [
 server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
   let result: unknown;
   if (request.params.name === 'jev_status') {
-    if (Object.keys(request.params.arguments ?? {}).length) throw new Error('jev_status accepts no arguments');
+    const input = z.strictObject({fullReceiptScan: z.boolean().default(false)}).parse(request.params.arguments ?? {});
     const automation = await readPolicy();
     const status = service.status(automation);
     const [budget, evaluations] = await Promise.all([
       readBudgetUsage(dataDirectory(), status.maxCallsPerDay, status.maxBytesPerDay),
-      readEvaluationUsage(dataDirectory(), status.credentialFingerprint),
+      readEvaluationUsage(dataDirectory(), status.credentialFingerprint, new Date(), {mode: input.fullReceiptScan ? 'full' : 'indexed', signal: extra.signal, publishIndex: false}),
     ]);
     result = {...status, automation, budget, evaluations};
   } else if (request.params.name === 'classify_failure') result = await service.classifyFailure(request.params.arguments, extra.signal);

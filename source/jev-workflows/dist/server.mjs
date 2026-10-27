@@ -36658,7 +36658,7 @@ function createService(options = {}) {
   function status(policy = DEFAULT_POLICY) {
     const current = credential();
     return {
-      version: "0.5.2",
+      version: "0.5.3",
       provider: "TypeSafe",
       endpoint: ENDPOINT,
       model: model ?? env.JEV_MODEL ?? MODEL,
@@ -37052,13 +37052,15 @@ function add(target, receipt) {
 }
 var validReceiptId = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 var MAX_INDEX_BYTES = 1024 * 1024;
-async function loadIndex(directory, date5) {
+async function loadIndex(directory, date5, signal) {
+  signal?.throwIfAborted();
   const state = { status: "missing", indexedFiles: 0, unindexedFiles: 0, missingIndexedFiles: 0, indexDateMismatches: 0, duplicateIndexedIds: 0, fallbackUsed: false, fallbackReason: null };
   const path = join3(directory, `receipt-index-${date5}.json`);
   let handle;
   try {
     handle = await open4(path, constants4.O_RDONLY | constants4.O_NOFOLLOW | constants4.O_NONBLOCK);
   } catch (error62) {
+    signal?.throwIfAborted();
     if (error62.code === "ENOENT") return { index: null, state };
     state.status = "corrupt";
     state.fallbackUsed = true;
@@ -37066,9 +37068,10 @@ async function loadIndex(directory, date5) {
     return { index: null, state };
   }
   try {
+    signal?.throwIfAborted();
     const info = await handle.stat();
     if (!info.isFile() || info.size > MAX_INDEX_BYTES) throw new Error("invalid_receipt_index");
-    const value = JSON.parse(await handle.readFile("utf8"));
+    const value = JSON.parse(await handle.readFile({ encoding: "utf8", signal }));
     if (value.version !== 1 || value.date !== date5 || !Array.isArray(value.receiptIds) || value.receiptIds.some((id) => typeof id !== "string" || !validReceiptId.test(id))) throw new Error("invalid_receipt_index");
     const ids = value.receiptIds;
     state.duplicateIndexedIds = ids.length - new Set(ids).size;
@@ -37077,6 +37080,7 @@ async function loadIndex(directory, date5) {
     state.indexedFiles = ids.length;
     return { index: { version: 1, date: date5, receiptIds: ids }, state };
   } catch {
+    signal?.throwIfAborted();
     state.status = "corrupt";
     state.fallbackUsed = true;
     state.fallbackReason = "corrupt_index";
@@ -37102,7 +37106,10 @@ async function publishMissingIndex(directory, date5, receiptIds) {
     });
   }
 }
-async function readEvaluationUsage(directory, credentialFingerprint, now = /* @__PURE__ */ new Date()) {
+async function readEvaluationUsage(directory, credentialFingerprint, now = /* @__PURE__ */ new Date(), options = {}) {
+  const mode = options.mode ?? "full";
+  const signal = options.signal;
+  signal?.throwIfAborted();
   const date5 = now.toISOString().slice(0, 10);
   let totals = emptyCounts();
   let currentCredential = emptyCounts();
@@ -37111,21 +37118,29 @@ async function readEvaluationUsage(directory, credentialFingerprint, now = /* @_
   let requestIds = /* @__PURE__ */ new Set();
   let localIds = /* @__PURE__ */ new Set();
   let malformedOrUnreadable = 0;
+  let scannedFiles = 0;
   let duplicateLocalReceiptIds = 0;
   let duplicateProviderRequestIds = 0;
-  let files;
-  try {
-    files = (await readdir2(join3(directory, "receipts"), { withFileTypes: true })).filter((f) => f.isFile() && receiptName.test(f.name)).map((f) => f.name).sort();
-  } catch (error62) {
-    if (error62.code !== "ENOENT") malformedOrUnreadable++;
-    files = [];
+  let files = [];
+  if (mode === "full") {
+    try {
+      files = (await readdir2(join3(directory, "receipts"), { withFileTypes: true })).filter((f) => f.isFile() && receiptName.test(f.name)).map((f) => f.name).sort();
+    } catch (error62) {
+      if (error62.code !== "ENOENT") malformedOrUnreadable++;
+    }
   }
-  const loadedIndex = await loadIndex(directory, date5);
+  signal?.throwIfAborted();
+  const loadedIndex = await loadIndex(directory, date5, signal);
   const fileSet = new Set(files);
   const indexedReceiptIds = new Set(loadedIndex.index?.receiptIds ?? []);
   let candidateFiles;
-  let fullInventoryScanned = loadedIndex.index === null;
-  if (loadedIndex.index) {
+  let fullInventoryScanned = mode === "full" && loadedIndex.index === null;
+  if (mode === "indexed") {
+    candidateFiles = (loadedIndex.index?.receiptIds ?? []).map((id) => `${id}.json`);
+    loadedIndex.state.unindexedFiles = null;
+    loadedIndex.state.fallbackUsed = false;
+    loadedIndex.state.fallbackReason = null;
+  } else if (loadedIndex.index) {
     candidateFiles = [];
     for (const receiptId of loadedIndex.index.receiptIds) {
       const name = `${receiptId}.json`;
@@ -37146,15 +37161,18 @@ async function readEvaluationUsage(directory, credentialFingerprint, now = /* @_
   }
   const scan = async (names) => {
     let index = 0;
-    await Promise.all(Array.from({ length: 8 }, async () => {
+    const workers = await Promise.allSettled(Array.from({ length: 8 }, async () => {
       while (index < names.length) {
+        signal?.throwIfAborted();
         const name = names[index++];
+        scannedFiles++;
         let handle;
         try {
           handle = await open4(join3(directory, "receipts", name), constants4.O_RDONLY | constants4.O_NOFOLLOW | constants4.O_NONBLOCK);
+          signal?.throwIfAborted();
           const stat2 = await handle.stat();
           if (!stat2.isFile() || stat2.size > 65536) throw new Error("invalid_receipt_file");
-          const receipt = JSON.parse(await handle.readFile("utf8"));
+          const receipt = JSON.parse(await handle.readFile({ encoding: "utf8", signal }));
           if (!receipt || typeof receipt !== "object" || receipt.receiptId !== name.slice(0, -5) || typeof receipt.timestamp !== "string" || !Number.isFinite(Date.parse(receipt.timestamp))) throw new Error("invalid_receipt");
           if (new Date(receipt.timestamp).toISOString().slice(0, 10) !== date5) {
             if (loadedIndex.index && indexedReceiptIds.has(receipt.receiptId)) loadedIndex.state.indexDateMismatches++;
@@ -37176,16 +37194,20 @@ async function readEvaluationUsage(directory, credentialFingerprint, now = /* @_
             if (requestIds.has(key)) duplicateProviderRequestIds++;
             requestIds.add(key);
           }
-        } catch {
+        } catch (error62) {
+          signal?.throwIfAborted();
+          if (mode === "indexed" && error62.code === "ENOENT") loadedIndex.state.missingIndexedFiles++;
           malformedOrUnreadable++;
         } finally {
           await handle?.close();
         }
       }
     }));
+    signal?.throwIfAborted();
+    for (const worker of workers) if (worker.status === "rejected") throw worker.reason;
   };
   await scan(candidateFiles);
-  if (loadedIndex.index && !fullInventoryScanned && loadedIndex.state.indexDateMismatches > 0) {
+  if (mode === "full" && loadedIndex.index && !fullInventoryScanned && loadedIndex.state.indexDateMismatches > 0) {
     totals = emptyCounts();
     currentCredential = emptyCounts();
     otherCredential = emptyCounts();
@@ -37204,15 +37226,21 @@ async function readEvaluationUsage(directory, credentialFingerprint, now = /* @_
   if (loadedIndex.index && fullInventoryScanned) {
     loadedIndex.state.unindexedFiles = [...localIds].filter((id) => !indexedReceiptIds.has(id)).length;
   }
-  if (loadedIndex.state.status === "missing" && localIds.size > 0) {
+  signal?.throwIfAborted();
+  if (mode === "full" && options.publishIndex !== false && loadedIndex.state.status === "missing" && localIds.size > 0) {
     await publishMissingIndex(directory, date5, localIds).catch(() => {
     });
   }
+  signal?.throwIfAborted();
   totals.retryLikeResponses = duplicateProviderRequestIds;
   const incompleteReasons = [];
+  if (mode === "indexed") {
+    incompleteReasons.push("full_inventory_not_scanned");
+    if (loadedIndex.state.status !== "used") incompleteReasons.push(`daily_index_${loadedIndex.state.status}`);
+  }
   if (malformedOrUnreadable > 0) incompleteReasons.push("malformed_or_unreadable_receipts");
   if (!fullInventoryScanned && loadedIndex.state.missingIndexedFiles > 0) incompleteReasons.push("missing_indexed_receipts");
-  if (!fullInventoryScanned && loadedIndex.state.unindexedFiles > 0) incompleteReasons.push("unindexed_receipts");
+  if (!fullInventoryScanned && loadedIndex.state.unindexedFiles !== null && loadedIndex.state.unindexedFiles > 0) incompleteReasons.push("unindexed_receipts");
   if (!fullInventoryScanned && loadedIndex.state.indexDateMismatches > 0) incompleteReasons.push("indexed_receipt_date_mismatch");
   const completeness = {
     complete: incompleteReasons.length === 0,
@@ -37223,8 +37251,10 @@ async function readEvaluationUsage(directory, credentialFingerprint, now = /* @_
     timeZone: "UTC",
     inventoryAt: now.toISOString(),
     completedAt: (/* @__PURE__ */ new Date()).toISOString(),
-    scope: "Retained local receipts in this state directory; all workspaces and credential histories.",
-    inventoryFiles: files.length,
+    scope: mode === "indexed" ? "Current-day receipts referenced by the local daily index; all workspaces and credential histories. Coverage outside the index is unknown." : "Retained local receipts in this state directory; all workspaces and credential histories.",
+    scanMode: mode === "indexed" ? "daily-index" : "full",
+    scannedFiles,
+    inventoryFiles: mode === "indexed" ? null : files.length,
     totals,
     currentCredential,
     otherCredential,
@@ -37233,7 +37263,7 @@ async function readEvaluationUsage(directory, credentialFingerprint, now = /* @_
     duplicateProviderRequestIds,
     duplicateLocalReceiptIds,
     malformedOrUnreadable,
-    inventoryReadable: malformedOrUnreadable === 0 && loadedIndex.state.status !== "corrupt" && loadedIndex.state.indexDateMismatches === 0,
+    inventoryReadable: malformedOrUnreadable === 0 && loadedIndex.state.status !== "corrupt" && loadedIndex.state.indexDateMismatches === 0 && (mode !== "indexed" || loadedIndex.state.status === "used"),
     index: loadedIndex.state,
     indexStatus: loadedIndex.state.status,
     indexFallbackUsed: loadedIndex.state.fallbackUsed,
@@ -37247,7 +37277,7 @@ async function readEvaluationUsage(directory, credentialFingerprint, now = /* @_
     providerBilledRequests: null,
     providerBilledTokens: null,
     billingReconciled: false,
-    note: "Reservations are separate from these receipt counts. Legacy evaluations lack transport/key attribution. Cached returns reuse a receipt and are not new requests. Missing responses are unknown outcomes. Receipts never published or no longer present cannot be detected by this inventory. Locally retained token usage is not a provider billing ledger. A valid daily index avoids parsing historical receipts; unindexed or missing entries are reported. New receipts created after the inventory are excluded."
+    note: "Reservations are separate from receipt counts. Legacy evaluations lack transport/key attribution. Cached returns reuse receipts, not requests. Missing responses and provider billing remain unknown. Indexed mode does not enumerate history or detect receipts outside the index; inventory census fields are null and coverage is incomplete. Full mode audits a frozen filename inventory. Receipts never published, removed before inventory, or created afterward cannot be detected. scannedFiles counts file-read attempts, including a repeated read during a full-audit fallback."
   };
 }
 
@@ -37703,9 +37733,9 @@ async function recordDecisionOutcome(raw, options = {}) {
 
 // src/server.ts
 var service = createService();
-var server = new Server({ name: "jev-workflows", version: "0.5.2" }, { capabilities: { tools: {} } });
+var server = new Server({ name: "jev-workflows", version: "0.5.3" }, { capabilities: { tools: {} } });
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [
-  { name: "jev_status", description: "Read local Jev plugin readiness and limits. Does not contact TypeSafe or expose credentials.", inputSchema: { type: "object", properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } },
+  { name: "jev_status", description: "Read local Jev readiness, limits and receipts referenced by today's index without scanning historical files. Indexed counts have unknown coverage outside that index. Set fullReceiptScan=true only for an explicit, potentially slow local receipt audit. Never contacts TypeSafe, exposes credentials or establishes provider billing.", inputSchema: { type: "object", properties: { fullReceiptScan: { type: "boolean", default: false } }, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } },
   { name: "classify_failure", description: "Preview selected redacted command evidence locally, or evaluate an authorized payload with TypeSafe Jev. Evaluate sends data externally in a billable provider API request. Advisory failure classification; never edits files, approves permissions, or certifies a fix.", inputSchema: external_exports.toJSONSchema(failureSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
   { name: "check_completion", description: "Preview a completion claim and selected evidence locally, or evaluate an authorized payload with TypeSafe Jev. Returns support, partial support, contradiction, or insufficient evidence. Advisory assessment, not a substitute for independent tests or user acceptance.", inputSchema: external_exports.toJSONSchema(completionSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
   { name: "classify_decision", description: "Consult Jev for any classification or choice: tools, models and effort, tasks/delegation, skills, context, strategy, outcomes, or a caller-defined taxonomy. Supply the actual available candidates, question, evidence, and context containing the objective and constraints. Preview is local; evaluate sends a bounded redacted payload to TypeSafe. Returns a validated candidate ID or abstention, never permission or proof of execution. Use before consequential choices when the user has enabled Jev consultation.", inputSchema: external_exports.toJSONSchema(decisionSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
@@ -37717,12 +37747,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [
 server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
   let result;
   if (request.params.name === "jev_status") {
-    if (Object.keys(request.params.arguments ?? {}).length) throw new Error("jev_status accepts no arguments");
+    const input2 = external_exports.strictObject({ fullReceiptScan: external_exports.boolean().default(false) }).parse(request.params.arguments ?? {});
     const automation = await readPolicy();
     const status = service.status(automation);
     const [budget, evaluations] = await Promise.all([
       readBudgetUsage(dataDirectory(), status.maxCallsPerDay, status.maxBytesPerDay),
-      readEvaluationUsage(dataDirectory(), status.credentialFingerprint)
+      readEvaluationUsage(dataDirectory(), status.credentialFingerprint, /* @__PURE__ */ new Date(), { mode: input2.fullReceiptScan ? "full" : "indexed", signal: extra.signal, publishIndex: false })
     ]);
     result = { ...status, automation, budget, evaluations };
   } else if (request.params.name === "classify_failure") result = await service.classifyFailure(request.params.arguments, extra.signal);
