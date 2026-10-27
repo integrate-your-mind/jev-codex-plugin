@@ -50,7 +50,7 @@ type ReceiptIndex = {version: 1; date: string; receiptIds: string[]};
 type IndexState = {
   status: 'used' | 'missing' | 'corrupt';
   indexedFiles: number;
-  unindexedFiles: number;
+  unindexedFiles: number | null;
   missingIndexedFiles: number;
   indexDateMismatches: number;
   duplicateIndexedIds: number;
@@ -66,19 +66,22 @@ type InventoryCompleteness = {
 const validReceiptId = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const MAX_INDEX_BYTES = 1024 * 1024;
 
-async function loadIndex(directory: string, date: string): Promise<{index: ReceiptIndex | null; state: IndexState}> {
+async function loadIndex(directory: string, date: string, signal?: AbortSignal): Promise<{index: ReceiptIndex | null; state: IndexState}> {
+  signal?.throwIfAborted();
   const state: IndexState = {status: 'missing', indexedFiles: 0, unindexedFiles: 0, missingIndexedFiles: 0, indexDateMismatches: 0, duplicateIndexedIds: 0, fallbackUsed: false, fallbackReason: null};
   const path = join(directory, `receipt-index-${date}.json`);
   let handle;
   try { handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK); }
   catch (error) {
+    signal?.throwIfAborted();
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {index: null, state};
     state.status = 'corrupt'; state.fallbackUsed = true; state.fallbackReason = 'corrupt_index'; return {index: null, state};
   }
   try {
+    signal?.throwIfAborted();
     const info = await handle.stat();
     if (!info.isFile() || info.size > MAX_INDEX_BYTES) throw new Error('invalid_receipt_index');
-    const value = JSON.parse(await handle.readFile('utf8')) as Partial<ReceiptIndex>;
+    const value = JSON.parse(await handle.readFile({encoding: 'utf8', signal})) as Partial<ReceiptIndex>;
     if (value.version !== 1 || value.date !== date || !Array.isArray(value.receiptIds) ||
         value.receiptIds.some(id => typeof id !== 'string' || !validReceiptId.test(id))) throw new Error('invalid_receipt_index');
     const ids = value.receiptIds as string[];
@@ -87,6 +90,7 @@ async function loadIndex(directory: string, date: string): Promise<{index: Recei
     state.status = 'used'; state.indexedFiles = ids.length;
     return {index: {version: 1, date, receiptIds: ids}, state};
   } catch {
+    signal?.throwIfAborted();
     state.status = 'corrupt'; state.fallbackUsed = true; state.fallbackReason = 'corrupt_index';
     return {index: null, state};
   } finally { await handle.close(); }
@@ -104,8 +108,13 @@ async function publishMissingIndex(directory: string, date: string, receiptIds: 
   finally { await unlink(temporary).catch(() => {}); }
 }
 
-/** Summarize a frozen filename inventory without altering historical records. */
-export async function readEvaluationUsage(directory: string, credentialFingerprint: string | null, now = new Date()) {
+export type EvaluationUsageOptions = {mode?: 'indexed' | 'full'; signal?: AbortSignal; publishIndex?: boolean};
+
+/** Summarize indexed evidence or an explicitly requested full local inventory. */
+export async function readEvaluationUsage(directory: string, credentialFingerprint: string | null, now = new Date(), options: EvaluationUsageOptions = {}) {
+  const mode = options.mode ?? 'full';
+  const signal = options.signal;
+  signal?.throwIfAborted();
   const date = now.toISOString().slice(0, 10);
   let totals = emptyCounts();
   let currentCredential = emptyCounts();
@@ -114,20 +123,28 @@ export async function readEvaluationUsage(directory: string, credentialFingerpri
   let requestIds = new Set<string>();
   let localIds = new Set<string>();
   let malformedOrUnreadable = 0;
+  let scannedFiles = 0;
   let duplicateLocalReceiptIds = 0;
   let duplicateProviderRequestIds = 0;
-  let files: string[];
-  try { files = (await readdir(join(directory, 'receipts'), {withFileTypes: true})).filter(f => f.isFile() && receiptName.test(f.name)).map(f => f.name).sort(); }
-  catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') malformedOrUnreadable++;
-    files = [];
+  let files: string[] = [];
+  if (mode === 'full') {
+    try { files = (await readdir(join(directory, 'receipts'), {withFileTypes: true})).filter(f => f.isFile() && receiptName.test(f.name)).map(f => f.name).sort(); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') malformedOrUnreadable++;
+    }
   }
-  const loadedIndex = await loadIndex(directory, date);
+  signal?.throwIfAborted();
+  const loadedIndex = await loadIndex(directory, date, signal);
   const fileSet = new Set(files);
   const indexedReceiptIds = new Set(loadedIndex.index?.receiptIds ?? []);
   let candidateFiles: string[];
-  let fullInventoryScanned = loadedIndex.index === null;
-  if (loadedIndex.index) {
+  let fullInventoryScanned = mode === 'full' && loadedIndex.index === null;
+  if (mode === 'indexed') {
+    candidateFiles = (loadedIndex.index?.receiptIds ?? []).map(id => `${id}.json`);
+    loadedIndex.state.unindexedFiles = null;
+    loadedIndex.state.fallbackUsed = false;
+    loadedIndex.state.fallbackReason = null;
+  } else if (loadedIndex.index) {
     candidateFiles = [];
     for (const receiptId of loadedIndex.index.receiptIds) {
       const name = `${receiptId}.json`;
@@ -152,15 +169,18 @@ export async function readEvaluationUsage(directory: string, credentialFingerpri
   }
   const scan = async (names: string[]): Promise<void> => {
     let index = 0;
-    await Promise.all(Array.from({length: 8}, async () => {
+    const workers = await Promise.allSettled(Array.from({length: 8}, async () => {
       while (index < names.length) {
+        signal?.throwIfAborted();
         const name = names[index++]!;
+        scannedFiles++;
         let handle;
         try {
           handle = await open(join(directory, 'receipts', name), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+          signal?.throwIfAborted();
           const stat = await handle.stat();
           if (!stat.isFile() || stat.size > 65536) throw new Error('invalid_receipt_file');
-          const receipt = JSON.parse(await handle.readFile('utf8'));
+          const receipt = JSON.parse(await handle.readFile({encoding: 'utf8', signal}));
           if (!receipt || typeof receipt !== 'object' || receipt.receiptId !== name.slice(0, -5) || typeof receipt.timestamp !== 'string' || !Number.isFinite(Date.parse(receipt.timestamp))) throw new Error('invalid_receipt');
           if (new Date(receipt.timestamp).toISOString().slice(0, 10) !== date) {
             if (loadedIndex.index && indexedReceiptIds.has(receipt.receiptId)) loadedIndex.state.indexDateMismatches++;
@@ -179,16 +199,22 @@ export async function readEvaluationUsage(directory: string, credentialFingerpri
             if (requestIds.has(key)) duplicateProviderRequestIds++;
             requestIds.add(key);
           }
-        } catch { malformedOrUnreadable++; }
+        } catch (error) {
+          signal?.throwIfAborted();
+          if (mode === 'indexed' && (error as NodeJS.ErrnoException).code === 'ENOENT') loadedIndex.state.missingIndexedFiles++;
+          malformedOrUnreadable++;
+        }
         finally { await handle?.close(); }
       }
     }));
+    signal?.throwIfAborted();
+    for (const worker of workers) if (worker.status === 'rejected') throw worker.reason;
   };
   await scan(candidateFiles);
   // A date mismatch is only discoverable by opening an indexed receipt. Once
   // found, rescan the full inventory to recover any valid same-day evidence
   // that the stale index omitted.
-  if (loadedIndex.index && !fullInventoryScanned && loadedIndex.state.indexDateMismatches > 0) {
+  if (mode === 'full' && loadedIndex.index && !fullInventoryScanned && loadedIndex.state.indexDateMismatches > 0) {
     totals = emptyCounts();
     currentCredential = emptyCounts();
     otherCredential = emptyCounts();
@@ -210,11 +236,13 @@ export async function readEvaluationUsage(directory: string, credentialFingerpri
     // diagnostic.
     loadedIndex.state.unindexedFiles = [...localIds].filter(id => !indexedReceiptIds.has(id)).length;
   }
-  if (loadedIndex.state.status === 'missing' && localIds.size > 0) {
+  signal?.throwIfAborted();
+  if (mode === 'full' && options.publishIndex !== false && loadedIndex.state.status === 'missing' && localIds.size > 0) {
     // Persist only a new daily index. A corrupt or existing index is never
     // replaced, and receipt files remain append-only historical evidence.
     await publishMissingIndex(directory, date, localIds).catch(() => {});
   }
+  signal?.throwIfAborted();
   totals.retryLikeResponses = duplicateProviderRequestIds;
   // `inventoryReadable` answers whether the files we attempted to read were
   // readable. It does not mean that the returned totals cover every receipt:
@@ -222,9 +250,13 @@ export async function readEvaluationUsage(directory: string, credentialFingerpri
   // was interrupted. Keep that distinction explicit for callers that need
   // exact accounting.
   const incompleteReasons: string[] = [];
+  if (mode === 'indexed') {
+    incompleteReasons.push('full_inventory_not_scanned');
+    if (loadedIndex.state.status !== 'used') incompleteReasons.push(`daily_index_${loadedIndex.state.status}`);
+  }
   if (malformedOrUnreadable > 0) incompleteReasons.push('malformed_or_unreadable_receipts');
   if (!fullInventoryScanned && loadedIndex.state.missingIndexedFiles > 0) incompleteReasons.push('missing_indexed_receipts');
-  if (!fullInventoryScanned && loadedIndex.state.unindexedFiles > 0) incompleteReasons.push('unindexed_receipts');
+  if (!fullInventoryScanned && loadedIndex.state.unindexedFiles !== null && loadedIndex.state.unindexedFiles > 0) incompleteReasons.push('unindexed_receipts');
   if (!fullInventoryScanned && loadedIndex.state.indexDateMismatches > 0) incompleteReasons.push('indexed_receipt_date_mismatch');
   const completeness: InventoryCompleteness = {
     complete: incompleteReasons.length === 0,
@@ -232,10 +264,12 @@ export async function readEvaluationUsage(directory: string, credentialFingerpri
   };
   return {
     date, timeZone: 'UTC', inventoryAt: now.toISOString(), completedAt: new Date().toISOString(),
-    scope: 'Retained local receipts in this state directory; all workspaces and credential histories.',
-    inventoryFiles: files.length, totals, currentCredential, otherCredential, unknownCredential,
+    scope: mode === 'indexed' ? 'Current-day receipts referenced by the local daily index; all workspaces and credential histories. Coverage outside the index is unknown.' : 'Retained local receipts in this state directory; all workspaces and credential histories.',
+    scanMode: mode === 'indexed' ? 'daily-index' : 'full',
+    scannedFiles,
+    inventoryFiles: mode === 'indexed' ? null : files.length, totals, currentCredential, otherCredential, unknownCredential,
     uniqueProviderRequestIds: requestIds.size, duplicateProviderRequestIds, duplicateLocalReceiptIds,
-    malformedOrUnreadable, inventoryReadable: malformedOrUnreadable === 0 && loadedIndex.state.status !== 'corrupt' && loadedIndex.state.indexDateMismatches === 0,
+    malformedOrUnreadable, inventoryReadable: malformedOrUnreadable === 0 && loadedIndex.state.status !== 'corrupt' && loadedIndex.state.indexDateMismatches === 0 && (mode !== 'indexed' || loadedIndex.state.status === 'used'),
     index: loadedIndex.state,
     indexStatus: loadedIndex.state.status,
     indexFallbackUsed: loadedIndex.state.fallbackUsed,
@@ -247,6 +281,6 @@ export async function readEvaluationUsage(directory: string, credentialFingerpri
     countsIncomplete: !completeness.complete,
     countsIncompleteReason: completeness.reasons.length > 0 ? completeness.reasons.join(',') : null,
     providerBilledRequests: null, providerBilledTokens: null, billingReconciled: false,
-    note: 'Reservations are separate from these receipt counts. Legacy evaluations lack transport/key attribution. Cached returns reuse a receipt and are not new requests. Missing responses are unknown outcomes. Receipts never published or no longer present cannot be detected by this inventory. Locally retained token usage is not a provider billing ledger. A valid daily index avoids parsing historical receipts; unindexed or missing entries are reported. New receipts created after the inventory are excluded.',
+    note: 'Reservations are separate from receipt counts. Legacy evaluations lack transport/key attribution. Cached returns reuse receipts, not requests. Missing responses and provider billing remain unknown. Indexed mode does not enumerate history or detect receipts outside the index; inventory census fields are null and coverage is incomplete. Full mode audits a frozen filename inventory. Receipts never published, removed before inventory, or created afterward cannot be detected. scannedFiles counts file-read attempts, including a repeated read during a full-audit fallback.',
   };
 }

@@ -1,6 +1,6 @@
 # Jev Workflows
 
-A portable Codex and Claude Code plugin that consults Jev for tool, model, task, skill, context, strategy, result, outcome, and custom classification decisions. The current source package is version 0.5.2. It includes eight MCP surfaces, three independently usable skills, bundled JavaScript entrypoints, and scoped lifecycle hooks.
+A portable Codex and Claude Code plugin that consults Jev for tool, model, task, skill, context, strategy, result, outcome, and custom classification decisions. The current source package is version 0.5.3. It includes eight MCP surfaces, three independently usable skills, bundled JavaScript entrypoints, and scoped lifecycle hooks.
 
 ## Capabilities
 
@@ -9,7 +9,7 @@ A portable Codex and Claude Code plugin that consults Jev for tool, model, task,
 | `classify_decision` | Choose among 1–12 caller-supplied candidates for any classification. |
 | `classify_failure` | Diagnose a completed failed command from selected evidence. |
 | `check_completion` | Assess whether evidence supports a completion claim. |
-| `jev_status` | Read local readiness, limits, versions, and automation policy. |
+| `jev_status` | Read local readiness, limits, policy and indexed receipt evidence. Opt into a full local audit with `fullReceiptScan: true`. |
 | `configure_automation` | Enable, scope, or disable local automatic consultation. |
 | `evaluate_decisions` | Evaluate independent typed Choice, Noul, and Score questions against one selected structured state. |
 | `update_task_context` | Maintain bounded context scoped to a workspace, session, and agent. |

@@ -32,10 +32,11 @@ Indexed mode therefore always returns `inventoryComplete: false` and
 Missing or invalid indexes and unreadable or wrong-date entries add diagnostics.
 Zero selected receipts never establishes zero actual provider requests.
 
-Full mode retains the historical audit and its current completeness rules. It
-can publish a previously missing derived index, as before, without modifying
-receipt records or replacing an existing index. Its abort signal stops queued
-reads and is not converted into an unreadable-receipt count.
+Full mode retains the historical audit and its current completeness rules.
+The MCP boundary disables derived-index publication so both status modes remain
+read-only. Other internal callers retain their existing missing-index publication
+behavior. The abort signal stops queued reads, closes active handles and is not
+converted into an unreadable-receipt count.
 
 ## Preservation, privacy and recovery
 
