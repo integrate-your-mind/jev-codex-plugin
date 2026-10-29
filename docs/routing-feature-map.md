@@ -13,6 +13,7 @@
 | Qualify Codex capabilities honestly | `src/hosts/codex/qualification.ts` | `tests/desktop-qualification.test.ts`, recorded NOT_QUALIFIED receipt |
 | Select next repository evidence with cheap or Jev ranking | `src/routing/evidence.ts` | `tests/routing-evidence.test.ts`; coding value not yet measured |
 | Preserve all eighteen trial slots and observed-only charts | `benchmarks/desktop-ranking-pilot/` | five repository-local Node test files and real grader-control receipts |
+| Compare standard Codex, cheap retrieval and the whole plugin without replacing failed attempts | `benchmarks/desktop-ranking-pilot/whole-plugin-v1/` | `controller.test.mjs`, synthetic `plot_test.py`, native attempt events and independent grader receipts; synthetic checks establish harness behavior only |
 | Build both host packages from the same source | `scripts/build.mjs`, `scripts/package-host.mjs`, `scripts/package-claude.mjs` | root `scripts/verify.mjs`, byte-parity and distribution checks |
 
 Production and source test paths in the table are relative to `source/jev-workflows/` unless prefixed with `benchmarks/` or described as root. The public tools can observe only what supported host discovery or callers actually supply. No row establishes native host actuation or coding quality without its separate runtime evidence.
