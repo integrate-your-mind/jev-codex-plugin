@@ -200,7 +200,7 @@ test('trusted PostToolBatch publishes private immutable advice once and suppress
   } finally { await rm(root, {recursive: true, force: true}); }
 });
 
-test('producer deadline, duplicate concurrency and interrupted publication never publish a late selection', async () => {
+test('producer deadline, duplicate concurrency and interrupted publication never publish a late selection', {timeout: 10_000}, async t => {
   const parent = join(process.cwd(), '..', '..', '.agent-work'); await mkdir(parent, {recursive: true});
   const root = await mkdtemp(join(parent, 'claude-producer-failures-'));
   try {
@@ -210,15 +210,24 @@ test('producer deadline, duplicate concurrency and interrupted publication never
     await runClaudeHook({hook_event_name: 'UserPromptSubmit', session_id: 'session-1', cwd: process.cwd(), prompt: 'Inspect the parser regression.'}, {env});
     const event = (id: string) => ({hook_event_name: 'PostToolBatch', session_id: 'session-1', cwd: process.cwd(), tool_calls: [{tool_name: 'Read', tool_use_id: id, tool_input: {secret: 'excluded'}, tool_response: {output: 'excluded'}}]});
     let calls = 0; let release: ((result: {status: string; choice: string}) => void) | undefined;
-    const service = {classifyDecision: async (input: {context: string}) => { calls++; assert.doesNotMatch(input.context, /excluded/); return await new Promise<{status: string; choice: string}>(resolve => { release = resolve; }); }};
-    const first = runClaudeHook(event('late'), {env, service, hookTimeoutMs: 20});
-    const duplicate = runClaudeHook(event('late'), {env, service, hookTimeoutMs: 20});
-    const outputs = await Promise.all([first, duplicate]);
-    assert.equal(calls, 1); assert.equal(outputs.filter(output => output.hookSpecificOutput).length, 1);
-    const latePath = recordPath(local, 'session-1', 'main', ['late']);
-    await assert.rejects(readFile(latePath, 'utf8'));
-    release?.({status: 'assessed', choice: 'fast'}); await Promise.resolve();
-    await assert.rejects(readFile(latePath, 'utf8'));
+    let entered: (() => void) | undefined;
+    const ready = new Promise<void>(resolve => { entered = resolve; });
+    const service = {classifyDecision: async (input: {context: string}) => { calls++; assert.doesNotMatch(input.context, /excluded/); entered?.(); return await new Promise<{status: string; choice: string}>(resolve => { release = resolve; }); }};
+    t.mock.timers.enable({apis: ['Date', 'setTimeout'], now: Date.now()});
+    try {
+      const first = runClaudeHook(event('late'), {env, service, hookTimeoutMs: 20});
+      await ready;
+      const duplicate = await runClaudeHook(event('late'), {env, service, hookTimeoutMs: 20});
+      assert.deepEqual(duplicate, {});
+      assert.equal(calls, 1);
+      t.mock.timers.tick(20);
+      const output = await first;
+      assert.match(output.hookSpecificOutput?.additionalContext ?? '', /reason=hook_timeout/);
+      const latePath = recordPath(local, 'session-1', 'main', ['late']);
+      await assert.rejects(readFile(latePath, 'utf8'));
+      release?.({status: 'assessed', choice: 'fast'}); await Promise.resolve();
+      await assert.rejects(readFile(latePath, 'utf8'));
+    } finally { t.mock.timers.reset(); }
     const brokenPath = recordPath(local, 'session-1', 'main', ['interrupted']); await mkdir(brokenPath);
     const immediate = {classifyDecision: async () => ({status: 'assessed', choice: 'fast'})};
     assert.deepEqual(await runClaudeHook(event('interrupted'), {env, service: immediate}), {});
