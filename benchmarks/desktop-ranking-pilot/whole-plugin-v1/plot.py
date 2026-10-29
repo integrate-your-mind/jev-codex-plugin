@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 from pathlib import Path
 from typing import Any
 
@@ -46,10 +47,17 @@ def _finish(fig: plt.Figure, report: dict[str, Any], output: Path, name: str) ->
     completed = _count(report.get("completedAttempts"))
     pending = _count(report.get("pendingAttempts"))
     invalid = _count(report.get("invalidAttempts"))
-    fig.suptitle(f"Six-bug exploratory pilot | {completed}/18 completed; {pending} pending; {invalid} invalid\nNot an official SWE-bench score", fontsize=11)
-    fig.tight_layout(rect=(0, 0, 1, 0.92))
+    disposition = "HALTED / integrity failure\n" if report.get("halted") is True else ""
+    fig.suptitle(f"{disposition}Six-bug exploratory pilot | {completed}/18 completed; {pending} pending; {invalid} invalid\nNot an official SWE-bench score", fontsize=11)
+    lower_bound = any(row.get("elapsedTimeCoverage") == "lower-bound" for row in report["arms"])
+    if lower_bound:
+        fig.text(0.5, 0.01, "Elapsed time is a measured lower bound; pre-launch timing is unknown", ha="center", fontsize=9, color="#9a3412")
+    fig.tight_layout(rect=(0, 0.06 if lower_bound else 0, 1, 0.92))
     for extension in ("svg", "png"):
-        fig.savefig(output / f"{name}.{extension}", bbox_inches="tight", dpi=160)
+        path = output / f"{name}.{extension}"
+        fig.savefig(path, bbox_inches="tight", dpi=160)
+        if extension == "svg":
+            path.write_bytes(re.sub(rb"[ \t]+(?=\r?$)", b"", path.read_bytes(), flags=re.MULTILINE))
     plt.close(fig)
 
 
@@ -74,6 +82,8 @@ def plot_curves(report: dict[str, Any], output: Path) -> None:
     fig, ax = plt.subplots(figsize=(9, 5.8))
     plotted = False
     for i, arm in enumerate(ARMS):
+        if _count(report["arms"][i].get("completed")) == 0:
+            continue
         curve = report["curves"].get(arm) or []
         points = [(p.get("elapsedMs"), p.get("verifiedFixes")) for p in curve if isinstance(p, dict)]
         points = [(x / 60_000, y) for x, y in points if _number(x) is not None and _number(y) is not None]
@@ -94,8 +104,9 @@ def plot_curves(report: dict[str, Any], output: Path) -> None:
     else:
         ax.text(0.5, 0.5, "No scored observations; no performance curve", ha="center", va="center", transform=ax.transAxes)
         ax.set_axis_off()
-    ax.set_title("Fixes versus cumulative all-assigned elapsed time")
-    ax.set_xlabel("Minutes, including unsuccessful attempts, startup, waits and grading")
+    lower_bound = any(row.get("elapsedTimeCoverage") == "lower-bound" for row in report["arms"])
+    ax.set_title("Fixes versus observed elapsed time (lower bound)" if lower_bound else "Fixes versus cumulative all-assigned elapsed time")
+    ax.set_xlabel("Observed minutes; full assignment time unavailable" if lower_bound else "Minutes, including unsuccessful attempts, startup, waits and grading")
     ax.set_ylabel("Cumulative verified fixes")
     ax.text(0, -0.2, "Curves end at observed terminal support. Pending attempts are not failures.", transform=ax.transAxes, fontsize=9)
     _finish(fig, report, output, "cumulative-fixes")

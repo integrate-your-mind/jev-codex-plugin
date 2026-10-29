@@ -1,0 +1,7 @@
+{"event":"provider_entered","calls":1,"at":1793246935256}
+{"event":"provider_aborted","calls":1,"at":1793246935264}
+{"event":"first_completed","elapsedMs":25,"calls":1,"first":{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"JEV advisory: status=unavailable; reason=hook_timeout; continue ordinary reasoning and gather authorized evidence if useful."}}}
+{"event":"provider_markers","paths":[]}
+{"event":"provider_entered","calls":2,"at":1793246935266}
+{"event":"provider_aborted","calls":2,"at":1793246939194}
+{"event":"second_completed","elapsedMs":4049,"calls":2,"second":{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"JEV advisory: status=unavailable; reason=hook_timeout; continue ordinary reasoning and gather authorized evidence if useful."}}}
