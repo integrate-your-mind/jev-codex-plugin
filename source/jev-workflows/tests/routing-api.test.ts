@@ -11,7 +11,7 @@ import {createRoutingApi, catalogRefSchema, routingDecisionSchema, type CatalogR
 import type {DecisionInput, DecisionService} from '../src/decision-hook.js';
 import type {CatalogSnapshot, DecisionProposal} from '../src/routing/contracts.js';
 import {RoutingStateStore} from '../src/routing/state.js';
-import {loadTaskContext} from '../src/task-context.js';
+import {loadTaskContext, loadTaskContextIdentity, withTaskContextIdentity} from '../src/task-context.js';
 
 const question = {domain: 'tool' as const, question: 'Choose the useful tool.', context: 'Use the available evidence for this task.', evidence: [], mode: 'evaluate' as const};
 const scope = {cwd: process.cwd(), sessionId: 'routing-session', agentId: 'root'};
@@ -247,6 +247,24 @@ test('a non-cooperative provider reaches the consultation deadline and no late r
   } finally {await f.close();}
 });
 
+test('caller cancellation discards a late provider result without publishing a proposal', async () => {
+  let complete: ((value: {status: string; choice: string}) => void) | undefined;
+  let started: (() => void) | undefined;
+  const active = new Promise<void>(resolve => {started = resolve;});
+  const f = await fixture({classifyDecision: async () => {started?.(); return new Promise(resolve => {complete = resolve;});}});
+  try {
+    const first = await f.publish();
+    const controller = new AbortController();
+    const pending = f.api.classifyDecision({...question, catalogRef: first.routing.catalogRef}, controller.signal);
+    await active;
+    controller.abort(new Error('stop_request'));
+    assert.equal((await pending).reasonCode, 'cancelled');
+    complete?.({status: 'assessed', choice: 'tool_1'});
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal((await f.store(first.routing.catalogRef).current()).records.proposal, undefined);
+  } finally {await f.close();}
+});
+
 test('event loop lateness and caller cancellation cannot turn a late provider result into advice', async () => {
   const late = await fixture({async classifyDecision(input) {
     const until = Date.now() + 30;
@@ -303,6 +321,36 @@ test('sensitive candidate metadata stays out of raw task context, routing record
     assert.equal(JSON.stringify(await loadTaskContext(scope, {env: {PLUGIN_DATA: f.root}})).includes(privateValue), false);
     await f.api.updateTaskContext({scope, update: {latestStep: 'Continue safely.'}, routing: metadata});
     assert.equal((await readFile(contextFile, 'utf8')).includes(privateValue), false);
+  } finally {await f.close();}
+});
+
+test('an unsafe retained catalog is rejected without rewriting the immutable observation', async () => {
+  const f = await fixture();
+  try {
+    const published = await f.publish(1);
+    const ref = catalogRefSchema.parse(published.routing.catalogRef);
+    const recordPath = join(f.store(ref).directory, 'records', `${createHash('sha256').update(ref.catalogId).digest('hex')}.json`);
+    const record = JSON.parse(await readFile(recordPath, 'utf8'));
+    record.entries[0].metadata = {apiKey: 'synthetic-retained-private-value'};
+    const seeded = JSON.stringify(record);
+    await writeFile(recordPath, seeded);
+    const stable = (value: unknown): unknown => Array.isArray(value) ? value.map(stable) : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, stable(item)])) : value;
+    const {expiresAt: _expiresAt, ...content} = record;
+    const retainedRef = {...ref, digest: createHash('sha256').update(JSON.stringify(stable(content))).digest('hex')};
+    assert.equal((await f.api.classifyDecision({...question, catalogRef: retainedRef})).reasonCode, 'unsafe_catalog_metadata');
+    assert.equal(f.calls.length, 0);
+    assert.equal(await readFile(recordPath, 'utf8'), seeded);
+  } finally {await f.close();}
+});
+
+test('context identity readers reject path-shaped input without invoking a transaction', async () => {
+  const f = await fixture();
+  try {
+    const identity = {workspaceHash: '../'.repeat(22), sessionHash: '0'.repeat(64), agentHash: '1'.repeat(64)};
+    const options = {env: {PLUGIN_DATA: f.root}};
+    assert.equal(await loadTaskContextIdentity(identity, options), undefined);
+    assert.equal(await withTaskContextIdentity(identity, async () => {throw new Error('unsafe_callback');}, options), undefined);
+    await assert.rejects(lstat(join(f.root, 'task-context-v1')), {code: 'ENOENT'});
   } finally {await f.close();}
 });
 
