@@ -69,6 +69,7 @@ const fields = {
   usage: ['inputTokens', 'outputTokens', 'cachedInputTokens', 'evidenceHash'],
   integration_failed: ['reason', 'evidenceHash'], identity_broken: ['reason', 'evidenceHash'], tick: [],
   recovery_untracked_launch: ['chatId', 'createdAt', 'completedAt', 'prelaunchStartedAt', 'evidenceHash'],
+  native_launch_prepared: ['preparationHash', 'stateHash', 'evidenceHash'],
   interim_report: ['reportHash', 'artifactsHash', 'evidenceHash'],
 };
 
@@ -112,6 +113,11 @@ export function reduceEvent(previous, event) {
       const elapsed = now - Date.parse(slot.startedAt);
       if ((slot.status === 'CODING' && elapsed > CODING_MS) || (slot.status === 'GRADING'
         && (elapsed > TOTAL_MS || now - Date.parse(slot.codingEndedAt) > 600000))) halt('clock-limit-breached');
+      else if (event.type === 'native_launch_prepared') {
+        assert(slot.status === 'CODING' && !slot.launchPreparation && !slot.chatId && !slot.identity
+          && event.stateHash === hash(previous) && digest(event.preparationHash) && digest(event.evidenceHash), 'Publish one validated native launch preparation before occupying its identity');
+        slot.launchPreparation = {preparationHash:event.preparationHash, evidenceHash:event.evidenceHash};
+      }
       else if (event.type === 'identity_broken') { assert(digest(event.evidenceHash) && text(event.reason), 'Retain the identity-break evidence'); halt(event.reason); }
       else if (event.type === 'integration_failed') {
         assert(!terminal(slot) && digest(event.evidenceHash) && text(event.reason), 'Retain the consumed integration failure');
