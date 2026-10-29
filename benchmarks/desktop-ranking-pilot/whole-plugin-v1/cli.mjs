@@ -28,19 +28,19 @@ export async function main(args) {
   if (command === 'prepare-launch' && paths.length === 2) {
     const directory=resolve(paths[0]), state=await readStudy(directory), contract=await json(join(directory,'launch-contract.json'));
     const input=await json(paths[1]);
-    const allowed=['schemaVersion','manifestHash','slotId','at','selected','commonPromptPath','promptPath','prerequisites'];
+    const allowed=['schemaVersion','manifestHash','slotId','at','selected','commonPromptPath','promptTemplatePath','prerequisites'];
     if(!input || Object.keys(input).length!==allowed.length || !allowed.every(key=>Object.hasOwn(input,key))
       || Object.keys(input).some(key=>!allowed.includes(key)) || !Array.isArray(input.prerequisites)) throw new Error('Use structured file-based launch preparation, never stdout/stderr');
     for(const row of input.prerequisites) {
       if(row?.exitCode!==0 || row.signal!==null || typeof row.artifactPath!=='string'
         || Object.keys(row).some(key=>!['id','exitCode','signal','artifactPath','artifactHash'].includes(key))) throw new Error('Every prerequisite command must explicitly succeed before reading prompt files');
     }
-    if(typeof input.commonPromptPath!=='string' || typeof input.promptPath!=='string') throw new Error('Expected prompt file paths are required');
-    const commonPrompt=await readFile(input.commonPromptPath,'utf8'), prompt=await readFile(input.promptPath,'utf8');
+    if(typeof input.commonPromptPath!=='string' || typeof input.promptTemplatePath!=='string') throw new Error('Expected prompt file paths are required');
+    const commonPrompt=await readFile(input.commonPromptPath,'utf8'), promptTemplate=await readFile(input.promptTemplatePath,'utf8');
     const prerequisites=[];
     for(const row of input.prerequisites) prerequisites.push({id:row.id,exitCode:row.exitCode,signal:row.signal,artifactHash:row.artifactHash,artifact:await json(row.artifactPath)});
     const prepared=prepareNativeLaunch(state,contract,{schemaVersion:input.schemaVersion,manifestHash:input.manifestHash,slotId:input.slotId,
-      at:input.at,selected:input.selected,commonPrompt,prompt,prerequisites});
+      at:input.at,selected:input.selected,commonPrompt,promptTemplate,prerequisites});
     const launches=join(directory,'launches'); await mkdir(launches,{recursive:true});
     const preparationHash=hash(prepared), artifact=join(launches,`${prepared.slotId}.json`);
     await put(artifact,prepared);
@@ -49,7 +49,7 @@ export async function main(args) {
     const after=reduceEvent(state,event);
     await put(join(directory,'events',`${String(after.events.length).padStart(4,'0')}.json`),event);
     if(hash(await readStudy(directory))!==hash(after)) throw new Error('Native launch state changed during publication; reconcile without dispatch');
-    return {artifact,preparationHash,nativeArgs:prepared.nativeArgs};
+    return {...prepared,artifact,preparationHash};
   }
   if (command === 'template' && paths.length === 2) {
     const config = await json(paths[0]);

@@ -2,10 +2,11 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile, writeFile, mkdir, mkdtemp, rm} from 'node:fs/promises';
 import {join} from 'node:path';
+import {spawnSync} from 'node:child_process';
 import {ARMS, TASK_IDS, freezeStudy, hash, reduceEvent, deadlines} from './controller.mjs';
 import {summarizeStudy, exportCsv} from './report.mjs';
 import {main, readStudy} from './cli.mjs';
-import {prepareNativeLaunch, validateLaunchContract} from './launch.mjs';
+import {prepareNativeLaunch, validateLaunchContract, renderPromptTemplate, dispatchPreparedNativeLaunch} from './launch.mjs';
 
 const json = async path => JSON.parse(await readFile(new URL(path, import.meta.url), 'utf8'));
 const corpus = await json('../corpus-2026-10-28.json');
@@ -263,22 +264,23 @@ test('untracked native launch recovery consumes the next slot without fabricatin
 });
 
 function launchData(state) {
-  const commonPrompt='Implement the repository bug described in the supplied public issue and reproduction. Work only inside the assigned workspace, preserve benchmark inputs, verify the fix and retain the patch. This is synthetic launch-validator test content.';
+  const commonPrompt='Implement the repository bug described in the supplied public issue and reproduction. Work only inside the assigned workspace, preserve benchmark inputs, verify the fix and retain the patch. This is synthetic launch-validator test content.\n';
+  const promptTemplate=commonPrompt+'\nRecorded launch time: {{ATTEMPT_STARTED_AT}}\nCoding deadline: {{CODING_STOPS_AT}}\n';
   const contract={schemaVersion:'whole-plugin-launch-contract-v1',manifestHash:state.manifestHash,commonPromptHash:hash(commonPrompt),
     slots:state.slots.map((slot,index)=>({slotId:slot.id,projectId:`synthetic-project-${index}`,workspace:`/synthetic/benchmark-${index}`,
-      baseRevision:state.manifest.tasks.find(task=>task.id===slot.taskId).baseRevision,configurationHash:state.manifest.arms[slot.arm].configurationHash,promptHash:hash(commonPrompt)}))};
+      baseRevision:state.manifest.tasks.find(task=>task.id===slot.taskId).baseRevision,configurationHash:state.manifest.arms[slot.arm].configurationHash,promptTemplateHash:hash(promptTemplate)}))};
   const slot=state.slots.find(row=>row.status==='CODING')??state.slots[0],pin=contract.slots.find(row=>row.slotId===slot.id);
   const selected={projectId:pin.projectId,workspace:pin.workspace,model:'gpt-6.1-sol',effort:'ultra',baseRevision:pin.baseRevision,configurationHash:pin.configurationHash};
   const grades=state.slots.filter(row=>row.status==='COMPLETE').map(row=>({schemaVersion:'whole-plugin-independent-grade-v1',slotId:row.id,patchHash:row.patchHash,
     graderHash:state.manifest.tasks.find(task=>task.id===row.taskId).graderHash,exitCode:row.verdict==='verified-fix'?0:1,
     terminal:{verdict:row.verdict==='verified-fix'?'pass':'fail',healthy:true},studyVerdict:row.verdict}));
   const artifacts={
-    'prompt-preparation':{schemaVersion:'whole-plugin-prompt-ready-v1',manifestHash:state.manifestHash,slotId:slot.id,commonPromptHash:contract.commonPromptHash,promptHash:pin.promptHash},
+    'prompt-preparation':{schemaVersion:'whole-plugin-prompt-ready-v1',manifestHash:state.manifestHash,slotId:slot.id,commonPromptHash:contract.commonPromptHash,promptTemplateHash:pin.promptTemplateHash},
     'workspace-validation':{schemaVersion:'whole-plugin-workspace-ready-v1',slotId:slot.id,selected},
     'prior-outcomes':{schemaVersion:'whole-plugin-prior-outcomes-v1',grades},
   };
   return {contract,request:{schemaVersion:'whole-plugin-launch-preparation-v1',manifestHash:state.manifestHash,slotId:slot.id,
-    at:new Date(Date.parse(state.lastAt??new Date(origin).toISOString())+1).toISOString(),selected,commonPrompt,prompt:commonPrompt,
+    at:new Date(Date.parse(state.lastAt??new Date(origin).toISOString())+1).toISOString(),selected,commonPrompt,promptTemplate,
     prerequisites:Object.entries(artifacts).map(([id,artifact])=>({id,exitCode:0,signal:null,artifactHash:hash(artifact),artifact}))}};
 }
 
@@ -287,7 +289,7 @@ test('validated launch returns exact native project arguments only after persist
   assert.throws(()=>prepareNativeLaunch(state,input.contract,input.request),/persisted next-slot start/);
   state=apply(state,'start',0,{evidenceHash:evidence}); input=launchData(state);
   const prepared=prepareNativeLaunch(state,input.contract,input.request);
-  assert.deepEqual(prepared.nativeArgs,{target:{type:'project',projectId:'synthetic-project-0',environment:{type:'local'}},model:'gpt-6.1-sol',thinking:'ultra',prompt:input.request.prompt,title:`Jev pilot ${state.slots[0].id}`});
+  assert.deepEqual(prepared.nativeArgs,{target:{type:'project',projectId:'synthetic-project-0',environment:{type:'local'}},model:'gpt-6.1-sol',thinking:'ultra',prompt:renderPromptTemplate(input.request.promptTemplate,state.slots[0].startedAt,state.manifest.policy.codingMs),title:`Jev pilot ${state.slots[0].id}`});
   state=apply(state,'native_launch_prepared',1,{preparationHash:hash(prepared),stateHash:hash(state),evidenceHash:evidence});
   assert.throws(()=>prepareNativeLaunch(state,input.contract,input.request),/unoccupied native identity/);
 });
@@ -298,10 +300,10 @@ test('failed prerequisite, missing/stderr prompt, wrong slot/config/profile prev
     request=>{request.prerequisites[0].exitCode=1;},
     request=>{delete request.prerequisites[0].exitCode;},
     request=>{request.prerequisites[0].signal='SIGTERM';},
-    request=>{delete request.prompt;},
-    request=>{request.prompt='';},
-    request=>{request.prompt='cat: missing-prompt.txt: No such file or directory';},
-    request=>{request.stdout=request.prompt;},
+    request=>{delete request.promptTemplate;},
+    request=>{request.promptTemplate='';},
+    request=>{request.promptTemplate='cat: missing-prompt.txt: No such file or directory';},
+    request=>{request.stdout=request.promptTemplate;},
     request=>{request.slotId=state.slots[1].id;},
     request=>{request.selected.projectId='different-project';},
     request=>{request.selected.workspace='/different/workspace';},
@@ -348,15 +350,59 @@ test('file launch preparation fails closed on missing prompt and nonzero command
     const common=join(directory,'common.txt'),prompt=join(directory,'prompt.txt'); await writeFile(common,input.request.commonPrompt);
     const prerequisites=[];
     for(const row of input.request.prerequisites) {const path=join(directory,`${row.id}.json`);await writeFile(path,JSON.stringify(row.artifact));prerequisites.push({id:row.id,exitCode:row.exitCode,signal:row.signal,artifactPath:path,artifactHash:row.artifactHash});}
-    const fileInput={schemaVersion:input.request.schemaVersion,manifestHash:state.manifestHash,slotId:input.request.slotId,at:input.request.at,selected:input.request.selected,commonPromptPath:common,promptPath:prompt,prerequisites};
+    const fileInput={schemaVersion:input.request.schemaVersion,manifestHash:state.manifestHash,slotId:input.request.slotId,at:input.request.at,selected:input.request.selected,commonPromptPath:common,promptTemplatePath:prompt,prerequisites};
     const requestPath=join(directory,'request.json'); await writeFile(requestPath,JSON.stringify(fileInput));
     await assert.rejects(main(['prepare-launch',run,requestPath]),/ENOENT/);
+    const failedCommand=spawnSync(process.execPath,[new URL('./cli.mjs',import.meta.url).pathname,'prepare-launch',run,requestPath],{encoding:'utf8'});
+    let dispatches=0;
+    await assert.rejects(dispatchPreparedNativeLaunch({exit_code:failedCommand.status,output:failedCommand.stdout+failedCommand.stderr},async()=>{dispatches++;}),/explicitly successful/);
+    assert.equal(dispatches,0);
     assert.equal((await readStudy(run)).events.length,1);
     fileInput.prerequisites[0].exitCode=1; await writeFile(requestPath,JSON.stringify(fileInput));
     await assert.rejects(main(['prepare-launch',run,requestPath]),/explicitly succeed/);
-    fileInput.prerequisites[0].exitCode=0; await writeFile(requestPath,JSON.stringify(fileInput)); await writeFile(prompt,input.request.prompt);
-    const prepared=await main(['prepare-launch',run,requestPath]); assert.equal(prepared.nativeArgs.prompt,input.request.prompt);
+    fileInput.prerequisites[0].exitCode=0; await writeFile(requestPath,JSON.stringify(fileInput)); await writeFile(prompt,input.request.promptTemplate);
+    const prepared=await main(['prepare-launch',run,requestPath]); assert.equal(prepared.nativeArgs.prompt,renderPromptTemplate(input.request.promptTemplate,state.slots[0].startedAt,state.manifest.policy.codingMs));
+    const nativeResult=await dispatchPreparedNativeLaunch({exit_code:0,output:JSON.stringify(prepared)},async args=>{dispatches++;assert.deepEqual(args,prepared.nativeArgs);return {threadId:'synthetic-no-native-call'};});
+    assert.equal(dispatches,1);assert.equal(nativeResult.threadId,'synthetic-no-native-call');
     assert.equal((await readStudy(run)).slots[0].launchPreparation.preparationHash,prepared.preparationHash);
     await assert.rejects(main(['prepare-launch',run,requestPath]),/unoccupied native identity/);
   }finally{await rm(directory,{recursive:true,force:true});}
+});
+
+test('trailing-newline common prompt is preserved and one frozen template renders two different persisted starts',()=>{
+  const frozen=freezeStudy(manifest()), initial=launchData(frozen), contractHash=hash(initial.contract);
+  const outputs=[];
+  for(const offset of [0,86400000]) {
+    const state=apply(frozen,'start',offset,{evidenceHash:evidence}),input=launchData(state);
+    assert.equal(hash(input.contract),contractHash);
+    const prepared=prepareNativeLaunch(state,initial.contract,input.request);
+    assert.ok(prepared.nativeArgs.prompt.startsWith(input.request.commonPrompt+'\nRecorded launch time: '));
+    assert.ok(input.request.commonPrompt.endsWith('\n'));
+    assert.match(prepared.nativeArgs.prompt,new RegExp(`Recorded launch time: ${state.slots[0].startedAt}`));
+    assert.ok(prepared.nativeArgs.prompt.endsWith(`Coding deadline: ${new Date(origin+offset+2100000).toISOString()}\n`));
+    outputs.push(prepared.nativeArgs.prompt);
+  }
+  assert.notEqual(outputs[0],outputs[1]); assert.equal(hash(initial.contract),contractHash);
+  assert.throws(()=>renderPromptTemplate(initial.request.promptTemplate.replace('{{CODING_STOPS_AT}}','wrong'),new Date(origin).toISOString(),2100000),/one start token/);
+});
+
+test('final native bridge checks actual command exit and prepared JSON before dispatching exact native arguments',async()=>{
+  let state=freezeStudy(manifest());state=apply(state,'start',0,{evidenceHash:evidence});
+  const input=launchData(state),prepared=prepareNativeLaunch(state,input.contract,input.request);
+  const payload={...prepared,artifact:'/synthetic/prepared.json',preparationHash:hash(prepared)};
+  const good={exit_code:0,output:JSON.stringify(payload)};
+  const malformed={...payload,nativeArgs:{...payload.nativeArgs,prompt:'cat: missing-prompt.txt: No such file or directory'}};
+  const wrongModel={...prepared,nativeArgs:{...prepared.nativeArgs,model:'gpt-6-astra'}};
+  const badResults=[
+    {exit_code:1,output:'cat: missing-prompt.txt: No such file or directory'},
+    {output:good.output}, {exit_code:null,output:good.output,session_id:42}, {exit_code:0,output:'not JSON'},
+    {exit_code:0,output:JSON.stringify({schemaVersion:'error',nativeArgs:payload.nativeArgs})},
+    {exit_code:0,output:JSON.stringify(malformed)},
+    {exit_code:0,output:JSON.stringify({...wrongModel,artifact:payload.artifact,preparationHash:hash(wrongModel)})},
+    {exit_code:0,output:`warning from stderr\n${good.output}`},
+  ];
+  for(const result of badResults) {let dispatches=0;await assert.rejects(dispatchPreparedNativeLaunch(result,async()=>{dispatches++;}));assert.equal(dispatches,0);}
+  let received=null,calls=0;
+  const result=await dispatchPreparedNativeLaunch(good,async args=>{calls++;received=args;return {threadId:'synthetic-only'};});
+  assert.equal(calls,1);assert.deepEqual(received,payload.nativeArgs);assert.equal(result.threadId,'synthetic-only');
 });

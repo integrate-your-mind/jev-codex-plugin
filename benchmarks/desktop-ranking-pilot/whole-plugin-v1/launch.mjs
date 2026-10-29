@@ -1,5 +1,5 @@
 import {isAbsolute, normalize} from 'node:path';
-import {hash, validateManifest} from './controller.mjs';
+import {ARMS, TASK_IDS, hash, validateManifest} from './controller.mjs';
 
 const assert = (value, message) => { if (!value) throw new Error(message); };
 const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -8,6 +8,15 @@ const exact = (value, keys) => value && typeof value === 'object' && !Array.isAr
 const projectId = value => typeof value === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_-]{7,127}$/.test(value);
 const workspace = value => typeof value === 'string' && isAbsolute(value) && normalize(value) === value;
 const requirements = ['prompt-preparation', 'workspace-validation', 'prior-outcomes'];
+const timeTokens = ['{{ATTEMPT_STARTED_AT}}','{{CODING_STOPS_AT}}'];
+
+export function renderPromptTemplate(template, startedAt, codingMs) {
+  assert(typeof template === 'string' && timeTokens.every(token=>template.split(token).length===2)
+    && !template.replaceAll(timeTokens[0],'').replaceAll(timeTokens[1],'').match(/\{\{[^}]+\}\}/), 'Freeze one start token and one deadline token in the coding prompt template');
+  const start=Date.parse(startedAt);
+  assert(Number.isFinite(start) && codingMs===2100000, 'Render prompt timing only from the persisted 35-minute attempt start');
+  return template.replace(timeTokens[0],startedAt).replace(timeTokens[1],new Date(start+codingMs).toISOString());
+}
 
 export function validateLaunchContract(state, contract) {
   validateManifest(state.manifest);
@@ -19,9 +28,9 @@ export function validateLaunchContract(state, contract) {
     'Launch projects and workspaces must be independent');
   for (const [index, pin] of contract.slots.entries()) {
     const slot = state.slots[index], task = state.manifest.tasks.find(row => row.id === slot.taskId);
-    assert(exact(pin, ['slotId','projectId','workspace','baseRevision','configurationHash','promptHash'])
+    assert(exact(pin, ['slotId','projectId','workspace','baseRevision','configurationHash','promptTemplateHash'])
       && pin.slotId === slot.id && projectId(pin.projectId) && workspace(pin.workspace) && pin.baseRevision === task.baseRevision
-      && pin.configurationHash === state.manifest.arms[slot.arm].configurationHash && digest(pin.promptHash), 'Launch contract slot, project, workspace or source/configuration pin is invalid');
+      && pin.configurationHash === state.manifest.arms[slot.arm].configurationHash && digest(pin.promptTemplateHash), 'Launch contract slot, project, workspace or source/configuration pin is invalid');
   }
   return true;
 }
@@ -44,7 +53,7 @@ export function validatePriorGrades(state, grades, slotId) {
 export function prepareNativeLaunch(state, contract, request) {
   validateLaunchContract(state, contract);
   assert(!state.halted, 'A halted study cannot prepare another native launch');
-  assert(exact(request, ['schemaVersion','manifestHash','slotId','at','selected','commonPrompt','prompt','prerequisites'])
+  assert(exact(request, ['schemaVersion','manifestHash','slotId','at','selected','commonPrompt','promptTemplate','prerequisites'])
     && request.schemaVersion === 'whole-plugin-launch-preparation-v1' && request.manifestHash === state.manifestHash, 'Use structured launch preparation, never command output');
   const slot = state.slots.find(row => row.id === request.slotId);
   assert(slot?.status === 'CODING' && slot.startedAt !== null && !slot.chatId && !slot.identity && !slot.launchPreparation
@@ -61,9 +70,10 @@ export function prepareNativeLaunch(state, contract, request) {
     'Observed native project, workspace, source, configuration and model/effort must match frozen pins');
   assert(typeof request.commonPrompt === 'string' && request.commonPrompt.trim().length >= 80
     && hash(request.commonPrompt) === contract.commonPromptHash, 'Missing or mismatched expected common coding prompt');
-  assert(typeof request.prompt === 'string' && hash(request.prompt) === pin.promptHash
-    && (request.prompt === request.commonPrompt || request.prompt.startsWith(`${request.commonPrompt}\n\n`))
-    && !/^(?:cat:|Traceback \(|KeyError:|Error:|Command failed:)/.test(request.prompt.trimStart()), 'Native prompt must be the expected coding content, never stderr');
+  assert(typeof request.promptTemplate === 'string' && hash(request.promptTemplate) === pin.promptTemplateHash
+    && request.promptTemplate.startsWith(request.commonPrompt)
+    && !/^(?:cat:|Traceback \(|KeyError:|Error:|Command failed:)/.test(request.promptTemplate.trimStart()), 'Native prompt template must preserve the expected common coding content, never stderr');
+  const renderedPrompt=renderPromptTemplate(request.promptTemplate,slot.startedAt,state.manifest.policy.codingMs);
   assert(Array.isArray(request.prerequisites) && request.prerequisites.length === requirements.length
     && new Set(request.prerequisites.map(row => row.id)).size === requirements.length, 'Require every launch prerequisite exactly once');
   const receipts = {};
@@ -75,7 +85,7 @@ export function prepareNativeLaunch(state, contract, request) {
   }
   const prompt = receipts['prompt-preparation'];
   assert(prompt?.schemaVersion === 'whole-plugin-prompt-ready-v1' && prompt.manifestHash === state.manifestHash && prompt.slotId === slot.id
-    && prompt.commonPromptHash === contract.commonPromptHash && prompt.promptHash === pin.promptHash, 'Prompt preparation artifact does not bind expected coding content');
+    && prompt.commonPromptHash === contract.commonPromptHash && prompt.promptTemplateHash === pin.promptTemplateHash, 'Prompt preparation artifact does not bind expected coding content');
   const observed = receipts['workspace-validation'];
   assert(observed?.schemaVersion === 'whole-plugin-workspace-ready-v1' && observed.slotId === slot.id
     && hash(observed.selected) === hash(selected), 'Workspace prerequisite does not bind the selected native project and settings');
@@ -84,9 +94,28 @@ export function prepareNativeLaunch(state, contract, request) {
   validatePriorGrades(state, outcomes.grades, slot.id);
   return {
     schemaVersion:'whole-plugin-prepared-native-launch-v1', manifestHash:state.manifestHash, stateHash:hash(state), slotId:slot.id,
-    contractHash:hash(contract), at:request.at, commonPromptHash:contract.commonPromptHash, promptHash:pin.promptHash,
+    contractHash:hash(contract), at:request.at, commonPromptHash:contract.commonPromptHash, promptTemplateHash:pin.promptTemplateHash, promptHash:hash(renderedPrompt),
     prerequisiteHashes:Object.fromEntries(request.prerequisites.map(row=>[row.id,row.artifactHash])),
     nativeArgs:{target:{type:'project',projectId:pin.projectId,environment:{type:'local'}}, model:selected.model, thinking:selected.effort,
-      prompt:request.prompt,title:`Jev pilot ${slot.id}`},
+      prompt:renderedPrompt,title:`Jev pilot ${slot.id}`},
   };
+}
+
+export async function dispatchPreparedNativeLaunch(commandResult, createThread) {
+  assert(commandResult?.exit_code===0 && !commandResult.session_id && typeof commandResult.output==='string', 'Native dispatch requires an explicitly successful completed preparation command');
+  let payload;
+  try { payload=JSON.parse(commandResult.output); } catch { throw new Error('Native preparation output must be one structured JSON result, never stdout/stderr prompt text'); }
+  assert(exact(payload,['schemaVersion','manifestHash','stateHash','slotId','contractHash','at','commonPromptHash','promptTemplateHash','promptHash','prerequisiteHashes','nativeArgs','artifact','preparationHash'])
+    && payload.schemaVersion==='whole-plugin-prepared-native-launch-v1'
+    && ['manifestHash','stateHash','contractHash','commonPromptHash','promptTemplateHash','promptHash','preparationHash'].every(key=>digest(payload[key]))
+    && TASK_IDS.some(task=>ARMS.some(arm=>payload.slotId===`${task}.${arm}`)) && Number.isFinite(Date.parse(payload.at))
+    && workspace(payload.artifact) && exact(payload.prerequisiteHashes,requirements) && Object.values(payload.prerequisiteHashes).every(digest), 'Native dispatch requires the expected prepared launch schema and hashes');
+  const {artifact,preparationHash,...prepared}=payload;
+  assert(hash(prepared)===preparationHash, 'Prepared native launch content changed');
+  const args=payload.nativeArgs;
+  assert(exact(args,['target','model','thinking','prompt','title']) && exact(args.target,['type','projectId','environment'])
+    && args.target.type==='project' && projectId(args.target.projectId) && exact(args.target.environment,['type']) && args.target.environment.type==='local'
+    && args.model==='gpt-6.1-sol' && args.thinking==='ultra' && typeof args.prompt==='string' && args.prompt.trim().length>=80
+    && hash(args.prompt)===payload.promptHash && args.title===`Jev pilot ${payload.slotId}` && typeof createThread==='function', 'Native dispatch arguments must match the prepared local fixed-model launch');
+  return await createThread(structuredClone(args));
 }
