@@ -46,7 +46,8 @@ def _finish(fig: plt.Figure, report: dict[str, Any], output: Path, name: str) ->
     completed = _count(report.get("completedAttempts"))
     pending = _count(report.get("pendingAttempts"))
     invalid = _count(report.get("invalidAttempts"))
-    fig.suptitle(f"Six-bug exploratory pilot | {completed}/18 completed; {pending} pending; {invalid} invalid\nNot an official SWE-bench score", fontsize=11)
+    disposition = "HALTED / integrity failure\n" if report.get("halted") is True else ""
+    fig.suptitle(f"{disposition}Six-bug exploratory pilot | {completed}/18 completed; {pending} pending; {invalid} invalid\nNot an official SWE-bench score", fontsize=11)
     lower_bound = any(row.get("elapsedTimeCoverage") == "lower-bound" for row in report["arms"])
     if lower_bound:
         fig.text(0.5, 0.01, "Elapsed time is a measured lower bound; pre-launch timing is unknown", ha="center", fontsize=9, color="#9a3412")
