@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {chmod, lstat, mkdir, mkdtemp, rm} from 'node:fs/promises';
+import {chmod, lstat, mkdir, mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {test} from 'node:test';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
@@ -9,6 +9,7 @@ import {createRoutingApi, catalogRefSchema, routingDecisionSchema, type CatalogR
 import type {DecisionInput, DecisionService} from '../src/decision-hook.js';
 import type {CatalogSnapshot, DecisionProposal} from '../src/routing/contracts.js';
 import {RoutingStateStore} from '../src/routing/state.js';
+import {loadTaskContext} from '../src/task-context.js';
 
 const question = {domain: 'tool' as const, question: 'Choose the useful tool.', context: 'Use the available evidence for this task.', evidence: [], mode: 'evaluate' as const};
 const scope = {cwd: process.cwd(), sessionId: 'routing-session', agentId: 'root'};
@@ -210,6 +211,29 @@ test('routing catalogs preserve redacted data and require a private state direct
     assert.equal(unsafe.status, 'updated');
     assert.equal(unsafe.routing.reasonCode, 'unsafe_routing_directory');
   } finally {await chmod(f.root, 0o700); await f.close();}
+});
+
+test('sensitive candidate metadata stays out of raw task context, routing records and provider inputs', async () => {
+  const f = await fixture();
+  const privateValue = 'synthetic-private-value';
+  const safeFields = Object.fromEntries(Array.from({length: 16}, (_, index) => [`safe_${index}`, index]));
+  try {
+    const updated = output(await f.api.updateTaskContext({scope, update: {candidateCatalogs: {tool: [{...candidate(1), metadata: {apiKey: privateValue, authorization: privateValue, ...safeFields}}]}}, routing: metadata}));
+    const contextFile = join(f.root, 'task-context-v1', updated.context.scope.workspaceHash, updated.context.scope.sessionHash, updated.context.scope.agentHash, 'context.json');
+    assert.equal((await readFile(contextFile, 'utf8')).includes(privateValue), false);
+    assert.deepEqual(updated.context.candidateCatalogs.tool[0].metadata, safeFields);
+    const snapshot = await f.store(updated.routing.catalogRef).snapshot();
+    assert.equal(JSON.stringify(snapshot).includes(privateValue), false);
+    await f.api.classifyDecision({...question, catalogRef: updated.routing.catalogRef});
+    assert.equal(JSON.stringify(f.calls).includes(privateValue), false);
+    assert.deepEqual(f.calls[0]?.candidates[0]?.metadata, safeFields);
+    const legacy = JSON.parse(await readFile(contextFile, 'utf8'));
+    legacy.candidateCatalogs.tool[0].metadata.apiKey = privateValue;
+    await writeFile(contextFile, JSON.stringify(legacy));
+    assert.equal(JSON.stringify(await loadTaskContext(scope, {env: {PLUGIN_DATA: f.root}})).includes(privateValue), false);
+    await f.api.updateTaskContext({scope, update: {latestStep: 'Continue safely.'}, routing: metadata});
+    assert.equal((await readFile(contextFile, 'utf8')).includes(privateValue), false);
+  } finally {await f.close();}
 });
 
 test('scoped status remains read only before any routing observations exist', async () => {
