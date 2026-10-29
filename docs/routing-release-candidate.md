@@ -28,9 +28,9 @@ Public Git source and generated packages do not establish official-directory acc
 
 The frozen protocol has six real SWE-bench bugs across Requests and SymPy, three arms and eighteen slots. These tasks are disjoint from the retained old reservations. Source, graders, order, candidate generation and treatment identity must be frozen before scoring.
 
-All twenty-four real grader controls passed their expected results: each broken base, missing repair and wrong repair fails; each reference repair passes. The [grader-control chart](../benchmarks/desktop-ranking-pilot/preparation-2026-10-28/grader-controls-2026-10-28.svg) shows preparation only. Earlier failed preparation receipts remain preserved.
+All twenty-four real grader controls passed their expected results: each broken base, missing repair and wrong repair fails; each reference repair passes. The [grader-control chart](../benchmarks/desktop-ranking-pilot/preparation-2026-10-28-attempt-5/grader-controls-2026-10-28.svg) shows preparation only. Earlier failed preparation receipts remain preserved.
 
-All eighteen coding attempts are [NOTSTARTED](../benchmarks/desktop-ranking-pilot/preparation-2026-10-28/notstarted-2026-10-28.json). The native interface available here cannot yet prove a baseline free of Jev tools, instructions, hooks and transport, or the execution and stopping controls required by the protocol. A plugin-versus-baseline quality chart would therefore be fabricated. No coding model was invoked for this cohort.
+All eighteen coding attempts are [NOTSTARTED](../benchmarks/desktop-ranking-pilot/preparation-2026-10-28-attempt-5/notstarted-2026-10-28.json). The native interface available here cannot yet prove a baseline free of Jev tools, instructions, hooks and transport, or the execution and stopping controls required by the protocol. A plugin-versus-baseline quality chart would therefore be fabricated. No coding model was invoked for this cohort.
 
 The controller retains unsuccessful attempts, abstentions, outages, unknown billing and timing over all assigned attempts. Its charts stop at observed support; ungraded attempts are unknown rather than zero fixes. A larger study, adaptive-model study, Claude inference and QQ work remain paused.
 
@@ -39,3 +39,7 @@ The controller retains unsuccessful attempts, abstentions, outages, unknown bill
 Run `node scripts/verify.mjs` on Node 22 or newer. The existing pre-push hook runs the same repository checks inside the retained local CI VM without GitHub-hosted minutes. Generated Codex and Claude packages must match the same source tree. Static native validation is separate from running Claude inference.
 
 Keep the installed stable package and configuration backup when staging this candidate. Preserve shared receipts, sessions and protected credential files. Do not place new code under the old version's cache path. Native hook trust remains a host review. Rollback selects the retained stable package and policy backup; it does not delete state or rewrite receipt history.
+
+## Dependency advisory disposition
+
+The reachable Zod constrained-collection issue is patched to exact4.6.7. Residual transitive audit findings remain tracked in [issue15](https://github.com/integrate-your-mind/jev-codex-plugin/issues/15), with current-path likelihood/impact scores and explicit reassessment triggers. The audit is not clean; no broad unrelated upgrade is included.
