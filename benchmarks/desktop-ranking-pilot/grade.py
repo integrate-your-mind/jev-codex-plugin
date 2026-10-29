@@ -1,7 +1,55 @@
 import importlib
+from importlib.machinery import PathFinder
 import json
+import subprocess
 import sys
 from pathlib import Path
+
+
+TASKS = {
+    "psf__requests-2931": ("psf/requests", "requests"),
+    "psf__requests-5414": ("psf/requests", "requests"),
+    "psf__requests-6028": ("psf/requests", "requests"),
+    "sympy__sympy-16886": ("sympy/sympy", "sympy"),
+    "sympy__sympy-19346": ("sympy/sympy", "sympy"),
+    "sympy__sympy-24562": ("sympy/sympy", "sympy"),
+}
+DEPENDENCIES = ("certifi", "chardet", "charset_normalizer", "idna", "mpmath", "urllib3")
+
+
+class GraderInfrastructureError(RuntimeError):
+    pass
+
+
+def validate_environment(task):
+    if task not in TASKS:
+        raise GraderInfrastructureError("unknown-task")
+    repository, package = TASKS[task]
+    root = Path.cwd().resolve()
+    try:
+        top = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True, stderr=subprocess.DEVNULL).strip()
+        origin = subprocess.check_output(["git", "config", "--get", "remote.origin.url"], text=True, stderr=subprocess.DEVNULL).strip()
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise GraderInfrastructureError("unverified-candidate-root") from error
+    origin = origin.removeprefix("https://github.com/").removeprefix("git@github.com:").removesuffix(".git").rstrip("/")
+    if Path(top).resolve() != root or origin.lower() != repository:
+        raise GraderInfrastructureError("unverified-candidate-root")
+    sys.path = [path for path in sys.path if not Path(path or ".").resolve().is_relative_to(root)]
+    for name in DEPENDENCIES:
+        try:
+            dependency = importlib.import_module(name)
+            if Path(dependency.__file__).resolve().is_relative_to(root):
+                raise ValueError("candidate-shadowed-environment-dependency")
+        except Exception as error:
+            raise GraderInfrastructureError(f"declared-dependency-unavailable:{name}") from error
+    if package in sys.modules:
+        raise GraderInfrastructureError("candidate-package-already-imported")
+    candidate = PathFinder.find_spec(package, [str(root)])
+    if candidate is None or candidate.origin is None:
+        raise RuntimeError("candidate-package-missing")
+    if not Path(candidate.origin).resolve().is_relative_to(root / package):
+        raise GraderInfrastructureError("candidate-package-origin-mismatch")
+    sys.path.insert(0, str(root))
 
 
 def require(condition):
@@ -71,14 +119,17 @@ def grade(task):
 
 
 if __name__ == "__main__":
-    sys.path.insert(0, str(Path.cwd()))
     try:
+        validate_environment(sys.argv[1] if len(sys.argv) == 2 else None)
         grade(sys.argv[1])
+    except GraderInfrastructureError as error:
+        print(json.dumps({"verdict": "infrastructure-invalid", "healthy": False, "exception": type(error).__name__, "reason": str(error)}))
+        raise
     except AssertionError as error:
         print(json.dumps({"verdict": "fail", "healthy": True, "reason": str(error)}))
         sys.exit(1)
     except Exception as error:
-        print(json.dumps({"verdict": "infrastructure-invalid", "healthy": False, "exception": type(error).__name__, "reason": str(error)}))
-        raise
+        print(json.dumps({"verdict": "fail", "healthy": True, "exception": type(error).__name__, "reason": str(error)}))
+        sys.exit(1)
     else:
         print(json.dumps({"verdict": "pass", "healthy": True}))

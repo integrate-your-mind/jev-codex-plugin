@@ -25,6 +25,7 @@ All test fixtures are synthetic. They are not pilot outcomes. The qualification 
 | One source bug counted twice under distinct task IDs | 7 | 9 | 63 | Independent review and a failing regression demonstrated duplicate acceptance. Selected tasks now have unique repository/base, issue and reference-repair identities. |
 | Interpreter resolution discarded the virtual environment | 10 | 7 | 70 | The initial controls reported missing urllib3 and mpmath. The runner now preserves the virtual-environment executable path. The current controls all pass their expected outcomes. |
 | Known bug exceptions counted as broken infrastructure | 10 | 7 | 70 | Binary decoding and Rational construction reproduced the reported exceptions. The grader now labels those known behavioral failures while preserving import/setup errors as infrastructure failures. |
+| Candidate syntax, import and runtime regressions counted as infrastructure failures | 8 | 8 | 64 | Independent review and the syntax-patch regression reproduced `infrastructure-invalid` instead of `fail`. Declared environment dependencies and task/source identity now qualify before candidate execution. Candidate exceptions then remain failed repairs. |
 
 Outages remain in their assigned-arm denominator. An independently verified terminal patch can count as a fix when packet delivery is unavailable. The report records missing delivery and unknown uptake. Grading requires the frozen grader and observed treatment configuration.
 

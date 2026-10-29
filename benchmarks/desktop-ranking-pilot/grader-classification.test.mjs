@@ -36,7 +36,7 @@ async function runCandidate(source, options = {}) {
       cwd: workspace, encoding: 'utf8', env: {...globalThis.process.env, PYTHONPATH: packages}, timeout: 10_000,
     });
     assert.equal(process.error, undefined);
-    return {exitCode: process.status, result: JSON.parse(process.stdout.trim().split('\n').at(-1))};
+    return {exitCode: process.status, result: JSON.parse(process.stdout.trim().split('\n').at(-1)), stderr: process.stderr};
   } finally {
     await rm(owned, {recursive: true, force: true});
     try { await rmdir(parent); } catch (error) { if (error.code !== 'ENOTEMPTY' && error.code !== 'ENOENT') throw error; }
@@ -45,7 +45,7 @@ async function runCandidate(source, options = {}) {
 
 test('a normal synthetic candidate still passes the external grader', async () => {
   const observed = await runCandidate(candidate);
-  assert.equal(observed.exitCode, 0);
+  assert.equal(observed.exitCode, 0, JSON.stringify(observed));
   assert.deepEqual(observed.result, {verdict: 'pass', healthy: true});
 });
 
