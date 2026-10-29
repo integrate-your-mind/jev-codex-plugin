@@ -1,0 +1,7 @@
+{
+  "accepted": false,
+  "error": "Native prompt must be the expected coding content, never stderr",
+  "commonEndsNewline": true,
+  "actualAppendStartsOneNewline": true,
+  "guardRequiresTwoAdditionalNewlines": true
+}

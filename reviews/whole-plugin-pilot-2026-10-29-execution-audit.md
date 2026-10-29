@@ -32,3 +32,17 @@ Two concrete options preserve the current evidence. Neither starts automatically
 2. Preserve this halted pilot as partial evidence and approve a separately identified cohort with newly selected bugs, avoiding the already exposed solutions and outcomes. This would be new inference, not a hidden retry of this study.
 
 No stable promotion, QQ work, Claude inference, adaptive-routing study or followup cohort is authorized by this review.
+
+## Recovery export review
+
+The actual six retained events replay under recovery source `c2c527cf540ab89bcdfef6af7d03b8b6480c35c9`. The export has one completed valid fix, one consumed infrastructure-invalid launch and sixteen unstarted slots. The Standard Codex elapsed total is 596,155 milliseconds, including root's recovery delay. The invalid cheap launch contributes 54,000 milliseconds of observed native runtime as a lower bound with unknown prelaunch timing. It has no scored fix curve. Jev is unstarted and has no scored curve. The overall interpretation remains inconclusive.
+
+The global halted caption omission was reported as likelihood 10 × impact 4 = 40 and corrected in renderer subject `73a298b48841049ea584472cd2fb906515fd7ea3`. Current actual SVGs all carry the halted status and timing caveats; the actual PNGs were visually inspected. A fresh copied path was used to confirm the cumulative plot's current bytes after an initial reused-path view showed an older caption. This does not establish the cause of that display discrepancy.
+
+## Launch guard finding at 53226ee
+
+The twenty focused guard/controller tests pass, but a direct test using the retained real common prompt and first coding prompt rejects that approved prompt. The common text ends in a newline and the actual launcher appended one more newline before the recorded timing metadata. The guard instead requires two additional newlines after the common text. With valid synthetic pins, successful decoded prerequisite receipts and a persisted start, it raises `Native prompt must be the expected coding content, never stderr`.
+
+Likelihood is 10/10 because the real prompt format deterministically fails. Impact is 6/10 because a guarded continuation preserving that format cannot launch. Product is 60. In addition, freezing all eighteen complete prompt hashes before the first launch cannot represent their actual recorded launch/deadline suffixes, which are unknown then. A frozen common/template contract and deterministic per-slot timing validation can address that without weakening stderr or task-identity checks. The author and root were notified. Guard acceptance is withheld pending the targeted correction and a new exact-head verdict.
+
+The proposed sixteen-slot continuation correctly requires a new linked identity and independent import/accounting acceptance. Current guard code intentionally cannot resume the halted original state. Human approval of that proposal remains a separate decision; this review does not grant it.

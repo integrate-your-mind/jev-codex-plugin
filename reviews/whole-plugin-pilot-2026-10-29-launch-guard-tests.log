@@ -1,0 +1,28 @@
+✔ synthetic schedule keeps six tasks, eighteen slots and every counterbalanced order (3.399333ms)
+✔ start intent counts startup before chat identity and failed integration consumes one slot (9.421416ms)
+✔ actual loaded source, profile and exposure mismatch halts scoring without replacement (9.80425ms)
+✔ coding and independent grading deadlines include startup and waits (4.403083ms)
+✔ wrong patch, grader, missing actual identity and missing cheap delivery cannot pass (4.86325ms)
+✔ normal ON consultation outages and multiple delivered decisions retain separate uptake (6.807ms)
+✔ first real comparison artifacts must be retained before attempt four (4.742834ms)
+✔ reports retain unsuccessful elapsed, actual completed denominators and pending unknowns (1.943ms)
+✔ public exports omit native private identities and retain unknown billing and observed usage (2.511417ms)
+✔ immutable native event replay rejects tampering, gaps and unpublished partial files (26.882667ms)
+✔ frozen source, retrieval parameters and private event fields cannot silently change (1.82225ms)
+✔ missing cheap packet remains an assigned graded result with missing coverage (2.728125ms)
+✔ exploratory extra-fix screen requires actual uptake and no increased approval burden (118.633125ms)
+✔ time screen sums all unsuccessful attempt time and never rewards zero fixes (70.83525ms)
+✔ infrastructure-invalid data retains its assigned clock and cannot establish superiority (1.283625ms)
+✔ untracked native launch recovery consumes the next slot without fabricating its start and permanently halts (2.845166ms)
+✔ validated launch returns exact native project arguments only after persisted start and successful structured prerequisites (3.51575ms)
+✔ failed prerequisite, missing/stderr prompt, wrong slot/config/profile prevent even a stub native dispatch (5.261709ms)
+✔ prior-grade preparation validates actual studyVerdict and healthy terminal instead of nonexistent verdict field (4.199041ms)
+✔ file launch preparation fails closed on missing prompt and nonzero command status, then publishes only once (26.905709ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 386.5085
