@@ -209,6 +209,48 @@ describe('decision hook', () => {
     assert.doesNotMatch(mcpEvidence, /should-not-leak/);
   });
 
+  it('removes top-level and nested sensitive argument values before provider projection', async () => {
+    const environment = env(join(root, 'sensitive-argument-values'));
+    await enabledPolicy(environment);
+    const secret = 'synthetic-sensitive-value-12345';
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    await runDecisionHook(toolEvent({tool_input: {api_key: secret, config: {password: secret}, query: 'public query'}}), {env: environment, service: fakeService(calls)});
+    const projection = JSON.stringify(calls.inputs);
+    assert.equal(projection.includes(secret), false);
+    assert.match(projection, /REDACTED_FIELD/);
+    assert.match(projection, /public query/);
+  });
+
+  it('consults when only an omitted middle portion of the sanitized command changes', async () => {
+    const environment = env(join(root, 'full-facts-identity'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    const command = (middle: string) => `${'prefix segment '.repeat(150)}${middle}${' suffix segment'.repeat(150)}`;
+    await runDecisionHook(toolEvent({tool_input: {command: command('TARGET_ONE')}}), {env: environment, service: fakeService(calls)});
+    await runDecisionHook(toolEvent({tool_use_id: 'different-delivery', tool_input: {command: command('TARGET_TWO')}}), {env: environment, service: fakeService(calls)});
+    assert.equal(calls.count, 2);
+    assert.equal(calls.inputs.some(input => input.context.includes('TARGET_ONE') || input.context.includes('TARGET_TWO')), false);
+  });
+
+  it('rejects an earlier result after a changed omitted command fact arrives', async () => {
+    const environment = env(join(root, 'full-facts-late-result'));
+    await enabledPolicy(environment);
+    const command = (middle: string) => `${'prefix segment '.repeat(150)}${middle}${' suffix segment'.repeat(150)}`;
+    let release: ((value: {status: string; choice: string}) => void) | undefined;
+    let entered: (() => void) | undefined;
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    const first = runDecisionHook(toolEvent({tool_input: {command: command('TARGET_ONE')}}), {env: environment, service: {async classifyDecision() {
+      entered!();
+      return new Promise(resolve => { release = resolve; });
+    }}});
+    await started;
+    await new Promise(resolve => setTimeout(resolve, 2));
+    await runDecisionHook(toolEvent({tool_use_id: 'new-delivery', tool_input: {command: command('TARGET_TWO')}}), {env: environment, service: fakeService({count: 0, inputs: []})});
+    release!({status: 'assessed', choice: 'proceed'});
+    const result = await first;
+    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /reason=stale_context/);
+  });
+
   it('captures raw string tool input and failure evidence', async () => {
     const environment = env(join(root, 'raw-and-failure'));
     await enabledPolicy(environment);
