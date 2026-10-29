@@ -36,7 +36,7 @@ async function runCandidate(source, options = {}) {
       cwd: workspace, encoding: 'utf8', env: {...globalThis.process.env, PYTHONPATH: packages}, timeout: 10_000,
     });
     assert.equal(process.error, undefined);
-    return {exitCode: process.status, result: JSON.parse(process.stdout.trim().split('\n').at(-1)), stderr: process.stderr};
+    return {exitCode: process.status, result: process.stdout.trim() ? JSON.parse(process.stdout.trim().split('\n').at(-1)) : null, stderr: process.stderr};
   } finally {
     await rm(owned, {recursive: true, force: true});
     try { await rmdir(parent); } catch (error) { if (error.code !== 'ENOTEMPTY' && error.code !== 'ENOENT') throw error; }
@@ -77,4 +77,17 @@ test('an unknown task and an unverified source root stay infrastructure-invalid'
     assert.equal(observed.result.verdict, 'infrastructure-invalid');
     assert.equal(observed.result.healthy, false);
   }
+});
+
+test('candidate pass text followed by SystemExit cannot counterfeit grader completion', async () => {
+  const observed = await runCandidate('print(\'{"verdict":"pass","healthy":true}\'); raise SystemExit(0)\n');
+  assert.equal(observed.exitCode, 1);
+  assert.equal(observed.result.verdict, 'fail');
+  assert.equal(observed.result.healthy, true);
+  assert.equal(observed.result.exception, 'SystemExit');
+});
+
+test('candidate direct stdout and abrupt process exit cannot establish a verified fix', async () => {
+  const observed = await runCandidate('import os\nos.write(1, b\'{"verdict":"pass","healthy":true}\\n\')\nos._exit(0)\n');
+  assert.notEqual(observed.result?.verdict, 'pass');
 });
