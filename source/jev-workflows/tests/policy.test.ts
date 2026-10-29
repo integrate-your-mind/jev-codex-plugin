@@ -121,7 +121,7 @@ describe('automation policy', () => {
 
   it('changes only consultation mode on explicit migration and preserves existing opt-ins', async () => {
     const environment = env(join(root, 'migration'));
-    const legacy = await configurePolicy({enabled: true, scope: 'all-workspaces', workspaces: [], maxHookCallsPerSession: null, maxCallsPerDay: null, maxBytesPerDay: null}, environment);
+    const legacy = await configurePolicy({enabled: true, consultationMode: 'always', scope: 'all-workspaces', workspaces: [], maxHookCallsPerSession: null, maxCallsPerDay: null, maxBytesPerDay: null}, environment);
     assert.equal(legacy.consultationMode, 'always');
     const migrated = await configurePolicy({...legacy, consultationMode: 'changed_state'}, environment);
     assert.deepEqual(migrated, {...legacy, consultationMode: 'changed_state'});

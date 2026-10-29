@@ -43,7 +43,7 @@ function digest(value: string): string {
 }
 
 async function enabledPolicy(environment: NodeJS.ProcessEnv, cap: number | null = 50): Promise<void> {
-  await configurePolicy({enabled: true, scope: 'workspaces', workspaces: [process.cwd()], maxHookCallsPerSession: cap}, environment);
+  await configurePolicy({enabled: true, consultationMode: 'always', scope: 'workspaces', workspaces: [process.cwd()], maxHookCallsPerSession: cap}, environment);
 }
 
 function fakeService(calls: {count: number; inputs: DecisionInput[]}): DecisionService {
