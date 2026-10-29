@@ -1,0 +1,31 @@
+{
+  "observedAt": "2026-10-29T04:12:36.009314+00:00",
+  "sourceRevision": "52eac81",
+  "scope": "test-only; production source, package versions and generated distributions unchanged",
+  "reproduction": {
+    "linuxLocalCI": "332 tests, 331 passed, 1 failed; second hook expected {} but returned hook_timeout",
+    "firstLocalFocused": "1 test, 0 passed, 1 failed; same assertion",
+    "mechanism": "25ms whole-hook deadline may expire before cooldown persistence, despite fake provider entry and abort"
+  },
+  "checks": [
+    {
+      "command": "node --import tsx --test --test-name-pattern=reports-a-provider-that-ignores-abort tests/decision-hook.test.ts",
+      "description": "Actual command used quoted full test name",
+      "exitCode": 0,
+      "tests": 1,
+      "passed": 1
+    },
+    {
+      "command": "node --import tsx --test --test-concurrency=2 tests/decision-hook.test.ts tests/routing-consultation.test.ts",
+      "exitCode": 0,
+      "tests": 57,
+      "passed": 57
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0
+    }
+  ],
+  "normalization": "Evidence logs replace owned worktree path and strip assertion blank-line trailing whitespace; source runtime receipts remain in original execution logs",
+  "rootStillRequired": "Current integrated head independent review and local Linux Actions; no push or merge by this owner"
+}
