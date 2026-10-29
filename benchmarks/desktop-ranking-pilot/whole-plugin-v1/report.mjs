@@ -44,6 +44,8 @@ export function summarizeStudy(state, asOf = state.lastAt) {
       billingComplete: assigned.length > 0 && assigned.every(slot => slot.billing.complete),
       usage: Object.fromEntries(['inputTokens', 'outputTokens', 'cachedInputTokens'].map(key => [key, knownTotal(assigned, slot => slot.usage?.[key])])),
       usageObservedAttempts: assigned.filter(slot => slot.usage).length,
+      packetDeliveries: assigned.filter(slot => slot.retrieval?.packetHash).length,
+      packetMissing: id === 'cheap' ? assigned.filter(slot => !slot.retrieval?.packetHash).length : 0,
     };
   });
   const byId = Object.fromEntries(arms.map(arm => [arm.id, arm]));
@@ -83,9 +85,9 @@ export function summarizeStudy(state, asOf = state.lastAt) {
 const csvCell = value => value === null || value === undefined ? '' : `"${String(value).replaceAll('"', '""')}"`;
 const csv = (columns, rows) => `${columns.join(',')}\n${rows.map(row => columns.map(key => csvCell(row[key])).join(',')).join('\n')}\n`;
 export function exportCsv(report) {
-  const columns = ['id','label','assigned','completed','pending','invalid','verifiedFixes','fixRate','elapsedMs','timePerVerifiedFixMs','approvals','failedPublicCycles','consultations','providerRequests','providerRequestUnknown','adviceDelivered','uptakeObserved','uptakeIgnored','uptakeUnknown','codingUsd','jevUsd','billingComplete'];
+  const columns = ['id','label','assigned','completed','pending','invalid','verifiedFixes','fixRate','elapsedMs','timePerVerifiedFixMs','approvals','failedPublicCycles','consultations','providerRequests','providerRequestUnknown','adviceDelivered','uptakeObserved','uptakeIgnored','uptakeUnknown','codingUsd','jevUsd','billingComplete','inputTokens','outputTokens','cachedInputTokens','usageObservedAttempts','packetDeliveries','packetMissing'];
   return {
-    'summary.csv': csv(columns, report.arms),
+    'summary.csv': csv(columns, report.arms.map(arm => ({...arm, ...arm.usage}))),
     'paired.csv': csv(['taskId', ...ARMS], report.paired.map(row => ({taskId: row.taskId, ...row.conditions}))),
     'curves.csv': csv(['arm','elapsedMs','verifiedFixes'], ARMS.flatMap(arm => report.curves[arm].map(row => ({arm, ...row})))),
   };
