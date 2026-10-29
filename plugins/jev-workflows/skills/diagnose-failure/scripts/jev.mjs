@@ -26084,6 +26084,28 @@ function readCredentialFile(path) {
   }
 }
 
+// src/candidate-metadata.ts
+var SENSITIVE_ARGUMENT_KEY = /(?:token|password|secret|authorization|cookie|credential|private[_-]?key|api[_-]?key|base64|file[_-]?uri|download[_-]?url|(?:^|[_-])key$)/i;
+function sanitizeStructuredCandidateMetadata(value, redact2) {
+  if (typeof value === "string") return redact2(value);
+  if (Array.isArray(value)) return value.map((item) => sanitizeStructuredCandidateMetadata(item, redact2));
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).filter(([key]) => !SENSITIVE_ARGUMENT_KEY.test(key) && redact2(key) === key).map(([key, item]) => [key, sanitizeStructuredCandidateMetadata(item, redact2)]));
+  return value;
+}
+function sanitizeCandidateMetadata(value, redact2) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const entries = [];
+  for (const [key, item] of Object.entries(value)) {
+    if (!/^[a-zA-Z0-9_.-]{1,40}$/.test(key) || SENSITIVE_ARGUMENT_KEY.test(key)) continue;
+    const safeKey = redact2(key, 40);
+    if (!safeKey || safeKey !== key || SENSITIVE_ARGUMENT_KEY.test(safeKey)) continue;
+    if (typeof item === "string") entries.push([safeKey, redact2(item, 500) ?? ""]);
+    else if (typeof item === "number" && Number.isFinite(item) || typeof item === "boolean") entries.push([safeKey, item]);
+    if (entries.length === 16) break;
+  }
+  return Object.fromEntries(entries);
+}
+
 // src/service.ts
 var maxPayloadBytes = MAX_DECISION_PAYLOAD_BYTES;
 function bestActualCandidate(probabilities, actualCandidateIds) {
@@ -26213,7 +26235,10 @@ function createService(options = {}) {
       if (input2.exitCode === null) return { status: "abstained", reasonCode: "command_not_completed" };
     }
     const selected = Object.fromEntries(Object.entries(input2).filter(([key]) => !["mode", "policy", "origin", "correlation"].includes(key)));
-    if ("candidates" in input2) selected.candidates = input2.candidates.filter((candidate) => candidate.available);
+    if ("candidates" in input2) selected.candidates = input2.candidates.filter((candidate) => candidate.available).map((candidate) => ({
+      ...candidate,
+      ...candidate.metadata ? { metadata: sanitizeCandidateMetadata(candidate.metadata, (text) => redactText(text, secrets)) } : {}
+    }));
     const state = sanitize(selected, secrets);
     const rawQuestions = "candidates" in input2 ? decisionQuestions(input2) : "exitCode" in input2 ? failureQuestions : completionQuestionsFor(input2);
     const questions = sanitize(rawQuestions, secrets);
@@ -26339,7 +26364,14 @@ function createService(options = {}) {
       }
     }
     const state = sanitize(input2.state, secrets);
-    const questions = sanitize(providerQuestions(input2), secrets);
+    const selectedQuestions = Object.fromEntries(Object.entries(input2.questions).map(([id, question]) => [
+      id,
+      question.type === "choice" ? { ...question, candidates: question.candidates.map((candidate) => ({
+        ...candidate,
+        ...candidate.metadata !== void 0 ? { metadata: sanitizeStructuredCandidateMetadata(candidate.metadata, (text) => redactText(text, secrets)) } : {}
+      })) } : question
+    ]));
+    const questions = sanitize(providerQuestions({ ...input2, questions: selectedQuestions }), secrets);
     const policies = policiesByQuestion(input2, { minConfidence: confidenceFloor, minProbability: confidenceFloor });
     let selectedModel;
     try {
