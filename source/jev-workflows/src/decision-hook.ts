@@ -11,6 +11,7 @@ import { readCredentialFile } from './credential.js';
 import { dataDirectory } from './store.js';
 import { readPolicy, workspaceAllowed, type HookPolicy } from './policy.js';
 import { loadTaskContext, updateTaskContext, type TaskContextRecord, type TaskContextScope } from './task-context.js';
+import {sanitizeCandidateMetadata} from './candidate-metadata.js';
 
 const MAX_STDIN_BYTES = 128 * 1024;
 const MAX_SEMANTIC_BYTES = 1_500;
@@ -627,15 +628,7 @@ function candidateFromUnknown(value: unknown, env: NodeJS.ProcessEnv): DecisionI
   const id = boundedWithEnv(value.id, 80, env);
   const description = boundedWithEnv(value.description, 1_600, env);
   if (!isSafeCandidateId(id) || !description) return undefined;
-  const metadata: Record<string, string | number | boolean> = {};
-  if (isRecord(value.metadata)) {
-    for (const [key, item] of Object.entries(value.metadata).slice(0, 16)) {
-      if (!/^[a-zA-Z0-9_.-]{1,40}$/.test(key) || SENSITIVE_ARGUMENT_KEY.test(key)) continue;
-      if (typeof item === 'string') metadata[key] = boundedWithEnv(item, 500, env) ?? '';
-      else if (typeof item === 'number' && Number.isFinite(item)) metadata[key] = item;
-      else if (typeof item === 'boolean') metadata[key] = item;
-    }
-  }
+  const metadata = sanitizeCandidateMetadata(value.metadata, (text, maxBytes) => boundedWithEnv(text, maxBytes, env));
   return {id, description, available: value.available ?? true, ...(Object.keys(metadata).length ? {metadata} : {})};
 }
 
