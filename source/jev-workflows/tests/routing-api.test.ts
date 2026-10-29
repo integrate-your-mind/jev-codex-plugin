@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
+import fs from 'node:fs/promises';
+import {syncBuiltinESMExports} from 'node:module';
 import {chmod, lstat, mkdir, mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {test} from 'node:test';
@@ -161,6 +163,74 @@ test('late results cannot publish advice for a replaced task revision', async ()
     assert.equal((await result).reasonCode, 'stale_task_revision');
     assert.equal((await f.store(second.routing.catalogRef).current()).records.proposal, undefined);
   } finally {await f.close();}
+});
+
+test('ordinary legacy context updates invalidate references before any provider dispatch', async () => {
+  const f = await fixture();
+  try {
+    const first = await f.publish();
+    const changed = output(await f.api.updateTaskContext({scope, update: {operation: 'replace', rootObjective: 'New ordinary objective'}}));
+    assert.equal(changed.context.rootObjective.value, 'New ordinary objective');
+    assert.equal((await f.api.classifyDecision({...question, catalogRef: first.routing.catalogRef})).reasonCode, 'stale_task_revision');
+    assert.equal(f.calls.length, 0);
+  } finally {await f.close();}
+});
+
+test('a late provider result cannot publish after an ordinary legacy context update', async () => {
+  let complete: ((value: {status: string; choice: string}) => void) | undefined;
+  let started: (() => void) | undefined;
+  const active = new Promise<void>(resolve => {started = resolve;});
+  const f = await fixture({classifyDecision: async () => {started?.(); return new Promise(resolve => {complete = resolve;});}});
+  try {
+    const first = await f.publish();
+    const result = f.api.classifyDecision({...question, catalogRef: first.routing.catalogRef});
+    await active;
+    await f.api.updateTaskContext({scope, update: {operation: 'replace', rootObjective: 'New ordinary objective'}});
+    complete?.({status: 'assessed', choice: 'tool_1'});
+    assert.equal((await result).reasonCode, 'stale_task_revision');
+    assert.equal((await f.store(first.routing.catalogRef).current()).records.proposal, undefined);
+  } finally {await f.close();}
+});
+
+test('context saving and routing publication serialize against newer scoped updates', async () => {
+  const f = await fixture();
+  const originalLstat = fs.lstat;
+  const originalOpen = fs.open;
+  let paused = false;
+  let signalPause: (() => void) | undefined;
+  let resume: (() => void) | undefined;
+  let signalWaiting: (() => void) | undefined;
+  let signalNextPublication: (() => void) | undefined;
+  const firstPaused = new Promise<void>(resolve => {signalPause = resolve;});
+  const release = new Promise<void>(resolve => {resume = resolve;});
+  const waiting = new Promise<'locked'>(resolve => {signalWaiting = () => resolve('locked');});
+  const nextPublication = new Promise<'unlocked'>(resolve => {signalNextPublication = () => resolve('unlocked');});
+  fs.lstat = (async (...args: Parameters<typeof fs.lstat>) => {
+    if (String(args[0]) === f.root) {
+      if (!paused) {paused = true; signalPause?.(); await release;}
+      else signalNextPublication?.();
+    }
+    return originalLstat(...args);
+  }) as typeof fs.lstat;
+  fs.open = (async (...args: Parameters<typeof fs.open>) => {
+    try {return await originalOpen(...args);}
+    catch (error) {if (paused && String(args[0]).endsWith('/.context.lock') && (error as NodeJS.ErrnoException).code === 'EEXIST') signalWaiting?.(); throw error;}
+  }) as typeof fs.open;
+  syncBuiltinESMExports();
+  try {
+    const old = f.api.updateTaskContext({scope, update: {operation: 'replace', rootObjective: 'Old'}, routing: metadata});
+    await firstPaused;
+    const next = f.api.updateTaskContext({scope, update: {operation: 'replace', rootObjective: 'New'}, routing: metadata});
+    if (await Promise.race([waiting, nextPublication]) === 'unlocked') await next;
+    resume?.();
+    const [oldResult, newResult] = (await Promise.all([old, next])).map(output);
+    assert.equal(oldResult.routing.status, 'published');
+    assert.equal(newResult.routing.status, 'published');
+    const current = await f.store(newResult.routing.catalogRef).current();
+    const task = await f.store(newResult.routing.catalogRef).read(current.records.task!);
+    assert.equal((task as unknown as {objective: string}).objective, 'New');
+    assert.equal((await loadTaskContext(scope, {env: {PLUGIN_DATA: f.root}}))?.rootObjective?.value, 'New');
+  } finally {resume?.(); fs.lstat = originalLstat; fs.open = originalOpen; syncBuiltinESMExports(); await f.close();}
 });
 
 test('a non-cooperative provider reaches the consultation deadline and no late result changes the pointer', async () => {
