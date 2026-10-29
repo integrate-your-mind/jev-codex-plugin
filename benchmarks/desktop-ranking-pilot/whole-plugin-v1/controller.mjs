@@ -68,6 +68,7 @@ const fields = {
   billing: ['codingUsd', 'jevUsd', 'complete', 'subscriptionCapacity', 'evidenceHash'],
   usage: ['inputTokens', 'outputTokens', 'cachedInputTokens', 'evidenceHash'],
   integration_failed: ['reason', 'evidenceHash'], identity_broken: ['reason', 'evidenceHash'], tick: [],
+  recovery_untracked_launch: ['chatId', 'createdAt', 'completedAt', 'prelaunchStartedAt', 'evidenceHash'],
   interim_report: ['reportHash', 'artifactsHash', 'evidenceHash'],
 };
 
@@ -89,7 +90,18 @@ export function reduceEvent(previous, event) {
     assert(slot, 'Unknown slot; extra attempts are forbidden');
     const task = state.manifest.tasks.find(row => row.id === slot.taskId);
     const halt = reason => { state.halted = {reason, at: event.at, eventId: event.id}; if (!terminal(slot)) { slot.status = 'INFRASTRUCTURE_INVALID'; slot.endedAt = event.at; } };
-    if (event.type === 'start') {
+    if (event.type === 'recovery_untracked_launch') {
+      const created = Date.parse(event.createdAt), completed = Date.parse(event.completedAt);
+      assert(slot.status === 'NOTSTARTED' && state.slots.find(row => row.status === 'NOTSTARTED')?.id === slot.id
+        && !state.slots.some(row => ['CODING', 'GRADING'].includes(row.status)), 'Recover only the next untouched slot with no active attempt');
+      assert(event.prelaunchStartedAt === null && text(event.chatId) && digest(event.evidenceHash)
+        && Number.isFinite(created) && Number.isFinite(completed) && completed >= created && completed <= now
+        && !state.slots.some(row => row.chatId === event.chatId), 'Retain actual unique native identity and observed times; missing pre-launch timing stays null');
+      slot.chatId = event.chatId; slot.status = 'INFRASTRUCTURE_INVALID'; slot.verdict = 'infrastructure-invalid'; slot.endedAt = event.completedAt;
+      slot.untrackedLaunch = {createdAt:event.createdAt, completedAt:event.completedAt, prelaunchStartedAt:null, evidenceHash:event.evidenceHash};
+      slot.integrationFailure = 'untracked-native-launch';
+      state.halted = {reason:'untracked-native-launch', at:event.at, eventId:event.id};
+    } else if (event.type === 'start') {
       assert(slot.status === 'NOTSTARTED' && state.slots.find(row => row.status === 'NOTSTARTED')?.id === slot.id, 'Each assigned slot starts once in frozen order');
       assert(!state.slots.some(row => ['CODING', 'GRADING'].includes(row.status)), 'Attempts run serially');
       assert(state.slots.indexOf(slot) < 3 || state.interim, 'Generate and retain the first-three interim charts before attempt four');

@@ -238,3 +238,25 @@ test('infrastructure-invalid data retains its assigned clock and cannot establis
   assert.equal(report.interpretation.verdict,'inconclusive');
   assert.doesNotMatch(JSON.stringify(report),/private diagnostic/);
 });
+
+test('untracked native launch recovery consumes the next slot without fabricating its start and permanently halts', () => {
+  let state=freezeStudy(manifest()); state=apply(state,'start',0,{evidenceHash:evidence}); state=finish(state,1);
+  const recovered={chatId:'synthetic-untracked-native',createdAt:new Date(origin+1000).toISOString(),completedAt:new Date(origin+55000).toISOString(),prelaunchStartedAt:null,evidenceHash:evidence};
+  const observed=60000;
+  for (const patch of [{prelaunchStartedAt:new Date(origin+900).toISOString()},{completedAt:new Date(origin+61000).toISOString()},{createdAt:new Date(origin+56000).toISOString()},{chatId:state.slots[0].chatId}]) {
+    assert.throws(()=>apply(state,'recovery_untracked_launch',observed,{...recovered,...patch}),/actual unique native identity/);
+  }
+  assert.throws(()=>apply(state,'recovery_untracked_launch',observed,{...recovered,slotId:state.slots[2].id}),/next untouched slot/);
+  state=apply(state,'recovery_untracked_launch',observed,recovered);
+  assert.equal(state.slots[1].startedAt,null); assert.equal(state.slots[1].identity,null);
+  assert.equal(state.slots[1].chatId,recovered.chatId); assert.equal(state.slots[1].verdict,'infrastructure-invalid');
+  assert.equal(state.halted.reason,'untracked-native-launch');
+  assert.throws(()=>apply(state,'start',60001,{evidenceHash:evidence}),/Scoring stopped/);
+  const report=summarizeStudy(state);
+  assert.equal(report.completedAttempts,1); assert.equal(report.invalidAttempts,1); assert.equal(report.pendingAttempts,16);
+  assert.equal(report.arms[1].assigned,1); assert.equal(report.arms[1].elapsedMs,54000); assert.equal(report.arms[1].elapsedLowerBoundMs,54000);
+  assert.equal(report.arms[1].elapsedTimeCoverage,'lower-bound'); assert.equal(report.arms[1].timePerVerifiedFixMs,null);
+  assert.deepEqual(report.curves.cheap,[]); assert.equal(report.interpretation.verdict,'inconclusive');
+  assert.match(report.limitations.join(' '),/pre-launch timing is unknown/);
+  assert.doesNotMatch(JSON.stringify(report),/synthetic-untracked-native/);
+});
