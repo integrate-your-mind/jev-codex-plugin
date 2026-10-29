@@ -10,7 +10,7 @@ The manifest schema is `whole-plugin-pilot-v1`. It contains `studyId`, `privacy:
 
 `host` contains `kind: "codex-desktop"`, `model: "gpt-6.1-sol"`, `effort: "ultra"`, `appVersion` and `backendVersion`, each version nullable, and a settings evidence hash. Native chat/workspace/model-setting/exposure observations are sufficient. No private IPC, pre-dispatch callback, actuator, hidden backend version, gateway or separate coding CLI is required. Root retains actual private evidence and records hashes. Unknown versions remain null.
 
-Each `start` event occurs before native startup, retrieval or waits. It supplies a fresh `chatId`, `workspaceId`, actual model/effort, base revision, actual exposure profile and evidence hash. Exposure pins enabled state, consultation mode, visible Jev tools/hooks/guidance and configuration/package hashes. Plugin-off and cheap require disabled exposure; plugin-on requires enabled changed-state exposure. A changed profile, base, chat reuse or exposure breach stops scoring and retains evidence. Normal plugin outages do not invalidate a trial.
+Each `start` event occurs before native startup, retrieval or waits and retains a pre-launch evidence hash. After native creation, `identity` binds the fresh `chatId`, `workspaceId`, actual model/effort, base revision, actual exposure profile and evidence hash. Exposure pins enabled state, consultation mode, visible Jev tools/hooks/guidance and configuration/package hashes. Plugin-off and cheap require disabled exposure; plugin-on requires enabled changed-state exposure. A changed profile, base, chat reuse or exposure breach stops scoring and retains evidence. Normal plugin outages do not invalidate a trial. A failed startup consumes its assigned slot through `integration_failed`; it is never retried or replaced.
 
 ## Event contract
 
@@ -18,7 +18,8 @@ Every event has unique `id`, ISO `at`, `manifestHash`, `type`, and a slot ID, ex
 
 | Type | Additional fields |
 | --- | --- |
-| `start` | `chatId`, `workspaceId`, `model`, `effort`, `baseRevision`, `exposure`, `evidenceHash` |
+| `start` | `evidenceHash` retained before native startup |
+| `identity` | `chatId`, `workspaceId`, `model`, `effort`, `baseRevision`, `exposure`, `evidenceHash` |
 | `retrieval` | `packetHash`, `evidenceHash` |
 | `consultation` | `consultationId`, `status` assessed/abstained/unavailable/error, `providerInvoked` boolean or null, `delivered` boolean, `receiptHash` nullable, `evidenceHash` |
 | `uptake` | `consultationId`, `value` observed/ignored/unknown, `evidenceHash` |
@@ -27,6 +28,8 @@ Every event has unique `id`, ISO `at`, `manifestHash`, `type`, and a slot ID, ex
 | `coding_ended` | `patchHash`, `reason` completed/timeout/failed/outage, `evidenceHash` |
 | `graded` | `patchHash`, `graderHash`, `verdict` verified-fix/not-fixed/infrastructure-invalid, `healthy`, `evidenceHash` |
 | `billing` | `codingUsd`, `jevUsd`, `complete`, `subscriptionCapacity`, `evidenceHash`; missing dollars/capacity are null |
+| `usage` | `inputTokens`, `outputTokens`, `cachedInputTokens`, `evidenceHash`; one observed per-attempt total, unknown counts null |
+| `integration_failed` | `reason`, `evidenceHash`; consumes an assigned startup failure |
 | `identity_broken` | `reason`, `evidenceHash` |
 | `tick` | No additional fields; records observed elapsed support |
 | `interim_report` | `reportHash`, `artifactsHash`, `evidenceHash`; no slot ID |

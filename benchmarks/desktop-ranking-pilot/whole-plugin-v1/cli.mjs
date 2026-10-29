@@ -2,6 +2,7 @@ import {mkdir, readFile, readdir, writeFile} from 'node:fs/promises';
 import {join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {freezeStudy, hash, reduceEvent, deadlines} from './controller.mjs';
+import {summarizeStudy, exportCsv} from './report.mjs';
 
 const json = async path => JSON.parse(await readFile(path, 'utf8'));
 const put = async (path, value) => { await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, {flag: 'wx'}); if (hash(await json(path)) !== hash(value)) throw new Error('Artifact readback mismatch'); };
@@ -47,7 +48,15 @@ export async function main(args) {
     return {events: observed.events.length, halted: observed.halted, deadlines: deadlines(observed)};
   }
   if (command === 'status' && paths.length === 1) { const state = await readStudy(paths[0]); return {manifestHash: state.manifestHash, halted: state.halted, interim: state.interim, deadlines: deadlines(state), slots: state.slots}; }
-  throw new Error('Use template config.json manifest.json; freeze manifest.json private-run-dir; record private-run-dir event.json; status private-run-dir');
+  if (command === 'export' && [2, 3].includes(paths.length)) {
+    const state = await readStudy(paths[0]); const report = summarizeStudy(state, paths[2] ?? state.lastAt);
+    const directory = resolve(paths[1]); await mkdir(directory, {recursive: true});
+    await put(join(directory, 'report.json'), report);
+    const files = exportCsv(report); const artifacts = {'report.json': hash(report)};
+    for (const [name, content] of Object.entries(files)) { await writeFile(join(directory, name), content, {flag: 'wx'}); artifacts[name] = hash(content); }
+    return {directory, reportHash: hash(report), artifactsHash: hash(artifacts), artifacts};
+  }
+  throw new Error('Use template config.json manifest.json; freeze manifest.json private-run-dir; record private-run-dir event.json; status private-run-dir; export private-run-dir new-output-dir [as-of-ISO]');
 }
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) main(process.argv.slice(2))
   .then(result => process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)).catch(error => { process.stderr.write(`${error.message}\n`); process.exitCode = 1; });

@@ -62,6 +62,7 @@ const fields = {
   coding_ended: ['patchHash', 'reason', 'evidenceHash'],
   graded: ['patchHash', 'graderHash', 'verdict', 'healthy', 'evidenceHash'],
   billing: ['codingUsd', 'jevUsd', 'complete', 'subscriptionCapacity', 'evidenceHash'],
+  usage: ['inputTokens', 'outputTokens', 'cachedInputTokens', 'evidenceHash'],
   integration_failed: ['reason', 'evidenceHash'], identity_broken: ['reason', 'evidenceHash'], tick: [],
   interim_report: ['reportHash', 'artifactsHash', 'evidenceHash'],
 };
@@ -132,7 +133,13 @@ export function reduceEvent(previous, event) {
         assert(slot.status === 'GRADING' && slot.identity && event.patchHash === slot.patchHash && event.graderHash === task.graderHash
           && ['verified-fix', 'not-fixed', 'infrastructure-invalid'].includes(event.verdict) && digest(event.evidenceHash), 'Grade the retained patch only after actual native identity, using the frozen grader');
         assert(event.verdict === 'infrastructure-invalid' || event.healthy === true, 'An unhealthy grader is unresolved infrastructure');
+        assert(slot.arm !== 'cheap' || slot.retrieval || event.verdict === 'infrastructure-invalid', 'Cheap grading requires its timed evidence packet');
         slot.status = event.verdict === 'infrastructure-invalid' ? 'INFRASTRUCTURE_INVALID' : 'COMPLETE'; slot.verdict = event.verdict; slot.endedAt = event.at;
+      } else if (event.type === 'usage') {
+        assert(!slot.usage && [event.inputTokens, event.outputTokens, event.cachedInputTokens].every(value => value === null || Number.isSafeInteger(value) && value >= 0)
+          && (event.inputTokens === null || event.cachedInputTokens === null || event.cachedInputTokens <= event.inputTokens)
+          && digest(event.evidenceHash), 'Record one observed per-attempt usage total; unknown token counts stay null');
+        slot.usage = {inputTokens: event.inputTokens, outputTokens: event.outputTokens, cachedInputTokens: event.cachedInputTokens};
       } else if (event.type === 'billing') {
         assert([event.codingUsd, event.jevUsd, event.subscriptionCapacity].every(value => value === null || Number.isFinite(value) && value >= 0)
           && typeof event.complete === 'boolean' && (!event.complete || event.codingUsd !== null && event.jevUsd !== null)
