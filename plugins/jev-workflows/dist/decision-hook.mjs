@@ -26779,6 +26779,24 @@ import { constants as constants6 } from "node:fs";
 import { mkdir as mkdir5, open as open6, realpath as realpath2, rename as rename4, unlink as unlink5 } from "node:fs/promises";
 import { randomUUID as randomUUID6, createHash as createHash5 } from "node:crypto";
 import { isAbsolute as isAbsolute4, join as join5 } from "node:path";
+
+// src/candidate-metadata.ts
+var SENSITIVE_ARGUMENT_KEY = /(?:token|password|secret|authorization|cookie|credential|private[_-]?key|api[_-]?key|base64|file[_-]?uri|download[_-]?url|(?:^|[_-])key$)/i;
+function sanitizeCandidateMetadata(value, redact2) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const entries = [];
+  for (const [key, item2] of Object.entries(value)) {
+    if (!/^[a-zA-Z0-9_.-]{1,40}$/.test(key) || SENSITIVE_ARGUMENT_KEY.test(key)) continue;
+    const safeKey = redact2(key, 40);
+    if (!safeKey || safeKey !== key || SENSITIVE_ARGUMENT_KEY.test(safeKey)) continue;
+    if (typeof item2 === "string") entries.push([safeKey, redact2(item2, 500) ?? ""]);
+    else if (typeof item2 === "number" && Number.isFinite(item2) || typeof item2 === "boolean") entries.push([safeKey, item2]);
+    if (entries.length === 16) break;
+  }
+  return Object.fromEntries(entries);
+}
+
+// src/task-context.ts
 var TASK_CONTEXT_VERSION = 1;
 var MAX_TEXT_BYTES = 1500;
 var MAX_INPUT_TEXT_BYTES = 12e3;
@@ -26930,7 +26948,7 @@ function sanitizeCatalog(value, secrets) {
       id: clip(candidate.id, 80, secrets),
       description: clip(candidate.description, MAX_TEXT_BYTES, secrets),
       available: candidate.available !== false,
-      ...candidate.metadata ? { metadata: Object.fromEntries(Object.entries(candidate.metadata).slice(0, 16).map(([key, item2]) => [clip(key, 40, secrets), typeof item2 === "string" ? clip(item2, 500, secrets) : item2])) } : {}
+      ...candidate.metadata ? { metadata: sanitizeCandidateMetadata(candidate.metadata, (value2, maxBytes) => clip(value2, maxBytes, secrets)) } : {}
     }));
   }
   return output2;
@@ -26967,17 +26985,16 @@ async function writeRecord(path, directory, record2) {
     });
   }
 }
-async function loadTaskContext(scope, options = {}) {
-  const target = await contextPath(scope, options.env ?? process.env);
-  if (!target) return void 0;
+async function readContextRecord(path, identity, env) {
   try {
-    const handle = await open6(target.path, constants6.O_RDONLY | constants6.O_NOFOLLOW);
+    const handle = await open6(path, constants6.O_RDONLY | constants6.O_NOFOLLOW);
     try {
       const info = await handle.stat();
       if (!info.isFile()) return void 0;
       const parsed = taskContextRecordSchema.safeParse(JSON.parse(await handle.readFile("utf8")));
       if (!parsed.success) return void 0;
-      if (parsed.data.scope.workspaceHash !== target.scope.workspaceHash || parsed.data.scope.sessionHash !== target.scope.sessionHash || parsed.data.scope.agentHash !== target.scope.agentHash) return void 0;
+      if (parsed.data.scope.workspaceHash !== identity.workspaceHash || parsed.data.scope.sessionHash !== identity.sessionHash || parsed.data.scope.agentHash !== identity.agentHash) return void 0;
+      parsed.data.candidateCatalogs = sanitizeCatalog(parsed.data.candidateCatalogs, currentSecrets(env));
       return parsed.data;
     } finally {
       await handle.close();
@@ -26985,6 +27002,11 @@ async function loadTaskContext(scope, options = {}) {
   } catch {
     return void 0;
   }
+}
+async function loadTaskContext(scope, options = {}) {
+  const env = options.env ?? process.env;
+  const target = await contextPath(scope, env);
+  return target?.scope ? readContextRecord(target.path, target.scope, env) : void 0;
 }
 async function updateTaskContext(scope, update, options = {}) {
   const parsed = taskContextUpdateSchema.safeParse(update);
@@ -27038,6 +27060,7 @@ async function updateTaskContext(scope, update, options = {}) {
     const valid = taskContextRecordSchema.safeParse(next);
     if (!valid.success) return void 0;
     await writeRecord(target.path, target.directory, valid.data);
+    await options.publishUnderLock?.(structuredClone(valid.data));
     return valid.data;
   } finally {
     await releaseStateLock(lockPath, lock.handle, lock.token);
@@ -27173,7 +27196,7 @@ function isInternal(event, env) {
   }
   return false;
 }
-var SENSITIVE_ARGUMENT_KEY = /(?:token|password|secret|authorization|cookie|credential|private[_-]?key|api[_-]?key|base64|file[_-]?uri|download[_-]?url|(?:^|[_-])key$)/i;
+var SENSITIVE_ARGUMENT_KEY2 = /(?:token|password|secret|authorization|cookie|credential|private[_-]?key|api[_-]?key|base64|file[_-]?uri|download[_-]?url|(?:^|[_-])key$)/i;
 function projectArgumentValue(value, env, state, path, depth = 0) {
   if (depth > 4) {
     state.omitted += 1;
@@ -27213,8 +27236,8 @@ function projectArgumentValue(value, env, state, path, depth = 0) {
   if (isRecord2(value)) {
     const projected = {};
     for (const [key, child] of Object.entries(value).slice(0, 32)) {
-      const safeKey = SENSITIVE_ARGUMENT_KEY.test(key) ? "[REDACTED]" : boundedWithEnv(key, 80, env) ?? "[OMITTED_KEY]";
-      if (SENSITIVE_ARGUMENT_KEY.test(key)) {
+      const safeKey = SENSITIVE_ARGUMENT_KEY2.test(key) ? "[REDACTED]" : boundedWithEnv(key, 80, env) ?? "[OMITTED_KEY]";
+      if (SENSITIVE_ARGUMENT_KEY2.test(key)) {
         projected[safeKey] = "[REDACTED_FIELD]";
         state.omitted += 1;
         if (state.paths.length < 16) state.paths.push(`${path}.${safeKey}`);
@@ -27243,8 +27266,8 @@ function semanticArguments(event, env) {
   const keys = Object.keys(event.raw.tool_input).slice(0, 32).map((key) => boundedWithEnv(key, 80, env) ?? "");
   const values = {};
   for (const key of Object.keys(event.raw.tool_input).slice(0, 32)) {
-    const safeKey = SENSITIVE_ARGUMENT_KEY.test(key) ? "[REDACTED]" : boundedWithEnv(key, 80, env) ?? "[OMITTED_KEY]";
-    if (SENSITIVE_ARGUMENT_KEY.test(key)) {
+    const safeKey = SENSITIVE_ARGUMENT_KEY2.test(key) ? "[REDACTED]" : boundedWithEnv(key, 80, env) ?? "[OMITTED_KEY]";
+    if (SENSITIVE_ARGUMENT_KEY2.test(key)) {
       values[safeKey] = "[REDACTED_FIELD]";
       state.omitted += 1;
       if (state.paths.length < 16) state.paths.push(safeKey);
@@ -27551,8 +27574,8 @@ function sanitizedSemanticFacts(value, env) {
   if (typeof value === "string") return boundedWithEnv(value, Number.POSITIVE_INFINITY, env);
   if (Array.isArray(value)) return value.map((item2) => sanitizedSemanticFacts(item2, env));
   if (isRecord2(value)) return Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right)).map(([key, item2]) => [
-    SENSITIVE_ARGUMENT_KEY.test(key) ? "[REDACTED]" : boundedWithEnv(key, Number.POSITIVE_INFINITY, env),
-    SENSITIVE_ARGUMENT_KEY.test(key) ? "[REDACTED_FIELD]" : sanitizedSemanticFacts(item2, env)
+    SENSITIVE_ARGUMENT_KEY2.test(key) ? "[REDACTED]" : boundedWithEnv(key, Number.POSITIVE_INFINITY, env),
+    SENSITIVE_ARGUMENT_KEY2.test(key) ? "[REDACTED_FIELD]" : sanitizedSemanticFacts(item2, env)
   ]));
   return value;
 }
@@ -27625,15 +27648,7 @@ function candidateFromUnknown(value, env) {
   const id = boundedWithEnv(value.id, 80, env);
   const description = boundedWithEnv(value.description, 1600, env);
   if (!isSafeCandidateId(id) || !description) return void 0;
-  const metadata = {};
-  if (isRecord2(value.metadata)) {
-    for (const [key, item2] of Object.entries(value.metadata).slice(0, 16)) {
-      if (!/^[a-zA-Z0-9_.-]{1,40}$/.test(key) || SENSITIVE_ARGUMENT_KEY.test(key)) continue;
-      if (typeof item2 === "string") metadata[key] = boundedWithEnv(item2, 500, env) ?? "";
-      else if (typeof item2 === "number" && Number.isFinite(item2)) metadata[key] = item2;
-      else if (typeof item2 === "boolean") metadata[key] = item2;
-    }
-  }
+  const metadata = sanitizeCandidateMetadata(value.metadata, (text, maxBytes) => boundedWithEnv(text, maxBytes, env));
   return { id, description, available: value.available ?? true, ...Object.keys(metadata).length ? { metadata } : {} };
 }
 function candidateCatalog(event, domain2, env, taskContext) {

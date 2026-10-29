@@ -37613,6 +37613,24 @@ import { constants as constants7 } from "node:fs";
 import { mkdir as mkdir5, open as open7, realpath as realpath2, rename as rename4, unlink as unlink6 } from "node:fs/promises";
 import { randomUUID as randomUUID8, createHash as createHash5 } from "node:crypto";
 import { isAbsolute as isAbsolute4, join as join6 } from "node:path";
+
+// src/candidate-metadata.ts
+var SENSITIVE_ARGUMENT_KEY = /(?:token|password|secret|authorization|cookie|credential|private[_-]?key|api[_-]?key|base64|file[_-]?uri|download[_-]?url|(?:^|[_-])key$)/i;
+function sanitizeCandidateMetadata(value, redact2) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const entries = [];
+  for (const [key, item2] of Object.entries(value)) {
+    if (!/^[a-zA-Z0-9_.-]{1,40}$/.test(key) || SENSITIVE_ARGUMENT_KEY.test(key)) continue;
+    const safeKey = redact2(key, 40);
+    if (!safeKey || safeKey !== key || SENSITIVE_ARGUMENT_KEY.test(safeKey)) continue;
+    if (typeof item2 === "string") entries.push([safeKey, redact2(item2, 500) ?? ""]);
+    else if (typeof item2 === "number" && Number.isFinite(item2) || typeof item2 === "boolean") entries.push([safeKey, item2]);
+    if (entries.length === 16) break;
+  }
+  return Object.fromEntries(entries);
+}
+
+// src/task-context.ts
 var TASK_CONTEXT_VERSION = 1;
 var MAX_TEXT_BYTES = 1500;
 var MAX_INPUT_TEXT_BYTES = 12e3;
@@ -37764,7 +37782,7 @@ function sanitizeCatalog(value, secrets) {
       id: clip(candidate.id, 80, secrets),
       description: clip(candidate.description, MAX_TEXT_BYTES, secrets),
       available: candidate.available !== false,
-      ...candidate.metadata ? { metadata: Object.fromEntries(Object.entries(candidate.metadata).slice(0, 16).map(([key, item2]) => [clip(key, 40, secrets), typeof item2 === "string" ? clip(item2, 500, secrets) : item2])) } : {}
+      ...candidate.metadata ? { metadata: sanitizeCandidateMetadata(candidate.metadata, (value2, maxBytes) => clip(value2, maxBytes, secrets)) } : {}
     }));
   }
   return output2;
@@ -37801,17 +37819,16 @@ async function writeRecord(path, directory, record2) {
     });
   }
 }
-async function loadTaskContext(scope, options = {}) {
-  const target = await contextPath(scope, options.env ?? process.env);
-  if (!target) return void 0;
+async function readContextRecord(path, identity, env) {
   try {
-    const handle = await open7(target.path, constants7.O_RDONLY | constants7.O_NOFOLLOW);
+    const handle = await open7(path, constants7.O_RDONLY | constants7.O_NOFOLLOW);
     try {
       const info = await handle.stat();
       if (!info.isFile()) return void 0;
       const parsed = taskContextRecordSchema.safeParse(JSON.parse(await handle.readFile("utf8")));
       if (!parsed.success) return void 0;
-      if (parsed.data.scope.workspaceHash !== target.scope.workspaceHash || parsed.data.scope.sessionHash !== target.scope.sessionHash || parsed.data.scope.agentHash !== target.scope.agentHash) return void 0;
+      if (parsed.data.scope.workspaceHash !== identity.workspaceHash || parsed.data.scope.sessionHash !== identity.sessionHash || parsed.data.scope.agentHash !== identity.agentHash) return void 0;
+      parsed.data.candidateCatalogs = sanitizeCatalog(parsed.data.candidateCatalogs, currentSecrets(env));
       return parsed.data;
     } finally {
       await handle.close();
@@ -37819,6 +37836,41 @@ async function loadTaskContext(scope, options = {}) {
   } catch {
     return void 0;
   }
+}
+function identityPath(identity, env) {
+  if (!identity || ![identity.workspaceHash, identity.sessionHash, identity.agentHash].every((value) => typeof value === "string" && /^[a-f0-9]{64}$/.test(value))) return void 0;
+  const root = dataDirectory(env);
+  if (!isAbsolute4(root) || root.includes("\0")) return void 0;
+  const directory = join6(root, CONTEXT_DIRECTORY, identity.workspaceHash, identity.sessionHash, identity.agentHash);
+  return { directory, path: join6(directory, "context.json") };
+}
+async function loadTaskContextIdentity(identity, options = {}) {
+  const env = options.env ?? process.env;
+  const target = identityPath(identity, env);
+  return target ? readContextRecord(target.path, identity, env) : void 0;
+}
+async function withTaskContextIdentity(identity, operation, options = {}) {
+  const env = options.env ?? process.env;
+  const target = identityPath(identity, env);
+  if (!target) return void 0;
+  const lockPath = join6(target.directory, ".context.lock");
+  let lock;
+  try {
+    lock = await acquireStateLock(lockPath, CONTEXT_LOCK_ATTEMPTS);
+  } catch {
+    return void 0;
+  }
+  try {
+    const context = await readContextRecord(target.path, identity, env);
+    return context ? await operation(context) : void 0;
+  } finally {
+    await releaseStateLock(lockPath, lock.handle, lock.token);
+  }
+}
+async function loadTaskContext(scope, options = {}) {
+  const env = options.env ?? process.env;
+  const target = await contextPath(scope, env);
+  return target?.scope ? readContextRecord(target.path, target.scope, env) : void 0;
 }
 async function updateTaskContext(scope, update, options = {}) {
   const parsed = taskContextUpdateSchema.safeParse(update);
@@ -37872,6 +37924,7 @@ async function updateTaskContext(scope, update, options = {}) {
     const valid = taskContextRecordSchema.safeParse(next);
     if (!valid.success) return void 0;
     await writeRecord(target.path, target.directory, valid.data);
+    await options.publishUnderLock?.(structuredClone(valid.data));
     return valid.data;
   } finally {
     await releaseStateLock(lockPath, lock.handle, lock.token);
@@ -38194,6 +38247,9 @@ var catalogRefSchema = external_exports.strictObject({
   taskRevisionId: digestSchema,
   capabilityId: digestSchema
 });
+function contextIdentity(scope) {
+  return { workspaceHash: scope.workspaceId, sessionHash: scope.sessionId, agentHash: scope.agentId };
+}
 var coverageSchema = external_exports.strictObject({
   discovery: external_exports.enum(["complete_supported_inventory", "partial"]),
   pages: external_exports.number().int().nonnegative(),
@@ -38243,7 +38299,7 @@ function catalogDigest(record2) {
 }
 function reasonFor(error62) {
   if (error62 instanceof external_exports.ZodError) return "invalid_catalog_record";
-  const codes = ["unsafe_routing_directory", "unsafe_routing_metadata", "duplicate_catalog_ids", "catalog_ref_not_found", "catalog_ref_expired", "catalog_ref_digest_mismatch", "catalog_ref_dependencies_unavailable", "stale_task_revision"];
+  const codes = ["unsafe_routing_directory", "unsafe_routing_metadata", "unsafe_catalog_metadata", "duplicate_catalog_ids", "catalog_ref_not_found", "catalog_ref_expired", "catalog_ref_digest_mismatch", "catalog_ref_dependencies_unavailable", "stale_task_revision"];
   return error62 instanceof Error && codes.includes(error62.message) ? error62.message : "routing_state_unavailable";
 }
 function profileFor(metadata) {
@@ -38295,7 +38351,7 @@ function createRoutingApi(options) {
     const key = env.JEV_API_KEY_FILE ? readCredentialFile(env.JEV_API_KEY_FILE) : null;
     const secrets = [env.TYPESAFE_API_KEY, key].filter((item2) => Boolean(item2));
     const text = JSON.stringify(value);
-    if (redactText(text, secrets) !== text) throw new Error("unsafe_routing_metadata");
+    if (JSON.stringify(sanitize(value, secrets)) !== text) throw new Error("unsafe_routing_metadata");
   }
   function scopeFor(context, input2) {
     return { hostId: input2.hostId, accountId: input2.accountId, workspaceId: context.scope.workspaceHash, sessionId: context.scope.sessionHash, agentId: context.scope.agentHash };
@@ -38326,6 +38382,7 @@ function createRoutingApi(options) {
       kind: "task_revision",
       revision: (previous?.revision ?? 0) + 1,
       factsRevision: input2.task?.factsRevision ?? digest3(context),
+      contextDigest: digest3(context),
       objective: context.rootObjective?.value ?? "",
       subtask: context.latestStep?.value ?? "",
       sourceRevision: input2.sourceRevision,
@@ -38357,14 +38414,21 @@ function createRoutingApi(options) {
   }
   async function update(raw) {
     const input2 = routingUpdateTaskContextInputSchema.parse(raw);
-    const context = await updateTaskContext(input2.scope, input2.update, { env, now: now() });
+    let publishedRouting;
+    const context = await updateTaskContext(input2.scope, input2.update, {
+      env,
+      now: now(),
+      ...input2.routing ? { publishUnderLock: async (saved) => {
+        try {
+          publishedRouting = await publishContext(saved, input2.routing);
+        } catch (error62) {
+          publishedRouting = { status: "unavailable", reasonCode: reasonFor(error62) };
+        }
+      } } : {}
+    });
     if (!context) return { status: "unavailable", reasonCode: "task_context_unavailable" };
     if (!input2.routing) return { status: "updated", context };
-    try {
-      return { status: "updated", context, routing: await publishContext(context, input2.routing) };
-    } catch (error62) {
-      return { status: "updated", context, routing: { status: "unavailable", reasonCode: reasonFor(error62) } };
-    }
+    return { status: "updated", context, routing: publishedRouting };
   }
   async function resolveRef2(ref) {
     await privateState();
@@ -38374,9 +38438,12 @@ function createRoutingApi(options) {
     const catalog = catalogSnapshotSchema.parse(stored);
     if (catalog.expiresAt && Date.parse(catalog.expiresAt) <= now().getTime()) throw new Error("catalog_ref_expired");
     if (catalogDigest(catalog) !== ref.digest) throw new Error("catalog_ref_digest_mismatch");
-    const [current, task, capabilities] = await Promise.all([store.current(), store.read(ref.taskRevisionId), store.read(ref.capabilityId)]);
+    if (catalog.entries.some((entry) => JSON.stringify(entry.metadata ?? {}) !== JSON.stringify(sanitizeCandidateMetadata(entry.metadata, (value) => value)))) throw new Error("unsafe_catalog_metadata");
+    safeMetadata(catalog.entries);
+    const [current, task, capabilities, context] = await Promise.all([store.current(), store.read(ref.taskRevisionId), store.read(ref.capabilityId), loadTaskContextIdentity(contextIdentity(ref.scope), { env })]);
     if (!task || !capabilities || task.kind !== "task_revision" || capabilities.kind !== "host_capabilities") throw new Error("catalog_ref_dependencies_unavailable");
     if (current.records.catalog !== ref.catalogId || current.records.task !== ref.taskRevisionId || current.records.capabilities !== ref.capabilityId || task.catalogId !== ref.catalogId) throw new Error("stale_task_revision");
+    if (!context || task.contextDigest !== digest3(context)) throw new Error("stale_task_revision");
     return { store, catalog, current, task, capabilities };
   }
   async function boundedConsult(input2, signal) {
@@ -38423,58 +38490,68 @@ function createRoutingApi(options) {
         available: entry.available && (question.domain !== "model" || eligibleProfile(entry.metadata, capabilities, task)),
         ...entry.metadata ? { metadata: { ...entry.metadata } } : {}
       }));
-      const result = publicAssessment(await boundedConsult({ ...question, candidates }, signal));
-      await resolveRef2(catalogRef);
-      const coverage = {
-        catalogId: catalog.id,
-        inventoryCount: catalog.coverage.inventoryCount,
-        domainInventoryCount: entries.length,
-        discovery: catalog.coverage.discovery,
-        source: "caller_scoped_mcp",
-        inaccessibleCategories: catalog.coverage.inaccessibleCategories,
-        outsideSupportedInventory: "unknown",
-        ...result.coverage ? { comparison: result.coverage } : {}
-      };
-      if (question.mode === "preview") return { ...result, routing: { schemaVersion: ROUTING_SCHEMA_VERSION, catalogRef, coverage, proposal: null, delivery: { status: "prepared" }, application: { status: "not_attempted", reasonCode: "mcp_has_no_host_actuator" }, execution: { status: "unknown" }, outcome: { status: "unknown" } } };
-      const selected = result.status === "assessed" ? entries.find((entry) => entry.id === `${question.domain}:${result.choice}`) : void 0;
-      const providerReceiptIds = result.coverage?.receiptIds;
-      const proposal = await store.publish({
-        ...base(catalogRef.scope, "decision_proposal", "metadata"),
-        kind: "decision_proposal",
-        taskRevision: task.revision,
-        factsRevision: task.factsRevision,
-        catalogId: catalog.id,
-        capabilityRevision: capabilities.sourceRevision,
-        targetIds: selected ? [selected.id] : [],
-        disposition: selected ? "selected" : "abstained",
-        ...selected && question.domain === "model" && profileFor(selected.metadata) ? { recommendedProfile: profileFor(selected.metadata) } : {},
-        ...result.receiptPersisted && result.receiptId ? { providerReceiptId: result.receiptId } : {},
-        ...providerReceiptIds ? { providerReceiptIds } : {},
-        dependsOn: [catalog.id, task.id, capabilities.id]
-      });
-      const delivery = await store.publish({
-        ...base(catalogRef.scope, "delivery_observation", "metadata"),
-        kind: "delivery_observation",
-        proposalId: proposal.id,
-        deliveryId: randomUUID10(),
-        channel: "mcp_response_prepared",
-        status: "unknown",
-        dependsOn: [proposal.id]
-      });
-      const current = await store.current();
-      if (current.records.task !== task.id || current.records.catalog !== catalog.id || current.records.capabilities !== capabilities.id) return { status: "unavailable", reasonCode: "stale_task_revision" };
-      const commit = await store.compareAndSet(current.revision, { ...current.records, proposal: proposal.id, delivery: delivery.id });
-      if (commit.status === "conflict") return { status: "unavailable", reasonCode: "stale_task_revision" };
-      return { ...result, routing: {
-        schemaVersion: ROUTING_SCHEMA_VERSION,
-        catalogRef,
-        coverage,
-        proposal: { id: proposal.id, disposition: proposal.disposition },
-        delivery: { status: "prepared", observationId: delivery.id, acknowledgment: "unknown" },
-        application: { status: "not_attempted", reasonCode: "mcp_has_no_host_actuator" },
-        execution: { status: "unknown" },
-        outcome: { status: "unknown" }
-      } };
+      const pending = await withTaskContextIdentity(contextIdentity(catalogRef.scope), async (context) => {
+        if (task.contextDigest !== digest3(context)) throw new Error("stale_task_revision");
+        await resolveRef2(catalogRef);
+        return { consultation: boundedConsult({ ...question, candidates }, signal) };
+      }, { env });
+      if (!pending) return { status: "unavailable", reasonCode: "stale_task_revision" };
+      const result = publicAssessment(await pending.consultation);
+      return await withTaskContextIdentity(contextIdentity(catalogRef.scope), async (context) => {
+        if (signal?.aborted) return { status: "unavailable", reasonCode: "cancelled" };
+        if (task.contextDigest !== digest3(context)) throw new Error("stale_task_revision");
+        await resolveRef2(catalogRef);
+        const coverage = {
+          catalogId: catalog.id,
+          inventoryCount: catalog.coverage.inventoryCount,
+          domainInventoryCount: entries.length,
+          discovery: catalog.coverage.discovery,
+          source: "caller_scoped_mcp",
+          inaccessibleCategories: catalog.coverage.inaccessibleCategories,
+          outsideSupportedInventory: "unknown",
+          ...result.coverage ? { comparison: result.coverage } : {}
+        };
+        if (question.mode === "preview") return { ...result, routing: { schemaVersion: ROUTING_SCHEMA_VERSION, catalogRef, coverage, proposal: null, delivery: { status: "prepared" }, application: { status: "not_attempted", reasonCode: "mcp_has_no_host_actuator" }, execution: { status: "unknown" }, outcome: { status: "unknown" } } };
+        const selected = result.status === "assessed" ? entries.find((entry) => entry.id === `${question.domain}:${result.choice}`) : void 0;
+        const providerReceiptIds = result.coverage?.receiptIds;
+        const proposal = await store.publish({
+          ...base(catalogRef.scope, "decision_proposal", "metadata"),
+          kind: "decision_proposal",
+          taskRevision: task.revision,
+          factsRevision: task.factsRevision,
+          catalogId: catalog.id,
+          capabilityRevision: capabilities.sourceRevision,
+          targetIds: selected ? [selected.id] : [],
+          disposition: selected ? "selected" : "abstained",
+          ...selected && question.domain === "model" && profileFor(selected.metadata) ? { recommendedProfile: profileFor(selected.metadata) } : {},
+          ...result.receiptPersisted && result.receiptId ? { providerReceiptId: result.receiptId } : {},
+          ...providerReceiptIds ? { providerReceiptIds } : {},
+          dependsOn: [catalog.id, task.id, capabilities.id]
+        });
+        const delivery = await store.publish({
+          ...base(catalogRef.scope, "delivery_observation", "metadata"),
+          kind: "delivery_observation",
+          proposalId: proposal.id,
+          deliveryId: randomUUID10(),
+          channel: "mcp_response_prepared",
+          status: "unknown",
+          dependsOn: [proposal.id]
+        });
+        const current = await store.current();
+        if (current.records.task !== task.id || current.records.catalog !== catalog.id || current.records.capabilities !== capabilities.id) return { status: "unavailable", reasonCode: "stale_task_revision" };
+        const commit = await store.compareAndSet(current.revision, { ...current.records, proposal: proposal.id, delivery: delivery.id });
+        if (commit.status === "conflict") return { status: "unavailable", reasonCode: "stale_task_revision" };
+        return { ...result, routing: {
+          schemaVersion: ROUTING_SCHEMA_VERSION,
+          catalogRef,
+          coverage,
+          proposal: { id: proposal.id, disposition: proposal.disposition },
+          delivery: { status: "prepared", observationId: delivery.id, acknowledgment: "unknown" },
+          application: { status: "not_attempted", reasonCode: "mcp_has_no_host_actuator" },
+          execution: { status: "unknown" },
+          outcome: { status: "unknown" }
+        } };
+      }, { env }) ?? { status: "unavailable", reasonCode: "stale_task_revision" };
     } catch (error62) {
       return { status: "unavailable", reasonCode: reasonFor(error62) };
     }
