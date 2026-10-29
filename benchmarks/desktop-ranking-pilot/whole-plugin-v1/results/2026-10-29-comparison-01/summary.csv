@@ -1,0 +1,4 @@
+id,label,assigned,completed,pending,invalid,verifiedFixes,fixRate,elapsedMs,elapsedLowerBoundMs,elapsedTimeCoverage,timePerVerifiedFixMs,approvals,failedPublicCycles,consultations,providerRequests,providerRequestUnknown,adviceDelivered,uptakeObserved,uptakeIgnored,uptakeUnknown,codingUsd,jevUsd,billingComplete,inputTokens,outputTokens,cachedInputTokens,usageObservedAttempts,packetDeliveries,packetMissing
+"plugin-off","Standard Codex","1","1","5","0","1","1","596155","596155","complete","596155","0","0","0","0","0","0","0","0","0",,,"false","1529999","10200","1427840","1","0","0"
+"cheap","Cheap retrieval","1","0","5","1","0",,"54000","54000","lower-bound",,"0","0","0","0","0","0","0","0","0",,,"false",,,,"0","0","1"
+"plugin-on","Codex + Jev","1","1","5","0","1","1","514138","514138","complete","514138","0","0","41","41","0","41","2","0","39",,,"false","1624956","11841","1520768","1","0","0"

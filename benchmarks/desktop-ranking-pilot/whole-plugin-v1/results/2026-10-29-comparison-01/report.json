@@ -1,0 +1,244 @@
+{
+  "schemaVersion": "whole-plugin-report-v1",
+  "studyId": "jev-whole-plugin-codex-20261029-continuation-v1",
+  "asOf": "2026-10-29T04:46:41.824Z",
+  "plannedAttempts": 18,
+  "completedAttempts": 2,
+  "pendingAttempts": 15,
+  "invalidAttempts": 1,
+  "halted": false,
+  "arms": [
+    {
+      "id": "plugin-off",
+      "label": "Standard Codex",
+      "assigned": 1,
+      "completed": 1,
+      "pending": 5,
+      "invalid": 0,
+      "verifiedFixes": 1,
+      "fixRate": 1,
+      "verifiedFixBounds": {
+        "lower": 1,
+        "upper": 6
+      },
+      "elapsedMs": 596155,
+      "elapsedLowerBoundMs": 596155,
+      "elapsedTimeCoverage": "complete",
+      "observedTerminalElapsedMs": 596155,
+      "timePerVerifiedFixMs": 596155,
+      "approvals": 0,
+      "failedPublicCycles": 0,
+      "consultations": 0,
+      "providerRequests": 0,
+      "providerRequestUnknown": 0,
+      "consultationStatuses": {
+        "assessed": 0,
+        "abstained": 0,
+        "unavailable": 0,
+        "error": 0
+      },
+      "adviceDelivered": 0,
+      "uptakeObserved": 0,
+      "uptakeIgnored": 0,
+      "uptakeUnknown": 0,
+      "codingUsd": null,
+      "jevUsd": null,
+      "billingComplete": false,
+      "usage": {
+        "inputTokens": 1529999,
+        "outputTokens": 10200,
+        "cachedInputTokens": 1427840
+      },
+      "usageObservedAttempts": 1,
+      "packetDeliveries": 0,
+      "packetMissing": 0
+    },
+    {
+      "id": "cheap",
+      "label": "Cheap retrieval",
+      "assigned": 1,
+      "completed": 0,
+      "pending": 5,
+      "invalid": 1,
+      "verifiedFixes": 0,
+      "fixRate": null,
+      "verifiedFixBounds": {
+        "lower": 0,
+        "upper": 6
+      },
+      "elapsedMs": 54000,
+      "elapsedLowerBoundMs": 54000,
+      "elapsedTimeCoverage": "lower-bound",
+      "observedTerminalElapsedMs": 54000,
+      "timePerVerifiedFixMs": null,
+      "approvals": 0,
+      "failedPublicCycles": 0,
+      "consultations": 0,
+      "providerRequests": 0,
+      "providerRequestUnknown": 0,
+      "consultationStatuses": {
+        "assessed": 0,
+        "abstained": 0,
+        "unavailable": 0,
+        "error": 0
+      },
+      "adviceDelivered": 0,
+      "uptakeObserved": 0,
+      "uptakeIgnored": 0,
+      "uptakeUnknown": 0,
+      "codingUsd": null,
+      "jevUsd": null,
+      "billingComplete": false,
+      "usage": {
+        "inputTokens": null,
+        "outputTokens": null,
+        "cachedInputTokens": null
+      },
+      "usageObservedAttempts": 0,
+      "packetDeliveries": 0,
+      "packetMissing": 1
+    },
+    {
+      "id": "plugin-on",
+      "label": "Codex + Jev",
+      "assigned": 1,
+      "completed": 1,
+      "pending": 5,
+      "invalid": 0,
+      "verifiedFixes": 1,
+      "fixRate": 1,
+      "verifiedFixBounds": {
+        "lower": 1,
+        "upper": 6
+      },
+      "elapsedMs": 514138,
+      "elapsedLowerBoundMs": 514138,
+      "elapsedTimeCoverage": "complete",
+      "observedTerminalElapsedMs": 514138,
+      "timePerVerifiedFixMs": 514138,
+      "approvals": 0,
+      "failedPublicCycles": 0,
+      "consultations": 41,
+      "providerRequests": 41,
+      "providerRequestUnknown": 0,
+      "consultationStatuses": {
+        "assessed": 14,
+        "abstained": 27,
+        "unavailable": 0,
+        "error": 0
+      },
+      "adviceDelivered": 41,
+      "uptakeObserved": 2,
+      "uptakeIgnored": 0,
+      "uptakeUnknown": 39,
+      "codingUsd": null,
+      "jevUsd": null,
+      "billingComplete": false,
+      "usage": {
+        "inputTokens": 1624956,
+        "outputTokens": 11841,
+        "cachedInputTokens": 1520768
+      },
+      "usageObservedAttempts": 1,
+      "packetDeliveries": 0,
+      "packetMissing": 0
+    }
+  ],
+  "continuation": {
+    "schemaVersion": "whole-plugin-continuation-report-v1",
+    "parentStudyId": "jev-whole-plugin-codex-20261028-v1",
+    "parentManifestHash": "b92efbc5608aec7e8e3d969b7a5d95e1891cc9c9d50a978add14c28915dde4c4",
+    "parentStateHash": "3e0c37d10b08d62636feeea37a5c6816a89f0cfce0f21c1ffba6173f94d5a086",
+    "importedSlotsHash": "c11f2ae6331e9f923e334d8a8642a197d5efa28233ef0fda65a130e1bc142822",
+    "importedAttempts": 2,
+    "continuationAttemptLimit": 16,
+    "newAssignedAttempts": 1,
+    "parentHalted": true,
+    "independentStudy": false
+  },
+  "paired": [
+    {
+      "taskId": "psf__requests-2931",
+      "conditions": {
+        "plugin-off": "verified-fix",
+        "cheap": "infrastructure-invalid",
+        "plugin-on": "verified-fix"
+      }
+    },
+    {
+      "taskId": "psf__requests-5414",
+      "conditions": {
+        "plugin-off": "pending",
+        "cheap": "pending",
+        "plugin-on": "pending"
+      }
+    },
+    {
+      "taskId": "psf__requests-6028",
+      "conditions": {
+        "plugin-off": "pending",
+        "cheap": "pending",
+        "plugin-on": "pending"
+      }
+    },
+    {
+      "taskId": "sympy__sympy-16886",
+      "conditions": {
+        "plugin-off": "pending",
+        "cheap": "pending",
+        "plugin-on": "pending"
+      }
+    },
+    {
+      "taskId": "sympy__sympy-19346",
+      "conditions": {
+        "plugin-off": "pending",
+        "cheap": "pending",
+        "plugin-on": "pending"
+      }
+    },
+    {
+      "taskId": "sympy__sympy-24562",
+      "conditions": {
+        "plugin-off": "pending",
+        "cheap": "pending",
+        "plugin-on": "pending"
+      }
+    }
+  ],
+  "curves": {
+    "plugin-off": [
+      {
+        "elapsedMs": 0,
+        "verifiedFixes": 0
+      },
+      {
+        "elapsedMs": 596155,
+        "verifiedFixes": 1
+      }
+    ],
+    "cheap": [],
+    "plugin-on": [
+      {
+        "elapsedMs": 0,
+        "verifiedFixes": 0
+      },
+      {
+        "elapsedMs": 514138,
+        "verifiedFixes": 1
+      }
+    ]
+  },
+  "interpretation": {
+    "verdict": "inconclusive",
+    "reason": "Linked continuation retains the invalid parent slot and incomplete timing; the original eighteen-slot exploratory screen remains inconclusive."
+  },
+  "limitations": [
+    "Six-bug exploratory pilot, not an official full SWE-bench score.",
+    "Provider requests count observed invocations, not successful responses.",
+    "Elapsed time includes all assigned attempts, startup, consultations, waits and grading; pending elapsed does not extend fix curves.",
+    "Unknown billing stays unknown. Subscription capacity is not cash savings.",
+    "Elapsed time is a measured lower bound; pre-launch timing is unknown. The untracked native launch invalidated isolation and halted the parent study.",
+    "Linked continuation imports two consumed attempts once and permits only sixteen new attempts. It is not an independent full comparison or confirmation; the original screen remains inconclusive."
+  ]
+}
