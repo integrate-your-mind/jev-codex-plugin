@@ -27171,7 +27171,11 @@ function semanticArguments(event, env) {
   const values = {};
   for (const key of Object.keys(event.raw.tool_input).slice(0, 32)) {
     const safeKey = SENSITIVE_ARGUMENT_KEY.test(key) ? "[REDACTED]" : boundedWithEnv(key, 80, env) ?? "[OMITTED_KEY]";
-    values[safeKey] = projectArgumentValue(event.raw.tool_input[key], env, state, safeKey);
+    if (SENSITIVE_ARGUMENT_KEY.test(key)) {
+      values[safeKey] = "[REDACTED_FIELD]";
+      state.omitted += 1;
+      if (state.paths.length < 16) state.paths.push(safeKey);
+    } else values[safeKey] = projectArgumentValue(event.raw.tool_input[key], env, state, safeKey);
   }
   if (Object.keys(event.raw.tool_input).length > 32) {
     state.omitted += Object.keys(event.raw.tool_input).length - 32;
@@ -27470,11 +27474,60 @@ function taskContextView(value) {
     updatedAt: value.updatedAt
   };
 }
-function taskContextSemanticDigest(value) {
+function sanitizedSemanticFacts(value, env) {
+  if (typeof value === "string") return boundedWithEnv(value, Number.POSITIVE_INFINITY, env);
+  if (Array.isArray(value)) return value.map((item2) => sanitizedSemanticFacts(item2, env));
+  if (isRecord2(value)) return Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right)).map(([key, item2]) => [
+    SENSITIVE_ARGUMENT_KEY.test(key) ? "[REDACTED]" : boundedWithEnv(key, Number.POSITIVE_INFINITY, env),
+    SENSITIVE_ARGUMENT_KEY.test(key) ? "[REDACTED_FIELD]" : sanitizedSemanticFacts(item2, env)
+  ]));
+  return value;
+}
+function fullSemanticFactsDigest(event, env, taskContext, currentPrompt, turnResults) {
+  const rawContext = isRecord2(event.raw.task_context) ? event.raw.task_context : isRecord2(event.raw.taskContext) ? event.raw.taskContext : {};
+  const taskView = taskContextView(taskContext);
+  if (taskView) {
+    delete taskView.updatedAt;
+    delete taskView.version;
+  }
+  return hash2(JSON.stringify(sanitizedSemanticFacts({
+    toolName: event.toolName,
+    model: event.model,
+    permissionMode: event.permissionMode,
+    source: event.source,
+    trigger: event.trigger,
+    reason: event.reason,
+    agentType: event.agentType,
+    arguments: event.raw.tool_input,
+    response: event.raw.tool_response,
+    prompt: event.prompt ?? currentPrompt,
+    finalMessage: event.finalMessage,
+    taskContext: taskView,
+    turnResults,
+    eventCatalog: rawContext.candidateCatalog ?? rawContext.candidate_catalog ?? event.raw.candidate_catalog,
+    availableCandidates: rawContext.availableCandidates ?? rawContext.available_candidates ?? event.raw.available_candidates,
+    savedCatalog: taskContext?.candidateCatalogs,
+    rootObjective: rawContext.rootObjective ?? rawContext.root_objective,
+    latestStep: rawContext.latestStep ?? rawContext.latest_step,
+    evidence: rawContext.evidence ?? event.raw.evidence
+  }, env)));
+}
+function factsProjectionCoverage(input2) {
+  let complete = false;
+  try {
+    const context = JSON.parse(input2.context);
+    const truncation = isRecord2(context.truncation) ? context.truncation : {};
+    const argumentsView = isRecord2(context.argumentProjection) ? context.argumentProjection : {};
+    complete = context.contextTruncated !== true && argumentsView.truncated !== true && !Object.values(truncation).some((value) => value === true) && !input2.evidence.some((item2) => item2.text.includes("...[truncated]..."));
+  } catch {
+  }
+  return { complete, omittedFacts: complete ? 0 : "unknown" };
+}
+function taskContextSemanticDigest(value, env) {
   const view = taskContextView(value);
   if (!view) return hash2("null");
   const { version: _version, updatedAt: _updatedAt, ...facts } = view;
-  return hash2(JSON.stringify({ ...facts, candidateCatalogs: value?.candidateCatalogs }));
+  return hash2(JSON.stringify(sanitizedSemanticFacts({ ...facts, candidateCatalogs: value?.candidateCatalogs }, env)));
 }
 function promptContextUpdate(event, prior, env) {
   const prompt = boundedWithEnv(event.prompt, MAX_PROMPT_BYTES, env);
@@ -27856,6 +27909,7 @@ async function writeInvocationReceipt(event, env, input2, response, result) {
       inputDigest: hash2(JSON.stringify(input2)),
       evidenceIds: input2.evidence.map((item2) => item2.id),
       contextBytes: Buffer.byteLength(input2.context),
+      factsProjection: factsProjectionCoverage(input2),
       contextTruncated: input2.context.includes('"contextTruncated":true'),
       evidenceTruncated: input2.evidence.some((item2) => {
         const bytes = Buffer.byteLength(item2.text);
@@ -27973,6 +28027,7 @@ async function runDecisionHook(raw, options = {}) {
       model: env.JEV_MODEL ?? "",
       credential: hash2(env.TYPESAFE_API_KEY ?? ""),
       policy,
+      fullFactsDigest: fullSemanticFactsDigest(event, env, taskContext, cachedPrompt, turnResults),
       pins: event.raw.pins ?? event.raw.user_pins,
       sourceVersions: event.raw.source_versions,
       evidenceVersions: event.raw.evidence_versions,
@@ -28019,12 +28074,13 @@ async function runDecisionHook(raw, options = {}) {
       } finally {
         clearTimeout(timer);
       }
+      if (result.coverage) result.coverage = { ...result.coverage, factsProjection: factsProjectionCoverage(input2) };
       if (Date.now() >= deadline) result = timeoutAssessment;
       else result = normalizeDecisionAssessment(input2, result);
       const current = await withinHookDeadline(deadline, async () => {
         if (!await consultationRevisionCurrent(revisionDirectory, semanticId, startedAt)) return false;
         const latest = await loadTaskContext(scope, { env });
-        return taskContextSemanticDigest(latest) === taskContextSemanticDigest(taskContext);
+        return taskContextSemanticDigest(latest, env) === taskContextSemanticDigest(taskContext, env);
       });
       if (current.expired || !current.value) result = { status: "unavailable", reasonCode: current.expired ? "hook_timeout" : "stale_context", ...result.coverage ? { coverage: { ...result.coverage, complete: false } } : {} };
       if (semanticClaim && (result.status === "assessed" || result.status === "abstained")) {
