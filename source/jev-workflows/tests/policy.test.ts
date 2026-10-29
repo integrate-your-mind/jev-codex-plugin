@@ -1,4 +1,5 @@
-import { mkdir, mkdtemp, rm, symlink, writeFile, readFile } from 'node:fs/promises';
+import fs, { mkdir, mkdtemp, rm, symlink, writeFile, readFile } from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { after, before, describe, it } from 'node:test';
@@ -98,6 +99,28 @@ describe('automation policy', () => {
     assert.equal(recovered.maxCallsPerDay, 9);
     assert.equal(recovered.consultationMode, 'always');
     assert.equal(await readFile(path, 'utf8'), before);
+  });
+
+  it('preserves changed_state after an interrupted authority update and retry', async () => {
+    const environment = env(join(root, 'mode-failed-authority'));
+    const original = await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
+    const path = join(environment.PLUGIN_DATA!, 'policy.json');
+    const before = await readFile(path, 'utf8');
+    const rename = fs.rename;
+    fs.rename = async (source, destination) => {
+      if (String(destination) === path) throw Object.assign(new Error('synthetic_policy_commit_failure'), {code: 'EIO'});
+      return rename(source, destination);
+    };
+    syncBuiltinESMExports();
+    try {
+      await assert.rejects(configurePolicy({enabled: true, scope: 'workspaces', workspaces: [process.cwd()], maxCallsPerDay: 3}, environment), {code: 'EIO'});
+    } finally { fs.rename = rename; syncBuiltinESMExports(); }
+    assert.equal(await readFile(path, 'utf8'), before);
+    assert.deepEqual(await readPolicy(environment), original);
+    const retried = await configurePolicy({enabled: true, scope: 'workspaces', workspaces: [process.cwd()], maxCallsPerDay: 3}, environment);
+    assert.equal(retried.consultationMode, 'changed_state');
+    assert.equal((await readPolicy(environment)).consultationMode, 'changed_state');
+    assert.equal((await readPolicy(environment)).maxCallsPerDay, 3);
   });
 
   it('serializes concurrent mode-preserving configuration updates', async () => {
