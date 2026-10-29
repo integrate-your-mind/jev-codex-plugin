@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "desktop-pilot-grader-preflight-v1",
+  "taskId": "psf__requests-5414",
+  "baseRevision": "39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e",
+  "graderHash": "71983a9c8f0e03152d4a91fe99246d96ec567e2c03895e53cfa4b8870d61fbdf",
+  "referencePatchHash": "41e9433ac5e2cdb17a3972bec818a1118ea4a3f2b7485cd11fff7e27f6f3f680",
+  "runtime": {
+    "python": "Python 3.9.6",
+    "dependencies": ""
+  },
+  "scope": "Non-model grader controls only. No coding attempt, hidden preflight, or old cohort ran.",
+  "controls": {
+    "broken": {
+      "verdict": "infrastructure-invalid",
+      "healthy": false,
+      "durationMs": 34.97875000175554,
+      "evidenceHash": "6da5db9cc4df5551f8a2f21f2c96fd4659a901a9fa0411311afef05e3cc1b0a8",
+      "patchHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exitCode": 1
+    },
+    "reference": {
+      "verdict": "infrastructure-invalid",
+      "healthy": false,
+      "durationMs": 41.20908299955772,
+      "evidenceHash": "2ab9ea443d0374c84a3d4627f59626960b9f25b11c10e1e7d883b8eba7eef661",
+      "patchHash": "e8b0df27f38e3db9951d617608fc317ac6329918d1ee87718bd2e60b90046f56",
+      "exitCode": 1
+    },
+    "missing": {
+      "verdict": "infrastructure-invalid",
+      "healthy": false,
+      "durationMs": 34.319625003263354,
+      "evidenceHash": "49834535077a11dec14445afe3d9e5c76d98d67e123eefb2c3eb6c21ff686960",
+      "patchHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exitCode": 1
+    },
+    "wrong": {
+      "verdict": "infrastructure-invalid",
+      "healthy": false,
+      "durationMs": 28.79945799941197,
+      "evidenceHash": "a5602db96b000ba551b6fde9a76a81fd8922d5f919115bd205f5ab770a3c8601",
+      "patchHash": "6ef91bfbf0089e97d2e272201f13e01c7434aa4e1fcadb97df2e1d48e1bbfc4a",
+      "exitCode": 1
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "desktop-pilot-grader-preflight-v1",
+  "taskId": "psf__requests-2931",
+  "baseRevision": "5f7a3a74aab1625c2bb65f643197ee885e3da576",
+  "graderHash": "56818dddc0f751dd0df2cacb7c96bd2de30d19ced44d4bf8850071241a6c0b61",
+  "referencePatchHash": "5b5a77408b00928b0380cd6a40ccb53f0cf77b16f040e1743e313883aad104db",
+  "runtime": {
+    "python": "Python 3.9.6",
+    "dependencies": "certifi==2024.12.14\nchardet==3.0.4\ncharset-normalizer==2.0.12\nidna==3.3\nmpmath==1.3.0\nurllib3==1.26.20"
+  },
+  "scope": "Non-model grader controls only. No coding attempt, hidden preflight, or old cohort ran.",
+  "controls": {
+    "broken": {
+      "verdict": "fail",
+      "healthy": true,
+      "durationMs": 168.41308300354285,
+      "evidenceHash": "ac939b30da42bcd3c07f012e80baa7d73a6af681620936ad45c6f9714c2b4de3",
+      "patchHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exitCode": 1
+    },
+    "reference": {
+      "verdict": "pass",
+      "healthy": true,
+      "durationMs": 128.09220799681498,
+      "evidenceHash": "aaadc23228f4e5eb13aa32d4c9827839e8e2ee143c70c18fef13f90591d059db",
+      "patchHash": "fafb4a198623f47082cf2ebc6566e4881c7b459e3c6d89931bd037591d5e0988",
+      "exitCode": 0
+    },
+    "missing": {
+      "verdict": "fail",
+      "healthy": true,
+      "durationMs": 91.4895419991808,
+      "evidenceHash": "ac939b30da42bcd3c07f012e80baa7d73a6af681620936ad45c6f9714c2b4de3",
+      "patchHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exitCode": 1
+    },
+    "wrong": {
+      "verdict": "fail",
+      "healthy": true,
+      "durationMs": 96.09166700101923,
+      "evidenceHash": "c1638327b82821224384ddd99098d07f306649b78c6a1419432b6c2ce27973a7",
+      "patchHash": "6d4162965c272584d1586759c8886e3329468b18ca5f28c7957a882132d0917c",
+      "exitCode": 1
+    }
+  }
+}

@@ -416,11 +416,11 @@ var require_codegen = __commonJS({
         const rhs = this.rhs === void 0 ? "" : ` = ${this.rhs}`;
         return `${varKind} ${this.name}${rhs};` + _n;
       }
-      optimizeNames(names, constants7) {
+      optimizeNames(names, constants9) {
         if (!names[this.name.str])
           return;
         if (this.rhs)
-          this.rhs = optimizeExpr(this.rhs, names, constants7);
+          this.rhs = optimizeExpr(this.rhs, names, constants9);
         return this;
       }
       get names() {
@@ -437,10 +437,10 @@ var require_codegen = __commonJS({
       render({ _n }) {
         return `${this.lhs} = ${this.rhs};` + _n;
       }
-      optimizeNames(names, constants7) {
+      optimizeNames(names, constants9) {
         if (this.lhs instanceof code_1.Name && !names[this.lhs.str] && !this.sideEffects)
           return;
-        this.rhs = optimizeExpr(this.rhs, names, constants7);
+        this.rhs = optimizeExpr(this.rhs, names, constants9);
         return this;
       }
       get names() {
@@ -501,8 +501,8 @@ var require_codegen = __commonJS({
       optimizeNodes() {
         return `${this.code}` ? this : void 0;
       }
-      optimizeNames(names, constants7) {
-        this.code = optimizeExpr(this.code, names, constants7);
+      optimizeNames(names, constants9) {
+        this.code = optimizeExpr(this.code, names, constants9);
         return this;
       }
       get names() {
@@ -531,12 +531,12 @@ var require_codegen = __commonJS({
         }
         return nodes.length > 0 ? this : void 0;
       }
-      optimizeNames(names, constants7) {
+      optimizeNames(names, constants9) {
         const { nodes } = this;
         let i = nodes.length;
         while (i--) {
           const n = nodes[i];
-          if (n.optimizeNames(names, constants7))
+          if (n.optimizeNames(names, constants9))
             continue;
           subtractNames(names, n.names);
           nodes.splice(i, 1);
@@ -589,12 +589,12 @@ var require_codegen = __commonJS({
           return void 0;
         return this;
       }
-      optimizeNames(names, constants7) {
+      optimizeNames(names, constants9) {
         var _a3;
-        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants7);
-        if (!(super.optimizeNames(names, constants7) || this.else))
+        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants9);
+        if (!(super.optimizeNames(names, constants9) || this.else))
           return;
-        this.condition = optimizeExpr(this.condition, names, constants7);
+        this.condition = optimizeExpr(this.condition, names, constants9);
         return this;
       }
       get names() {
@@ -617,10 +617,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.iteration})` + super.render(opts);
       }
-      optimizeNames(names, constants7) {
-        if (!super.optimizeNames(names, constants7))
+      optimizeNames(names, constants9) {
+        if (!super.optimizeNames(names, constants9))
           return;
-        this.iteration = optimizeExpr(this.iteration, names, constants7);
+        this.iteration = optimizeExpr(this.iteration, names, constants9);
         return this;
       }
       get names() {
@@ -656,10 +656,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.varKind} ${this.name} ${this.loop} ${this.iterable})` + super.render(opts);
       }
-      optimizeNames(names, constants7) {
-        if (!super.optimizeNames(names, constants7))
+      optimizeNames(names, constants9) {
+        if (!super.optimizeNames(names, constants9))
           return;
-        this.iterable = optimizeExpr(this.iterable, names, constants7);
+        this.iterable = optimizeExpr(this.iterable, names, constants9);
         return this;
       }
       get names() {
@@ -701,11 +701,11 @@ var require_codegen = __commonJS({
         (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNodes();
         return this;
       }
-      optimizeNames(names, constants7) {
+      optimizeNames(names, constants9) {
         var _a3, _b;
-        super.optimizeNames(names, constants7);
-        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants7);
-        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants7);
+        super.optimizeNames(names, constants9);
+        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants9);
+        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants9);
         return this;
       }
       get names() {
@@ -1006,7 +1006,7 @@ var require_codegen = __commonJS({
     function addExprNames(names, from) {
       return from instanceof code_1._CodeOrName ? addNames(names, from.names) : names;
     }
-    function optimizeExpr(expr, names, constants7) {
+    function optimizeExpr(expr, names, constants9) {
       if (expr instanceof code_1.Name)
         return replaceName(expr);
       if (!canOptimize(expr))
@@ -1021,14 +1021,14 @@ var require_codegen = __commonJS({
         return items;
       }, []));
       function replaceName(n) {
-        const c = constants7[n.str];
+        const c = constants9[n.str];
         if (c === void 0 || names[n.str] !== 1)
           return n;
         delete names[n.str];
         return c;
       }
       function canOptimize(e) {
-        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants7[c.str] !== void 0);
+        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants9[c.str] !== void 0);
       }
     }
     function subtractNames(names, from) {
@@ -1067,10 +1067,10 @@ var require_util = __commonJS({
     var codegen_1 = require_codegen();
     var code_1 = require_code();
     function toHash(arr) {
-      const hash2 = {};
+      const hash3 = {};
       for (const item2 of arr)
-        hash2[item2] = true;
-      return hash2;
+        hash3[item2] = true;
+      return hash3;
     }
     exports.toHash = toHash;
     function alwaysValidSchema(it, schema) {
@@ -2990,7 +2990,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve.call(this, root, ref);
+      let _sch = resolve2.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a3 = root.localRefs) === null || _a3 === void 0 ? void 0 : _a3[ref];
         const { schemaId } = this.opts;
@@ -3017,7 +3017,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve(root, ref) {
+    function resolve2(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3847,7 +3847,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve(baseURI, relativeURI, options) {
+    function resolve2(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const {
         parsed: baseParsed,
@@ -4216,7 +4216,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve,
+      resolve: resolve2,
       resolveComponent,
       equal,
       serialize,
@@ -7692,7 +7692,7 @@ var require_crc = __commonJS({
 var require_parser = __commonJS({
   "node_modules/pngjs/lib/parser.js"(exports, module) {
     "use strict";
-    var constants7 = require_constants();
+    var constants9 = require_constants();
     var CrcCalculator = require_crc();
     var Parser = module.exports = function(options, dependencies) {
       this._options = options;
@@ -7703,12 +7703,12 @@ var require_parser = __commonJS({
       this._palette = [];
       this._colorType = 0;
       this._chunks = {};
-      this._chunks[constants7.TYPE_IHDR] = this._handleIHDR.bind(this);
-      this._chunks[constants7.TYPE_IEND] = this._handleIEND.bind(this);
-      this._chunks[constants7.TYPE_IDAT] = this._handleIDAT.bind(this);
-      this._chunks[constants7.TYPE_PLTE] = this._handlePLTE.bind(this);
-      this._chunks[constants7.TYPE_tRNS] = this._handleTRNS.bind(this);
-      this._chunks[constants7.TYPE_gAMA] = this._handleGAMA.bind(this);
+      this._chunks[constants9.TYPE_IHDR] = this._handleIHDR.bind(this);
+      this._chunks[constants9.TYPE_IEND] = this._handleIEND.bind(this);
+      this._chunks[constants9.TYPE_IDAT] = this._handleIDAT.bind(this);
+      this._chunks[constants9.TYPE_PLTE] = this._handlePLTE.bind(this);
+      this._chunks[constants9.TYPE_tRNS] = this._handleTRNS.bind(this);
+      this._chunks[constants9.TYPE_gAMA] = this._handleGAMA.bind(this);
       this.read = dependencies.read;
       this.error = dependencies.error;
       this.metadata = dependencies.metadata;
@@ -7723,10 +7723,10 @@ var require_parser = __commonJS({
       };
     };
     Parser.prototype.start = function() {
-      this.read(constants7.PNG_SIGNATURE.length, this._parseSignature.bind(this));
+      this.read(constants9.PNG_SIGNATURE.length, this._parseSignature.bind(this));
     };
     Parser.prototype._parseSignature = function(data) {
-      let signature = constants7.PNG_SIGNATURE;
+      let signature = constants9.PNG_SIGNATURE;
       for (let i = 0; i < signature.length; i++) {
         if (data[i] !== signature[i]) {
           this.error(new Error("Invalid file signature"));
@@ -7743,7 +7743,7 @@ var require_parser = __commonJS({
         name += String.fromCharCode(data[i]);
       }
       let ancillary = Boolean(data[4] & 32);
-      if (!this._hasIHDR && type !== constants7.TYPE_IHDR) {
+      if (!this._hasIHDR && type !== constants9.TYPE_IHDR) {
         this.error(new Error("Expected IHDR on beggining"));
         return;
       }
@@ -7791,7 +7791,7 @@ var require_parser = __commonJS({
         this.error(new Error("Unsupported bit depth " + depth));
         return;
       }
-      if (!(colorType in constants7.COLORTYPE_TO_BPP_MAP)) {
+      if (!(colorType in constants9.COLORTYPE_TO_BPP_MAP)) {
         this.error(new Error("Unsupported color type"));
         return;
       }
@@ -7808,16 +7808,16 @@ var require_parser = __commonJS({
         return;
       }
       this._colorType = colorType;
-      let bpp = constants7.COLORTYPE_TO_BPP_MAP[this._colorType];
+      let bpp = constants9.COLORTYPE_TO_BPP_MAP[this._colorType];
       this._hasIHDR = true;
       this.metadata({
         width,
         height,
         depth,
         interlace: Boolean(interlace),
-        palette: Boolean(colorType & constants7.COLORTYPE_PALETTE),
-        color: Boolean(colorType & constants7.COLORTYPE_COLOR),
-        alpha: Boolean(colorType & constants7.COLORTYPE_ALPHA),
+        palette: Boolean(colorType & constants9.COLORTYPE_PALETTE),
+        color: Boolean(colorType & constants9.COLORTYPE_COLOR),
+        alpha: Boolean(colorType & constants9.COLORTYPE_ALPHA),
         bpp,
         colorType
       });
@@ -7841,7 +7841,7 @@ var require_parser = __commonJS({
     };
     Parser.prototype._parseTRNS = function(data) {
       this._crc.write(data);
-      if (this._colorType === constants7.COLORTYPE_PALETTE_COLOR) {
+      if (this._colorType === constants9.COLORTYPE_PALETTE_COLOR) {
         if (this._palette.length === 0) {
           this.error(new Error("Transparency chunk must be after palette"));
           return;
@@ -7855,10 +7855,10 @@ var require_parser = __commonJS({
         }
         this.palette(this._palette);
       }
-      if (this._colorType === constants7.COLORTYPE_GRAYSCALE) {
+      if (this._colorType === constants9.COLORTYPE_GRAYSCALE) {
         this.transColor([data.readUInt16BE(0)]);
       }
-      if (this._colorType === constants7.COLORTYPE_COLOR) {
+      if (this._colorType === constants9.COLORTYPE_COLOR) {
         this.transColor([
           data.readUInt16BE(0),
           data.readUInt16BE(2),
@@ -7872,7 +7872,7 @@ var require_parser = __commonJS({
     };
     Parser.prototype._parseGAMA = function(data) {
       this._crc.write(data);
-      this.gamma(data.readUInt32BE(0) / constants7.GAMMA_DIVISION);
+      this.gamma(data.readUInt32BE(0) / constants9.GAMMA_DIVISION);
       this._handleChunkEnd();
     };
     Parser.prototype._handleIDAT = function(length) {
@@ -7884,7 +7884,7 @@ var require_parser = __commonJS({
     };
     Parser.prototype._parseIDAT = function(length, data) {
       this._crc.write(data);
-      if (this._colorType === constants7.COLORTYPE_PALETTE_COLOR && this._palette.length === 0) {
+      if (this._colorType === constants9.COLORTYPE_PALETTE_COLOR && this._palette.length === 0) {
         throw new Error("Expected palette not found");
       }
       this.inflateData(data);
@@ -8372,9 +8372,9 @@ var require_parser_async = __commonJS({
 var require_bitpacker = __commonJS({
   "node_modules/pngjs/lib/bitpacker.js"(exports, module) {
     "use strict";
-    var constants7 = require_constants();
+    var constants9 = require_constants();
     module.exports = function(dataIn, width, height, options) {
-      let outHasAlpha = [constants7.COLORTYPE_COLOR_ALPHA, constants7.COLORTYPE_ALPHA].indexOf(
+      let outHasAlpha = [constants9.COLORTYPE_COLOR_ALPHA, constants9.COLORTYPE_ALPHA].indexOf(
         options.colorType
       ) !== -1;
       if (options.colorType === options.inputColorType) {
@@ -8394,11 +8394,11 @@ var require_bitpacker = __commonJS({
       }
       let data = options.bitDepth !== 16 ? dataIn : new Uint16Array(dataIn.buffer);
       let maxValue = 255;
-      let inBpp = constants7.COLORTYPE_TO_BPP_MAP[options.inputColorType];
+      let inBpp = constants9.COLORTYPE_TO_BPP_MAP[options.inputColorType];
       if (inBpp === 4 && !options.inputHasAlpha) {
         inBpp = 3;
       }
-      let outBpp = constants7.COLORTYPE_TO_BPP_MAP[options.colorType];
+      let outBpp = constants9.COLORTYPE_TO_BPP_MAP[options.colorType];
       if (options.bitDepth === 16) {
         maxValue = 65535;
         outBpp *= 2;
@@ -8422,24 +8422,24 @@ var require_bitpacker = __commonJS({
         let blue;
         let alpha = maxValue;
         switch (options.inputColorType) {
-          case constants7.COLORTYPE_COLOR_ALPHA:
+          case constants9.COLORTYPE_COLOR_ALPHA:
             alpha = data[inIndex + 3];
             red = data[inIndex];
             green = data[inIndex + 1];
             blue = data[inIndex + 2];
             break;
-          case constants7.COLORTYPE_COLOR:
+          case constants9.COLORTYPE_COLOR:
             red = data[inIndex];
             green = data[inIndex + 1];
             blue = data[inIndex + 2];
             break;
-          case constants7.COLORTYPE_ALPHA:
+          case constants9.COLORTYPE_ALPHA:
             alpha = data[inIndex + 1];
             red = data[inIndex];
             green = red;
             blue = red;
             break;
-          case constants7.COLORTYPE_GRAYSCALE:
+          case constants9.COLORTYPE_GRAYSCALE:
             red = data[inIndex];
             green = red;
             blue = red;
@@ -8472,8 +8472,8 @@ var require_bitpacker = __commonJS({
         for (let x = 0; x < width; x++) {
           let rgba = getRGBA(data, inIndex);
           switch (options.colorType) {
-            case constants7.COLORTYPE_COLOR_ALPHA:
-            case constants7.COLORTYPE_COLOR:
+            case constants9.COLORTYPE_COLOR_ALPHA:
+            case constants9.COLORTYPE_COLOR:
               if (options.bitDepth === 8) {
                 outData[outIndex] = rgba.red;
                 outData[outIndex + 1] = rgba.green;
@@ -8490,8 +8490,8 @@ var require_bitpacker = __commonJS({
                 }
               }
               break;
-            case constants7.COLORTYPE_ALPHA:
-            case constants7.COLORTYPE_GRAYSCALE: {
+            case constants9.COLORTYPE_ALPHA:
+            case constants9.COLORTYPE_GRAYSCALE: {
               let grayscale = (rgba.red + rgba.green + rgba.blue) / 3;
               if (options.bitDepth === 8) {
                 outData[outIndex] = grayscale;
@@ -8664,7 +8664,7 @@ var require_filter_pack = __commonJS({
 var require_packer = __commonJS({
   "node_modules/pngjs/lib/packer.js"(exports, module) {
     "use strict";
-    var constants7 = require_constants();
+    var constants9 = require_constants();
     var CrcStream = require_crc();
     var bitPacker = require_bitpacker();
     var filter = require_filter_pack();
@@ -8677,23 +8677,23 @@ var require_packer = __commonJS({
       options.inputHasAlpha = options.inputHasAlpha != null ? options.inputHasAlpha : true;
       options.deflateFactory = options.deflateFactory || zlib2.createDeflate;
       options.bitDepth = options.bitDepth || 8;
-      options.colorType = typeof options.colorType === "number" ? options.colorType : constants7.COLORTYPE_COLOR_ALPHA;
-      options.inputColorType = typeof options.inputColorType === "number" ? options.inputColorType : constants7.COLORTYPE_COLOR_ALPHA;
+      options.colorType = typeof options.colorType === "number" ? options.colorType : constants9.COLORTYPE_COLOR_ALPHA;
+      options.inputColorType = typeof options.inputColorType === "number" ? options.inputColorType : constants9.COLORTYPE_COLOR_ALPHA;
       if ([
-        constants7.COLORTYPE_GRAYSCALE,
-        constants7.COLORTYPE_COLOR,
-        constants7.COLORTYPE_COLOR_ALPHA,
-        constants7.COLORTYPE_ALPHA
+        constants9.COLORTYPE_GRAYSCALE,
+        constants9.COLORTYPE_COLOR,
+        constants9.COLORTYPE_COLOR_ALPHA,
+        constants9.COLORTYPE_ALPHA
       ].indexOf(options.colorType) === -1) {
         throw new Error(
           "option color type:" + options.colorType + " is not supported at present"
         );
       }
       if ([
-        constants7.COLORTYPE_GRAYSCALE,
-        constants7.COLORTYPE_COLOR,
-        constants7.COLORTYPE_COLOR_ALPHA,
-        constants7.COLORTYPE_ALPHA
+        constants9.COLORTYPE_GRAYSCALE,
+        constants9.COLORTYPE_COLOR,
+        constants9.COLORTYPE_COLOR_ALPHA,
+        constants9.COLORTYPE_ALPHA
       ].indexOf(options.inputColorType) === -1) {
         throw new Error(
           "option input color type:" + options.inputColorType + " is not supported at present"
@@ -8717,7 +8717,7 @@ var require_packer = __commonJS({
     };
     Packer.prototype.filterData = function(data, width, height) {
       let packedData = bitPacker(data, width, height, this._options);
-      let bpp = constants7.COLORTYPE_TO_BPP_MAP[this._options.colorType];
+      let bpp = constants9.COLORTYPE_TO_BPP_MAP[this._options.colorType];
       let filteredData = filter(packedData, width, height, this._options, bpp);
       return filteredData;
     };
@@ -8737,8 +8737,8 @@ var require_packer = __commonJS({
     };
     Packer.prototype.packGAMA = function(gamma) {
       let buf = Buffer.alloc(4);
-      buf.writeUInt32BE(Math.floor(gamma * constants7.GAMMA_DIVISION), 0);
-      return this._packChunk(constants7.TYPE_gAMA, buf);
+      buf.writeUInt32BE(Math.floor(gamma * constants9.GAMMA_DIVISION), 0);
+      return this._packChunk(constants9.TYPE_gAMA, buf);
     };
     Packer.prototype.packIHDR = function(width, height) {
       let buf = Buffer.alloc(13);
@@ -8749,13 +8749,13 @@ var require_packer = __commonJS({
       buf[10] = 0;
       buf[11] = 0;
       buf[12] = 0;
-      return this._packChunk(constants7.TYPE_IHDR, buf);
+      return this._packChunk(constants9.TYPE_IHDR, buf);
     };
     Packer.prototype.packIDAT = function(data) {
-      return this._packChunk(constants7.TYPE_IDAT, data);
+      return this._packChunk(constants9.TYPE_IDAT, data);
     };
     Packer.prototype.packIEND = function() {
-      return this._packChunk(constants7.TYPE_IEND, null);
+      return this._packChunk(constants9.TYPE_IEND, null);
     };
   }
 });
@@ -8766,7 +8766,7 @@ var require_packer_async = __commonJS({
     "use strict";
     var util = __require("util");
     var Stream = __require("stream");
-    var constants7 = require_constants();
+    var constants9 = require_constants();
     var Packer = require_packer();
     var PackerAsync = module.exports = function(opt) {
       Stream.call(this);
@@ -8777,7 +8777,7 @@ var require_packer_async = __commonJS({
     };
     util.inherits(PackerAsync, Stream);
     PackerAsync.prototype.pack = function(data, width, height, gamma) {
-      this.emit("data", Buffer.from(constants7.PNG_SIGNATURE));
+      this.emit("data", Buffer.from(constants9.PNG_SIGNATURE));
       this.emit("data", this._packer.packIHDR(width, height));
       if (gamma) {
         this.emit("data", this._packer.packGAMA(gamma));
@@ -9105,7 +9105,7 @@ var require_packer_sync = __commonJS({
     if (!zlib2.deflateSync) {
       hasSyncZlib = false;
     }
-    var constants7 = require_constants();
+    var constants9 = require_constants();
     var Packer = require_packer();
     module.exports = function(metaData, opt) {
       if (!hasSyncZlib) {
@@ -9116,7 +9116,7 @@ var require_packer_sync = __commonJS({
       let options = opt || {};
       let packer = new Packer(options);
       let chunks = [];
-      chunks.push(Buffer.from(constants7.PNG_SIGNATURE));
+      chunks.push(Buffer.from(constants9.PNG_SIGNATURE));
       chunks.push(packer.packIHDR(metaData.width, metaData.height));
       if (metaData.gamma) {
         chunks.push(packer.packGAMA(metaData.gamma));
@@ -16207,7 +16207,7 @@ var recursive = /* @__PURE__ */ new WeakMap();
 var NONE = 0;
 var ASSUMED = 1;
 var PROVEN = 2;
-function isRecursive(inst, stack, resolve) {
+function isRecursive(inst, stack, resolve2) {
   const cached2 = recursive.get(inst);
   if (cached2 !== void 0)
     return cached2 ? PROVEN : NONE;
@@ -16217,7 +16217,7 @@ function isRecursive(inst, stack, resolve) {
   let result = NONE;
   const check2 = (child) => {
     if (result !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack, resolve);
+      const answer = isRecursive(child, stack, resolve2);
       if (answer > result)
         result = answer;
     }
@@ -16228,7 +16228,7 @@ function isRecursive(inst, stack, resolve) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve2) : NONE;
       if (child > answer)
         answer = child;
     }
@@ -16292,7 +16292,7 @@ function isRecursive(inst, stack, resolve) {
       break;
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
-      const inner = def._cachedInner ?? (resolve ? inst._zod.innerType : void 0);
+      const inner = def._cachedInner ?? (resolve2 ? inst._zod.innerType : void 0);
       merge2(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
@@ -33245,7 +33245,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error62) {
@@ -33262,7 +33262,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       const earlyReject = (error62) => {
         reject(error62);
       };
@@ -33340,7 +33340,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve(parseResult.data);
+            resolve2(parseResult.data);
           }
         } catch (error62) {
           reject(error62);
@@ -33602,12 +33602,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve, interval);
+      const timeoutId = setTimeout(resolve2, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -34483,12 +34483,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve) => {
+    return new Promise((resolve2) => {
       const json2 = serializeMessage(message);
       if (this._stdout.write(json2)) {
-        resolve();
+        resolve2();
       } else {
-        this._stdout.once("drain", resolve);
+        this._stdout.once("drain", resolve2);
       }
     });
   }
@@ -34592,7 +34592,7 @@ function completionQuestionsFor(input2) {
 }
 
 // src/service.ts
-import { createHash as createHash2, randomUUID as randomUUID3 } from "node:crypto";
+import { createHash as createHash2, randomUUID as randomUUID4 } from "node:crypto";
 
 // src/redact.ts
 function redactText(value, explicitSecrets = []) {
@@ -34622,7 +34622,7 @@ var APIPromise = class APIPromise2 extends Promise {
   #parseResponse;
   #parsed;
   constructor(responsePromise, parseResponse) {
-    super((resolve) => resolve(void 0));
+    super((resolve2) => resolve2(void 0));
     this.#responsePromise = responsePromise;
     this.#parseResponse = parseResponse;
   }
@@ -34699,7 +34699,7 @@ var retryDelayMs = (attempt, headers, policy = DEFAULT_RETRY_POLICY, random = Ma
   const exponential = Math.min(policy.backoffInitialMs * 2 ** attempt, policy.backoffMaxMs);
   return Math.round(exponential * (1 - random() * policy.backoffJitter));
 };
-var sleep = (ms, signal) => new Promise((resolve, reject) => {
+var sleep = (ms, signal) => new Promise((resolve2, reject) => {
   if (signal?.aborted) return reject(signal.reason);
   const onAbort = () => {
     clearTimeout(timer);
@@ -34707,7 +34707,7 @@ var sleep = (ms, signal) => new Promise((resolve, reject) => {
   };
   const timer = setTimeout(() => {
     signal?.removeEventListener("abort", onAbort);
-    resolve();
+    resolve2();
   }, ms);
   signal?.addEventListener("abort", onAbort, { once: true });
 });
@@ -35039,8 +35039,8 @@ var resolveCompression = (compression) => {
 };
 var zstd = async (body) => {
   const data = new Uint8Array(await body.arrayBuffer());
-  const compressed = await new Promise((resolve, reject) => {
-    zlib()?.zstdCompress?.(data, (err, result) => err ? reject(err) : resolve(result));
+  const compressed = await new Promise((resolve2, reject) => {
+    zlib()?.zstdCompress?.(data, (err, result) => err ? reject(err) : resolve2(result));
   });
   return new Uint8Array(compressed);
 };
@@ -35249,13 +35249,13 @@ var bufferResponse = async (response, signal) => {
 };
 var untilAborted = (start, signal) => {
   if (signal === void 0) return start();
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve2, reject) => {
     if (signal.aborted) return reject(signal.reason);
     const onAbort = () => reject(signal.reason);
     signal.addEventListener("abort", onAbort, { once: true });
     start().then((value) => {
       signal.removeEventListener("abort", onAbort);
-      resolve(value);
+      resolve2(value);
     }, (err) => {
       signal.removeEventListener("abort", onAbort);
       reject(err);
@@ -35497,12 +35497,12 @@ var TypeSafeClient = class {
   }
   /** Wait before retrying; caller cancellation throws `APIUserAbortError`. */
   async backOff(tag, attempt, retriesLeft, reason, headers, { retry, signal }) {
-    const delay3 = retryDelayMs(attempt, headers, retry);
+    const delay2 = retryDelayMs(attempt, headers, retry);
     const nth = attempt + 1;
     const total = attempt + retriesLeft;
-    this.logger.info(`${tag} retrying in ${delay3}ms (retry ${nth}/${total}) after ${reason}`);
+    this.logger.info(`${tag} retrying in ${delay2}ms (retry ${nth}/${total}) after ${reason}`);
     try {
-      await sleep(delay3, signal);
+      await sleep(delay2, signal);
     } catch (err) {
       this.logger.info(`${tag} aborted by caller while waiting to retry`);
       throw new APIUserAbortError(void 0, { cause: err });
@@ -36100,23 +36100,21 @@ async function evaluateProvider(args) {
 }
 
 // src/store.ts
-import { mkdir, open as open2, rename, unlink, link, rmdir, readdir, lstat } from "node:fs/promises";
-import { constants } from "node:fs";
+import { mkdir as mkdir2, open as open3, rename as rename2, unlink as unlink2, link, lstat as lstat2 } from "node:fs/promises";
+import { constants as constants2 } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, isAbsolute, join } from "node:path";
+import { isAbsolute, join as join2 } from "node:path";
+import { randomUUID as randomUUID2 } from "node:crypto";
+
+// src/state-lock.ts
+import { mkdir, open as open2, rename, unlink, rmdir, readdir, lstat } from "node:fs/promises";
+import { constants } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
-var MAX_STATE_FILE_BYTES = 65536;
-var MAX_BUDGET_FILE_BYTES = 4096;
 var LOCK_WAIT_ATTEMPTS = 50;
 var LOCK_WAIT_MS = 10;
 var STALE_LOCK_MS = 3e4;
-function validateReservationBytes(bytes) {
-  if (!Number.isSafeInteger(bytes) || bytes < 0) throw new TypeError("invalid_reservation_bytes");
-}
-function validateLimit(value, name) {
-  if (value !== null && (!Number.isSafeInteger(value) || value < 0)) throw new TypeError(`invalid_${name}`);
-}
 function lockData(token) {
   return { pid: process.pid, token, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
 }
@@ -36180,7 +36178,7 @@ async function reclaimStaleLock(path) {
     return false;
   }
 }
-async function acquireLock(path, attempts = LOCK_WAIT_ATTEMPTS) {
+async function acquireStateLock(path, attempts = LOCK_WAIT_ATTEMPTS) {
   const token = randomUUID();
   const entry = `owner-${token}.json`;
   const temporary = join(dirname(path), `.${basename(path)}-${token}.tmp`);
@@ -36212,7 +36210,7 @@ async function acquireLock(path, attempts = LOCK_WAIT_ATTEMPTS) {
     });
   }
 }
-async function releaseLock(path, handle, token) {
+async function releaseStateLock(path, handle, token) {
   await handle.close().catch(() => {
   });
   try {
@@ -36221,10 +36219,21 @@ async function releaseLock(path, handle, token) {
   } catch {
   }
 }
+
+// src/store.ts
+var MAX_STATE_FILE_BYTES = 65536;
+var MAX_BUDGET_FILE_BYTES = 4096;
+var LOCK_WAIT_ATTEMPTS2 = 50;
+function validateReservationBytes(bytes) {
+  if (!Number.isSafeInteger(bytes) || bytes < 0) throw new TypeError("invalid_reservation_bytes");
+}
+function validateLimit(value, name) {
+  if (value !== null && (!Number.isSafeInteger(value) || value < 0)) throw new TypeError(`invalid_${name}`);
+}
 async function readBudget(path) {
   let handle;
   try {
-    handle = await open2(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    handle = await open3(path, constants2.O_RDONLY | constants2.O_NOFOLLOW | constants2.O_NONBLOCK);
   } catch (error62) {
     if (error62.code === "ENOENT") return { calls: 0, bytes: 0 };
     throw error62;
@@ -36240,14 +36249,14 @@ async function readBudget(path) {
   }
 }
 async function writeBudget(path, temporary, usage) {
-  const handle = await open2(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 384);
+  const handle = await open3(temporary, constants2.O_WRONLY | constants2.O_CREAT | constants2.O_EXCL | constants2.O_NOFOLLOW, 384);
   try {
     await handle.writeFile(JSON.stringify(usage));
     await handle.sync();
   } finally {
     await handle.close();
   }
-  await rename(temporary, path);
+  await rename2(temporary, path);
 }
 async function readBudgetUsage(directory, maxCalls, maxBytes, now = /* @__PURE__ */ new Date()) {
   const date5 = now.toISOString().slice(0, 10);
@@ -36280,10 +36289,10 @@ async function readBudgetUsage(directory, maxCalls, maxBytes, now = /* @__PURE__
     resetsAt,
     status: "ok"
   });
-  const path = join(directory, `budget-${date5}.json`);
+  const path = join2(directory, `budget-${date5}.json`);
   let handle;
   try {
-    handle = await open2(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    handle = await open3(path, constants2.O_RDONLY | constants2.O_NOFOLLOW | constants2.O_NONBLOCK);
   } catch (err) {
     if (err.code === "ENOENT") return available(0, 0);
     return unavailable();
@@ -36303,7 +36312,7 @@ async function readBudgetUsage(directory, maxCalls, maxBytes, now = /* @__PURE__
 function dataDirectory(env = process.env) {
   const override = env.JEV_STATE_DIRECTORY;
   if (override !== void 0 && isAbsolute(override) && !override.includes("\0")) return override;
-  const userDirectory = join(env.XDG_STATE_HOME || join(homedir(), ".local", "state"), "jev-workflows");
+  const userDirectory = join2(env.XDG_STATE_HOME || join2(homedir(), ".local", "state"), "jev-workflows");
   if (env.JEV_STATE_MODE === "user") return userDirectory;
   return env.PLUGIN_DATA || userDirectory;
 }
@@ -36320,20 +36329,20 @@ var FileStore = class {
   maxBytes;
   async reserve(bytes) {
     validateReservationBytes(bytes);
-    await mkdir(this.directory, { recursive: true, mode: 448 });
+    await mkdir2(this.directory, { recursive: true, mode: 448 });
     const day = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-    const path = join(this.directory, `budget-${day}.json`);
+    const path = join2(this.directory, `budget-${day}.json`);
     const lock = `${path}.lock`;
     const unlimited = this.maxCalls === null && this.maxBytes === null;
     if (unlimited) await readBudget(path);
     let acquired;
     try {
-      acquired = await acquireLock(lock, unlimited ? 1 : LOCK_WAIT_ATTEMPTS);
+      acquired = await acquireStateLock(lock, unlimited ? 1 : LOCK_WAIT_ATTEMPTS2);
     } catch (error62) {
       if (unlimited && error62.message === "budget_busy") return true;
       throw error62;
     }
-    const temporary = join(this.directory, `.budget-${randomUUID()}.tmp`);
+    const temporary = join2(this.directory, `.budget-${randomUUID2()}.tmp`);
     try {
       let usage;
       usage = await readBudget(path);
@@ -36343,32 +36352,32 @@ var FileStore = class {
       await writeBudget(path, temporary, next);
       return true;
     } finally {
-      await releaseLock(lock, acquired.handle, acquired.token);
-      await unlink(temporary).catch(() => {
+      await releaseStateLock(lock, acquired.handle, acquired.token);
+      await unlink2(temporary).catch(() => {
       });
     }
   }
   async save(receipt) {
-    const directory = join(this.directory, "receipts");
-    await mkdir(directory, { recursive: true, mode: 448 });
-    const receiptId = typeof receipt.receiptId === "string" && /^[a-f0-9-]{36}$/.test(receipt.receiptId) ? receipt.receiptId : randomUUID();
+    const directory = join2(this.directory, "receipts");
+    await mkdir2(directory, { recursive: true, mode: 448 });
+    const receiptId = typeof receipt.receiptId === "string" && /^[a-f0-9-]{36}$/.test(receipt.receiptId) ? receipt.receiptId : randomUUID2();
     const name = `${receiptId}.json`;
-    const temporary = join(directory, `.receipt-${randomUUID()}.tmp`);
+    const temporary = join2(directory, `.receipt-${randomUUID2()}.tmp`);
     try {
       const contents = JSON.stringify(receipt, null, 2) + "\n";
       if (Buffer.byteLength(contents) > MAX_STATE_FILE_BYTES) throw new Error("receipt_too_large");
-      const handle = await open2(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 384);
+      const handle = await open3(temporary, constants2.O_WRONLY | constants2.O_CREAT | constants2.O_EXCL | constants2.O_NOFOLLOW, 384);
       try {
         await handle.writeFile(contents);
         await handle.sync();
       } finally {
         await handle.close();
       }
-      await link(temporary, join(directory, name));
+      await link(temporary, join2(directory, name));
       await this.updateReceiptIndex(receiptId, receipt.timestamp).catch(() => {
       });
     } finally {
-      await unlink(temporary).catch(() => {
+      await unlink2(temporary).catch(() => {
       });
     }
   }
@@ -36376,21 +36385,21 @@ var FileStore = class {
   async updateReceiptIndex(receiptId, timestamp) {
     if (typeof timestamp !== "string" || !Number.isFinite(Date.parse(timestamp))) return;
     const date5 = new Date(timestamp).toISOString().slice(0, 10);
-    const path = join(this.directory, `receipt-index-${date5}.json`);
+    const path = join2(this.directory, `receipt-index-${date5}.json`);
     const lockPath = `${path}.lock`;
-    const existing = await lstat(path).catch(() => void 0);
+    const existing = await lstat2(path).catch(() => void 0);
     if (existing && (!existing.isFile() || existing.size > MAX_STATE_FILE_BYTES)) return;
     let acquired;
     try {
-      acquired = await acquireLock(lockPath);
+      acquired = await acquireStateLock(lockPath);
     } catch {
       return;
     }
-    const temporary = join(this.directory, `.receipt-index-${randomUUID()}.tmp`);
+    const temporary = join2(this.directory, `.receipt-index-${randomUUID2()}.tmp`);
     try {
       let ids = [];
       try {
-        const handle2 = await open2(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+        const handle2 = await open3(path, constants2.O_RDONLY | constants2.O_NOFOLLOW | constants2.O_NONBLOCK);
         try {
           const info = await handle2.stat();
           if (!info.isFile() || info.size > MAX_STATE_FILE_BYTES) throw new Error("invalid_receipt_index");
@@ -36404,27 +36413,27 @@ var FileStore = class {
         if (error62.code !== "ENOENT") return;
       }
       if (!ids.includes(receiptId)) ids.push(receiptId);
-      const handle = await open2(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 384);
+      const handle = await open3(temporary, constants2.O_WRONLY | constants2.O_CREAT | constants2.O_EXCL | constants2.O_NOFOLLOW, 384);
       try {
         await handle.writeFile(JSON.stringify({ version: 1, date: date5, receiptIds: ids }) + "\n");
         await handle.sync();
       } finally {
         await handle.close();
       }
-      await rename(temporary, path);
+      await rename2(temporary, path);
     } finally {
-      await releaseLock(lockPath, acquired.handle, acquired.token);
-      await unlink(temporary).catch(() => {
+      await releaseStateLock(lockPath, acquired.handle, acquired.token);
+      await unlink2(temporary).catch(() => {
       });
     }
   }
 };
 
 // src/policy.ts
-import { constants as constants2 } from "node:fs";
-import { mkdir as mkdir2, open as open3, rename as rename2, lstat as lstat2, realpath, unlink as unlink2 } from "node:fs/promises";
-import { randomUUID as randomUUID2 } from "node:crypto";
-import { isAbsolute as isAbsolute2, join as join2, sep } from "node:path";
+import { constants as constants3 } from "node:fs";
+import { mkdir as mkdir3, open as open4, rename as rename3, lstat as lstat3, realpath, unlink as unlink3 } from "node:fs/promises";
+import { randomUUID as randomUUID3 } from "node:crypto";
+import { isAbsolute as isAbsolute2, join as join3, sep } from "node:path";
 var POLICY_FILE = "policy.json";
 var MAX_POLICY_BYTES = 8 * 1024;
 var DEFAULT_CALL_CAP = null;
@@ -36433,6 +36442,7 @@ var DEFAULT_BYTES_PER_DAY = null;
 var MAX_WORKSPACES = 64;
 var automationPolicySchema = external_exports.strictObject({
   enabled: external_exports.boolean(),
+  consultationMode: external_exports.enum(["changed_state", "always"]).default("always"),
   scope: external_exports.enum(["all-workspaces", "workspaces"]).default("workspaces"),
   workspaces: external_exports.array(external_exports.string().min(1).max(4096).refine(validRoot, "workspace must be absolute")).max(MAX_WORKSPACES).default([]),
   // These are optional user-selected caps. Safe-integer validation protects
@@ -36443,6 +36453,7 @@ var automationPolicySchema = external_exports.strictObject({
 });
 var DEFAULT_POLICY = {
   enabled: false,
+  consultationMode: "changed_state",
   scope: "workspaces",
   workspaces: [],
   maxHookCallsPerSession: DEFAULT_CALL_CAP,
@@ -36452,7 +36463,7 @@ var DEFAULT_POLICY = {
 function policyPath(env) {
   const directory = dataDirectory(env);
   if (!isAbsolute2(directory) || directory.includes("\0")) throw new Error("invalid_policy_directory");
-  return join2(directory, POLICY_FILE);
+  return join3(directory, POLICY_FILE);
 }
 function validRoot(value) {
   return typeof value === "string" && isAbsolute2(value) && !value.includes("\0") && value.length <= 4096;
@@ -36466,7 +36477,7 @@ function normalizePolicy(raw) {
 async function readPolicy(env = process.env) {
   try {
     const path = policyPath(env);
-    const handle = await open3(path, constants2.O_RDONLY | constants2.O_NOFOLLOW);
+    const handle = await open4(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
     try {
       const info = await handle.stat();
       if (!info.isFile() || info.size > MAX_POLICY_BYTES) return { ...DEFAULT_POLICY };
@@ -36484,35 +36495,35 @@ async function configurePolicy(raw, env = process.env) {
   const canonicalWorkspaces = [];
   for (const workspace of parsed.workspaces) {
     const resolved = await realpath(workspace);
-    const info = await lstat2(resolved);
+    const info = await lstat3(resolved);
     if (!info.isDirectory()) throw new Error("workspace_not_directory");
     canonicalWorkspaces.push(resolved);
   }
   const policy = { ...parsed, workspaces: canonicalWorkspaces };
   const directory = dataDirectory(env);
   if (!isAbsolute2(directory) || directory.includes("\0")) throw new Error("invalid_policy_directory");
-  await mkdir2(directory, { recursive: true, mode: 448 });
+  await mkdir3(directory, { recursive: true, mode: 448 });
   const path = policyPath(env);
   try {
-    const link5 = await lstat2(path);
+    const link5 = await lstat3(path);
     if (link5.isSymbolicLink()) throw new Error("policy_symlink");
     if (!link5.isFile()) throw new Error("policy_not_file");
   } catch (error62) {
     if (error62.code !== "ENOENT") throw error62;
   }
-  const temporary = join2(directory, `.policy-${randomUUID2()}.tmp`);
+  const temporary = join3(directory, `.policy-${randomUUID3()}.tmp`);
   const contents = JSON.stringify(policy) + "\n";
   if (Buffer.byteLength(contents) > MAX_POLICY_BYTES) throw new Error("policy_too_large");
-  const handle = await open3(temporary, constants2.O_WRONLY | constants2.O_CREAT | constants2.O_EXCL | constants2.O_NOFOLLOW, 384);
+  const handle = await open4(temporary, constants3.O_WRONLY | constants3.O_CREAT | constants3.O_EXCL | constants3.O_NOFOLLOW, 384);
   try {
     await handle.writeFile(contents, "utf8");
   } finally {
     await handle.close();
   }
   try {
-    await rename2(temporary, path);
+    await rename3(temporary, path);
   } catch (error62) {
-    await unlink2(temporary).catch(() => {
+    await unlink3(temporary).catch(() => {
     });
     throw error62;
   }
@@ -36520,6 +36531,8 @@ async function configurePolicy(raw, env = process.env) {
 }
 
 // src/decision.ts
+var MAX_DECISION_CANDIDATES = 254;
+var MAX_DECISION_PAYLOAD_BYTES = 48e3;
 var DECISION_RUBRIC_VERSION = "decision-2026-09-26.2";
 var identifier = external_exports.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/);
 var decisionSchema = external_exports.strictObject({
@@ -36531,7 +36544,7 @@ var decisionSchema = external_exports.strictObject({
     description: external_exports.string().min(1).max(1600),
     available: external_exports.boolean().default(true),
     metadata: external_exports.record(external_exports.string().regex(/^[a-zA-Z0-9_.-]{1,40}$/), external_exports.union([external_exports.string().max(500), external_exports.number().finite(), external_exports.boolean()])).refine((value) => Object.keys(value).length <= 16, "at most 16 metadata keys").optional()
-  })).min(1).max(12),
+  })).min(1).max(MAX_DECISION_CANDIDATES),
   evidence: external_exports.array(evidenceSchema).max(12).default([]),
   policy: decisionPolicySchema.optional(),
   origin: originSchema.optional(),
@@ -36552,7 +36565,7 @@ Follow the stated objective and constraints supplied in context, using the evide
 }
 
 // src/credential.ts
-import { closeSync, constants as constants3, fstatSync, openSync, readSync } from "node:fs";
+import { closeSync, constants as constants4, fstatSync, openSync, readSync } from "node:fs";
 import { isAbsolute as isAbsolute3 } from "node:path";
 var MAX_FILE_BYTES = 4096;
 var KEY_LINE = /^(?:export )?TYPESAFE_API_KEY=(?:'([A-Za-z0-9._-]{80,512})'|"([A-Za-z0-9._-]{80,512})"|([A-Za-z0-9._-]{80,512}))\n?$/;
@@ -36560,13 +36573,13 @@ function readCredentialFile(path) {
   if (!isAbsolute3(path) || path.length > 4096 || /[\r\n\0]/.test(path)) return null;
   let fd;
   try {
-    fd = openSync(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
-    const stat2 = fstatSync(fd);
+    fd = openSync(path, constants4.O_RDONLY | constants4.O_NOFOLLOW);
+    const stat = fstatSync(fd);
     const uid = process.getuid?.();
-    if (!stat2.isFile() || uid === void 0 || stat2.uid !== uid || (stat2.mode & 63) !== 0 || stat2.size < 1 || stat2.size > MAX_FILE_BYTES) return null;
-    const buffer = Buffer.alloc(stat2.size + 1);
+    if (!stat.isFile() || uid === void 0 || stat.uid !== uid || (stat.mode & 63) !== 0 || stat.size < 1 || stat.size > MAX_FILE_BYTES) return null;
+    const buffer = Buffer.alloc(stat.size + 1);
     const bytes = readSync(fd, buffer, 0, buffer.length, 0);
-    if (bytes !== stat2.size) return null;
+    if (bytes !== stat.size) return null;
     const match = KEY_LINE.exec(buffer.toString("utf8", 0, bytes));
     const key = match ? match[1] ?? match[2] ?? match[3] ?? null : null;
     return key && new Set(key).size >= 12 ? key : null;
@@ -36583,7 +36596,7 @@ function readCredentialFile(path) {
 }
 
 // src/service.ts
-var maxPayloadBytes = 48e3;
+var maxPayloadBytes = MAX_DECISION_PAYLOAD_BYTES;
 function bestActualCandidate(probabilities, actualCandidateIds) {
   let best;
   let max = Number.NEGATIVE_INFINITY;
@@ -36743,7 +36756,7 @@ function createService(options = {}) {
     }
     async function run() {
       const start = Date.now();
-      const receiptId = randomUUID3();
+      const receiptId = randomUUID4();
       const meta3 = { receiptId, evidenceIds, inputDigest, rubricVersion, ...localMeta };
       let result;
       const limits = status(await readPolicy(env));
@@ -36755,6 +36768,7 @@ function createService(options = {}) {
       }
       try {
         const evaluation = await evaluateProvider({ state, questions, apiKey, timeoutMs, model: selectedModel, longContext: env.JEV_LONG_CONTEXT === "1", signal, fetchFn: options.fetchFn });
+        if (signal?.aborted) throw new ProviderError("cancelled", evaluation.transport ?? null);
         const answer = evaluation.answers[tool === "classify_failure" ? "category" : tool === "check_completion" ? "support" : "decision"];
         if (!answer || answer.type !== "choice") throw new ProviderError("invalid_response", evaluation.transport);
         const minConfidence = decisionPolicy?.minConfidence ?? confidenceFloor;
@@ -36894,7 +36908,7 @@ function createService(options = {}) {
     }
     async function run() {
       const start = Date.now();
-      const receiptId = randomUUID3();
+      const receiptId = randomUUID4();
       const meta3 = { receiptId, ...localMeta };
       let result;
       const limits = status(await readPolicy(env));
@@ -36995,10 +37009,10 @@ function createService(options = {}) {
 }
 
 // src/accounting.ts
-import { constants as constants4 } from "node:fs";
-import { open as open4, readdir as readdir2, link as link2, unlink as unlink3 } from "node:fs/promises";
-import { randomUUID as randomUUID4 } from "node:crypto";
-import { join as join3 } from "node:path";
+import { constants as constants5 } from "node:fs";
+import { open as open5, readdir as readdir2, link as link2, unlink as unlink4 } from "node:fs/promises";
+import { randomUUID as randomUUID5 } from "node:crypto";
+import { join as join4 } from "node:path";
 var receiptName = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.json$/i;
 function emptyCounts() {
   return {
@@ -37055,10 +37069,10 @@ var MAX_INDEX_BYTES = 1024 * 1024;
 async function loadIndex(directory, date5, signal) {
   signal?.throwIfAborted();
   const state = { status: "missing", indexedFiles: 0, unindexedFiles: 0, missingIndexedFiles: 0, indexDateMismatches: 0, duplicateIndexedIds: 0, fallbackUsed: false, fallbackReason: null };
-  const path = join3(directory, `receipt-index-${date5}.json`);
+  const path = join4(directory, `receipt-index-${date5}.json`);
   let handle;
   try {
-    handle = await open4(path, constants4.O_RDONLY | constants4.O_NOFOLLOW | constants4.O_NONBLOCK);
+    handle = await open5(path, constants5.O_RDONLY | constants5.O_NOFOLLOW | constants5.O_NONBLOCK);
   } catch (error62) {
     signal?.throwIfAborted();
     if (error62.code === "ENOENT") return { index: null, state };
@@ -37090,9 +37104,9 @@ async function loadIndex(directory, date5, signal) {
   }
 }
 async function publishMissingIndex(directory, date5, receiptIds) {
-  const path = join3(directory, `receipt-index-${date5}.json`);
-  const temporary = join3(directory, `.receipt-index-${randomUUID4()}.tmp`);
-  const handle = await open4(temporary, constants4.O_WRONLY | constants4.O_CREAT | constants4.O_EXCL | constants4.O_NOFOLLOW, 384);
+  const path = join4(directory, `receipt-index-${date5}.json`);
+  const temporary = join4(directory, `.receipt-index-${randomUUID5()}.tmp`);
+  const handle = await open5(temporary, constants5.O_WRONLY | constants5.O_CREAT | constants5.O_EXCL | constants5.O_NOFOLLOW, 384);
   try {
     await handle.writeFile(JSON.stringify({ version: 1, date: date5, receiptIds: [...receiptIds] }) + "\n");
     await handle.sync();
@@ -37102,7 +37116,7 @@ async function publishMissingIndex(directory, date5, receiptIds) {
   try {
     await link2(temporary, path);
   } finally {
-    await unlink3(temporary).catch(() => {
+    await unlink4(temporary).catch(() => {
     });
   }
 }
@@ -37124,7 +37138,7 @@ async function readEvaluationUsage(directory, credentialFingerprint, now = /* @_
   let files = [];
   if (mode === "full") {
     try {
-      files = (await readdir2(join3(directory, "receipts"), { withFileTypes: true })).filter((f) => f.isFile() && receiptName.test(f.name)).map((f) => f.name).sort();
+      files = (await readdir2(join4(directory, "receipts"), { withFileTypes: true })).filter((f) => f.isFile() && receiptName.test(f.name)).map((f) => f.name).sort();
     } catch (error62) {
       if (error62.code !== "ENOENT") malformedOrUnreadable++;
     }
@@ -37168,10 +37182,10 @@ async function readEvaluationUsage(directory, credentialFingerprint, now = /* @_
         scannedFiles++;
         let handle;
         try {
-          handle = await open4(join3(directory, "receipts", name), constants4.O_RDONLY | constants4.O_NOFOLLOW | constants4.O_NONBLOCK);
+          handle = await open5(join4(directory, "receipts", name), constants5.O_RDONLY | constants5.O_NOFOLLOW | constants5.O_NONBLOCK);
           signal?.throwIfAborted();
-          const stat2 = await handle.stat();
-          if (!stat2.isFile() || stat2.size > 65536) throw new Error("invalid_receipt_file");
+          const stat = await handle.stat();
+          if (!stat.isFile() || stat.size > 65536) throw new Error("invalid_receipt_file");
           const receipt = JSON.parse(await handle.readFile({ encoding: "utf8", signal }));
           if (!receipt || typeof receipt !== "object" || receipt.receiptId !== name.slice(0, -5) || typeof receipt.timestamp !== "string" || !Number.isFinite(Date.parse(receipt.timestamp))) throw new Error("invalid_receipt");
           if (new Date(receipt.timestamp).toISOString().slice(0, 10) !== date5) {
@@ -37281,340 +37295,9 @@ async function readEvaluationUsage(directory, credentialFingerprint, now = /* @_
   };
 }
 
-// src/task-context.ts
-import { constants as constants5 } from "node:fs";
-import { link as link3, mkdir as mkdir3, open as open5, realpath as realpath2, rename as rename3, stat, unlink as unlink4, readFile } from "node:fs/promises";
-import { randomUUID as randomUUID5, createHash as createHash3 } from "node:crypto";
-import { isAbsolute as isAbsolute4, join as join4 } from "node:path";
-import { setTimeout as delay2 } from "node:timers/promises";
-var TASK_CONTEXT_VERSION = 1;
-var MAX_TEXT_BYTES = 1500;
-var MAX_INPUT_TEXT_BYTES = 12e3;
-var MAX_ITEMS = 12;
-var MAX_HISTORY = 8;
-var MAX_EVIDENCE_REFS = 24;
-var CONTEXT_DIRECTORY = "task-context-v1";
-var CONTEXT_LOCK_STALE_MS = 3e4;
-var CONTEXT_LOCK_ATTEMPTS = 200;
-var CONTEXT_LOCK_WAIT_MS = 10;
-var identifier2 = external_exports.string().min(1).max(256);
-var taskContextScopeSchema = external_exports.strictObject({
-  cwd: identifier2,
-  sessionId: identifier2,
-  agentId: identifier2.optional()
-});
-var taskContextProvenanceSchema = external_exports.strictObject({
-  source: external_exports.enum(["user_prompt", "hook", "mcp", "parent", "agent", "system"]),
-  timestamp: external_exports.string().datetime({ offset: true }),
-  eventId: external_exports.string().max(256).optional(),
-  turnId: external_exports.string().max(256).optional(),
-  agentId: external_exports.string().max(256).optional(),
-  operation: external_exports.enum(["continue", "replace", "reset"])
-});
-var taskContextItemSchema = external_exports.strictObject({
-  value: external_exports.string().min(1).max(MAX_TEXT_BYTES),
-  provenance: taskContextProvenanceSchema
-});
-var taskEvidenceRefSchema = external_exports.strictObject({
-  id: external_exports.string().regex(/^[a-zA-Z0-9._:-]{1,80}$/),
-  source: external_exports.string().max(300).optional(),
-  summary: external_exports.string().max(MAX_TEXT_BYTES).optional(),
-  provenance: taskContextProvenanceSchema
-});
-var taskCandidateSchema = external_exports.strictObject({
-  id: external_exports.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/),
-  description: external_exports.string().min(1).max(MAX_TEXT_BYTES),
-  available: external_exports.boolean().default(true),
-  metadata: external_exports.record(external_exports.string().regex(/^[a-zA-Z0-9_.-]{1,40}$/), external_exports.union([external_exports.string().max(500), external_exports.number().finite(), external_exports.boolean()])).optional()
-});
-var taskCandidateCatalogShape = external_exports.partialRecord(
-  external_exports.enum(["tool", "model", "task", "skill", "context", "strategy", "result"]),
-  external_exports.array(taskCandidateSchema).max(12)
-);
-var taskCandidateCatalogSchema = taskCandidateCatalogShape.default({});
-var taskContextRecordSchema = external_exports.strictObject({
-  version: external_exports.literal(TASK_CONTEXT_VERSION),
-  scope: external_exports.strictObject({
-    workspaceHash: external_exports.string().length(64),
-    sessionHash: external_exports.string().length(64),
-    agentHash: external_exports.string().length(64)
-  }),
-  rootObjective: taskContextItemSchema.nullable(),
-  latestStep: taskContextItemSchema.nullable(),
-  followUps: external_exports.array(taskContextItemSchema).max(MAX_ITEMS),
-  constraints: external_exports.array(taskContextItemSchema).max(MAX_ITEMS),
-  criteria: external_exports.array(taskContextItemSchema).max(MAX_ITEMS),
-  corrections: external_exports.array(taskContextItemSchema).max(MAX_ITEMS),
-  evidenceRefs: external_exports.array(taskEvidenceRefSchema).max(MAX_EVIDENCE_REFS),
-  candidateCatalogs: taskCandidateCatalogSchema,
-  history: external_exports.array(taskContextItemSchema).max(MAX_HISTORY),
-  updatedAt: external_exports.string().datetime({ offset: true }),
-  provenance: taskContextProvenanceSchema
-});
-var taskContextUpdateSchema = external_exports.strictObject({
-  operation: external_exports.enum(["continue", "replace", "reset"]).default("continue"),
-  rootObjective: external_exports.string().min(1).max(MAX_INPUT_TEXT_BYTES).optional(),
-  latestStep: external_exports.string().min(1).max(MAX_INPUT_TEXT_BYTES).optional(),
-  followUp: external_exports.string().min(1).max(MAX_INPUT_TEXT_BYTES).optional(),
-  constraints: external_exports.array(external_exports.string().min(1).max(MAX_INPUT_TEXT_BYTES)).max(MAX_ITEMS).optional(),
-  criteria: external_exports.array(external_exports.string().min(1).max(MAX_INPUT_TEXT_BYTES)).max(MAX_ITEMS).optional(),
-  corrections: external_exports.array(external_exports.string().min(1).max(MAX_INPUT_TEXT_BYTES)).max(MAX_ITEMS).optional(),
-  evidenceRefs: external_exports.array(external_exports.strictObject({
-    id: external_exports.string().regex(/^[a-zA-Z0-9._:-]{1,80}$/),
-    source: external_exports.string().max(300).optional(),
-    summary: external_exports.string().max(MAX_INPUT_TEXT_BYTES).optional()
-  })).max(MAX_EVIDENCE_REFS).optional(),
-  candidateCatalogs: taskCandidateCatalogShape.optional(),
-  provenance: taskContextProvenanceSchema.omit({ timestamp: true, operation: true }).extend({
-    timestamp: external_exports.string().datetime({ offset: true }).optional(),
-    operation: external_exports.enum(["continue", "replace", "reset"]).optional()
-  }).optional()
-});
-var updateTaskContextInputSchema = external_exports.strictObject({
-  scope: taskContextScopeSchema,
-  update: taskContextUpdateSchema
-});
-function digest(value) {
-  return createHash3("sha256").update(value).digest("hex");
-}
-function currentSecrets(env) {
-  const fileSecret = env.JEV_API_KEY_FILE ? readCredentialFile(env.JEV_API_KEY_FILE) : null;
-  return [env.TYPESAFE_API_KEY, fileSecret].filter((value) => Boolean(value));
-}
-function clip(value, maxBytes = MAX_TEXT_BYTES, secrets = []) {
-  const redacted = redactText(value, secrets);
-  if (Buffer.byteLength(redacted) <= maxBytes) return redacted;
-  const marker = "\n...[truncated]...\n";
-  const markerBytes = Buffer.byteLength(marker);
-  const available = Math.max(2, maxBytes - markerBytes);
-  const headBytes = Math.ceil(available * 0.6);
-  const tailBytes = available - headBytes;
-  const source = Buffer.from(redacted);
-  let headEnd = Math.min(headBytes, source.length);
-  while (headEnd > 0 && ((source[headEnd] ?? 0) & 192) === 128) headEnd--;
-  let tailStart = Math.max(0, source.length - tailBytes);
-  while (tailStart < source.length && ((source[tailStart] ?? 0) & 192) === 128) tailStart++;
-  return `${source.subarray(0, headEnd).toString("utf8")}${marker}${source.subarray(tailStart).toString("utf8")}`;
-}
-function safeScope(scope) {
-  if (!taskContextScopeSchema.safeParse(scope).success) return void 0;
-  if (!isAbsolute4(scope.cwd) || scope.cwd.includes("\0")) return void 0;
-  return { cwd: scope.cwd, workspaceHash: digest(scope.cwd), sessionHash: digest(scope.sessionId), agentHash: digest(scope.agentId ?? "root") };
-}
-async function contextPath(scope, env, create = false) {
-  const resolved = safeScope(scope);
-  if (!resolved) return void 0;
-  const directory = dataDirectory(env);
-  if (!isAbsolute4(directory) || directory.includes("\0")) return void 0;
-  try {
-    const workspace = await realpath2(scope.cwd);
-    const scopedDirectory = join4(directory, CONTEXT_DIRECTORY, digest(workspace), resolved.sessionHash, resolved.agentHash);
-    if (create) await mkdir3(scopedDirectory, { recursive: true, mode: 448 });
-    return { path: join4(scopedDirectory, "context.json"), directory: scopedDirectory, scope: { ...resolved, workspaceHash: digest(workspace) } };
-  } catch {
-    return void 0;
-  }
-}
-function initialRecord(scope, provenance, now) {
-  return {
-    version: TASK_CONTEXT_VERSION,
-    scope: { workspaceHash: scope.workspaceHash, sessionHash: scope.sessionHash, agentHash: scope.agentHash },
-    rootObjective: null,
-    latestStep: null,
-    followUps: [],
-    constraints: [],
-    criteria: [],
-    corrections: [],
-    evidenceRefs: [],
-    candidateCatalogs: {},
-    history: [],
-    updatedAt: now.toISOString(),
-    provenance
-  };
-}
-function sanitizeCatalog(value, secrets) {
-  const output2 = {};
-  if (!value) return output2;
-  for (const [domain2, candidates] of Object.entries(value)) {
-    output2[domain2] = candidates.slice(0, 12).map((candidate) => ({
-      id: clip(candidate.id, 80, secrets),
-      description: clip(candidate.description, MAX_TEXT_BYTES, secrets),
-      available: candidate.available !== false,
-      ...candidate.metadata ? { metadata: Object.fromEntries(Object.entries(candidate.metadata).slice(0, 16).map(([key, item2]) => [clip(key, 40, secrets), typeof item2 === "string" ? clip(item2, 500, secrets) : item2])) } : {}
-    }));
-  }
-  return output2;
-}
-function item(value, provenance, secrets) {
-  return { value: clip(value, MAX_TEXT_BYTES, secrets), provenance };
-}
-function boundedItems(values) {
-  return (values ?? []).slice(-MAX_ITEMS);
-}
-function provenanceFor(update, scope, now, secrets) {
-  const supplied = update.provenance;
-  return {
-    source: supplied?.source ?? "system",
-    timestamp: supplied?.timestamp ?? now.toISOString(),
-    ...supplied?.eventId === void 0 ? {} : { eventId: clip(supplied.eventId, 256, secrets) },
-    ...supplied?.turnId === void 0 ? {} : { turnId: clip(supplied.turnId, 256, secrets) },
-    ...supplied?.agentId === void 0 && scope.agentId === void 0 ? {} : { agentId: clip(supplied?.agentId ?? scope.agentId, 256, secrets) },
-    operation: update.operation ?? supplied?.operation ?? "continue"
-  };
-}
-async function writeRecord(path, directory, record2) {
-  const temporary = join4(directory, `.context-${randomUUID5()}.tmp`);
-  const handle = await open5(temporary, constants5.O_WRONLY | constants5.O_CREAT | constants5.O_EXCL | constants5.O_NOFOLLOW, 384);
-  try {
-    await handle.writeFile(JSON.stringify(record2) + "\n", "utf8");
-  } finally {
-    await handle.close();
-  }
-  try {
-    await rename3(temporary, path);
-  } finally {
-    await unlink4(temporary).catch(() => {
-    });
-  }
-}
-async function processIsAlive2(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error62) {
-    return error62.code === "EPERM";
-  }
-}
-async function reclaimStaleContextLock(path) {
-  let info;
-  try {
-    info = await stat(path);
-  } catch {
-    return;
-  }
-  if (Date.now() - info.mtimeMs < CONTEXT_LOCK_STALE_MS) return;
-  let owner;
-  try {
-    owner = JSON.parse(await readFile(path, "utf8"));
-  } catch {
-    return;
-  }
-  if (!Number.isInteger(owner.pid) || typeof owner.token !== "string" || await processIsAlive2(owner.pid)) return;
-  await unlink4(path).catch(() => {
-  });
-}
-async function acquireContextLock(path, directory) {
-  for (let attempt = 0; attempt < CONTEXT_LOCK_ATTEMPTS; attempt++) {
-    const token = randomUUID5();
-    const temporary = join4(directory, `.context-lock-${token}.tmp`);
-    try {
-      const handle = await open5(temporary, constants5.O_CREAT | constants5.O_EXCL | constants5.O_WRONLY | constants5.O_NOFOLLOW, 384);
-      try {
-        await handle.writeFile(JSON.stringify({ pid: process.pid, token, createdAt: (/* @__PURE__ */ new Date()).toISOString() }));
-        await handle.sync();
-      } finally {
-        await handle.close();
-      }
-      try {
-        await link3(temporary, path);
-        return { path, token };
-      } catch (error62) {
-        if (error62.code !== "EEXIST") return void 0;
-      }
-    } catch (error62) {
-      if (error62.code !== "EEXIST") return void 0;
-    } finally {
-      await unlink4(temporary).catch(() => {
-      });
-    }
-    await reclaimStaleContextLock(path);
-    await delay2(CONTEXT_LOCK_WAIT_MS);
-  }
-  return void 0;
-}
-async function releaseContextLock(lock) {
-  try {
-    const owner = JSON.parse(await readFile(lock.path, "utf8"));
-    if (owner.token === lock.token) await unlink4(lock.path);
-  } catch {
-  }
-}
-async function loadTaskContext(scope, options = {}) {
-  const target = await contextPath(scope, options.env ?? process.env);
-  if (!target) return void 0;
-  try {
-    const handle = await open5(target.path, constants5.O_RDONLY | constants5.O_NOFOLLOW);
-    try {
-      const info = await handle.stat();
-      if (!info.isFile() || info.size > 64 * 1024) return void 0;
-      const parsed = taskContextRecordSchema.safeParse(JSON.parse(await handle.readFile("utf8")));
-      if (!parsed.success) return void 0;
-      if (parsed.data.scope.workspaceHash !== target.scope.workspaceHash || parsed.data.scope.sessionHash !== target.scope.sessionHash || parsed.data.scope.agentHash !== target.scope.agentHash) return void 0;
-      return parsed.data;
-    } finally {
-      await handle.close();
-    }
-  } catch {
-    return void 0;
-  }
-}
-async function updateTaskContext(scope, update, options = {}) {
-  const parsed = taskContextUpdateSchema.safeParse(update);
-  if (!parsed.success) return void 0;
-  const env = options.env ?? process.env;
-  const target = await contextPath(scope, env, true);
-  if (!target || !target.scope) return void 0;
-  const now = options.now ?? /* @__PURE__ */ new Date();
-  const operation = parsed.data.operation ?? "continue";
-  const secrets = currentSecrets(env);
-  const provenance = provenanceFor(parsed.data, scope, now, secrets);
-  const lockPath = join4(target.directory, ".context.lock");
-  const lock = await acquireContextLock(lockPath, target.directory);
-  if (!lock) return void 0;
-  try {
-    const prior = await loadTaskContext(scope, options);
-    let next = prior ?? initialRecord(target.scope, provenance, now);
-    if (operation === "reset") {
-      next = initialRecord(target.scope, provenance, now);
-    } else if (operation === "replace") {
-      if (next.rootObjective) next.history = [...next.history, next.rootObjective].slice(-MAX_HISTORY);
-      next.rootObjective = parsed.data.rootObjective ? item(parsed.data.rootObjective, provenance, secrets) : null;
-      next.latestStep = parsed.data.latestStep ? item(parsed.data.latestStep, provenance, secrets) : null;
-      next.followUps = parsed.data.followUp ? [item(parsed.data.followUp, provenance, secrets)] : [];
-      next.constraints = boundedItems((parsed.data.constraints ?? []).map((value) => item(value, provenance, secrets)));
-      next.criteria = boundedItems((parsed.data.criteria ?? []).map((value) => item(value, provenance, secrets)));
-      next.corrections = boundedItems((parsed.data.corrections ?? []).map((value) => item(value, provenance, secrets)));
-      next.evidenceRefs = (parsed.data.evidenceRefs ?? []).slice(-MAX_EVIDENCE_REFS).map((ref) => ({ ...ref, ...ref.summary ? { summary: clip(ref.summary, MAX_TEXT_BYTES, secrets) } : {}, provenance }));
-      next.candidateCatalogs = sanitizeCatalog(parsed.data.candidateCatalogs, secrets);
-    } else {
-      if (parsed.data.rootObjective) {
-        if (!next.rootObjective) next.rootObjective = item(parsed.data.rootObjective, provenance, secrets);
-        else next.latestStep = item(parsed.data.rootObjective, provenance, secrets);
-      }
-      if (parsed.data.latestStep) next.latestStep = item(parsed.data.latestStep, provenance, secrets);
-      if (parsed.data.followUp) next.followUps = [...next.followUps, item(parsed.data.followUp, provenance, secrets)].slice(-MAX_ITEMS);
-      if (parsed.data.constraints) next.constraints = boundedItems([...next.constraints, ...parsed.data.constraints.map((value) => item(value, provenance, secrets))]);
-      if (parsed.data.criteria) next.criteria = boundedItems([...next.criteria, ...parsed.data.criteria.map((value) => item(value, provenance, secrets))]);
-      if (parsed.data.corrections) next.corrections = boundedItems([...next.corrections, ...parsed.data.corrections.map((value) => item(value, provenance, secrets))]);
-      if (parsed.data.evidenceRefs) next.evidenceRefs = [...next.evidenceRefs, ...parsed.data.evidenceRefs.map((ref) => ({ ...ref, ...ref.summary ? { summary: clip(ref.summary, MAX_TEXT_BYTES, secrets) } : {}, provenance }))].slice(-MAX_EVIDENCE_REFS);
-      if (parsed.data.candidateCatalogs) next.candidateCatalogs = sanitizeCatalog(parsed.data.candidateCatalogs, secrets);
-    }
-    next.version = TASK_CONTEXT_VERSION;
-    next.scope = { workspaceHash: target.scope.workspaceHash, sessionHash: target.scope.sessionHash, agentHash: target.scope.agentHash };
-    next.updatedAt = now.toISOString();
-    next.provenance = provenance;
-    const valid = taskContextRecordSchema.safeParse(next);
-    if (!valid.success) return void 0;
-    await writeRecord(target.path, target.directory, valid.data);
-    return valid.data;
-  } finally {
-    await releaseContextLock(lock);
-  }
-}
-
 // src/outcomes.ts
 import { constants as constants6 } from "node:fs";
-import { open as open6, mkdir as mkdir4, unlink as unlink5, link as link4 } from "node:fs/promises";
+import { open as open6, mkdir as mkdir4, unlink as unlink5, link as link3 } from "node:fs/promises";
 import { join as join5 } from "node:path";
 import { randomUUID as randomUUID6 } from "node:crypto";
 var opaqueId = external_exports.string().min(1).max(256).regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/, "must be an opaque stable identifier");
@@ -37723,7 +37406,7 @@ async function recordDecisionOutcome(raw, options = {}) {
     } finally {
       await handle.close();
     }
-    await link4(temporary, destination);
+    await link3(temporary, destination);
   } finally {
     await unlink5(temporary).catch(() => {
     });
@@ -37731,38 +37414,1048 @@ async function recordDecisionOutcome(raw, options = {}) {
   return record2;
 }
 
+// src/routing/api.ts
+import { createHash as createHash6, randomUUID as randomUUID10 } from "node:crypto";
+import { lstat as lstat5, mkdir as mkdir7 } from "node:fs/promises";
+import { isAbsolute as isAbsolute5, join as join8 } from "node:path";
+
+// src/routing-consultation.ts
+import { createHash as createHash3, randomUUID as randomUUID7 } from "node:crypto";
+var CONSULTATION_FACT_TTL_MS = 7 * 24 * 60 * 60 * 1e3;
+var CONSULTATION_METADATA_TTL_MS = 90 * 24 * 60 * 60 * 1e3;
+function digest(value) {
+  return createHash3("sha256").update(JSON.stringify(value)).digest("hex");
+}
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right)).map(([key, item2]) => [key, canonical(item2)]));
+  return value;
+}
+function packetFits(input2) {
+  const parsed = decisionSchema.safeParse(input2);
+  if (!parsed.success) return false;
+  const { mode: _mode, ...state } = parsed.data;
+  const questions = decisionQuestions(parsed.data);
+  return Buffer.byteLength(JSON.stringify({ state, questions, model: MODEL })) <= MAX_DECISION_PAYLOAD_BYTES;
+}
+function candidatePages(input2, deadline = Number.POSITIVE_INFINITY) {
+  const pages = [];
+  let page = [];
+  for (const candidate of input2.candidates.filter((item2) => item2.available !== false)) {
+    if (Date.now() >= deadline) return void 0;
+    const next = [...page, candidate];
+    if (next.length <= MAX_DECISION_CANDIDATES && packetFits({ ...input2, candidates: next })) {
+      page = next;
+      continue;
+    }
+    if (!page.length || !packetFits({ ...input2, candidates: [candidate] })) return void 0;
+    pages.push(page);
+    page = [candidate];
+  }
+  if (page.length) pages.push(page);
+  return pages;
+}
+async function consultCandidateCatalog(input2, service2, signal, deadline = Date.now() + 5e3) {
+  const eligible = input2.candidates.filter((candidate) => candidate.available !== false);
+  const coverage = {
+    inventoryCount: input2.candidates.length,
+    eligibleCount: eligible.length,
+    comparedCount: 0,
+    pageCount: 0,
+    completedPages: 0,
+    complete: false,
+    unavailableOutsideCatalog: "unknown",
+    catalogDigest: digest(canonical(input2.candidates)),
+    method: "direct",
+    receiptIds: []
+  };
+  const compared = /* @__PURE__ */ new Set();
+  const unavailable = (reasonCode) => ({ status: "unavailable", reasonCode, coverage: { ...coverage } });
+  let remaining = eligible;
+  if (!remaining.length) return { ...unavailable("insufficient_available_candidates"), status: "abstained" };
+  while (remaining.length) {
+    const pages = candidatePages({ ...input2, candidates: remaining }, deadline);
+    if (Date.now() >= deadline) return unavailable("hook_timeout");
+    if (!pages) return unavailable("comparison_packet_too_large");
+    coverage.pageCount += pages.length;
+    if (pages.length > 1) coverage.method = "paged_reduction";
+    const winners = [];
+    const winnerResults = /* @__PURE__ */ new Map();
+    let last = { status: "abstained", reasonCode: "insufficient_evidence" };
+    for (const candidates of pages) {
+      if (signal.aborted) return unavailable("cancelled");
+      if (Date.now() >= deadline) return unavailable("hook_timeout");
+      const result = await service2.classifyDecision({ ...input2, candidates }, signal);
+      if (signal.aborted) return unavailable("cancelled");
+      if (Date.now() >= deadline) return unavailable("hook_timeout");
+      if (result.receiptPersisted === true && typeof result.receiptId === "string" && /^[a-f0-9-]{1,80}$/.test(result.receiptId)) coverage.receiptIds?.push(result.receiptId);
+      if (result.status !== "assessed" && result.status !== "abstained") return { ...result, coverage: { ...coverage } };
+      coverage.completedPages += 1;
+      for (const candidate of candidates) compared.add(candidate.id);
+      coverage.comparedCount = compared.size;
+      if (result.status === "assessed") {
+        const selected = candidates.find((candidate) => candidate.id === result.choice);
+        if (!selected) return unavailable("invalid_choice");
+        winners.push(selected);
+        winnerResults.set(selected.id, result);
+      }
+      last = result;
+    }
+    if (pages.length === 1 || winners.length <= 1) {
+      coverage.complete = coverage.comparedCount === coverage.eligibleCount;
+      return { ...winners.length === 1 ? winnerResults.get(winners[0].id) : last, coverage: { ...coverage } };
+    }
+    if (winners.length >= remaining.length) return unavailable("comparison_packet_too_large");
+    remaining = winners;
+  }
+  return unavailable("insufficient_available_candidates");
+}
+
+// src/task-context.ts
+import { constants as constants7 } from "node:fs";
+import { mkdir as mkdir5, open as open7, realpath as realpath2, rename as rename4, unlink as unlink6 } from "node:fs/promises";
+import { randomUUID as randomUUID8, createHash as createHash4 } from "node:crypto";
+import { isAbsolute as isAbsolute4, join as join6 } from "node:path";
+var TASK_CONTEXT_VERSION = 1;
+var MAX_TEXT_BYTES = 1500;
+var MAX_INPUT_TEXT_BYTES = 12e3;
+var MAX_ITEMS = 12;
+var MAX_HISTORY = 8;
+var MAX_EVIDENCE_REFS = 24;
+var CONTEXT_DIRECTORY = "task-context-v1";
+var CONTEXT_LOCK_ATTEMPTS = 200;
+var identifier2 = external_exports.string().min(1).max(256);
+var taskContextScopeSchema = external_exports.strictObject({
+  cwd: identifier2,
+  sessionId: identifier2,
+  agentId: identifier2.optional()
+});
+var taskContextProvenanceSchema = external_exports.strictObject({
+  source: external_exports.enum(["user_prompt", "hook", "mcp", "parent", "agent", "system"]),
+  timestamp: external_exports.string().datetime({ offset: true }),
+  eventId: external_exports.string().max(256).optional(),
+  turnId: external_exports.string().max(256).optional(),
+  agentId: external_exports.string().max(256).optional(),
+  operation: external_exports.enum(["continue", "replace", "reset"])
+});
+var taskContextItemSchema = external_exports.strictObject({
+  value: external_exports.string().min(1).max(MAX_TEXT_BYTES),
+  provenance: taskContextProvenanceSchema
+});
+var taskEvidenceRefSchema = external_exports.strictObject({
+  id: external_exports.string().regex(/^[a-zA-Z0-9._:-]{1,80}$/),
+  source: external_exports.string().max(300).optional(),
+  summary: external_exports.string().max(MAX_TEXT_BYTES).optional(),
+  provenance: taskContextProvenanceSchema
+});
+var taskCandidateSchema = external_exports.strictObject({
+  id: external_exports.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/),
+  description: external_exports.string().min(1).max(MAX_TEXT_BYTES),
+  available: external_exports.boolean().default(true),
+  metadata: external_exports.record(external_exports.string().regex(/^[a-zA-Z0-9_.-]{1,40}$/), external_exports.union([external_exports.string().max(500), external_exports.number().finite(), external_exports.boolean()])).optional()
+});
+var taskCandidateCatalogShape = external_exports.partialRecord(
+  external_exports.enum(["tool", "model", "task", "skill", "context", "strategy", "result"]),
+  external_exports.array(taskCandidateSchema)
+);
+var taskCandidateCatalogSchema = taskCandidateCatalogShape.default({});
+var taskContextRecordSchema = external_exports.strictObject({
+  version: external_exports.literal(TASK_CONTEXT_VERSION),
+  scope: external_exports.strictObject({
+    workspaceHash: external_exports.string().length(64),
+    sessionHash: external_exports.string().length(64),
+    agentHash: external_exports.string().length(64)
+  }),
+  rootObjective: taskContextItemSchema.nullable(),
+  latestStep: taskContextItemSchema.nullable(),
+  followUps: external_exports.array(taskContextItemSchema).max(MAX_ITEMS),
+  constraints: external_exports.array(taskContextItemSchema).max(MAX_ITEMS),
+  criteria: external_exports.array(taskContextItemSchema).max(MAX_ITEMS),
+  corrections: external_exports.array(taskContextItemSchema).max(MAX_ITEMS),
+  evidenceRefs: external_exports.array(taskEvidenceRefSchema).max(MAX_EVIDENCE_REFS),
+  candidateCatalogs: taskCandidateCatalogSchema,
+  history: external_exports.array(taskContextItemSchema).max(MAX_HISTORY),
+  updatedAt: external_exports.string().datetime({ offset: true }),
+  provenance: taskContextProvenanceSchema
+});
+var taskContextUpdateSchema = external_exports.strictObject({
+  operation: external_exports.enum(["continue", "replace", "reset"]).default("continue"),
+  rootObjective: external_exports.string().min(1).max(MAX_INPUT_TEXT_BYTES).optional(),
+  latestStep: external_exports.string().min(1).max(MAX_INPUT_TEXT_BYTES).optional(),
+  followUp: external_exports.string().min(1).max(MAX_INPUT_TEXT_BYTES).optional(),
+  constraints: external_exports.array(external_exports.string().min(1).max(MAX_INPUT_TEXT_BYTES)).max(MAX_ITEMS).optional(),
+  criteria: external_exports.array(external_exports.string().min(1).max(MAX_INPUT_TEXT_BYTES)).max(MAX_ITEMS).optional(),
+  corrections: external_exports.array(external_exports.string().min(1).max(MAX_INPUT_TEXT_BYTES)).max(MAX_ITEMS).optional(),
+  evidenceRefs: external_exports.array(external_exports.strictObject({
+    id: external_exports.string().regex(/^[a-zA-Z0-9._:-]{1,80}$/),
+    source: external_exports.string().max(300).optional(),
+    summary: external_exports.string().max(MAX_INPUT_TEXT_BYTES).optional()
+  })).max(MAX_EVIDENCE_REFS).optional(),
+  candidateCatalogs: taskCandidateCatalogShape.optional(),
+  provenance: taskContextProvenanceSchema.omit({ timestamp: true, operation: true }).extend({
+    timestamp: external_exports.string().datetime({ offset: true }).optional(),
+    operation: external_exports.enum(["continue", "replace", "reset"]).optional()
+  }).optional()
+});
+var updateTaskContextInputSchema = external_exports.strictObject({
+  scope: taskContextScopeSchema,
+  update: taskContextUpdateSchema
+});
+function digest2(value) {
+  return createHash4("sha256").update(value).digest("hex");
+}
+function currentSecrets(env) {
+  const fileSecret = env.JEV_API_KEY_FILE ? readCredentialFile(env.JEV_API_KEY_FILE) : null;
+  return [env.TYPESAFE_API_KEY, fileSecret].filter((value) => Boolean(value));
+}
+function clip(value, maxBytes = MAX_TEXT_BYTES, secrets = []) {
+  const redacted = redactText(value, secrets);
+  if (Buffer.byteLength(redacted) <= maxBytes) return redacted;
+  const marker = "\n...[truncated]...\n";
+  const markerBytes = Buffer.byteLength(marker);
+  const available = Math.max(2, maxBytes - markerBytes);
+  const headBytes = Math.ceil(available * 0.6);
+  const tailBytes = available - headBytes;
+  const source = Buffer.from(redacted);
+  let headEnd = Math.min(headBytes, source.length);
+  while (headEnd > 0 && ((source[headEnd] ?? 0) & 192) === 128) headEnd--;
+  let tailStart = Math.max(0, source.length - tailBytes);
+  while (tailStart < source.length && ((source[tailStart] ?? 0) & 192) === 128) tailStart++;
+  return `${source.subarray(0, headEnd).toString("utf8")}${marker}${source.subarray(tailStart).toString("utf8")}`;
+}
+function safeScope(scope) {
+  if (!taskContextScopeSchema.safeParse(scope).success) return void 0;
+  if (!isAbsolute4(scope.cwd) || scope.cwd.includes("\0")) return void 0;
+  return { cwd: scope.cwd, workspaceHash: digest2(scope.cwd), sessionHash: digest2(scope.sessionId), agentHash: digest2(scope.agentId ?? "root") };
+}
+async function contextPath(scope, env, create = false) {
+  const resolved = safeScope(scope);
+  if (!resolved) return void 0;
+  const directory = dataDirectory(env);
+  if (!isAbsolute4(directory) || directory.includes("\0")) return void 0;
+  try {
+    const workspace = await realpath2(scope.cwd);
+    const scopedDirectory = join6(directory, CONTEXT_DIRECTORY, digest2(workspace), resolved.sessionHash, resolved.agentHash);
+    if (create) await mkdir5(scopedDirectory, { recursive: true, mode: 448 });
+    return { path: join6(scopedDirectory, "context.json"), directory: scopedDirectory, scope: { ...resolved, workspaceHash: digest2(workspace) } };
+  } catch {
+    return void 0;
+  }
+}
+function initialRecord(scope, provenance, now) {
+  return {
+    version: TASK_CONTEXT_VERSION,
+    scope: { workspaceHash: scope.workspaceHash, sessionHash: scope.sessionHash, agentHash: scope.agentHash },
+    rootObjective: null,
+    latestStep: null,
+    followUps: [],
+    constraints: [],
+    criteria: [],
+    corrections: [],
+    evidenceRefs: [],
+    candidateCatalogs: {},
+    history: [],
+    updatedAt: now.toISOString(),
+    provenance
+  };
+}
+function sanitizeCatalog(value, secrets) {
+  const output2 = {};
+  if (!value) return output2;
+  for (const [domain2, candidates] of Object.entries(value)) {
+    output2[domain2] = candidates.map((candidate) => ({
+      id: clip(candidate.id, 80, secrets),
+      description: clip(candidate.description, MAX_TEXT_BYTES, secrets),
+      available: candidate.available !== false,
+      ...candidate.metadata ? { metadata: Object.fromEntries(Object.entries(candidate.metadata).slice(0, 16).map(([key, item2]) => [clip(key, 40, secrets), typeof item2 === "string" ? clip(item2, 500, secrets) : item2])) } : {}
+    }));
+  }
+  return output2;
+}
+function item(value, provenance, secrets) {
+  return { value: clip(value, MAX_TEXT_BYTES, secrets), provenance };
+}
+function boundedItems(values) {
+  return (values ?? []).slice(-MAX_ITEMS);
+}
+function provenanceFor(update, scope, now, secrets) {
+  const supplied = update.provenance;
+  return {
+    source: supplied?.source ?? "system",
+    timestamp: supplied?.timestamp ?? now.toISOString(),
+    ...supplied?.eventId === void 0 ? {} : { eventId: clip(supplied.eventId, 256, secrets) },
+    ...supplied?.turnId === void 0 ? {} : { turnId: clip(supplied.turnId, 256, secrets) },
+    ...supplied?.agentId === void 0 && scope.agentId === void 0 ? {} : { agentId: clip(supplied?.agentId ?? scope.agentId, 256, secrets) },
+    operation: update.operation ?? supplied?.operation ?? "continue"
+  };
+}
+async function writeRecord(path, directory, record2) {
+  const temporary = join6(directory, `.context-${randomUUID8()}.tmp`);
+  const handle = await open7(temporary, constants7.O_WRONLY | constants7.O_CREAT | constants7.O_EXCL | constants7.O_NOFOLLOW, 384);
+  try {
+    await handle.writeFile(JSON.stringify(record2) + "\n", "utf8");
+  } finally {
+    await handle.close();
+  }
+  try {
+    await rename4(temporary, path);
+  } finally {
+    await unlink6(temporary).catch(() => {
+    });
+  }
+}
+async function loadTaskContext(scope, options = {}) {
+  const target = await contextPath(scope, options.env ?? process.env);
+  if (!target) return void 0;
+  try {
+    const handle = await open7(target.path, constants7.O_RDONLY | constants7.O_NOFOLLOW);
+    try {
+      const info = await handle.stat();
+      if (!info.isFile()) return void 0;
+      const parsed = taskContextRecordSchema.safeParse(JSON.parse(await handle.readFile("utf8")));
+      if (!parsed.success) return void 0;
+      if (parsed.data.scope.workspaceHash !== target.scope.workspaceHash || parsed.data.scope.sessionHash !== target.scope.sessionHash || parsed.data.scope.agentHash !== target.scope.agentHash) return void 0;
+      return parsed.data;
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return void 0;
+  }
+}
+async function updateTaskContext(scope, update, options = {}) {
+  const parsed = taskContextUpdateSchema.safeParse(update);
+  if (!parsed.success) return void 0;
+  const env = options.env ?? process.env;
+  const target = await contextPath(scope, env, true);
+  if (!target || !target.scope) return void 0;
+  const now = options.now ?? /* @__PURE__ */ new Date();
+  const operation = parsed.data.operation ?? "continue";
+  const secrets = currentSecrets(env);
+  const provenance = provenanceFor(parsed.data, scope, now, secrets);
+  const lockPath = join6(target.directory, ".context.lock");
+  let lock;
+  try {
+    lock = await acquireStateLock(lockPath, CONTEXT_LOCK_ATTEMPTS);
+  } catch {
+    return void 0;
+  }
+  try {
+    const prior = await loadTaskContext(scope, options);
+    let next = prior ?? initialRecord(target.scope, provenance, now);
+    if (operation === "reset") {
+      next = initialRecord(target.scope, provenance, now);
+    } else if (operation === "replace") {
+      if (next.rootObjective) next.history = [...next.history, next.rootObjective].slice(-MAX_HISTORY);
+      next.rootObjective = parsed.data.rootObjective ? item(parsed.data.rootObjective, provenance, secrets) : null;
+      next.latestStep = parsed.data.latestStep ? item(parsed.data.latestStep, provenance, secrets) : null;
+      next.followUps = parsed.data.followUp ? [item(parsed.data.followUp, provenance, secrets)] : [];
+      next.constraints = boundedItems((parsed.data.constraints ?? []).map((value) => item(value, provenance, secrets)));
+      next.criteria = boundedItems((parsed.data.criteria ?? []).map((value) => item(value, provenance, secrets)));
+      next.corrections = boundedItems((parsed.data.corrections ?? []).map((value) => item(value, provenance, secrets)));
+      next.evidenceRefs = (parsed.data.evidenceRefs ?? []).slice(-MAX_EVIDENCE_REFS).map((ref) => ({ ...ref, ...ref.summary ? { summary: clip(ref.summary, MAX_TEXT_BYTES, secrets) } : {}, provenance }));
+      next.candidateCatalogs = sanitizeCatalog(parsed.data.candidateCatalogs, secrets);
+    } else {
+      if (parsed.data.rootObjective) {
+        if (!next.rootObjective) next.rootObjective = item(parsed.data.rootObjective, provenance, secrets);
+        else next.latestStep = item(parsed.data.rootObjective, provenance, secrets);
+      }
+      if (parsed.data.latestStep) next.latestStep = item(parsed.data.latestStep, provenance, secrets);
+      if (parsed.data.followUp) next.followUps = [...next.followUps, item(parsed.data.followUp, provenance, secrets)].slice(-MAX_ITEMS);
+      if (parsed.data.constraints) next.constraints = boundedItems([...next.constraints, ...parsed.data.constraints.map((value) => item(value, provenance, secrets))]);
+      if (parsed.data.criteria) next.criteria = boundedItems([...next.criteria, ...parsed.data.criteria.map((value) => item(value, provenance, secrets))]);
+      if (parsed.data.corrections) next.corrections = boundedItems([...next.corrections, ...parsed.data.corrections.map((value) => item(value, provenance, secrets))]);
+      if (parsed.data.evidenceRefs) next.evidenceRefs = [...next.evidenceRefs, ...parsed.data.evidenceRefs.map((ref) => ({ ...ref, ...ref.summary ? { summary: clip(ref.summary, MAX_TEXT_BYTES, secrets) } : {}, provenance }))].slice(-MAX_EVIDENCE_REFS);
+      if (parsed.data.candidateCatalogs) next.candidateCatalogs = sanitizeCatalog(parsed.data.candidateCatalogs, secrets);
+    }
+    next.version = TASK_CONTEXT_VERSION;
+    next.scope = { workspaceHash: target.scope.workspaceHash, sessionHash: target.scope.sessionHash, agentHash: target.scope.agentHash };
+    next.updatedAt = now.toISOString();
+    next.provenance = provenance;
+    const valid = taskContextRecordSchema.safeParse(next);
+    if (!valid.success) return void 0;
+    await writeRecord(target.path, target.directory, valid.data);
+    return valid.data;
+  } finally {
+    await releaseStateLock(lockPath, lock.handle, lock.token);
+  }
+}
+
+// src/routing/contracts.ts
+var ROUTING_SCHEMA_VERSION = "routing-v1";
+function sameScope(left, right) {
+  return left.hostId === right.hostId && left.accountId === right.accountId && left.workspaceId === right.workspaceId && left.sessionId === right.sessionId && left.agentId === right.agentId;
+}
+function sameProfile(left, right) {
+  return left === right || !!left && !!right && left.providerId === right.providerId && left.modelId === right.modelId && left.effort === right.effort;
+}
+
+// src/routing/state.ts
+import { constants as constants8 } from "node:fs";
+import { mkdir as mkdir6, open as open8, lstat as lstat4, link as link4, rename as rename5, unlink as unlink7, readdir as readdir3 } from "node:fs/promises";
+import { join as join7, resolve } from "node:path";
+import { createHash as createHash5, randomUUID as randomUUID9 } from "node:crypto";
+var DAY = 24 * 60 * 60 * 1e3;
+var FACT_RETENTION = 7 * DAY;
+var METADATA_RETENTION = 90 * DAY;
+var MAX_ROUTING_FILE_BYTES = 64 * 1024 * 1024;
+function hash2(value) {
+  return createHash5("sha256").update(value).digest("hex");
+}
+function scopeKey(scope) {
+  const values = [scope.hostId, scope.accountId, scope.workspaceId, scope.sessionId, scope.agentId];
+  if (values.some((value) => typeof value !== "string" || !value || value.includes("\0"))) throw new Error("invalid_routing_scope");
+  return hash2(JSON.stringify(values));
+}
+function recordName(id) {
+  if (typeof id !== "string" || !id || id.includes("\0")) throw new Error("invalid_record_id");
+  return `${hash2(id)}.json`;
+}
+function validTime(value) {
+  return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+async function privateDirectory(path) {
+  await mkdir6(path, { recursive: true, mode: 448 });
+  await inspectPrivateDirectory(path);
+}
+async function inspectPrivateDirectory(path) {
+  let info;
+  try {
+    info = await lstat4(path);
+  } catch (error62) {
+    if (error62.code === "ENOENT") return false;
+    throw error62;
+  }
+  if (!info.isDirectory() || info.isSymbolicLink() || info.uid !== process.getuid?.() || (info.mode & 63) !== 0) throw new Error("unsafe_routing_directory");
+  return true;
+}
+async function readJson(path) {
+  let handle;
+  try {
+    handle = await open8(path, constants8.O_RDONLY | constants8.O_NOFOLLOW | constants8.O_NONBLOCK);
+  } catch (error62) {
+    if (error62.code === "ENOENT") return null;
+    throw error62;
+  }
+  try {
+    const info = await handle.stat();
+    if (!info.isFile() || info.size > MAX_ROUTING_FILE_BYTES || info.uid !== process.getuid?.() || (info.mode & 63) !== 0) throw new Error("unsafe_routing_file");
+    return JSON.parse(await handle.readFile("utf8"));
+  } finally {
+    await handle.close();
+  }
+}
+async function syncDirectory(path) {
+  const handle = await open8(path, constants8.O_RDONLY | constants8.O_NOFOLLOW);
+  try {
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+}
+async function writeJson(path, directory, value, immutable) {
+  const temporary = join7(directory, `.publish-${randomUUID9()}.json`);
+  const serialized = JSON.stringify(value);
+  if (Buffer.byteLength(serialized) > MAX_ROUTING_FILE_BYTES) throw new Error("routing_file_too_large");
+  const handle = await open8(temporary, constants8.O_CREAT | constants8.O_EXCL | constants8.O_WRONLY | constants8.O_NOFOLLOW, 384);
+  try {
+    await handle.writeFile(serialized);
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+  try {
+    if (immutable) {
+      try {
+        await link4(temporary, path);
+      } catch (error62) {
+        if (error62.code !== "EEXIST") throw error62;
+        if (JSON.stringify(await readJson(path)) !== serialized) throw new Error("immutable_record_conflict");
+      }
+    } else {
+      await rename5(temporary, path);
+    }
+    await syncDirectory(directory);
+  } finally {
+    await unlink7(temporary).catch(() => {
+    });
+  }
+}
+var RoutingStateStore = class {
+  directory;
+  #scope;
+  #now;
+  #records;
+  #revisions;
+  #directories;
+  #readOnly;
+  #ready;
+  constructor(input2) {
+    this.#scope = structuredClone(input2.scope);
+    const root = join7(resolve(input2.stateDirectory), ROUTING_SCHEMA_VERSION);
+    const directory = join7(root, scopeKey(this.#scope));
+    const records = join7(directory, "records");
+    const revisions = join7(directory, "revisions");
+    this.directory = directory;
+    this.#records = records;
+    this.#revisions = revisions;
+    this.#directories = [root, directory, records, revisions];
+    this.#readOnly = input2.readOnly ?? false;
+    this.#now = input2.now ?? (() => /* @__PURE__ */ new Date());
+    this.#ready = this.#readOnly ? Promise.resolve() : (async () => {
+      await privateDirectory(root);
+      await privateDirectory(directory);
+      await privateDirectory(records);
+      await privateDirectory(revisions);
+    })();
+  }
+  async #prepareRead() {
+    await this.#ready;
+    if (this.#readOnly) {
+      for (const directory of this.#directories) if (!await inspectPrivateDirectory(directory)) return;
+    }
+  }
+  #assertWritable() {
+    if (this.#readOnly) throw new Error("routing_store_read_only");
+  }
+  #empty() {
+    return { schemaVersion: ROUTING_SCHEMA_VERSION, scope: structuredClone(this.#scope), revision: 0, updatedAt: this.#now().toISOString(), records: {} };
+  }
+  #validateRecord(value) {
+    if (!value || typeof value !== "object") throw new Error("invalid_routing_record");
+    const record2 = value;
+    if (record2.schemaVersion !== ROUTING_SCHEMA_VERSION || !record2.scope || !sameScope(record2.scope, this.#scope) || typeof record2.id !== "string" || !record2.id || typeof record2.kind !== "string" || !record2.kind || !validTime(record2.createdAt) || !["facts", "metadata", "pinned"].includes(record2.retention) || record2.expiresAt !== void 0 && !validTime(record2.expiresAt) || record2.dependsOn !== void 0 && (!Array.isArray(record2.dependsOn) || record2.dependsOn.some((id) => typeof id !== "string" || !id))) throw new Error("invalid_routing_record");
+    return record2;
+  }
+  #validateCurrent(value) {
+    if (!value || typeof value !== "object") throw new Error("invalid_routing_current");
+    const current = value;
+    if (current.schemaVersion !== ROUTING_SCHEMA_VERSION || !current.scope || !sameScope(current.scope, this.#scope) || !Number.isSafeInteger(current.revision) || current.revision < 1 || !validTime(current.updatedAt) || !current.records || typeof current.records !== "object" || Array.isArray(current.records) || Object.values(current.records).some((id) => typeof id !== "string" || !id)) throw new Error("invalid_routing_current");
+    return current;
+  }
+  async publish(input2) {
+    this.#assertWritable();
+    await this.#ready;
+    this.#validateRecord(input2);
+    const record2 = structuredClone(input2);
+    if (record2.retention !== "pinned") {
+      const deadline = Date.parse(record2.createdAt) + (record2.retention === "facts" ? FACT_RETENTION : METADATA_RETENTION);
+      Object.assign(record2, { expiresAt: new Date(Math.min(deadline, record2.expiresAt ? Date.parse(record2.expiresAt) : deadline)).toISOString() });
+    }
+    await writeJson(join7(this.#records, recordName(record2.id)), this.#records, record2, true);
+    return record2;
+  }
+  async read(id, input2 = {}) {
+    await this.#prepareRead();
+    const value = await readJson(join7(this.#records, recordName(id)));
+    if (value === null) return null;
+    const record2 = this.#validateRecord(value);
+    if (record2.id !== id) throw new Error("routing_record_identity_mismatch");
+    if (!input2.includeExpired && record2.retention !== "pinned" && record2.expiresAt && Date.parse(record2.expiresAt) <= this.#now().getTime()) return null;
+    return structuredClone(record2);
+  }
+  async current() {
+    await this.#prepareRead();
+    const value = await readJson(join7(this.directory, "current.json"));
+    if (value === null) return this.#empty();
+    const current = this.#validateCurrent(value);
+    await this.#checkReferences(current);
+    return structuredClone(current);
+  }
+  async #checkReferences(current, includeExpired = true) {
+    const checked = /* @__PURE__ */ new Set();
+    const visit2 = async (id) => {
+      if (checked.has(id)) return;
+      const record2 = await this.read(id, { includeExpired });
+      if (!record2) throw new Error("routing_current_missing_record");
+      checked.add(id);
+      for (const dependency of record2.dependsOn ?? []) await visit2(dependency);
+    };
+    for (const id of Object.values(current.records)) await visit2(id);
+  }
+  async compareAndSet(expectedRevision, records) {
+    this.#assertWritable();
+    await this.#ready;
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) throw new Error("invalid_expected_revision");
+    const lockPath = join7(this.directory, "current.lock");
+    const lock = await acquireStateLock(lockPath);
+    try {
+      const current = await this.#recoverCurrentUnlocked();
+      if (current.revision !== expectedRevision) return { status: "conflict", current };
+      const next = this.#validateCurrent({ schemaVersion: ROUTING_SCHEMA_VERSION, scope: this.#scope, revision: expectedRevision + 1, updatedAt: this.#now().toISOString(), records: structuredClone(records) });
+      await this.#checkReferences(next, false);
+      await writeJson(join7(this.#revisions, `${next.revision}.json`), this.#revisions, next, true);
+      await writeJson(join7(this.directory, "current.json"), this.directory, next, false);
+      return { status: "committed", current: next };
+    } finally {
+      await releaseStateLock(lockPath, lock.handle, lock.token);
+    }
+  }
+  async recoverCurrent() {
+    this.#assertWritable();
+    await this.#ready;
+    const lockPath = join7(this.directory, "current.lock");
+    const lock = await acquireStateLock(lockPath);
+    try {
+      return await this.#recoverCurrentUnlocked();
+    } finally {
+      await releaseStateLock(lockPath, lock.handle, lock.token);
+    }
+  }
+  async #recoverCurrentUnlocked() {
+    const versions = (await readdir3(this.#revisions)).filter((name) => /^[1-9][0-9]*\.json$/.test(name)).sort((a, b) => Number.parseInt(b) - Number.parseInt(a));
+    for (const version2 of versions) {
+      const current = this.#validateCurrent(await readJson(join7(this.#revisions, version2)));
+      await this.#checkReferences(current);
+      const pointer = await readJson(join7(this.directory, "current.json")).catch(() => null);
+      if (JSON.stringify(pointer) !== JSON.stringify(current)) await writeJson(join7(this.directory, "current.json"), this.directory, current, false);
+      return current;
+    }
+    return await this.current();
+  }
+  async snapshot() {
+    this.#assertWritable();
+    await this.#ready;
+    const lockPath = join7(this.directory, "current.lock");
+    const lock = await acquireStateLock(lockPath);
+    try {
+      const current = await this.#recoverCurrentUnlocked();
+      const records = /* @__PURE__ */ new Map();
+      const visit2 = async (id) => {
+        if (records.has(id)) return;
+        const record2 = await this.read(id, { includeExpired: true });
+        if (!record2) throw new Error("routing_snapshot_missing_dependency");
+        records.set(id, record2);
+        for (const dependency of record2.dependsOn ?? []) await visit2(dependency);
+      };
+      for (const id of Object.values(current.records)) await visit2(id);
+      return { current, records: [...records.values()] };
+    } finally {
+      await releaseStateLock(lockPath, lock.handle, lock.token);
+    }
+  }
+  async prune() {
+    this.#assertWritable();
+    await this.#ready;
+    const lockPath = join7(this.directory, "current.lock");
+    const lock = await acquireStateLock(lockPath);
+    try {
+      const records = /* @__PURE__ */ new Map();
+      for (const name of await readdir3(this.#records)) {
+        if (!/^[a-f0-9]{64}\.json$/.test(name)) continue;
+        const record2 = this.#validateRecord(await readJson(join7(this.#records, name)));
+        records.set(record2.id, { record: record2, path: join7(this.#records, name) });
+      }
+      const protectedIds = /* @__PURE__ */ new Set();
+      const protect = (id) => {
+        if (protectedIds.has(id)) return;
+        protectedIds.add(id);
+        for (const dependency of records.get(id)?.record.dependsOn ?? []) protect(dependency);
+      };
+      for (const { record: record2 } of records.values()) if (record2.retention === "pinned") protect(record2.id);
+      const expired = /* @__PURE__ */ new Set();
+      for (const [id, { record: record2 }] of records) {
+        if (!protectedIds.has(id) && record2.expiresAt && Date.parse(record2.expiresAt) <= this.#now().getTime()) expired.add(id);
+      }
+      const current = await this.#recoverCurrentUnlocked();
+      const hasExpiredDependency = (id, visited = /* @__PURE__ */ new Set()) => {
+        if (expired.has(id)) return true;
+        if (visited.has(id)) return false;
+        visited.add(id);
+        return (records.get(id)?.record.dependsOn ?? []).some((dependency) => hasExpiredDependency(dependency, visited));
+      };
+      const retained = Object.fromEntries(Object.entries(current.records).filter(([, id]) => !hasExpiredDependency(id)));
+      if (Object.keys(retained).length !== Object.keys(current.records).length) {
+        const next = { ...current, revision: current.revision + 1, updatedAt: this.#now().toISOString(), records: retained };
+        await writeJson(join7(this.#revisions, `${next.revision}.json`), this.#revisions, next, true);
+        await writeJson(join7(this.directory, "current.json"), this.directory, next, false);
+      }
+      for (const id of expired) await unlink7(records.get(id).path);
+      for (const name of await readdir3(this.#revisions)) {
+        if (!/^[1-9][0-9]*\.json$/.test(name)) continue;
+        const revision = this.#validateCurrent(await readJson(join7(this.#revisions, name)));
+        if (revision.revision === current.revision && Object.keys(retained).length === Object.keys(current.records).length) continue;
+        if (Date.parse(revision.updatedAt) + METADATA_RETENTION <= this.#now().getTime() || Object.values(revision.records).some((id) => expired.has(id))) await unlink7(join7(this.#revisions, name));
+      }
+      return [...expired];
+    } finally {
+      await releaseStateLock(lockPath, lock.handle, lock.token);
+    }
+  }
+};
+
+// src/routing/api.ts
+var identifier3 = external_exports.string().min(1).max(256).refine((value) => !value.includes("\0"));
+var digestSchema = external_exports.string().regex(/^[a-f0-9]{64}$/);
+var profileSchema = external_exports.strictObject({ providerId: identifier3, modelId: identifier3, effort: identifier3 });
+var routingScopeSchema = external_exports.strictObject({ hostId: identifier3, accountId: identifier3, workspaceId: digestSchema, sessionId: digestSchema, agentId: digestSchema });
+var catalogRefSchema = external_exports.strictObject({
+  schemaVersion: external_exports.literal(ROUTING_SCHEMA_VERSION),
+  scope: routingScopeSchema,
+  catalogId: digestSchema,
+  digest: digestSchema,
+  taskRevisionId: digestSchema,
+  capabilityId: digestSchema
+});
+var coverageSchema = external_exports.strictObject({
+  discovery: external_exports.enum(["complete_supported_inventory", "partial"]),
+  pages: external_exports.number().int().nonnegative(),
+  inaccessibleCategories: external_exports.array(identifier3).default([])
+});
+var routingUpdateSchema = external_exports.strictObject({
+  hostId: identifier3,
+  accountId: identifier3,
+  sourceRevision: identifier3,
+  coverage: coverageSchema.optional(),
+  capabilities: external_exports.strictObject({
+    sourceRevision: identifier3,
+    status: external_exports.enum(["known", "unknown"]),
+    profileSwitch: external_exports.enum(["supported", "unsupported", "unknown"]),
+    orderedPreDispatch: external_exports.boolean(),
+    eligibleProfiles: external_exports.array(profileSchema),
+    inaccessibleCategories: external_exports.array(identifier3).default([])
+  }).optional(),
+  task: external_exports.strictObject({
+    factsRevision: identifier3.optional(),
+    evidenceRevision: identifier3.optional(),
+    observedFailureIds: external_exports.array(identifier3).default([]),
+    unknowns: external_exports.array(external_exports.string().max(1500)).default([]),
+    pendingToolCycle: external_exports.boolean().default(false),
+    completedSubtask: external_exports.boolean().default(false),
+    pin: profileSchema.optional(),
+    currentProfile: profileSchema.optional()
+  }).optional()
+});
+var routingUpdateTaskContextInputSchema = updateTaskContextInputSchema.extend({ routing: routingUpdateSchema.optional() });
+var routingDecisionSchema = external_exports.union([
+  decisionSchema,
+  decisionSchema.omit({ candidates: true }).extend({ catalogRef: catalogRefSchema })
+]);
+var routingStatusInputSchema = external_exports.strictObject({ fullReceiptScan: external_exports.boolean().default(false), routingScope: routingScopeSchema.optional() });
+function canonical2(value) {
+  if (Array.isArray(value)) return value.map(canonical2);
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item2]) => [key, canonical2(item2)]));
+  return value;
+}
+function digest3(value) {
+  return createHash6("sha256").update(JSON.stringify(canonical2(value))).digest("hex");
+}
+function catalogDigest(record2) {
+  const { expiresAt: _expiresAt, ...content } = record2;
+  return digest3(content);
+}
+function reasonFor(error62) {
+  if (error62 instanceof external_exports.ZodError) return "invalid_catalog_record";
+  const codes = ["unsafe_routing_directory", "unsafe_routing_metadata", "duplicate_catalog_ids", "catalog_ref_not_found", "catalog_ref_expired", "catalog_ref_digest_mismatch", "catalog_ref_dependencies_unavailable", "stale_task_revision"];
+  return error62 instanceof Error && codes.includes(error62.message) ? error62.message : "routing_state_unavailable";
+}
+function profileFor(metadata) {
+  const parsed = profileSchema.safeParse({ providerId: metadata?.providerId, modelId: metadata?.modelId, effort: metadata?.effort });
+  return parsed.success ? parsed.data : void 0;
+}
+function eligibleProfile(metadata, capabilities, task) {
+  const profile = profileFor(metadata);
+  return !!profile && capabilities.status === "known" && capabilities.eligibleProfiles.some((eligible) => sameProfile(eligible, profile)) && (!task.pin || sameProfile(task.pin, profile));
+}
+function publicAssessment(result) {
+  if (result.coverage?.method !== "paged_reduction") return result;
+  const { probabilities: _probabilities, confidence: _confidence, bestCandidate: _bestCandidate, ...advice } = result;
+  return { ...advice, comparisonScope: "paged_advisory_reduction", probabilityScope: "omitted_page_local_values" };
+}
+var catalogEntrySchema = external_exports.strictObject({
+  id: external_exports.string().min(1).max(100),
+  category: external_exports.enum(decisionDomains),
+  description: external_exports.string().min(1).max(1500),
+  available: external_exports.boolean(),
+  source: external_exports.literal("caller_scoped_mcp"),
+  metadata: decisionSchema.shape.candidates.element.shape.metadata.optional()
+});
+var catalogSnapshotSchema = external_exports.object({
+  schemaVersion: external_exports.literal(ROUTING_SCHEMA_VERSION),
+  id: digestSchema,
+  kind: external_exports.literal("catalog_snapshot"),
+  scope: routingScopeSchema,
+  sourceRevision: identifier3,
+  createdAt: external_exports.string().datetime({ offset: true }),
+  retention: external_exports.literal("facts"),
+  expiresAt: external_exports.string().datetime({ offset: true }).optional(),
+  entries: external_exports.array(catalogEntrySchema),
+  coverage: coverageSchema.extend({ inventoryCount: external_exports.number().int().nonnegative() })
+});
+function createRoutingApi(options) {
+  const env = options.env ?? process.env;
+  const now = options.now ?? (() => /* @__PURE__ */ new Date());
+  const directory = dataDirectory(env);
+  const deadlineMs = Math.min(Math.max(options.deadlineMs ?? 5e3, 1), 5e3);
+  const storeFor = (scope, readOnly = false) => new RoutingStateStore({ stateDirectory: directory, scope, now, ...readOnly ? { readOnly: true } : {} });
+  async function privateState(create = false) {
+    if (!isAbsolute5(directory) || directory.includes("\0")) throw new Error("unsafe_routing_directory");
+    if (create) await mkdir7(directory, { recursive: true, mode: 448 });
+    const info = await lstat5(directory);
+    if (!info.isDirectory() || info.isSymbolicLink() || info.uid !== process.getuid?.() || (info.mode & 63) !== 0) throw new Error("unsafe_routing_directory");
+  }
+  function safeMetadata(value) {
+    const key = env.JEV_API_KEY_FILE ? readCredentialFile(env.JEV_API_KEY_FILE) : null;
+    const secrets = [env.TYPESAFE_API_KEY, key].filter((item2) => Boolean(item2));
+    const text = JSON.stringify(value);
+    if (redactText(text, secrets) !== text) throw new Error("unsafe_routing_metadata");
+  }
+  function scopeFor(context, input2) {
+    return { hostId: input2.hostId, accountId: input2.accountId, workspaceId: context.scope.workspaceHash, sessionId: context.scope.sessionHash, agentId: context.scope.agentHash };
+  }
+  function base(scope, kind, retention) {
+    return { schemaVersion: ROUTING_SCHEMA_VERSION, id: digest3(randomUUID10()), kind, scope, createdAt: now().toISOString(), retention };
+  }
+  async function publishContext(context, input2) {
+    await privateState(true);
+    safeMetadata(input2);
+    const scope = scopeFor(context, input2);
+    const store = storeFor(scope);
+    await store.prune();
+    const current = await store.current();
+    const entries = Object.entries(context.candidateCatalogs).flatMap(([category, candidates]) => candidates.map((candidate) => ({ ...candidate, id: `${category}:${candidate.id}`, category, source: "caller_scoped_mcp" })));
+    if (new Set(entries.map((entry) => entry.id)).size !== entries.length) throw new Error("duplicate_catalog_ids");
+    const coverage = { ...input2.coverage ?? { discovery: "partial", pages: 0, inaccessibleCategories: [] }, inventoryCount: entries.length };
+    const content = { ...base(scope, "catalog_snapshot", "facts"), sourceRevision: input2.sourceRevision, entries, coverage };
+    const catalog = await store.publish({ ...content, id: digest3(content), kind: "catalog_snapshot" });
+    const capabilities = await store.publish({
+      ...base(scope, "host_capabilities", "facts"),
+      kind: "host_capabilities",
+      ...input2.capabilities ?? { sourceRevision: input2.sourceRevision, status: "unknown", profileSwitch: "unknown", orderedPreDispatch: false, eligibleProfiles: [], inaccessibleCategories: [] }
+    });
+    const previous = current.records.task ? await store.read(current.records.task) : null;
+    const task = await store.publish({
+      ...base(scope, "task_revision", "facts"),
+      kind: "task_revision",
+      revision: (previous?.revision ?? 0) + 1,
+      factsRevision: input2.task?.factsRevision ?? digest3(context),
+      objective: context.rootObjective?.value ?? "",
+      subtask: context.latestStep?.value ?? "",
+      sourceRevision: input2.sourceRevision,
+      evidenceRevision: input2.task?.evidenceRevision ?? digest3(context.evidenceRefs),
+      catalogId: catalog.id,
+      observedFailureIds: input2.task?.observedFailureIds ?? [],
+      pendingToolCycle: input2.task?.pendingToolCycle ?? false,
+      completedSubtask: input2.task?.completedSubtask ?? false,
+      unknowns: input2.task?.unknowns ?? [],
+      ...input2.task?.pin ? { pin: input2.task.pin } : {},
+      ...input2.task?.currentProfile ? { currentProfile: input2.task.currentProfile } : {},
+      dependsOn: [catalog.id, capabilities.id]
+    });
+    const commit = await store.compareAndSet(current.revision, { catalog: catalog.id, capabilities: capabilities.id, task: task.id });
+    if (commit.status === "conflict") return { status: "unavailable", reasonCode: "routing_state_conflict" };
+    const catalogRef = { schemaVersion: ROUTING_SCHEMA_VERSION, scope, catalogId: catalog.id, digest: catalogDigest(catalog), taskRevisionId: task.id, capabilityId: capabilities.id };
+    return {
+      status: "published",
+      schemaVersion: ROUTING_SCHEMA_VERSION,
+      revision: commit.current.revision,
+      catalogRef,
+      coverage: { ...coverage, source: "caller_scoped_mcp", outsideSupportedInventory: "unknown", knowledge: input2.coverage ? "caller_reported" : "unknown" },
+      capabilities: { source: "caller_reported", profileSwitch: capabilities.profileSwitch, application: "not_supported_by_mcp" },
+      proposal: null,
+      delivery: { status: "not_attempted" },
+      application: { status: "not_attempted" },
+      execution: { status: "unknown" }
+    };
+  }
+  async function update(raw) {
+    const input2 = routingUpdateTaskContextInputSchema.parse(raw);
+    const context = await updateTaskContext(input2.scope, input2.update, { env, now: now() });
+    if (!context) return { status: "unavailable", reasonCode: "task_context_unavailable" };
+    if (!input2.routing) return { status: "updated", context };
+    try {
+      return { status: "updated", context, routing: await publishContext(context, input2.routing) };
+    } catch (error62) {
+      return { status: "updated", context, routing: { status: "unavailable", reasonCode: reasonFor(error62) } };
+    }
+  }
+  async function resolveRef2(ref) {
+    await privateState();
+    const store = storeFor(ref.scope);
+    const stored = await store.read(ref.catalogId, { includeExpired: true });
+    if (!stored) throw new Error("catalog_ref_not_found");
+    const catalog = catalogSnapshotSchema.parse(stored);
+    if (catalog.expiresAt && Date.parse(catalog.expiresAt) <= now().getTime()) throw new Error("catalog_ref_expired");
+    if (catalogDigest(catalog) !== ref.digest) throw new Error("catalog_ref_digest_mismatch");
+    const [current, task, capabilities] = await Promise.all([store.current(), store.read(ref.taskRevisionId), store.read(ref.capabilityId)]);
+    if (!task || !capabilities || task.kind !== "task_revision" || capabilities.kind !== "host_capabilities") throw new Error("catalog_ref_dependencies_unavailable");
+    if (current.records.catalog !== ref.catalogId || current.records.task !== ref.taskRevisionId || current.records.capabilities !== ref.capabilityId || task.catalogId !== ref.catalogId) throw new Error("stale_task_revision");
+    return { store, catalog, current, task, capabilities };
+  }
+  async function boundedConsult(input2, signal) {
+    const controller = new AbortController();
+    const deadline = Date.now() + deadlineMs;
+    const service2 = { async classifyDecision(question, cancellation) {
+      if (Date.now() >= deadline) return { status: "unavailable", reasonCode: "timeout" };
+      const result = await options.service.classifyDecision(question, cancellation);
+      return Date.now() >= deadline ? { status: "unavailable", reasonCode: "timeout" } : result;
+    } };
+    let timer;
+    let cancelled;
+    const stopped = new Promise((resolve2) => {
+      cancelled = () => {
+        controller.abort(signal?.reason);
+        resolve2({ status: "unavailable", reasonCode: "cancelled" });
+      };
+      if (signal?.aborted) cancelled();
+      else signal?.addEventListener("abort", cancelled, { once: true });
+      timer = setTimeout(() => {
+        controller.abort(new Error("routing_deadline"));
+        resolve2({ status: "unavailable", reasonCode: "timeout" });
+      }, deadlineMs);
+    });
+    try {
+      return await Promise.race([consultCandidateCatalog(input2, service2, controller.signal), stopped]);
+    } finally {
+      if (timer) clearTimeout(timer);
+      if (cancelled) signal?.removeEventListener("abort", cancelled);
+    }
+  }
+  async function classify(raw, signal) {
+    if (!raw || typeof raw !== "object" || !("catalogRef" in raw)) return options.service.classifyDecision(raw, signal);
+    const parsed = routingDecisionSchema.safeParse(raw);
+    if (!parsed.success || !("catalogRef" in parsed.data)) return { status: "skipped", reasonCode: "invalid_input" };
+    const { catalogRef, ...question } = parsed.data;
+    try {
+      const resolved = await resolveRef2(catalogRef);
+      const { store, catalog, task, capabilities } = resolved;
+      const entries = catalog.entries.filter((entry) => entry.category === question.domain);
+      const candidates = entries.map((entry) => ({
+        id: entry.id.slice(entry.category.length + 1),
+        description: entry.description,
+        available: entry.available && (question.domain !== "model" || eligibleProfile(entry.metadata, capabilities, task)),
+        ...entry.metadata ? { metadata: { ...entry.metadata } } : {}
+      }));
+      const result = publicAssessment(await boundedConsult({ ...question, candidates }, signal));
+      await resolveRef2(catalogRef);
+      const coverage = {
+        catalogId: catalog.id,
+        inventoryCount: catalog.coverage.inventoryCount,
+        domainInventoryCount: entries.length,
+        discovery: catalog.coverage.discovery,
+        source: "caller_scoped_mcp",
+        inaccessibleCategories: catalog.coverage.inaccessibleCategories,
+        outsideSupportedInventory: "unknown",
+        ...result.coverage ? { comparison: result.coverage } : {}
+      };
+      if (question.mode === "preview") return { ...result, routing: { schemaVersion: ROUTING_SCHEMA_VERSION, catalogRef, coverage, proposal: null, delivery: { status: "prepared" }, application: { status: "not_attempted", reasonCode: "mcp_has_no_host_actuator" }, execution: { status: "unknown" }, outcome: { status: "unknown" } } };
+      const selected = result.status === "assessed" ? entries.find((entry) => entry.id === `${question.domain}:${result.choice}`) : void 0;
+      const providerReceiptIds = result.coverage?.receiptIds;
+      const proposal = await store.publish({
+        ...base(catalogRef.scope, "decision_proposal", "metadata"),
+        kind: "decision_proposal",
+        taskRevision: task.revision,
+        factsRevision: task.factsRevision,
+        catalogId: catalog.id,
+        capabilityRevision: capabilities.sourceRevision,
+        targetIds: selected ? [selected.id] : [],
+        disposition: selected ? "selected" : "abstained",
+        ...selected && question.domain === "model" && profileFor(selected.metadata) ? { recommendedProfile: profileFor(selected.metadata) } : {},
+        ...result.receiptPersisted && result.receiptId ? { providerReceiptId: result.receiptId } : {},
+        ...providerReceiptIds ? { providerReceiptIds } : {},
+        dependsOn: [catalog.id, task.id, capabilities.id]
+      });
+      const delivery = await store.publish({
+        ...base(catalogRef.scope, "delivery_observation", "metadata"),
+        kind: "delivery_observation",
+        proposalId: proposal.id,
+        deliveryId: randomUUID10(),
+        channel: "mcp_response_prepared",
+        status: "unknown",
+        dependsOn: [proposal.id]
+      });
+      const current = await store.current();
+      if (current.records.task !== task.id || current.records.catalog !== catalog.id || current.records.capabilities !== capabilities.id) return { status: "unavailable", reasonCode: "stale_task_revision" };
+      const commit = await store.compareAndSet(current.revision, { ...current.records, proposal: proposal.id, delivery: delivery.id });
+      if (commit.status === "conflict") return { status: "unavailable", reasonCode: "stale_task_revision" };
+      return { ...result, routing: {
+        schemaVersion: ROUTING_SCHEMA_VERSION,
+        catalogRef,
+        coverage,
+        proposal: { id: proposal.id, disposition: proposal.disposition },
+        delivery: { status: "prepared", observationId: delivery.id, acknowledgment: "unknown" },
+        application: { status: "not_attempted", reasonCode: "mcp_has_no_host_actuator" },
+        execution: { status: "unknown" },
+        outcome: { status: "unknown" }
+      } };
+    } catch (error62) {
+      return { status: "unavailable", reasonCode: reasonFor(error62) };
+    }
+  }
+  async function status(scope) {
+    const support = {
+      schemaVersion: ROUTING_SCHEMA_VERSION,
+      catalogs: "caller_scoped_only",
+      inventoryCoverage: "unknown",
+      profileApplication: "unsupported",
+      automaticModelRouting: "undelivered",
+      execution: "unknown",
+      independentOutcome: "unknown"
+    };
+    if (!scope) return support;
+    try {
+      await privateState();
+      routingScopeSchema.parse(scope);
+      const scopeId = digest3([scope.hostId, scope.accountId, scope.workspaceId, scope.sessionId, scope.agentId]);
+      const scopedDirectory = join8(directory, ROUTING_SCHEMA_VERSION, scopeId);
+      try {
+        await Promise.all([lstat5(scopedDirectory), lstat5(join8(scopedDirectory, "records")), lstat5(join8(scopedDirectory, "revisions"))]);
+      } catch (error62) {
+        if (error62.code === "ENOENT") return support;
+        throw error62;
+      }
+      const store = storeFor(scope, true);
+      const current = await store.current();
+      const catalog = current.records.catalog ? await store.read(current.records.catalog) : null;
+      const capabilities = current.records.capabilities ? await store.read(current.records.capabilities) : null;
+      return {
+        ...support,
+        scope,
+        revision: current.revision,
+        records: current.records,
+        inventoryCoverage: catalog ? "caller_reported" : "unknown",
+        ...catalog ? { coverage: catalog.coverage } : {},
+        capabilities: { status: capabilities?.status ?? "unknown", profileSwitch: capabilities?.profileSwitch ?? "unknown", source: "caller_reported" }
+      };
+    } catch {
+      return { ...support, status: "unavailable", reasonCode: "routing_state_unavailable" };
+    }
+  }
+  return { updateTaskContext: update, classifyDecision: classify, status };
+}
+
 // src/server.ts
 var service = createService();
+var routing = createRoutingApi({ service });
 var server = new Server({ name: "jev-workflows", version: "0.5.3" }, { capabilities: { tools: {} } });
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [
-  { name: "jev_status", description: "Read local Jev readiness, limits and receipts referenced by today's index without scanning historical files. Indexed counts have unknown coverage outside that index. Set fullReceiptScan=true only for an explicit, potentially slow local receipt audit. Never contacts TypeSafe, exposes credentials or establishes provider billing.", inputSchema: { type: "object", properties: { fullReceiptScan: { type: "boolean", default: false } }, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } },
+  { name: "jev_status", description: "Read local Jev readiness, limits and receipts referenced by today's index without scanning historical files. Indexed counts have unknown coverage outside that index. Optional routingScope reads only its current routing metadata. Catalog coverage is caller scoped; automatic model application remains undelivered. Set fullReceiptScan=true only for an explicit, potentially slow local receipt audit. Never contacts TypeSafe, exposes credentials or establishes provider billing.", inputSchema: external_exports.toJSONSchema(routingStatusInputSchema, { io: "input" }), annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } },
   { name: "classify_failure", description: "Preview selected redacted command evidence locally, or evaluate an authorized payload with TypeSafe Jev. Evaluate sends data externally in a billable provider API request. Advisory failure classification; never edits files, approves permissions, or certifies a fix.", inputSchema: external_exports.toJSONSchema(failureSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
   { name: "check_completion", description: "Preview a completion claim and selected evidence locally, or evaluate an authorized payload with TypeSafe Jev. Returns support, partial support, contradiction, or insufficient evidence. Advisory assessment, not a substitute for independent tests or user acceptance.", inputSchema: external_exports.toJSONSchema(completionSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
-  { name: "classify_decision", description: "Consult Jev for any classification or choice: tools, models and effort, tasks/delegation, skills, context, strategy, outcomes, or a caller-defined taxonomy. Supply the actual available candidates, question, evidence, and context containing the objective and constraints. Preview is local; evaluate sends a bounded redacted payload to TypeSafe. Returns a validated candidate ID or abstention, never permission or proof of execution. Use before consequential choices when the user has enabled Jev consultation.", inputSchema: external_exports.toJSONSchema(decisionSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
+  { name: "classify_decision", description: "Consult Jev for any classification or choice: tools, models and effort, tasks/delegation, skills, context, strategy, outcomes, or a caller-defined taxonomy. Supply actual available candidates, or a current scoped catalogRef returned by update_task_context, with question, evidence, objective and constraints. Reference consultations retain coverage and proposal linkage; model eligibility requires explicit provider/model/effort capability evidence. Preview is local; evaluate sends bounded redacted payloads to TypeSafe. Returns advice or abstention, never permission, model application or proof of execution. Use before consequential choices when the user has enabled Jev consultation.", inputSchema: { type: "object", ...external_exports.toJSONSchema(routingDecisionSchema, { io: "input" }) }, annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
   { name: "configure_automation", description: "Configure optional local evaluation caps and enable, scope, or disable automatic Jev lifecycle consultation for this local installation when the user requests it. There are no plugin-imposed daily call, byte-volume, or per-session caps by default; null leaves each optional cap unlimited, and only explicit user settings add caps. Replaces the previously saved local policy; the prior policy is not retained. Stores only local policy, never credentials. Enabled hooks send bounded redacted event context through the TypeSafe provider API. Hook trust remains a separate host control.", inputSchema: external_exports.toJSONSchema(automationPolicySchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false } },
   { name: "evaluate_decisions", description: "Preview or evaluate independent typed Choice, Noul, Score, or explicitly opted-in experimental Box questions together against one selected structured state. Image assets are explicit bounded PNG/JPEG JSON inputs only; no file or URL reads occur. Evaluation sends redacted text and validated assets to TypeSafe; probabilities and local per-question dispositions remain advisory. Batch only independent questions and combine answers in code. Never supplies authority, tool arguments, or proof of completion.", inputSchema: external_exports.toJSONSchema(evaluateDecisionsSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },
-  { name: "update_task_context", description: "Update redacted local task context scoped to the actual workspace, session, and agent. Continue preserves the root objective; replace starts a new objective; reset clears the scoped context. Supply current constraints, acceptance criteria, corrections, evidence references, and actual candidate catalogs. Local only; replaces prior scoped context on replace/reset and does not change Codex settings or permissions.", inputSchema: external_exports.toJSONSchema(updateTaskContextInputSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false } },
+  { name: "update_task_context", description: "Update redacted local task context scoped to the actual workspace, session, and agent. Continue preserves the root objective; replace starts a new objective; reset clears the scoped context. Supply current constraints, acceptance criteria, corrections, evidence references, and actual candidate catalogs. Optional routing publishes versioned caller-scoped catalog, task and capability records and returns a catalogRef. Coverage and capabilities are caller reported; missing coverage remains unknown. Local only; replaces prior scoped context on replace/reset and does not change Codex settings or permissions.", inputSchema: external_exports.toJSONSchema(routingUpdateTaskContextInputSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false } },
   { name: "record_decision_outcome", description: "Append a local observation linked to an existing decision receipt, actual action, and evidence identifiers. This records what the caller reports happened; it never establishes independent verification, provider billing, or permission and never transmits evidence to TypeSafe.", inputSchema: external_exports.toJSONSchema(decisionOutcomeSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false } }
 ] }));
 server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
   let result;
   if (request.params.name === "jev_status") {
-    const input2 = external_exports.strictObject({ fullReceiptScan: external_exports.boolean().default(false) }).parse(request.params.arguments ?? {});
+    const input2 = routingStatusInputSchema.parse(request.params.arguments ?? {});
     const automation = await readPolicy();
     const status = service.status(automation);
-    const [budget, evaluations] = await Promise.all([
+    const [budget, evaluations, routingStatus] = await Promise.all([
       readBudgetUsage(dataDirectory(), status.maxCallsPerDay, status.maxBytesPerDay),
-      readEvaluationUsage(dataDirectory(), status.credentialFingerprint, /* @__PURE__ */ new Date(), { mode: input2.fullReceiptScan ? "full" : "indexed", signal: extra.signal, publishIndex: false })
+      readEvaluationUsage(dataDirectory(), status.credentialFingerprint, /* @__PURE__ */ new Date(), { mode: input2.fullReceiptScan ? "full" : "indexed", signal: extra.signal, publishIndex: false }),
+      routing.status(input2.routingScope)
     ]);
-    result = { ...status, automation, budget, evaluations };
+    result = { ...status, automation, budget, evaluations, routing: routingStatus };
   } else if (request.params.name === "classify_failure") result = await service.classifyFailure(request.params.arguments, extra.signal);
   else if (request.params.name === "check_completion") result = await service.checkCompletion(request.params.arguments, extra.signal);
-  else if (request.params.name === "classify_decision") result = await service.classifyDecision(request.params.arguments, extra.signal);
+  else if (request.params.name === "classify_decision") result = await routing.classifyDecision(request.params.arguments, extra.signal);
   else if (request.params.name === "evaluate_decisions") result = await service.evaluateDecisions(request.params.arguments, extra.signal);
   else if (request.params.name === "update_task_context") {
-    const input2 = updateTaskContextInputSchema.parse(request.params.arguments);
-    const context = await updateTaskContext(input2.scope, input2.update);
-    result = context ? { status: "updated", context } : { status: "unavailable", reasonCode: "task_context_unavailable" };
+    result = await routing.updateTaskContext(request.params.arguments);
   } else if (request.params.name === "record_decision_outcome") result = await recordDecisionOutcome(request.params.arguments);
   else if (request.params.name === "configure_automation") result = await configurePolicy(request.params.arguments);
   else throw new Error("Unknown tool");

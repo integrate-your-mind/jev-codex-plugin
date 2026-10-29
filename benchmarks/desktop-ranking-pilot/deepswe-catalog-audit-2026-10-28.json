@@ -1,0 +1,804 @@
+{
+  "schemaVersion": "desktop-pilot-deepswe-metadata-audit-v1",
+  "revision": "0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
+  "taskCount": 113,
+  "categories": {
+    "enhancement": 3,
+    "feature_request": 106,
+    "bugfix": 4
+  },
+  "scope": "Pinned public task metadata only. No task, verifier, model or old cohort executed.",
+  "tasks": [
+    {
+      "id": "abs-module-cache-flags",
+      "category": "enhancement",
+      "repository": "https://github.com/abs-lang/abs",
+      "sourceBlob": "5021e65499a9c3162c2aa57ffdf981556bdfe6db",
+      "sourceHash": "bb44f3275fde199bbe5d6706630a5c6140cfe5beb66e49f2c391fa548bd974e6"
+    },
+    {
+      "id": "abs-stepped-slices",
+      "category": "feature_request",
+      "repository": "https://github.com/abs-lang/abs",
+      "sourceBlob": "90cdf94167c2bb0eb831dfbd9c16107b27a763ef",
+      "sourceHash": "695397d9964aac7e49f263199375a5c829549909eacb5790dc3a5d2e5ca877c5"
+    },
+    {
+      "id": "actionlint-action-pinning-lint",
+      "category": "feature_request",
+      "repository": "https://github.com/rhysd/actionlint",
+      "sourceBlob": "c07016c9c4aa3c116afcad2949680dd9308bc79b",
+      "sourceHash": "a171ddc6849f81f146c05b5fa230341fbc691e26b90edb4d3d80efd274141f66"
+    },
+    {
+      "id": "adaptix-name-mapping-aliases",
+      "category": "feature_request",
+      "repository": "https://github.com/reagento/adaptix",
+      "sourceBlob": "74237d4d00170a25999a9b0853c9bbbbff9b2749",
+      "sourceHash": "ec03c8bc5fd8ba4d86188d4b92681c4454bb90376ac4af1fdfda6353f9201b3f"
+    },
+    {
+      "id": "aiomonitor-task-snapshots-diff",
+      "category": "feature_request",
+      "repository": "https://github.com/aio-libs/aiomonitor",
+      "sourceBlob": "cb3f4ab648f97a956c4fd21aac62ae4696b49d96",
+      "sourceHash": "4920836b0039b6c022f3200714a6d8107a7126a3a1354a19c66374e3aab445de"
+    },
+    {
+      "id": "anko-default-function-arguments",
+      "category": "feature_request",
+      "repository": "https://github.com/mattn/anko",
+      "sourceBlob": "fcc62bb3a3b2884ee8212c5cae5f41295e498c48",
+      "sourceHash": "aabbd5deb2aad2e820ba7592883cc9ccbe7a7f73c87e03eac903164fe3d03bd0"
+    },
+    {
+      "id": "anko-typed-variable-bindings",
+      "category": "feature_request",
+      "repository": "https://github.com/mattn/anko",
+      "sourceBlob": "4ac4871c01fa7d40d30f4dc40c3d096d37fd6f6a",
+      "sourceHash": "10e666616cddb0b75d2db407c5c89ea4b17a3284b5ad7c499a3305cc9483bcd1"
+    },
+    {
+      "id": "arcane-drift-detection-baselines",
+      "category": "feature_request",
+      "repository": "https://github.com/getarcaneapp/arcane.git",
+      "sourceBlob": "8c40eb888784e5f078a9a60b57983ad383922e02",
+      "sourceHash": "bda69894e0fd8a7afda5dc81169d11db83058e78099c7889088f0c423a1db0a2"
+    },
+    {
+      "id": "arktype-json-schema-refs-dependencies",
+      "category": "feature_request",
+      "repository": "https://github.com/arktypeio/arktype",
+      "sourceBlob": "f88715a0832f2fd1b81ef349a9f1ae400ce4dbae",
+      "sourceHash": "6a91e7bd0fd5d1154f77e84c69a62d266e24552c83954dec0f18d3471b6a809c"
+    },
+    {
+      "id": "awilix-async-container-initialization",
+      "category": "feature_request",
+      "repository": "https://github.com/jeffijoe/awilix",
+      "sourceBlob": "6424a8818656c80ba396c7169414e54fb184a562",
+      "sourceHash": "051f78a9f7c1641dfa9a362dacf26a8ea3b4100eaade210db2a74ef23061fc3d"
+    },
+    {
+      "id": "bandit-incremental-cache-control",
+      "category": "feature_request",
+      "repository": "https://github.com/PyCQA/bandit.git",
+      "sourceBlob": "30ec36af89a1cd53dfe220f2caf813580d70350f",
+      "sourceHash": "1807632d919182dd98c7ba8398ef82f8d0982b12739c0b209322130893424a75"
+    },
+    {
+      "id": "bandit-interprocedural-taint-checks",
+      "category": "feature_request",
+      "repository": "https://github.com/PyCQA/bandit.git",
+      "sourceBlob": "511723c9abf3be4bba35080c722846ce075decb5",
+      "sourceHash": "eb38b1482426d94b804589a67b1632027c0ed9767b41524aabbf2472a2aca067"
+    },
+    {
+      "id": "bandit-structured-nosec-directives",
+      "category": "feature_request",
+      "repository": "https://github.com/PyCQA/bandit.git",
+      "sourceBlob": "be16e5fb203b63645a0112ae9d7b54e8911ecfb2",
+      "sourceHash": "f912cafd5cc5a526e16147d9151a4dd9fc6eea151ad7967adfd37ce05709c22d"
+    },
+    {
+      "id": "boa-hierarchical-evaluation-cancellation",
+      "category": "feature_request",
+      "repository": "https://github.com/boa-dev/boa",
+      "sourceBlob": "fd18cda03778b1f6b7134e6d9f458537541c7653",
+      "sourceHash": "01f6340fa9c876a0707f3a71a1196820b2de88d0ae292b7778d5acd3407d1dab"
+    },
+    {
+      "id": "cattrs-partial-structuring-recovery",
+      "category": "feature_request",
+      "repository": "https://github.com/python-attrs/cattrs",
+      "sourceBlob": "0ba76b281707e20af48918db9312cfb85de24fba",
+      "sourceHash": "6c4f2907ee8a96f9a054e54cfae86fa248a37c06337cf990e3a124000a32bb0b"
+    },
+    {
+      "id": "clack-async-autocomplete-options",
+      "category": "feature_request",
+      "repository": "https://github.com/bombshell-dev/clack",
+      "sourceBlob": "156e7ef37eed5b9d74dac0e654b76e742614d610",
+      "sourceHash": "977c453c2c4701b1d58df42f7d11a9f9b16ae9b57c7e2522fa45c2bd14f44603"
+    },
+    {
+      "id": "claude-code-by-agents-recursive-delegation",
+      "category": "feature_request",
+      "repository": "https://github.com/baryhuang/claude-code-by-agents",
+      "sourceBlob": "152a0692d97fb115618c88a66f32a585880a2cd4",
+      "sourceHash": "5f5b092341a9f654ac3b25c68381f6a0eb028280f6fbc4001003227e4729959d"
+    },
+    {
+      "id": "cliffy-config-file-parsing",
+      "category": "feature_request",
+      "repository": "https://github.com/c4spar/cliffy",
+      "sourceBlob": "7c004efe22627587599afeaa39fa75320aae19bf",
+      "sourceHash": "c21651d7a9fd6b3dbe5562e804153c51775cf1d4ed112f775229d11560b94ba4"
+    },
+    {
+      "id": "csstree-shorthand-expansion-compression",
+      "category": "feature_request",
+      "repository": "https://github.com/csstree/csstree",
+      "sourceBlob": "756e9fbdc5d83580ebb3e3f39560d05fc7ab261a",
+      "sourceHash": "461fbe15ef2afa084f988e225fab1bfafeb02d7f34114b55e01fefbd66ee31e6"
+    },
+    {
+      "id": "dasel-html-document-format",
+      "category": "feature_request",
+      "repository": "https://github.com/TomWright/dasel",
+      "sourceBlob": "424609a22ba4e15fd6ba65ee4850027ab1deb4e2",
+      "sourceHash": "e178607fca1ac99213f24493abcdbc97c1258decbbd16ee660adc35f29538443"
+    },
+    {
+      "id": "dateutil-rfc5545-timezone-interop",
+      "category": "enhancement",
+      "repository": "https://github.com/dateutil/dateutil",
+      "sourceBlob": "8bd40d21b874369adef4187833d7475b048fa4bd",
+      "sourceHash": "0908cc9e22d4b0bcd9605598eea9d4fe4733307da8efe86a055c1816251578c6"
+    },
+    {
+      "id": "drizzle-orm-window-function-builders",
+      "category": "feature_request",
+      "repository": "https://github.com/drizzle-team/drizzle-orm",
+      "sourceBlob": "6ac84fdc64a1e4c02820e525a3d7d84c9316ae5b",
+      "sourceHash": "6e1b4327782244e00702f20bd33921a43dbfb7b61613197a6f4f5e839bbc349b"
+    },
+    {
+      "id": "dynamodb-toolbox-conditional-attribute-requirements",
+      "category": "feature_request",
+      "repository": "https://github.com/dynamodb-toolbox/dynamodb-toolbox",
+      "sourceBlob": "f78ee4586886c4ed0b03575eb78e90f798c6b23e",
+      "sourceHash": "06726026383a8949dba3e40e939a6064754cb0c94068985ab589acd0021a4ee5"
+    },
+    {
+      "id": "dynamodb-toolbox-lazy-recursive-schemas",
+      "category": "feature_request",
+      "repository": "https://github.com/dynamodb-toolbox/dynamodb-toolbox",
+      "sourceBlob": "745f0c350d55caaef43b20cf654620834a249caa",
+      "sourceHash": "9d644d0a98f9a8a9a8ec13de600ecdf5914c3aaaded2d37f8d0ea0e4828d4857"
+    },
+    {
+      "id": "effect-sse-httpapi-streaming",
+      "category": "feature_request",
+      "repository": "https://github.com/Effect-TS/effect",
+      "sourceBlob": "10f627706690cebd6f115d4bf500a9c888c72d8a",
+      "sourceHash": "51a10714acd40f8fae6823ef0c7f7d24d0b0972568ca9a8d0690d25ff0656464"
+    },
+    {
+      "id": "eicrud-keyset-pagination-cursor",
+      "category": "feature_request",
+      "repository": "https://github.com/eicrud/eicrud",
+      "sourceBlob": "30d304f4324ff79ca1038af34897e7f70d6e42b4",
+      "sourceHash": "b010e489ed12e2548648a59bbd4de2f37bf5418cb15755d4e915eabf77403695"
+    },
+    {
+      "id": "etree-xml-diff-patch",
+      "category": "feature_request",
+      "repository": "https://github.com/beevik/etree",
+      "sourceBlob": "5b7e10e7b8d931c9038934b4091055c5624fc247",
+      "sourceHash": "d2f80a52546ff0c5c1c059cdc690bb69fa98cb3a782d1e13c633d2b45104afd0"
+    },
+    {
+      "id": "expr-try-catch-errors",
+      "category": "feature_request",
+      "repository": "https://github.com/expr-lang/expr",
+      "sourceBlob": "e75ae4394e9c443a537687fa45e3e37fbd0e376c",
+      "sourceHash": "1206c54353bb7982f44be6473f2bc2837fb2826cc674d1a672612648160ede54"
+    },
+    {
+      "id": "fastapi-deprecation-response-headers",
+      "category": "feature_request",
+      "repository": "https://github.com/fastapi/fastapi",
+      "sourceBlob": "7809ae313f23167633fe0548eff177eae03406ff",
+      "sourceHash": "b00b517b6f66358b735c0764dfed3b92a69079e366bb3ee5c6c2a9c6bf1b75c8"
+    },
+    {
+      "id": "fastapi-implicit-head-options",
+      "category": "feature_request",
+      "repository": "https://github.com/fastapi/fastapi",
+      "sourceBlob": "bfa9d931c4fa5580461dea53dbb5388f648dd0db",
+      "sourceHash": "4d48ce45311547285d7ad281ecfd5278abf73d3355305bce88bb889e99980f89"
+    },
+    {
+      "id": "fd-deterministic-multi-key-sorting",
+      "category": "feature_request",
+      "repository": "https://github.com/sharkdp/fd",
+      "sourceBlob": "fda4f3d446a0815b2985512eed62bf678a485dec",
+      "sourceHash": "85ed92e88c27e6b9d789cd35d05a17ba92c1cefbd93cea6800e256889fdf0714"
+    },
+    {
+      "id": "geo-shapeindex-serialization",
+      "category": "feature_request",
+      "repository": "https://github.com/golang/geo",
+      "sourceBlob": "6d7b5bd930e18e5c836e0f1d2986f4ca26014445",
+      "sourceHash": "a95140adb066b732b69b8485392576cf89e0cf22a0d7028ad5d9d08f37c08f29"
+    },
+    {
+      "id": "go-critic-doc-link-checker",
+      "category": "feature_request",
+      "repository": "https://github.com/go-critic/go-critic",
+      "sourceBlob": "37c65e33522fb41aeaf04b0bdfafc6dc99c918ed",
+      "sourceHash": "38ca3fb39ac476817895615ce3cf962c223e57e0e2359b64d16f19aa457b747e"
+    },
+    {
+      "id": "go-genai-streamed-function-args",
+      "category": "feature_request",
+      "repository": "https://github.com/googleapis/go-genai.git",
+      "sourceBlob": "3d5918684b75c9d8c3f7d44647be03f76d8fca5e",
+      "sourceHash": "0a5f6124b68f5938ae0315079a7a2e7d0aa62ece38e4ad380a4a18703696b537"
+    },
+    {
+      "id": "go-git-worktree-merge-conflicts",
+      "category": "feature_request",
+      "repository": "https://github.com/go-git/go-git",
+      "sourceBlob": "596ef5b5b70c5312c0d3d28b0674fe2f91ce1d18",
+      "sourceHash": "17a105a1d8e8aed5f45da06820dc65a1048a3a3f5a8d0f2dbd7c23ee74f94eb9"
+    },
+    {
+      "id": "goreleaser-retry-publish-auditing",
+      "category": "feature_request",
+      "repository": "https://github.com/goreleaser/goreleaser",
+      "sourceBlob": "f3b99c64b1b160d771ed27666b758c0bda08308f",
+      "sourceHash": "deddcda00d669f9962eec4cdd418549a54c6ad2e51cf52cbcd253637e5f1d9c1"
+    },
+    {
+      "id": "gql-incremental-graphql-delivery",
+      "category": "feature_request",
+      "repository": "https://github.com/graphql-python/gql",
+      "sourceBlob": "e1503af39cf7c95437233703e80dc780759836bf",
+      "sourceHash": "ff09cd73d7d8159825beb009c3f11770d776ed089fc0639b732ea6cd48030793"
+    },
+    {
+      "id": "happy-dom-abort-pending-body-reads",
+      "category": "bugfix",
+      "repository": "https://github.com/capricorn86/happy-dom",
+      "sourceBlob": "429c2f2bbedad6a6ccaa7b9e6863255017184ded",
+      "sourceHash": "8fed63affc8986aa96bbef06a95a184d4f20715db14f28cd138d78eee1fb441c"
+    },
+    {
+      "id": "happy-dom-deterministic-intersectionobserver",
+      "category": "feature_request",
+      "repository": "https://github.com/capricorn86/happy-dom",
+      "sourceBlob": "c3c0d67e09a622c2c945e9d7e8572e1432b90d56",
+      "sourceHash": "9a590906c60ed3bac08f96331cdd719f781f7e72a55a6fa82648f966acb25409"
+    },
+    {
+      "id": "helm-array-merge-strategies",
+      "category": "feature_request",
+      "repository": "https://github.com/helm/helm",
+      "sourceBlob": "673ded7a24e21ec16d64de5106b545da97d6c8e5",
+      "sourceHash": "ce111f2acc7237a7c1e767fcb871a91ccdeea767bfb87f6f21c058efbb530626"
+    },
+    {
+      "id": "helm-unified-manifest-stream",
+      "category": "feature_request",
+      "repository": "https://github.com/helm/helm",
+      "sourceBlob": "f301f89651263177aedcef240f8fa02fdb006162",
+      "sourceHash": "2660916e53c102665b429f50173ee87dad21a319a4e6aea60900e24d4b8b3406"
+    },
+    {
+      "id": "httpx-deterministic-cookie-store",
+      "category": "feature_request",
+      "repository": "https://github.com/encode/httpx",
+      "sourceBlob": "a04301805d0e5bba1b44cfcb6b5239dbe87fb58f",
+      "sourceHash": "625136dd58235803eb622abda1855fdc4dc790b4016ce51c9ab987a8067f0b5a"
+    },
+    {
+      "id": "httpx-multipart-response-parsing",
+      "category": "feature_request",
+      "repository": "https://github.com/encode/httpx",
+      "sourceBlob": "f0ce2a4f9281dc4d572d01692af62996bed94bf4",
+      "sourceHash": "7ee0209ec928035b9c0ac28997c886cbef8197567429e1c0493631856fdad5e5"
+    },
+    {
+      "id": "httpx-streaming-json-iteration",
+      "category": "feature_request",
+      "repository": "https://github.com/encode/httpx",
+      "sourceBlob": "3ea1a21bf24d1143b39fc6e5d012825b2a6ea9c0",
+      "sourceHash": "4539d7eb6bc6e38c202b7b7afdf808c3f7aaa06283b58cc91f1d3aa437334e63"
+    },
+    {
+      "id": "igel-persist-feature-schema",
+      "category": "feature_request",
+      "repository": "https://github.com/nidhaloff/igel",
+      "sourceBlob": "d961a77b0f2036798056d891b00c26c5ed0b2cb7",
+      "sourceHash": "f6bfad291ade307db9897cc4f27e00b01604eca70a4bd8037359c7bb58070740"
+    },
+    {
+      "id": "ink-grid-box-layout",
+      "category": "feature_request",
+      "repository": "https://github.com/vadimdemedes/ink",
+      "sourceBlob": "de129182f23a2cc69ffbf5de7971bdf07a9303cd",
+      "sourceHash": "c75064d6aa2d3a136ef42d6f56257d32f992eab663caf182c4d17adc4a4e18e8"
+    },
+    {
+      "id": "ipython-session-bundle-replay",
+      "category": "feature_request",
+      "repository": "https://github.com/ipython/ipython",
+      "sourceBlob": "6c5c997e4f97425b75bdea8222a1cebdf61468f3",
+      "sourceHash": "eaf41b8bf1a7965f6d050b6b4c3799a919871461a29dab6fc681852eba9a5417"
+    },
+    {
+      "id": "katex-multicolumn-array-spans",
+      "category": "feature_request",
+      "repository": "https://github.com/KaTeX/KaTeX",
+      "sourceBlob": "d61c05f23a4db57b02aad337a44a522523ed534b",
+      "sourceHash": "cd0d93fd52c3755d8ab44b7709253aca2b31d6eedcf7a33e15f856e5a35975b6"
+    },
+    {
+      "id": "kcp-go-multiplexed-kcp-streams",
+      "category": "feature_request",
+      "repository": "https://github.com/xtaci/kcp-go",
+      "sourceBlob": "b4fd5e6e36db79b3407e54820cf82a7694439ba6",
+      "sourceHash": "5e96d688262621929f72f333abd4b42c324eeef838ec527a8c127d60cad1a71c"
+    },
+    {
+      "id": "kea-atomic-signal-selectors",
+      "category": "feature_request",
+      "repository": "https://github.com/keajs/kea.git",
+      "sourceBlob": "c27707555bda70c7d4497e93ee49d5892564bb62",
+      "sourceHash": "e348f26d469643cf8bfd535e9d9f86c8c20f7e7169aeda515223874a9dea271c"
+    },
+    {
+      "id": "kgateway-consistent-hash-policy",
+      "category": "feature_request",
+      "repository": "https://github.com/kgateway-dev/kgateway",
+      "sourceBlob": "4a2deed86d3f05fd19a4b4b1417e827d274fb750",
+      "sourceHash": "7994028e8d6a5de468af7a97b9a4ede8a0dc5a9280eabac18406a2735e85fd68"
+    },
+    {
+      "id": "kombu-single-active-consumer-priority",
+      "category": "feature_request",
+      "repository": "https://github.com/celery/kombu",
+      "sourceBlob": "e0cafa0c076613e6bff6d99e57bcddec077898c4",
+      "sourceHash": "9291e2b4b0a6dbbc83a35658943e2c9037bce4170014481b798cbd80b2e2ebff"
+    },
+    {
+      "id": "kombu-virtual-queue-dead-lettering",
+      "category": "feature_request",
+      "repository": "https://github.com/celery/kombu",
+      "sourceBlob": "ba3a3306c33d9447871ae7c36ad2a609c47e9a98",
+      "sourceHash": "9893e227362bfe1d99340ed20eed31f552d54281b0dddf068276db4327d87148"
+    },
+    {
+      "id": "koota-composite-trait-aspects",
+      "category": "feature_request",
+      "repository": "https://github.com/pmndrs/koota",
+      "sourceBlob": "f414c6adae95a93e0514d5ba0faffcc69bbcdfd4",
+      "sourceHash": "fa101fd31b866c79a5d14188e5d1a8e84d9a770703f4c5ac5c983eff4a599ee7"
+    },
+    {
+      "id": "koota-deferred-mutation-buffer",
+      "category": "feature_request",
+      "repository": "https://github.com/pmndrs/koota",
+      "sourceBlob": "f539db898fb805d503386bb33fcb3bc84bce3208",
+      "sourceHash": "0400378a79973f9cce02965ecdf35124fbbbc9a74fca1091d5993c0fe1e06aaa"
+    },
+    {
+      "id": "koota-entity-snapshot-rollback",
+      "category": "feature_request",
+      "repository": "https://github.com/pmndrs/koota",
+      "sourceBlob": "e290a79944e6a2dece881820818a01cf4b34be60",
+      "sourceHash": "11444ab835894c82a89dce7232632d74cc2ec15cc23047c045dfb931b22d50b1"
+    },
+    {
+      "id": "koota-pair-relation-tracking",
+      "category": "feature_request",
+      "repository": "https://github.com/pmndrs/koota",
+      "sourceBlob": "cd37128bf36effad911872480ef6b09421962977",
+      "sourceHash": "2990c6c0dc3c0877b008a92b20427395ab3bcc520651e4d5dcfe784a3b486935"
+    },
+    {
+      "id": "koota-query-predicates",
+      "category": "feature_request",
+      "repository": "https://github.com/pmndrs/koota",
+      "sourceBlob": "69e3255bb6a80f44cf82c56fecd7dd1506043ab4",
+      "sourceHash": "0f338c650ee74c6a7d7517a2ea2edfd1240c0e2667e2a5dea2c9988f70e54fc7"
+    },
+    {
+      "id": "kysely-window-grouping-helpers",
+      "category": "feature_request",
+      "repository": "https://github.com/kysely-org/kysely",
+      "sourceBlob": "b9277ed172237e5f4d325051682fea302c520c2f",
+      "sourceHash": "965f2e0b07ea9ff508c6cac0712c853c6b1fbffba31955c8bf2e628fca013ce5"
+    },
+    {
+      "id": "langchain-request-coalescing",
+      "category": "feature_request",
+      "repository": "https://github.com/langchain-ai/langchain",
+      "sourceBlob": "a30b2db2216f955e9bca873ce628e3fcbb303292",
+      "sourceHash": "efd60419b581db6e23c27d4c234b3af6bb4bdd976fa510e40ced09c7eaaaeb98"
+    },
+    {
+      "id": "mashumaro-flattened-dataclass-fields",
+      "category": "feature_request",
+      "repository": "https://github.com/Fatal1ty/mashumaro",
+      "sourceBlob": "f62fef47bcc0225537e32a56e68b272fd60a1960",
+      "sourceHash": "a8ee6657fb49de52915f2ae4bd5f00e5ebc92bb776a56c528248d29ba46273fc"
+    },
+    {
+      "id": "meriyah-explicit-resource-declarations",
+      "category": "feature_request",
+      "repository": "https://github.com/meriyah/meriyah",
+      "sourceBlob": "2da96fc8bc10d95fafe0d433ffefb7ee45b98e39",
+      "sourceHash": "1c245857d89c6c4f0d12922bd83d0a2eeeb56277e2d9c01094a0421daa2af905"
+    },
+    {
+      "id": "mnamer-daemon-watch-lifecycle",
+      "category": "feature_request",
+      "repository": "https://github.com/jkwill87/mnamer",
+      "sourceBlob": "e71163f238591d3e9315ac87426a6f475464bef1",
+      "sourceHash": "73b6024b768f0af0a178de6de7aa59ac460c2ec96fe1ca7cc9ac35269c118916"
+    },
+    {
+      "id": "mobly-grouped-test-barriers",
+      "category": "feature_request",
+      "repository": "https://github.com/google/mobly",
+      "sourceBlob": "66935fe2105c04a120bd61d4ff35f56f42e37fb4",
+      "sourceHash": "872d09f2629bd0cb136f1e5e85191559641266f88477e48cb7c5c96af862545a"
+    },
+    {
+      "id": "narwhals-rolling-window-suite",
+      "category": "feature_request",
+      "repository": "https://github.com/narwhals-dev/narwhals",
+      "sourceBlob": "3de48855b006cad2cd600ab958c2d51d6431553b",
+      "sourceHash": "d2b133d6a3a2d5d8d2f9474d34fcd3c5cd2f892dfc05326a6f4f7ceb169bd8b7"
+    },
+    {
+      "id": "numba-stencil-boundary-modes",
+      "category": "feature_request",
+      "repository": "https://github.com/numba/numba",
+      "sourceBlob": "3720fab06ce0fcc3c72c1287eefd653ed25cd610",
+      "sourceHash": "fffecc2a19aaf159d5e647461f3d9686b424eaedc0973a47e717bd648272f37b"
+    },
+    {
+      "id": "obsidian-linter-auto-table-of-contents",
+      "category": "feature_request",
+      "repository": "https://github.com/platers/obsidian-linter",
+      "sourceBlob": "353a30a08e4e6fc2d9c240a722e3efb2789df540",
+      "sourceHash": "e42b13e38bc68792c8ca2b098e0fe08bcb86b2bce12e0a0817701a226c97b19e"
+    },
+    {
+      "id": "obsidian-linter-link-format-conversion",
+      "category": "feature_request",
+      "repository": "https://github.com/platers/obsidian-linter",
+      "sourceBlob": "b30a6e944f18a56f5ca3c522dcd6bd6f4161e217",
+      "sourceHash": "52a326cb1d708909e778398b71920e0c43f86ef533f14f01a8f5d117e2dc7951"
+    },
+    {
+      "id": "obsidian-linter-scoped-ignore-markers",
+      "category": "feature_request",
+      "repository": "https://github.com/platers/obsidian-linter",
+      "sourceBlob": "b6d0815ab7cc793ac4788ed6b1bd5a4ecec09434",
+      "sourceHash": "cf4efb2590d037ab27f5493b244a3f9c82b5c6ccc690ded93f23adfd7334e6bf"
+    },
+    {
+      "id": "ofetch-per-origin-circuit-breaker",
+      "category": "feature_request",
+      "repository": "https://github.com/unjs/ofetch",
+      "sourceBlob": "899391ec22e48daa5cd4712f0fa170b3a0a7294c",
+      "sourceHash": "7f0151fc6f6afe79096cb5cce6cd33077d05c3e76365e90396a832d1bc146460"
+    },
+    {
+      "id": "onedump-dump-encryption-pipeline",
+      "category": "feature_request",
+      "repository": "https://github.com/liweiyi88/onedump",
+      "sourceBlob": "bfffc31f2074ebdd62b21a2f7e908b8417ca56d6",
+      "sourceHash": "5cc40301f1e93c0bec6dc6a5d4dd8a91dd30df7489ff7ea0f4a3eb280bf4d2b2"
+    },
+    {
+      "id": "opa-rego-rule-profiling",
+      "category": "feature_request",
+      "repository": "https://github.com/open-policy-agent/opa",
+      "sourceBlob": "8a4b04bde994a3aee45b46f196ee4977bd2bb711",
+      "sourceHash": "1584034120b0c598b342c56f1a88c95ca2d7d16be64e2e790ce229a6055a2c28"
+    },
+    {
+      "id": "opa-template-string-reconstruction",
+      "category": "bugfix",
+      "repository": "https://github.com/open-policy-agent/opa",
+      "sourceBlob": "98048de008e50b24b11308dd92b4ef87ae712167",
+      "sourceHash": "4e7f300a81a3ba3da7beb92a07bc7bce51c6dea46cb7e8b915ab0b8dbf1c7240"
+    },
+    {
+      "id": "optique-conditional-option-dependencies",
+      "category": "feature_request",
+      "repository": "https://github.com/dahlia/optique",
+      "sourceBlob": "e74bf9aba80035d07bbe20ad10abfda687b595b5",
+      "sourceHash": "21fdf725891f2c73a44723242e397fd0333800c2209f76f83eb8ed2d357ec273"
+    },
+    {
+      "id": "oxvg-structural-selector-preservation",
+      "category": "enhancement",
+      "repository": "https://github.com/noahbald/oxvg",
+      "sourceBlob": "f736711271776139f215b20600fa4127c881ac3e",
+      "sourceHash": "06e000bb4c397b72fcbf523d95923b73be636e8eb398b60842ab4f0e2ce57d23"
+    },
+    {
+      "id": "participle-grammar-conflict-analysis",
+      "category": "feature_request",
+      "repository": "https://github.com/alecthomas/participle.git",
+      "sourceBlob": "54267aceffe35c33af03b15e6d7009f670e71abf",
+      "sourceHash": "3456b6108ac7d3e14e379af7e92a61b44d3f8947a212cdde2e407f346ab845b6"
+    },
+    {
+      "id": "pebble-durability-wait-apis",
+      "category": "feature_request",
+      "repository": "https://github.com/cockroachdb/pebble",
+      "sourceBlob": "f82c802def955dcbdeb5ff9919fd5fd36a0f9a53",
+      "sourceHash": "e378b9c84c87b65ab26b7f6687fdebb8124c404654f17ee181cdafffe62910ce"
+    },
+    {
+      "id": "pest-character-class-coalescing",
+      "category": "feature_request",
+      "repository": "https://github.com/pest-parser/pest",
+      "sourceBlob": "88295698826e8a4ab5bc38af0d1e5acefb3a1f47",
+      "sourceHash": "f27e32038560083ffc87d25564ef695ccda4ee18e8b4d82ae3766559d68ed1b0"
+    },
+    {
+      "id": "prometheus-transactional-reload-status",
+      "category": "feature_request",
+      "repository": "https://github.com/prometheus/prometheus.git",
+      "sourceBlob": "354223c782f864c5936ea39dca55c707750755f7",
+      "sourceHash": "1767d51c1cd60b8b57b823eeca1c76fe72e7e642c9d89fbabc7e205f03ac52be"
+    },
+    {
+      "id": "prometheus-typed-label-sorting",
+      "category": "bugfix",
+      "repository": "https://github.com/prometheus/prometheus",
+      "sourceBlob": "940a76b511488484a839ae8bb44739ace2a575c4",
+      "sourceHash": "ee7b6fe19ee8477f8a2eda14bf36da1eba3ab41a52e475a9f7f5118e23e4b1f1"
+    },
+    {
+      "id": "psd-tools-blend-range-api",
+      "category": "feature_request",
+      "repository": "https://github.com/psd-tools/psd-tools",
+      "sourceBlob": "44744d2f4963deaa3b9a5aad6e838bccceb7bae9",
+      "sourceHash": "e929855b9ee6d1874df3f9a628a8ba60243c06bb7c97d40a2f60286ef5c289e9"
+    },
+    {
+      "id": "pwntools-tube-multiplexing",
+      "category": "feature_request",
+      "repository": "https://github.com/Gallopsled/pwntools",
+      "sourceBlob": "e3f6c08bbf14de91228bde47c06cf92a4f73917d",
+      "sourceHash": "745d238dd73edca759016a833da57c236901f1461416a2d46844c2bfa933a048"
+    },
+    {
+      "id": "python-statemachine-state-data-scoping",
+      "category": "feature_request",
+      "repository": "https://github.com/fgmacedo/python-statemachine",
+      "sourceBlob": "18609842f80e213af03f90d9c34dadfab1361f78",
+      "sourceHash": "70834d169bc3d03bb362df6ffd41995fbb5c85abf8cc2b53c63f31562423f83a"
+    },
+    {
+      "id": "query-persist-restored-query-state",
+      "category": "feature_request",
+      "repository": "https://github.com/TanStack/query",
+      "sourceBlob": "1764225c9887e5b3c834d9c4425a37f9f812540a",
+      "sourceHash": "d3ffb5325266363d392750f96eb2ad9a453a8252ba6dac2d4cbd9538b16d9276"
+    },
+    {
+      "id": "quill-shared-toolbar-focus",
+      "category": "feature_request",
+      "repository": "https://github.com/slab/quill",
+      "sourceBlob": "d7458de143689db19062332ba20826b36545563c",
+      "sourceHash": "01df5b9915d64e073900c2a00da5a71639614b3baa24f9d5f83bd401740073ac"
+    },
+    {
+      "id": "returns-validated-error-accumulation",
+      "category": "feature_request",
+      "repository": "https://github.com/dry-python/returns",
+      "sourceBlob": "e97248c23c98f2dfa690eef7be29fc0fd62d8d95",
+      "sourceHash": "b61c04c7661b4011859a4889081daa0329958ad5dd73155f33ed07281c6e4a81"
+    },
+    {
+      "id": "scc-bounded-memory-spilling",
+      "category": "feature_request",
+      "repository": "https://github.com/boyter/scc.git",
+      "sourceBlob": "45def82ecb598a71bd57a70c4122ad9f9ab19661",
+      "sourceHash": "40df2d49f62c899ba5dd08a99ba9ee3de09cea150f6bb69aac76f48b5c0f33b5"
+    },
+    {
+      "id": "scriggo-method-declarations",
+      "category": "feature_request",
+      "repository": "https://github.com/open2b/scriggo",
+      "sourceBlob": "3a892e103605dfea67aa0e5b55ac6b25d823b0e5",
+      "sourceHash": "7f71f38eb753f72a55b6c3d89d4b0ba6612fbc3873f936009276248f2c53766e"
+    },
+    {
+      "id": "skrub-duration-encoding",
+      "category": "feature_request",
+      "repository": "https://github.com/skrub-data/skrub",
+      "sourceBlob": "43b1fc10664e637aae20d6eb95f3acbd912be446",
+      "sourceHash": "34e4539b4a1dad2374e5b4f1292295224b7e1002ce0754f5d7b47c69d8e1dc2e"
+    },
+    {
+      "id": "sql-formatter-bigquery-pipe-formatting",
+      "category": "feature_request",
+      "repository": "https://github.com/sql-formatter-org/sql-formatter",
+      "sourceBlob": "20752f3dd199cedc94e87080857821adfa627e5a",
+      "sourceHash": "5aa151a7f56927d3c69f3bd03cb874330352ba3ae4eaa84f3df2da968602e774"
+    },
+    {
+      "id": "sqlfmt-create-table-ddl-formatting",
+      "category": "feature_request",
+      "repository": "https://github.com/tconbeer/sqlfmt",
+      "sourceBlob": "34cdf84ec4f815611a49ddf98e852545c63fe376",
+      "sourceHash": "e915832661a266670f82bf9a3b3f0c589525ab822d6252acecdd0da0c8c98df3"
+    },
+    {
+      "id": "sqlite-utils-safe-import-checkpoints",
+      "category": "feature_request",
+      "repository": "https://github.com/simonw/sqlite-utils",
+      "sourceBlob": "07ef2e672090005d96b2763186354e1c726cb26c",
+      "sourceHash": "8ec600f3b0672064e193591775650336329f4473f8a87ea6d4ef697ded79a949"
+    },
+    {
+      "id": "superjson-error-stack-serialization",
+      "category": "feature_request",
+      "repository": "https://github.com/flightcontrolhq/superjson.git",
+      "sourceBlob": "83fbe41df6ff88985012505a360911bcafafb222",
+      "sourceHash": "c808502b1f72060e23e3ac7885b6edd8fa49ad68f2e175f017d560222145cd33"
+    },
+    {
+      "id": "task-task-graph-export",
+      "category": "feature_request",
+      "repository": "https://github.com/go-task/task",
+      "sourceBlob": "81f0ab2e923a0045a207244236d4b4bbc7109884",
+      "sourceHash": "3106648b50c675cb687294f72254ffe8d29e14be0db12b2e19a331aa1a219fc4"
+    },
+    {
+      "id": "tengo-callable-instance-isolation",
+      "category": "bugfix",
+      "repository": "https://github.com/d5/tengo",
+      "sourceBlob": "222889c634e9507f512950d843d6ca121ffde790",
+      "sourceHash": "5d9da4f19acad54ac5262742ecc6856ccc763e6902717a858e8379bfc5a0ed90"
+    },
+    {
+      "id": "tengo-destructuring-bindings",
+      "category": "feature_request",
+      "repository": "https://github.com/d5/tengo",
+      "sourceBlob": "2a5abd51f0e9c00bfc69406ac7d0f759a591e89c",
+      "sourceHash": "7f2cd31f296268cbee91c276abf048b6ec6bfc730549cb9ca361d391d9fecf21"
+    },
+    {
+      "id": "termenv-preserve-ansi-resets",
+      "category": "feature_request",
+      "repository": "https://github.com/muesli/termenv",
+      "sourceBlob": "e06c44c6e74f6ca580ef807d10cb5e081d2f06ee",
+      "sourceHash": "8e0ca91dabb5a1b8fc4ce62bdc3c1ac9f1711aea6e327d80d859361f67382533"
+    },
+    {
+      "id": "testem-bail-on-test-failure",
+      "category": "feature_request",
+      "repository": "https://github.com/testem/testem",
+      "sourceBlob": "5e477ca7fdd21eb23545bf4c9bb1a62dec418d3b",
+      "sourceHash": "9db9b51eb7966062c7f069ba8bb78128da8efe6070dc6a57301fe6e54e10a690"
+    },
+    {
+      "id": "testem-per-launcher-reports",
+      "category": "feature_request",
+      "repository": "https://github.com/testem/testem",
+      "sourceBlob": "3880bcd0bb6517f900b1afb2c68e4de1755b6984",
+      "sourceHash": "a6b02788a9c6a10bc79e582b193e2455952c12ffe435444c893e7efb0cc62ac5"
+    },
+    {
+      "id": "textual-kitty-key-phases",
+      "category": "feature_request",
+      "repository": "https://github.com/Textualize/textual",
+      "sourceBlob": "619086e1203db8391810b9b3756eaf3cfacb9275",
+      "sourceHash": "0470d205fd7feb2177ad8a2b1741c35c3ed179cdef9430c781f33aba141f98bd"
+    },
+    {
+      "id": "textual-richlog-follow-state",
+      "category": "feature_request",
+      "repository": "https://github.com/Textualize/textual",
+      "sourceBlob": "59c90434545d7b11cf4c6609e440b6e49a0f378d",
+      "sourceHash": "0a313201a28e646b10a066e0f109ec8ca08f01f676650366c41f336644c57139"
+    },
+    {
+      "id": "tomlkit-toml-table-converters",
+      "category": "feature_request",
+      "repository": "https://github.com/python-poetry/tomlkit",
+      "sourceBlob": "3f8ad645048b410b5a5887e16423f100870debea",
+      "sourceHash": "32faea943936aa014220ae1c98144cc0a88b29c45a9a1b53c02345b10b783c41"
+    },
+    {
+      "id": "true-myth-iterable-collection-combinators",
+      "category": "feature_request",
+      "repository": "https://github.com/true-myth/true-myth",
+      "sourceBlob": "5895f062a40a021a277ad3fbfde5829ba3064dbf",
+      "sourceHash": "6f14fd46d024f75ce87f34e91bbdf3cfede2fb96c4dce8948f5ab72698342b8e"
+    },
+    {
+      "id": "ts-pattern-match-each",
+      "category": "feature_request",
+      "repository": "https://github.com/gvergnaud/ts-pattern",
+      "sourceBlob": "011ec3d60f55813f27eda9e8fc6af2fca48a9c03",
+      "sourceHash": "3a18942908d8e2441ebb9fc13da6ad6d8ea10cf4ecc9258689fd0a1f22a7bed2"
+    },
+    {
+      "id": "updo-policy-alerting",
+      "category": "feature_request",
+      "repository": "https://github.com/Owloops/updo",
+      "sourceBlob": "a319aca585876d26d6cd71830aad2ad74d164473",
+      "sourceHash": "f584a697621fbaf7bd8b2e8244eb1be70cb151030b005fd4ea89e4e8a68ce9ad"
+    },
+    {
+      "id": "valibot-recursive-schema-composition",
+      "category": "feature_request",
+      "repository": "https://github.com/open-circle/valibot",
+      "sourceBlob": "5ff9c2a26bff11b412cfb300ff11a0ca624be49a",
+      "sourceHash": "27352c4acdc59454a2f791e5c46c063d6a75195bb7bfd0f999883adb38c5fe4f"
+    },
+    {
+      "id": "vitest-duration-sharding",
+      "category": "feature_request",
+      "repository": "https://github.com/vitest-dev/vitest.git",
+      "sourceBlob": "e39a7b3d4d2167bbf505be76cc6d0e766cf8ac0a",
+      "sourceHash": "5fc34417ca050a8592929791877f0b44c99a1a99fcd6cbd52d93260761acdc8b"
+    },
+    {
+      "id": "vulture-persistent-analysis-cache",
+      "category": "feature_request",
+      "repository": "https://github.com/jendrikseipp/vulture",
+      "sourceBlob": "686a59aef08eb4e02cd85e9e1e3ac3bbfbf61d1a",
+      "sourceHash": "490b3c93f86185a690e6fa5c4ec4b08e64f193971b76d2bbec0947955234a9e5"
+    },
+    {
+      "id": "wasmi-trap-coredumps",
+      "category": "feature_request",
+      "repository": "https://github.com/wasmi-labs/wasmi",
+      "sourceBlob": "699d9aa6fd88f296cb0b7298719deb200bfd34aa",
+      "sourceHash": "1e18db2a466b62290bb4fbf1b6653bed8302b7ae345a8db8c1b7d9770092c7ce"
+    },
+    {
+      "id": "wazero-multi-module-snapshots",
+      "category": "feature_request",
+      "repository": "https://github.com/wazero/wazero.git",
+      "sourceBlob": "b6c10a9f51aafcdc56c866fa8a7e0c4bca3c4b9b",
+      "sourceHash": "6cce5c857fcb7df5fa1dd86a3075c87d361542dfe718bf84629bfd2b758b116d"
+    },
+    {
+      "id": "yaegi-go-embed-directives",
+      "category": "feature_request",
+      "repository": "https://github.com/traefik/yaegi",
+      "sourceBlob": "3555bdd5292edbc9808f231105b283af58675b39",
+      "sourceHash": "86cb84cb6954f1816674cb7d206cb3b68a43eadc3a45c2eb5e8cfd07f5b431b5"
+    },
+    {
+      "id": "yjs-map-conflict-detection",
+      "category": "feature_request",
+      "repository": "https://github.com/yjs/yjs",
+      "sourceBlob": "598f85e2a35e492bbc11989ae1d73bbd9f12a27b",
+      "sourceHash": "efc0167671f665a71cbc94a9951fc1e85402e3a1efd20c285449606766a65428"
+    },
+    {
+      "id": "ytt-jsonpath-query-api",
+      "category": "feature_request",
+      "repository": "https://github.com/carvel-dev/ytt",
+      "sourceBlob": "21abb8299f5f51ad8d280ec2610365686c064066",
+      "sourceHash": "8981b45dd5fe0cf1c310b4c020217fccda32510c12d8193d334b1b3528cdb581"
+    }
+  ]
+}

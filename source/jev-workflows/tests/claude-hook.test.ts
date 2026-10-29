@@ -11,6 +11,7 @@ import { configurePolicy } from '../src/policy.js';
 import { claudeHookDeadlineMs, runClaudeHook } from '../src/claude-hook.js';
 
 const cwd = process.cwd();
+const claudeEntry = process.env.JEV_CLAUDE_HOOK_TEST_ENTRYPOINT ?? join(cwd, 'dist', 'claude-hook.mjs');
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 
 async function runBuilt(entrypoint: string, event: Record<string, unknown>, env: NodeJS.ProcessEnv, nodeArgs: string[] = []): Promise<{code: number | null; stdout: string; stderr: string; wallMs: number}> {
@@ -30,7 +31,9 @@ async function runBuilt(entrypoint: string, event: Record<string, unknown>, env:
 }
 
 async function fixture(): Promise<{root: string; env: NodeJS.ProcessEnv}> {
-  const root = await mkdtemp('/tmp/jev-claude-hook-');
+  const parent = join(cwd, '..', '..', '.agent-work');
+  await mkdir(parent, {recursive: true});
+  const root = await mkdtemp(join(parent, 'jev-claude-hook-'));
   const env = {JEV_STATE_DIRECTORY: join(root, 'state'), JEV_ENABLED: '1'};
   await configurePolicy({enabled: true, scope: 'all-workspaces', workspaces: []}, env);
   return {root, env};
@@ -159,8 +162,8 @@ test('disabled policy and oversized input do not create Claude turn state', asyn
 test('built Claude and Codex hook entrypoints each emit exactly one JSON object', async () => {
   const {root, env} = await fixture();
   try {
-    const claudeSession = await runBuilt(join(cwd, 'dist', 'claude-hook.mjs'), {hook_event_name: 'SessionStart', session_id: 'built-claude', cwd, source: 'startup'}, env);
-    const claudeEnd = await runBuilt(join(cwd, 'dist', 'claude-hook.mjs'), {hook_event_name: 'SessionEnd', session_id: 'built-claude', cwd, reason: 'other'}, env);
+    const claudeSession = await runBuilt(claudeEntry, {hook_event_name: 'SessionStart', session_id: 'built-claude', cwd, source: 'startup'}, env);
+    const claudeEnd = await runBuilt(claudeEntry, {hook_event_name: 'SessionEnd', session_id: 'built-claude', cwd, reason: 'other'}, env);
     const codexSession = await runBuilt(join(cwd, 'dist', 'decision-hook.mjs'), {hook_event_name: 'SessionStart', session_id: 'built-codex', cwd}, env);
     const codexEnd = await runBuilt(join(cwd, 'dist', 'decision-hook.mjs'), {hook_event_name: 'SessionEnd', session_id: 'built-codex', cwd, reason: 'other'}, env);
     for (const result of [claudeSession, claudeEnd, codexSession, codexEnd]) {
@@ -192,8 +195,9 @@ async function deadlinePreload(root: string, name: string, setup: string[]): Pro
 }
 
 test('built Claude hook answers within its hard deadline and exits while the provider hangs', async () => {
-  const {root, env} = await fixture();
-  try {
+  for (const eventName of ['UserPromptSubmit', 'PreToolUse']) {
+    const {root, env} = await fixture();
+    try {
     const keyFile = join(root, 'typesafe.env');
     await writeFile(keyFile, `TYPESAFE_API_KEY=${FAKE_KEY}\n`, {mode: 0o600});
     // The provider never answers and ignores cancellation, while a referenced
@@ -202,13 +206,10 @@ test('built Claude hook answers within its hard deadline and exits while the pro
     const {nodeArgs, exitFile} = await deadlinePreload(root, 'hung-fetch', [
       'globalThis.fetch = () => new Promise(() => { setTimeout(() => {}, 60_000); });',
     ]);
-    const entry = join(cwd, 'dist', 'claude-hook.mjs');
+    const entry = claudeEntry;
     const sessionId = `built-deadline-${randomUUID()}`;
-    const events: Array<Record<string, unknown>> = [
-      prompt(sessionId, 'run the parser tests'),
-      {hook_event_name: 'PreToolUse', session_id: sessionId, cwd, tool_name: 'Bash', tool_use_id: `tool-${randomUUID()}`, tool_input: {command: 'npm test'}},
-    ];
-    for (const event of events) {
+    if (eventName === 'PreToolUse') await runClaudeHook(prompt(sessionId, 'run the parser tests'), {env, service: {classifyDecision: async () => ({status: 'assessed', choice: 'proceed'})}});
+    const event = eventName === 'UserPromptSubmit' ? prompt(sessionId, 'run the parser tests') : {hook_event_name: 'PreToolUse', session_id: sessionId, cwd, tool_name: 'Bash', tool_use_id: `tool-${randomUUID()}`, tool_input: {command: 'npm test'}};
       const name = String(event.hook_event_name);
       const run = await runBuilt(entry, event, {...env, JEV_API_KEY_FILE: keyFile}, nodeArgs);
       assert.equal(run.code, 0);
@@ -221,9 +222,9 @@ test('built Claude hook answers within its hard deadline and exits while the pro
       const exitAt = Number(await readFile(exitFile, 'utf8'));
       assert.ok(exitAt < claudeHookDeadlineMs(name) + 1_000, `${name} exited at ${Math.round(exitAt)} ms`);
       assert.ok(run.wallMs < 30_000, `${name} took ${run.wallMs} ms`);
+    } finally {
+      await rm(root, {recursive: true, force: true});
     }
-  } finally {
-    await rm(root, {recursive: true, force: true});
   }
 });
 
@@ -237,7 +238,7 @@ test('built Claude hook exits silently at its hard deadline when local work stal
       'fsp.rename = () => new Promise(() => { setTimeout(() => {}, 60_000); });',
       'syncBuiltinESMExports();',
     ]);
-    const run = await runBuilt(join(cwd, 'dist', 'claude-hook.mjs'), prompt(`built-stall-${randomUUID()}`, 'stall locally'), env, nodeArgs);
+    const run = await runBuilt(claudeEntry, prompt(`built-stall-${randomUUID()}`, 'stall locally'), env, nodeArgs);
     assert.equal(run.code, 0);
     assert.equal(run.stderr, '');
     assert.deepEqual(JSON.parse(run.stdout), {});

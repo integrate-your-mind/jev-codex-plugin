@@ -1,0 +1,84 @@
+import importlib
+import json
+import sys
+from pathlib import Path
+
+
+def require(condition):
+    if not condition:
+        raise AssertionError("behavioral-check-failed")
+
+
+def grade(task):
+    if task.startswith("psf__requests"):
+        requests = importlib.import_module("requests")
+        require(Path(requests.__file__).resolve().is_relative_to(Path.cwd().resolve()))
+        if task.endswith("-2931"):
+            payload = "ööö".encode("utf-8")
+            try:
+                request = requests.Request("PUT", "http://example.com", data=payload).prepare()
+            except UnicodeDecodeError as error:
+                raise AssertionError("binary-payload-decoding-regression") from error
+            require(isinstance(request.body, bytes) and request.body == payload)
+            require(requests.Request("GET", "http://example.com").prepare().body is None)
+            require(requests.Request("POST", "http://example.com", data="plain").prepare().body == "plain")
+        elif task.endswith("-5414"):
+            for host in [".example.com", "*example.com"]:
+                try:
+                    requests.Request("GET", f"http://{host}").prepare()
+                except requests.exceptions.InvalidURL:
+                    pass
+                except Exception as error:
+                    raise AssertionError("wrong-exception-type") from error
+                else:
+                    raise AssertionError("missing-invalid-url-exception")
+            require(requests.Request("GET", "http://example.com/path").prepare().url == "http://example.com/path")
+        elif task.endswith("-6028"):
+            for value in ["http://user:pass@example.com/path?query", "http://user@example.com/path?query"]:
+                require(requests.utils.prepend_scheme_if_needed(value, "http") == value)
+            require(requests.utils.prepend_scheme_if_needed("example.com/path", "http") == "http://example.com/path")
+        else:
+            raise ValueError("unknown-task")
+    else:
+        sympy = importlib.import_module("sympy")
+        require(Path(sympy.__file__).resolve().is_relative_to(Path.cwd().resolve()))
+        if task.endswith("-16886"):
+            from sympy.crypto.crypto import decode_morse, encode_morse
+            require(encode_morse("12345") == ".----|..---|...--|....-|.....")
+            require(encode_morse("67890") == "-....|--...|---..|----.|-----")
+            require(decode_morse(".----") == "1")
+            require(encode_morse("SOS") == "...|---|...")
+        elif task.endswith("-19346"):
+            from sympy import srepr
+            from sympy.abc import x, y, z
+            require(srepr({}) == "{}")
+            require(srepr({x: y}) == "{Symbol('x'): Symbol('y')}")
+            require(srepr({x: {y: z}}) == "{Symbol('x'): {Symbol('y'): Symbol('z')}}")
+            require(srepr(set()) == "set()")
+            require(srepr({x, y}) in ["{Symbol('x'), Symbol('y')}", "{Symbol('y'), Symbol('x')}"])
+            require(srepr([x, y]) == "[Symbol('x'), Symbol('y')]")
+        elif task.endswith("-24562"):
+            from sympy import Rational
+            for numerator in ["1.5", 1.5, 2]:
+                for denominator in ["1.5", 1.5, 2]:
+                    try:
+                        require(Rational(numerator, denominator).as_numer_denom() == Rational(f"{numerator}/{denominator}").as_numer_denom())
+                    except TypeError as error:
+                        raise AssertionError("rational-string-calculation-regression") from error
+            require(Rational("0.5", "100") == Rational(1, 200))
+        else:
+            raise ValueError("unknown-task")
+
+
+if __name__ == "__main__":
+    sys.path.insert(0, str(Path.cwd()))
+    try:
+        grade(sys.argv[1])
+    except AssertionError as error:
+        print(json.dumps({"verdict": "fail", "healthy": True, "reason": str(error)}))
+        sys.exit(1)
+    except Exception as error:
+        print(json.dumps({"verdict": "infrastructure-invalid", "healthy": False, "exception": type(error).__name__, "reason": str(error)}))
+        raise
+    else:
+        print(json.dumps({"verdict": "pass", "healthy": True}))

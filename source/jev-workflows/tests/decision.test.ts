@@ -69,6 +69,18 @@ function service(options: Partial<ServiceOptions> = {}): ReturnType<typeof creat
 }
 
 describe('decision input and preview boundaries', () => {
+  it('accepts all 254 real provider choices and rejects a 255th before egress', async () => {
+    const candidates = Array.from({length: 254}, (_, index) => ({id: `option-${index}`, description: `Option ${index}`}));
+    const calls: Array<Record<string, unknown>> = [];
+    const result = await service({fetchFn: fetchChoice('option-253', calls)}).classifyDecision(decision({candidates}));
+    assert.equal(result.status, 'assessed');
+    assert.equal(result.choice, 'option-253');
+    assert.equal(calls.length, 1);
+    const excess = await service({fetchFn: fetchChoice(undefined, calls)}).classifyDecision(decision({candidates: [...candidates, {id: 'excess', description: 'Excess option'}]}));
+    assert.equal(excess.reasonCode, 'invalid_input');
+    assert.equal(calls.length, 1);
+  });
+
   it('selects custom general taxonomies and tool/model/task domains with a valid distribution', async () => {
     for (const domain of ['general', 'tool', 'model', 'task'] as const) {
       const calls: Array<Record<string, unknown>> = [];
@@ -156,6 +168,25 @@ describe('decision input and preview boundaries', () => {
 });
 
 describe('decision evaluation semantics', () => {
+  it('does not cache success from a provider that resolves after caller cancellation', async () => {
+    const controller = new AbortController();
+    let calls = 0;
+    const store = new MemoryStore();
+    const current = service({store, fetchFn: async (_url, init) => {
+      calls++;
+      const payload = JSON.parse(String(init?.body)) as {questions: {decision: {criteria: Record<string, string>}}};
+      if (calls === 1) controller.abort();
+      return providerResponse('alpha', payload.questions.decision.criteria);
+    }});
+    const late = await current.classifyDecision(decision(), controller.signal);
+    assert.equal(late.status, 'unavailable');
+    assert.equal(late.reasonCode, 'cancelled');
+    const fresh = await current.classifyDecision(decision());
+    assert.equal(fresh.status, 'assessed');
+    assert.equal(calls, 2);
+    assert.equal(store.receipts.filter(receipt => receipt.status === 'assessed').length, 1);
+  });
+
   it('does not allow an unavailable candidate to become the answer', async () => {
     const calls: Array<Record<string, unknown>> = [];
     const result = await service({fetchFn: fetchChoice('offline', calls)}).classifyDecision(decision({

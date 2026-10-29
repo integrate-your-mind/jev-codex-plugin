@@ -1,0 +1,148 @@
+{
+  "schemaVersion": "desktop-pilot-corpus-v1",
+  "source": {
+    "url": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/data/test-00000-of-00001.parquet",
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "artifactHash": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd"
+  },
+  "tasks": [
+    {
+      "id": "psf__requests-2931",
+      "repository": "psf/requests",
+      "baseRevision": "5f7a3a74aab1625c2bb65f643197ee885e3da576",
+      "taskType": "binary-body-encoding",
+      "classification": {
+        "kind": "bug",
+        "reviewed": true,
+        "evidence": "A binary UTF-8 payload worked in Requests 2.8.1 and fails after the 2.9 regression."
+      },
+      "issues": [
+        "https://github.com/psf/requests/issues/2930"
+      ],
+      "referencePullRequest": "https://github.com/psf/requests/pull/2931",
+      "problemStatementHash": "c36c337f6c5d918e8d193684510213e2eaed8633e575b819757674cca0d980fd",
+      "referencePatchHash": "5b5a77408b00928b0380cd6a40ccb53f0cf77b16f040e1743e313883aad104db",
+      "testPatchHash": "65b4e814631a631933cbeffa4bc9316c55a90bceeaabf6d08de988c9e9e4ffc7",
+      "graderMetadata": {
+        "failToPassHash": "79507fd374dc8493b94fa56a3b1fb742af0e34e694eb7f166ca6c5ed9d4fc021",
+        "passToPassHash": "dceb0f51d5bf0f31aa22868330ea721af8c1bc7ed5c2fc3d5762baf59c915e05"
+      },
+      "graderStatus": "NOT_PREFLIGHTED"
+    },
+    {
+      "id": "psf__requests-5414",
+      "repository": "psf/requests",
+      "baseRevision": "39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e",
+      "taskType": "url-error-handling",
+      "classification": {
+        "kind": "bug",
+        "reviewed": true,
+        "evidence": "A host beginning with a dot raises UnicodeError instead of the library's InvalidURL exception."
+      },
+      "issues": [
+        "https://github.com/psf/requests/issues/5367"
+      ],
+      "referencePullRequest": "https://github.com/psf/requests/pull/5414",
+      "problemStatementHash": "08faa0ea47836476b5f4b3709c06a00569996ccc654011299f9c8587cd7007ba",
+      "referencePatchHash": "41e9433ac5e2cdb17a3972bec818a1118ea4a3f2b7485cd11fff7e27f6f3f680",
+      "testPatchHash": "46e0fcf881a426fb44dcd64c29be1f1d81113fcbfffe658404fc6298bc028a53",
+      "graderMetadata": {
+        "failToPassHash": "47397575d3b6c60d166af4ce17700f5d7bef0de788ceba6ae9ba2218b3953db4",
+        "passToPassHash": "a52d6e1f1eea17d616886c876f75e28b67474f906eb4f0ee200fa16c1abcd56b"
+      },
+      "graderStatus": "NOT_PREFLIGHTED"
+    },
+    {
+      "id": "psf__requests-6028",
+      "repository": "psf/requests",
+      "baseRevision": "0192aac24123735b3eaf9b08df46429bb770c283",
+      "taskType": "proxy-authentication",
+      "classification": {
+        "kind": "bug",
+        "reviewed": true,
+        "evidence": "Proxy URL parsing drops authentication and produces HTTP 407 instead of successful proxy authentication."
+      },
+      "issues": [
+        "https://github.com/psf/requests/issues/6027"
+      ],
+      "referencePullRequest": "https://github.com/psf/requests/pull/6028",
+      "problemStatementHash": "1d82b6998adb429d6d13a59c0c321de5ea24889a19843d4de7ea4dff06739cc0",
+      "referencePatchHash": "9cd3e2a2c10cc8b9555156f0e9cda00c67aa4e08f40ebd125f417bbeb41b2fb3",
+      "testPatchHash": "cc4b0007afd140c1737b08e14d0cbb9dbccfbee483146d5112971dd7b9bcb142",
+      "graderMetadata": {
+        "failToPassHash": "c07f1e0b2ee2b6dd8d30b70b309ab2e78be3ca3202c40de7cd680ab22d5ab99f",
+        "passToPassHash": "2b7d9628e29a2be9d4310209c334e9e9d2e6529d949d54fbd4c882fb706728de"
+      },
+      "graderStatus": "NOT_PREFLIGHTED"
+    },
+    {
+      "id": "sympy__sympy-16886",
+      "repository": "sympy/sympy",
+      "baseRevision": "c50643a49811e9fe2f4851adff4313ad46f7325e",
+      "taskType": "morse-encoding",
+      "classification": {
+        "kind": "bug",
+        "reviewed": true,
+        "evidence": "The existing Morse mapping encodes the numeral one incorrectly."
+      },
+      "issues": [
+        "https://github.com/sympy/sympy/issues/16884"
+      ],
+      "referencePullRequest": "https://github.com/sympy/sympy/pull/16886",
+      "problemStatementHash": "8bcff84556fbb7d34383e0f16d01027922121a39bb63b881fcd3d8f5e2e74f29",
+      "referencePatchHash": "e311e8bba944d634a2621fd8370236ea2d2affec4db65765bef09d5356882bc4",
+      "testPatchHash": "2b098bb6326a2da6b4e999419a98d1cfefb7f1ca10c329a4b06aca7d2788ec58",
+      "graderMetadata": {
+        "failToPassHash": "33b22ba8a9bb467309df30870d7c33225781f297ed0e2280c7792c10b5061aad",
+        "passToPassHash": "e59bda2fa332e79f698c9f03e9b9a409865e293ea20b0a6dcedd06da2bffa88e"
+      },
+      "graderStatus": "NOT_PREFLIGHTED"
+    },
+    {
+      "id": "sympy__sympy-19346",
+      "repository": "sympy/sympy",
+      "baseRevision": "94fb720696f5f5d12bad8bc813699fd696afd2fb",
+      "taskType": "symbolic-representation",
+      "classification": {
+        "kind": "bug",
+        "reviewed": true,
+        "evidence": "srepr omits symbolic element representations inside dictionaries and sets."
+      },
+      "issues": [
+        "https://github.com/sympy/sympy/issues/19329"
+      ],
+      "referencePullRequest": "https://github.com/sympy/sympy/pull/19346",
+      "problemStatementHash": "beaf218a0d5d4cb22acc35caa8e471d049542cd914604cced5485993327db334",
+      "referencePatchHash": "65aa70d5de9f1f4f99c3037b267b22928b24a03f3ba42af988bd679c8b1a0a4f",
+      "testPatchHash": "793eca615bc60287ca9d13ac542d8ea53aa37f484bde2335d99821a892fc0d76",
+      "graderMetadata": {
+        "failToPassHash": "f681c6b96568563cf5963f0e87a468f54d94038d965debc9cec12ad4f63e60f8",
+        "passToPassHash": "71a1eda939cf20297e09fe616bd646186eba0cfa9a5966e5c3ec3a225665dde1"
+      },
+      "graderStatus": "NOT_PREFLIGHTED"
+    },
+    {
+      "id": "sympy__sympy-24562",
+      "repository": "sympy/sympy",
+      "baseRevision": "b1cb676cf92dd1a48365b731979833375b188bf2",
+      "taskType": "rational-arithmetic",
+      "classification": {
+        "kind": "bug",
+        "reviewed": true,
+        "evidence": "Constructing a Rational from string inputs returns a different incorrect value from equivalent numeric inputs."
+      },
+      "issues": [
+        "https://github.com/sympy/sympy/issues/24543"
+      ],
+      "referencePullRequest": "https://github.com/sympy/sympy/pull/24562",
+      "problemStatementHash": "b0d650e7d0c5a65c71332089cc3c86f85c07ab1175b3847c401d8e328c520f1c",
+      "referencePatchHash": "2727eefa18d02904da0e5d8cbc23ddca75eff5de01ebff6d8a51ea825d484403",
+      "testPatchHash": "b968c53ad40f2d35f6d467550549413d10847ad56ca4e854409bbe7b285f316d",
+      "graderMetadata": {
+        "failToPassHash": "dacd011914ff8d3499e452b64971d40ac4e111b76967e187b261a4509e16947c",
+        "passToPassHash": "f7ca858a4f1913d4d5696817e600daa9059c59a86332bc4f452717e20eb0ae88"
+      },
+      "graderStatus": "NOT_PREFLIGHTED"
+    }
+  ]
+}

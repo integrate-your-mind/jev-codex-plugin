@@ -1,7 +1,7 @@
 {
   "name": "jev-workflows",
   "packageKind": "claude-code-plugin",
-  "generatedAt": "2026-10-27T05:50:03.902Z",
+  "generatedAt": "2026-10-29T00:34:58.819Z",
   "stateDirectory": null,
   "credentialFile": null,
   "stateMode": "user-default",
@@ -19,5 +19,19 @@
     "Stop",
     "SessionEnd"
   ],
-  "credentialHandling": "Environment names and paths only. No credential values are packaged."
+  "credentialHandling": "Environment names and paths only. No credential values are packaged.",
+  "nativeRouting": {
+    "enabled": false,
+    "acceptance": "offline-only",
+    "liveClaudeInference": "not-run",
+    "catalogCoverage": "configured-profiles-only",
+    "producer": null,
+    "modules": [],
+    "downshift": "unsupported-without-scoped-completion-evidence",
+    "declarations": {
+      "build": "2.1.277",
+      "revision": "58d6da1e34d6cd1c6379dcbf568bd66f5f9b6102",
+      "sha256": "e51e637fbbebb2a6a49c4bdc3860a251c2ca2295884822dff0f4c3e3ec802163"
+    }
+  }
 }

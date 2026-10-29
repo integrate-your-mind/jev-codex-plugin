@@ -23,6 +23,7 @@ describe('automation policy', () => {
   it('defaults to disabled and writes a bounded private policy on first use', async () => {
     const data = join(root, 'first-run');
     assert.deepEqual(await readPolicy(env(data)), DEFAULT_POLICY);
+    assert.equal(DEFAULT_POLICY.consultationMode, 'changed_state');
     const configured = await configurePolicy({enabled: true, scope: 'workspaces', workspaces: [process.cwd()]}, env(data));
     assert.equal(configured.enabled, true);
     assert.equal(configured.maxHookCallsPerSession, null);
@@ -51,9 +52,19 @@ describe('automation policy', () => {
     await mkdir(data, {recursive: true});
     await writeFile(join(data, 'policy.json'), JSON.stringify({enabled: false, scope: 'workspaces', workspaces: [], maxHookCallsPerSession: 50}), {mode: 0o600});
     const policy = await readPolicy(env(data));
+    assert.equal(policy.consultationMode, 'always');
     assert.equal(policy.maxHookCallsPerSession, 50);
     assert.equal(policy.maxCallsPerDay, null);
     assert.equal(policy.maxBytesPerDay, null);
+  });
+
+  it('changes only consultation mode on explicit migration and preserves existing opt-ins', async () => {
+    const environment = env(join(root, 'migration'));
+    const legacy = await configurePolicy({enabled: true, scope: 'all-workspaces', workspaces: [], maxHookCallsPerSession: null, maxCallsPerDay: null, maxBytesPerDay: null}, environment);
+    assert.equal(legacy.consultationMode, 'always');
+    const migrated = await configurePolicy({...legacy, consultationMode: 'changed_state'}, environment);
+    assert.deepEqual(migrated, {...legacy, consultationMode: 'changed_state'});
+    assert.deepEqual(await readPolicy(environment), migrated);
   });
 
   it('rejects a policy path symlink instead of following it', async () => {

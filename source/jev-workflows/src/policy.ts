@@ -12,9 +12,11 @@ const DEFAULT_CALLS_PER_DAY = null;
 const DEFAULT_BYTES_PER_DAY = null;
 const MAX_WORKSPACES = 64;
 
+export type ConsultationMode = 'changed_state' | 'always';
 export type HookScope = 'all-workspaces' | 'workspaces';
 export type HookPolicy = {
   enabled: boolean;
+  consultationMode?: ConsultationMode;
   scope: HookScope;
   workspaces: string[];
   maxHookCallsPerSession: number | null;
@@ -24,6 +26,7 @@ export type HookPolicy = {
 
 export const automationPolicySchema = z.strictObject({
   enabled: z.boolean(),
+  consultationMode: z.enum(['changed_state', 'always']).default('always'),
   scope: z.enum(['all-workspaces', 'workspaces']).default('workspaces'),
   workspaces: z.array(z.string().min(1).max(4096).refine(validRoot, 'workspace must be absolute')).max(MAX_WORKSPACES).default([]),
   // These are optional user-selected caps. Safe-integer validation protects
@@ -35,6 +38,7 @@ export const automationPolicySchema = z.strictObject({
 
 export const DEFAULT_POLICY: HookPolicy = {
   enabled: false,
+  consultationMode: 'changed_state',
   scope: 'workspaces',
   workspaces: [],
   maxHookCallsPerSession: DEFAULT_CALL_CAP,

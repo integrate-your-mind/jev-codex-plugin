@@ -1,0 +1,53 @@
+{
+  "checkedAt": "2026-10-29T00:27:47.762Z",
+  "kind": "offline-native-claude-check",
+  "validator": {
+    "command": "claude plugin validate --json <owned-fixture>",
+    "version": "2.1.310",
+    "success": true,
+    "manifestErrors": [],
+    "moduleErrors": [],
+    "moduleNotes": [
+      "../dist/claude-mod.mjs hooks: prompt.submit, tool.call, turn.step",
+      "../dist/claude-mod.mjs gating hook without .catch: prompt.submit",
+      "../dist/claude-mod.mjs gating hook without .catch: tool.call",
+      "../dist/claude-mod.mjs calls: $.fs.read, $.fs.stat, $.session.cwd, $.session.id"
+    ]
+  },
+  "nativeBundleSha256": "cd741dac81a9bfd6541f26bb11839c8309ed40e483edd589abf6fb9ee31c8b0c",
+  "publicDeclarations": {
+    "build": "2.1.277",
+    "revision": "58d6da1e34d6cd1c6379dcbf568bd66f5f9b6102",
+    "sha256": "e51e637fbbebb2a6a49c4bdc3860a251c2ca2295884822dff0f4c3e3ec802163",
+    "storage": "hash-verified ignored local dependency; not redistributed",
+    "prepare": "node scripts/prepare-claude-types.mjs"
+  },
+  "ordinaryAndNativeChecks": {
+    "command": "JEV_CLAUDE_HOOK_TEST_ENTRYPOINT=<owned-fresh-bundle> node --import tsx --test tests/claude-hook.test.ts tests/claude-bridge.test.ts tests/claude-package.test.ts tests/claude-retention.test.ts",
+    "passed": 30,
+    "failed": 0
+  },
+  "runtimeAcceptance": "not-run",
+  "actualInference": "not-run",
+  "directoryAcceptance": "not-established",
+  "limitations": [
+    "No native session loaded",
+    "No security guard runtime check",
+    "No actual answering model or effort evidence",
+    "No live cancellation propagation evidence",
+    "No downshift capability",
+    "Directory icon missing; directory rules for code modules not applied by this static validator"
+  ],
+  "sourceRevision": "5983c25",
+  "metadataRetention": {
+    "days": 90,
+    "pinnedUnknownAndSymlinkProof": "preserved"
+  },
+  "applicationExpiry": "no later than the absolute producer deadline",
+  "targetedReview": {
+    "revision": "5983c25",
+    "author": false,
+    "result": "Both final blockers addressed; no additional blocker in corrections",
+    "scope": "strict config parser and delayed publication"
+  }
+}

@@ -1,0 +1,289 @@
+{
+  "sourceHash": "db7b6284213cb0658e7d0036048c03efb4ba949cad3498d5f8afac7d8dca2ce4",
+  "sources": [
+    "benchmarks/plugin-value/task-runtime-metadata.json",
+    "benchmarks/plugin-value/heldout-selection.json"
+  ],
+  "tasks": [
+    {
+      "id": "ipython-session-bundle-replay",
+      "repository": "ipython/ipython",
+      "baseRevision": "0bb317d10fdcb3aa13beb1031d5f10e5b821203b",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "testem-bail-on-test-failure",
+      "repository": "testem/testem",
+      "baseRevision": "06a1adb7a70e85e7322d8cfae3181508785de95d",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "skrub-duration-encoding",
+      "repository": "skrub-data/skrub",
+      "baseRevision": "24c4466fea94f551fb73d21eba54038dc5b346d3",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "fd-deterministic-multi-key-sorting",
+      "repository": "sharkdp/fd",
+      "baseRevision": "227883606023d62275fb48701aeac90f2b604143",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "expr-try-catch-errors",
+      "repository": "expr-lang/expr",
+      "baseRevision": "851b241a301f7c74646e65e4009c69cf290993a8",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "katex-multicolumn-array-spans",
+      "repository": "KaTeX/KaTeX",
+      "baseRevision": "89bede495dc2c85e1c57ba627a18526f71d57396",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "kgateway-consistent-hash-policy",
+      "repository": "kgateway-dev/kgateway",
+      "baseRevision": "7abc5278782e3280fec8292b39807ec1b537eaf4",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "sql-formatter-bigquery-pipe-formatting",
+      "repository": "sql-formatter-org/sql-formatter",
+      "baseRevision": "954e5a474b9e3d45ca58f02a3a4eac8e1947acc5",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "koota-entity-snapshot-rollback",
+      "repository": "pmndrs/koota",
+      "baseRevision": "72ebef44b8e024d877250f055eea60cdfaa45069",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "geo-shapeindex-serialization",
+      "repository": "golang/geo",
+      "baseRevision": "87f5a40ea07a4ea629ee5623c72660f3d1b217fa",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "task-task-graph-export",
+      "repository": "go-task/task",
+      "baseRevision": "54bdcba369357b47e19066b57badfb216a4c8d95",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "query-persist-restored-query-state",
+      "repository": "TanStack/query",
+      "baseRevision": "1047cdc393fac7c98822c993d70c28f58833c63d",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "oxvg-structural-selector-preservation",
+      "repository": "noahbald/oxvg",
+      "baseRevision": "1fd7fab851ecc975e008be0e3e279568ce4e2b51",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "kea-atomic-signal-selectors",
+      "repository": "keajs/kea",
+      "baseRevision": "6c7ebba57821989733a11d6f3888816658584d97",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "csstree-shorthand-expansion-compression",
+      "repository": "csstree/csstree",
+      "baseRevision": "88e3d965c0b1628642a30a841745b410d6835052",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "yaegi-go-embed-directives",
+      "repository": "traefik/yaegi",
+      "baseRevision": "fcb76d1ece0c3edc2548c39aa5b170475d2261bb",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "anko-default-function-arguments",
+      "repository": "mattn/anko",
+      "baseRevision": "9d2d84bb1564e9513287998c56ccf16c01c19008",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "mashumaro-flattened-dataclass-fields",
+      "repository": "Fatal1ty/mashumaro",
+      "baseRevision": "de139fd51c4d347666d109a8aea9d25451d908f6",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "obsidian-linter-link-format-conversion",
+      "repository": "platers/obsidian-linter",
+      "baseRevision": "6393b3ab32a2ace1fc24d4b0f5e0f13a179c874f",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "adaptix-name-mapping-aliases",
+      "repository": "reagento/adaptix",
+      "baseRevision": "a691069fcadf9131e5f7a5a130a022dc678f3e1d",
+      "issues": [],
+      "disposition": "original-frozen"
+    },
+    {
+      "id": "dasel-html-document-format",
+      "repository": "TomWright/dasel",
+      "baseRevision": "0dd6132e0c58edbd9b1a5f7ffd00dfab1e6085ad",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "bandit-interprocedural-taint-checks",
+      "repository": "PyCQA/bandit",
+      "baseRevision": "b46fa3a2723635aa29cc012538df4867ac2ac006",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "go-critic-doc-link-checker",
+      "repository": "go-critic/go-critic",
+      "baseRevision": "9aea378c4dccd6f4394196ad8f0873b3e84678c8",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "fastapi-deprecation-response-headers",
+      "repository": "fastapi/fastapi",
+      "baseRevision": "11614be9021aa4ac078d4d0693a8b5250a1010d8",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "gql-incremental-graphql-delivery",
+      "repository": "graphql-python/gql",
+      "baseRevision": "f07c89f8f065010a36b4263eded209b2b1d37063",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "prometheus-typed-label-sorting",
+      "repository": "prometheus/prometheus",
+      "baseRevision": "8b25b26a7653d9c7444f217a7f2ae9b327bda921",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "textual-richlog-follow-state",
+      "repository": "Textualize/textual",
+      "baseRevision": "0f0849fd37fbd0d4d6f81889476c22340129df67",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "boa-hierarchical-evaluation-cancellation",
+      "repository": "boa-dev/boa",
+      "baseRevision": "70409a5052984325dccfdc5f6520818568a81f39",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "koota-deferred-mutation-buffer",
+      "repository": "pmndrs/koota",
+      "baseRevision": "31cbe9a1a26b3822a6c82ad50132508087cd24bc",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "sqlite-utils-safe-import-checkpoints",
+      "repository": "simonw/sqlite-utils",
+      "baseRevision": "8d74ffc93292c604d5827e2b44fffedca0c28c19",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "vulture-persistent-analysis-cache",
+      "repository": "jendrikseipp/vulture",
+      "baseRevision": "1eb212f0a0707ad6f4c720bb2010c2b7517cf0f9",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "httpx-deterministic-cookie-store",
+      "repository": "encode/httpx",
+      "baseRevision": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "pwntools-tube-multiplexing",
+      "repository": "Gallopsled/pwntools",
+      "baseRevision": "76894a5404a65d2800b6d0adaf3485ecba275caa",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "dynamodb-toolbox-lazy-recursive-schemas",
+      "repository": "dynamodb-toolbox/dynamodb-toolbox",
+      "baseRevision": "1f2a18664f8aded292707fcafb01ff15ea33d3b8",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "termenv-preserve-ansi-resets",
+      "repository": "muesli/termenv",
+      "baseRevision": "368a3572b8146cc038b3f240da6792003d7e42c5",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "opa-template-string-reconstruction",
+      "repository": "open-policy-agent/opa",
+      "baseRevision": "1ac64ef1a57a531c2723c59848890b88e816d777",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "fastapi-implicit-head-options",
+      "repository": "fastapi/fastapi",
+      "baseRevision": "11614be9021aa4ac078d4d0693a8b5250a1010d8",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "kombu-single-active-consumer-priority",
+      "repository": "celery/kombu",
+      "baseRevision": "3c5c1bd86376ee73d52a4cc770bdaeab15bbc2f3",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "ink-grid-box-layout",
+      "repository": "vadimdemedes/ink",
+      "baseRevision": "0cea59169ef0f3f83e4aa7fbedbff9d165646472",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    },
+    {
+      "id": "python-statemachine-state-data-scoping",
+      "repository": "fgmacedo/python-statemachine",
+      "baseRevision": "8d17ba9f6ba8420cf05fddb94013bc221ed9a222",
+      "issues": [],
+      "disposition": "heldout-reserved"
+    }
+  ]
+}

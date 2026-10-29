@@ -1,5 +1,5 @@
-import {mkdtemp, rm} from 'node:fs/promises';
-import {join} from 'node:path';
+import {mkdir, mkdtemp, rm} from 'node:fs/promises';
+import {join, resolve} from 'node:path';
 import {after, before, describe, it} from 'node:test';
 import assert from 'node:assert/strict';
 import {loadTaskContext, resetTaskContext, taskContextRecordSchema, updateTaskContext} from '../src/task-context.js';
@@ -8,7 +8,9 @@ let root: string;
 let cwd: string;
 
 before(async () => {
-  root = await mkdtemp(join(process.cwd(), 'work', 'task-context-'));
+  const parent = resolve('../../.agent-work/task-context-tests');
+  await mkdir(parent, {recursive: true});
+  root = await mkdtemp(join(parent, 'context-'));
   cwd = process.cwd();
 });
 
@@ -122,5 +124,28 @@ describe('versioned task context', () => {
     const saved = await loadTaskContext(testScope, {env: environment()});
     assert.ok(saved);
     assert.deepEqual(new Set(saved.constraints.map(item => item.value)), new Set(Array.from({length: 8}, (_, index) => `constraint-${index}`)));
+  });
+
+  it('retains every catalog candidate including entries beyond the first twelve', async () => {
+    const testScope = scope('session-large-catalog');
+    const candidates = Array.from({length: 20}, (_, index) => ({id: `tool-${index}`, description: `Available tool ${index}`}));
+    const updated = await updateTaskContext(testScope, {candidateCatalogs: {tool: candidates}}, {env: environment()});
+    assert.ok(updated);
+    assert.deepEqual(updated.candidateCatalogs.tool?.map(candidate => candidate.id), candidates.map(candidate => candidate.id));
+    const saved = await loadTaskContext(testScope, {env: environment()});
+    assert.deepEqual(saved?.candidateCatalogs.tool?.map(candidate => candidate.id), candidates.map(candidate => candidate.id));
+  });
+
+  it('reloads and merges complete catalogs larger than the former context file ceiling', async () => {
+    const testScope = scope('session-large-catalog-bytes');
+    const candidates = Array.from({length: 80}, (_, index) => ({id: `tool-${index}`, description: `${index} ${'description '.repeat(90)}`}));
+    await updateTaskContext(testScope, {rootObjective: 'Preserve the objective'}, {env: environment()});
+    assert.ok(await updateTaskContext(testScope, {candidateCatalogs: {tool: candidates}}, {env: environment()}));
+    const saved = await loadTaskContext(testScope, {env: environment()});
+    assert.equal(saved?.rootObjective?.value, 'Preserve the objective');
+    assert.deepEqual(saved?.candidateCatalogs.tool?.map(candidate => candidate.id), candidates.map(candidate => candidate.id));
+    const merged = await updateTaskContext(testScope, {constraints: ['Next update']}, {env: environment()});
+    assert.equal(merged?.rootObjective?.value, 'Preserve the objective');
+    assert.deepEqual(merged?.candidateCatalogs.tool?.map(candidate => candidate.id), candidates.map(candidate => candidate.id));
   });
 });

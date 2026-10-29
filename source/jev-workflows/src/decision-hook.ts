@@ -3,6 +3,8 @@ import { constants } from 'node:fs';
 import { mkdir, open, realpath, readdir, unlink, lstat, rename } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { isAbsolute, join } from 'node:path';
+import { consultCandidateCatalog, consultationIdentity, claimConsultation, providerCoolingDown, recordProviderOutage, observeConsultationRevision, consultationRevisionCurrent, type CandidateCoverage } from './routing-consultation.js';
+import type { ProviderTransport } from './provider.js';
 import { createService } from './service.js';
 import { redactText } from './redact.js';
 import { readCredentialFile } from './credential.js';
@@ -29,7 +31,7 @@ const MAX_CACHED_RESULT_BYTES = 500;
 const MAX_TURN_RESULT_FILE_BYTES = 12 * 1024;
 const TURN_RESULT_DIRECTORY = 'turn-results';
 const INVOCATION_DIRECTORY = 'invocations';
-const LOCAL_INSTRUCTION = 'Before choosing a tool, model, effort, task, skill, context, or strategy, consult classify_decision when this automation policy permits it. Treat its answer as advisory and continue ordinary reasoning when it is unavailable or inconclusive.';
+const LOCAL_INSTRUCTION = 'For eligible decisions, consult classify_decision according to the configured consultation mode. In changed_state mode, consult when the objective, evidence, available alternatives, pins, or subtask changes. Treat its answer as advisory and continue ordinary reasoning when it is unavailable or inconclusive.';
 const ACTION_CANDIDATES = [
   {id: 'proceed', description: 'Continue with the ordinary workflow.', available: true},
   {id: 'reconsider', description: 'Reconsider the current action using the available evidence.', available: true},
@@ -42,7 +44,7 @@ const SUPPORTED_EVENTS = new Set([
   'PreCompact', 'PostCompact', 'SubagentStart', 'SubagentStop', 'Stop', 'Interrupt',
 ]);
 const EVENTS_WITHOUT_STABLE_NATIVE_ID = new Set(['SessionStart', 'SessionEnd', 'PermissionRequest', 'PreCompact', 'PostCompact', 'Interrupt']);
-const INTERNAL_TOOL_NAMES = new Set(['classify_decision', 'classify_failure', 'check_completion', 'jev_status', 'configure_automation']);
+const INTERNAL_TOOL_NAMES = new Set(['classify_decision', 'classify_failure', 'check_completion', 'jev_status', 'configure_automation', 'evaluate_decisions', 'update_task_context', 'record_decision_outcome']);
 const credentialSnapshot = Symbol('credentialSnapshot');
 type HookEnv = NodeJS.ProcessEnv & {[credentialSnapshot]?: string | null};
 
@@ -55,7 +57,7 @@ export type DecisionInput = {
   evidence: Array<{id: string; text: string; source?: string}>;
   mode: 'preview' | 'evaluate';
 };
-export type DecisionAssessment = {status?: string; choice?: string; confidence?: number; receiptId?: string; receiptPersisted?: boolean; reasonCode?: string};
+export type DecisionAssessment = {status?: string; choice?: string; confidence?: number; receiptId?: string; receiptPersisted?: boolean; reasonCode?: string; transport?: ProviderTransport; coverage?: CandidateCoverage};
 export type DecisionService = {
   classifyDecision(input: DecisionInput, signal?: AbortSignal): Promise<DecisionAssessment>;
 };
@@ -551,6 +553,13 @@ function taskContextView(value: TaskContextRecord | undefined): RecordValue | un
   };
 }
 
+function taskContextSemanticDigest(value: TaskContextRecord | undefined): string {
+  const view = taskContextView(value);
+  if (!view) return hash('null');
+  const {version: _version, updatedAt: _updatedAt, ...facts} = view;
+  return hash(JSON.stringify({...facts, candidateCatalogs: value?.candidateCatalogs}));
+}
+
 function promptContextUpdate(event: NormalizedEvent, prior: TaskContextRecord | undefined, env: NodeJS.ProcessEnv): Parameters<typeof updateTaskContext>[1] | undefined {
   const prompt = boundedWithEnv(event.prompt, MAX_PROMPT_BYTES, env);
   if (!prompt) return undefined;
@@ -602,7 +611,7 @@ function candidateCatalog(event: NormalizedEvent, domain: DecisionInput['domain'
   const explicit = selected?.value;
   const list = Array.isArray(explicit) ? explicit.map(item => candidateFromUnknown(item, env)).filter((item): item is DecisionInput['candidates'][number] => item !== undefined) : [];
   const duplicateIds = new Set(list.map(item => item.id)).size !== list.length;
-  if (list.length >= 1 && !duplicateIds) return {candidates: list.slice(0, 12), provided: true, source: selected?.source ?? 'host.event', domain};
+  if (list.length >= 1 && !duplicateIds) return {candidates: list, provided: true, source: selected?.source ?? 'host.event', domain};
   return {candidates: actionCandidates(event), provided: false, source: explicit === undefined ? 'fallback:no_catalog' : 'fallback:invalid_or_insufficient_catalog', domain};
 }
 
@@ -996,7 +1005,8 @@ async function writeInvocationReceipt(event: NormalizedEvent, env: NodeJS.Proces
         agentId: event.agentId || undefined,
       },
       correlationId: eventKey(event),
-      candidateDigest: hash(JSON.stringify(input.candidates.map(candidate => candidate.id))),
+      candidateDigest: hash(JSON.stringify(input.candidates)),
+      ...(result?.coverage ? {coverage: result.coverage} : {}),
     };
     const contents = JSON.stringify(receipt) + '\n';
     const handle = await open(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
@@ -1086,29 +1096,71 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
     }
     const input = decisionInput(event, env, cachedPrompt, taskContext, turnResults);
     if (Date.now() >= deadline) return timedOut();
-    const remainingMs = deadline - Date.now();
-    const providerTimeoutMs = Math.min(shortEvent ? SHORT_EVENT_PROVIDER_TIMEOUT_MS : PROVIDER_TIMEOUT_MS, Math.max(1, remainingMs));
-    const service = options.service ?? defaultService(env, providerTimeoutMs, options.fetchFn);
-    const controller = new AbortController();
-    let timeoutResolve: ((value: DecisionAssessment) => void) | undefined;
-    const timeout = new Promise<DecisionAssessment>(resolve => { timeoutResolve = resolve; });
-    const timer = setTimeout(() => {
-      controller.abort();
-      timeoutResolve?.({status: 'unavailable', reasonCode: 'hook_timeout'});
-    }, remainingMs);
-    let result: DecisionAssessment;
+    const sessionDirectory = await privateSessionDirectory(event, env, true);
+    if (!sessionDirectory) return {};
+    const consultationDirectory = join(sessionDirectory, 'consultations', hash(event.agentId || 'root'));
+    const revisionDirectory = join(consultationDirectory, 'revisions');
+    const semanticId = consultationIdentity(input, {
+      provider: 'TypeSafe', model: env.JEV_MODEL ?? '', credential: hash(env.TYPESAFE_API_KEY ?? ''), policy,
+      pins: event.raw.pins ?? event.raw.user_pins,
+      sourceVersions: event.raw.source_versions, evidenceVersions: event.raw.evidence_versions,
+      catalogGeneration: event.raw.catalog_generation,
+    });
+    const observed = await withinHookDeadline(deadline, () => observeConsultationRevision(revisionDirectory, semanticId, startedAt));
+    if (observed.expired) return timedOut();
+    const providerDirectory = join(dataDirectory(env), EVENT_DIRECTORY, 'provider-cooldowns', hash(JSON.stringify({provider: 'TypeSafe', model: env.JEV_MODEL ?? '', credential: hash(env.TYPESAFE_API_KEY ?? '')})));
+    const cooldown = await withinHookDeadline(deadline, () => providerCoolingDown(providerDirectory));
+    if (cooldown.expired) return timedOut();
+    if (cooldown.value) return {};
+    if (policy.consultationMode === 'changed_state' && input.candidates.filter(candidate => candidate.available !== false).length <= 1) return {};
+    const semanticClaimResult = policy.consultationMode === 'changed_state'
+      ? await withinHookDeadline(deadline, async () => {
+        const claim = await claimConsultation(consultationDirectory, semanticId);
+        if (Date.now() >= deadline) { await claim?.release(); return undefined; }
+        return claim;
+      })
+      : {expired: false as const, value: undefined};
+    if (semanticClaimResult.expired) return timedOut();
+    const semanticClaim = semanticClaimResult.value;
+    if (policy.consultationMode === 'changed_state' && !semanticClaim) return {};
     try {
-      result = await Promise.race([service.classifyDecision(input, controller.signal), timeout]);
-    } catch {
-      result = {status: 'unavailable', reasonCode: 'service_error'};
-    } finally {
-      clearTimeout(timer);
-    }
-    if (Date.now() >= deadline) result = timeoutAssessment;
-    else result = normalizeDecisionAssessment(input, result);
-    const receipt = await withinHookDeadline(deadline, () => writeInvocationReceipt(event, env, input, response, result));
-    if (receipt.expired || Date.now() >= deadline) return timedOut();
-    return decisionOutput(event, result, input);
+      if (Date.now() >= deadline) return timedOut();
+      const remainingMs = deadline - Date.now();
+      const providerWaitMs = Math.max(1, remainingMs - Math.min(100, Math.floor(remainingMs / 5)));
+      const providerTimeoutMs = Math.min(shortEvent ? SHORT_EVENT_PROVIDER_TIMEOUT_MS : PROVIDER_TIMEOUT_MS, Math.max(1, remainingMs));
+      const service = options.service ?? defaultService(env, providerTimeoutMs, options.fetchFn);
+      const controller = new AbortController();
+      let timeoutResolve: ((value: DecisionAssessment) => void) | undefined;
+      const timeout = new Promise<DecisionAssessment>(resolve => { timeoutResolve = resolve; });
+      const timer = setTimeout(() => {
+        controller.abort();
+        timeoutResolve?.({status: 'unavailable', reasonCode: 'hook_timeout'});
+      }, providerWaitMs);
+      let result: DecisionAssessment;
+      try {
+        result = await Promise.race([consultCandidateCatalog(input, service, controller.signal, deadline), timeout]);
+      } catch {
+        result = {status: 'unavailable', reasonCode: 'service_error'};
+      } finally {
+        clearTimeout(timer);
+      }
+      if (Date.now() >= deadline) result = timeoutAssessment;
+      else result = normalizeDecisionAssessment(input, result);
+      const current = await withinHookDeadline(deadline, async () => {
+        if (!(await consultationRevisionCurrent(revisionDirectory, semanticId, startedAt))) return false;
+        const latest = await loadTaskContext(scope, {env});
+        return taskContextSemanticDigest(latest) === taskContextSemanticDigest(taskContext);
+      });
+      if (current.expired || !current.value) result = {status: 'unavailable', reasonCode: current.expired ? 'hook_timeout' : 'stale_context', ...(result.coverage ? {coverage: {...result.coverage, complete: false}} : {})};
+      if (semanticClaim && (result.status === 'assessed' || result.status === 'abstained')) {
+        const completed = await withinHookDeadline(deadline, () => semanticClaim.complete());
+        if (completed.expired) return timedOut();
+      }
+      await withinHookDeadline(deadline, () => recordProviderOutage(providerDirectory, result));
+      const receipt = await withinHookDeadline(deadline, () => writeInvocationReceipt(event, env, input, response, result));
+      if (receipt.expired || Date.now() >= deadline) return timedOut();
+      return decisionOutput(event, result, input);
+    } finally { await semanticClaim?.release(); }
   } catch {
     return {};
   }

@@ -1,0 +1,8 @@
+{
+  "description": "Opt-in native Claude routing. Trusted PostToolBatch commands produce advice and records. Native code consumes records and preserves ordinary tool permissions.",
+  "modules": ["../dist/claude-mod.mjs"],
+  "hooks": {
+    "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/claude-hook.mjs\"", "timeout": 10}]}],
+    "PostToolBatch": [{"hooks": [{"type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/claude-hook.mjs\"", "timeout": 10}]}]
+  }
+}

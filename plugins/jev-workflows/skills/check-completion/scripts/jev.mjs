@@ -526,7 +526,7 @@ var require_crc = __commonJS({
 var require_parser = __commonJS({
   "node_modules/pngjs/lib/parser.js"(exports, module) {
     "use strict";
-    var constants4 = require_constants();
+    var constants5 = require_constants();
     var CrcCalculator = require_crc();
     var Parser = module.exports = function(options, dependencies) {
       this._options = options;
@@ -537,12 +537,12 @@ var require_parser = __commonJS({
       this._palette = [];
       this._colorType = 0;
       this._chunks = {};
-      this._chunks[constants4.TYPE_IHDR] = this._handleIHDR.bind(this);
-      this._chunks[constants4.TYPE_IEND] = this._handleIEND.bind(this);
-      this._chunks[constants4.TYPE_IDAT] = this._handleIDAT.bind(this);
-      this._chunks[constants4.TYPE_PLTE] = this._handlePLTE.bind(this);
-      this._chunks[constants4.TYPE_tRNS] = this._handleTRNS.bind(this);
-      this._chunks[constants4.TYPE_gAMA] = this._handleGAMA.bind(this);
+      this._chunks[constants5.TYPE_IHDR] = this._handleIHDR.bind(this);
+      this._chunks[constants5.TYPE_IEND] = this._handleIEND.bind(this);
+      this._chunks[constants5.TYPE_IDAT] = this._handleIDAT.bind(this);
+      this._chunks[constants5.TYPE_PLTE] = this._handlePLTE.bind(this);
+      this._chunks[constants5.TYPE_tRNS] = this._handleTRNS.bind(this);
+      this._chunks[constants5.TYPE_gAMA] = this._handleGAMA.bind(this);
       this.read = dependencies.read;
       this.error = dependencies.error;
       this.metadata = dependencies.metadata;
@@ -557,10 +557,10 @@ var require_parser = __commonJS({
       };
     };
     Parser.prototype.start = function() {
-      this.read(constants4.PNG_SIGNATURE.length, this._parseSignature.bind(this));
+      this.read(constants5.PNG_SIGNATURE.length, this._parseSignature.bind(this));
     };
     Parser.prototype._parseSignature = function(data) {
-      let signature = constants4.PNG_SIGNATURE;
+      let signature = constants5.PNG_SIGNATURE;
       for (let i = 0; i < signature.length; i++) {
         if (data[i] !== signature[i]) {
           this.error(new Error("Invalid file signature"));
@@ -577,7 +577,7 @@ var require_parser = __commonJS({
         name += String.fromCharCode(data[i]);
       }
       let ancillary = Boolean(data[4] & 32);
-      if (!this._hasIHDR && type !== constants4.TYPE_IHDR) {
+      if (!this._hasIHDR && type !== constants5.TYPE_IHDR) {
         this.error(new Error("Expected IHDR on beggining"));
         return;
       }
@@ -625,7 +625,7 @@ var require_parser = __commonJS({
         this.error(new Error("Unsupported bit depth " + depth));
         return;
       }
-      if (!(colorType in constants4.COLORTYPE_TO_BPP_MAP)) {
+      if (!(colorType in constants5.COLORTYPE_TO_BPP_MAP)) {
         this.error(new Error("Unsupported color type"));
         return;
       }
@@ -642,16 +642,16 @@ var require_parser = __commonJS({
         return;
       }
       this._colorType = colorType;
-      let bpp = constants4.COLORTYPE_TO_BPP_MAP[this._colorType];
+      let bpp = constants5.COLORTYPE_TO_BPP_MAP[this._colorType];
       this._hasIHDR = true;
       this.metadata({
         width,
         height,
         depth,
         interlace: Boolean(interlace),
-        palette: Boolean(colorType & constants4.COLORTYPE_PALETTE),
-        color: Boolean(colorType & constants4.COLORTYPE_COLOR),
-        alpha: Boolean(colorType & constants4.COLORTYPE_ALPHA),
+        palette: Boolean(colorType & constants5.COLORTYPE_PALETTE),
+        color: Boolean(colorType & constants5.COLORTYPE_COLOR),
+        alpha: Boolean(colorType & constants5.COLORTYPE_ALPHA),
         bpp,
         colorType
       });
@@ -675,7 +675,7 @@ var require_parser = __commonJS({
     };
     Parser.prototype._parseTRNS = function(data) {
       this._crc.write(data);
-      if (this._colorType === constants4.COLORTYPE_PALETTE_COLOR) {
+      if (this._colorType === constants5.COLORTYPE_PALETTE_COLOR) {
         if (this._palette.length === 0) {
           this.error(new Error("Transparency chunk must be after palette"));
           return;
@@ -689,10 +689,10 @@ var require_parser = __commonJS({
         }
         this.palette(this._palette);
       }
-      if (this._colorType === constants4.COLORTYPE_GRAYSCALE) {
+      if (this._colorType === constants5.COLORTYPE_GRAYSCALE) {
         this.transColor([data.readUInt16BE(0)]);
       }
-      if (this._colorType === constants4.COLORTYPE_COLOR) {
+      if (this._colorType === constants5.COLORTYPE_COLOR) {
         this.transColor([
           data.readUInt16BE(0),
           data.readUInt16BE(2),
@@ -706,7 +706,7 @@ var require_parser = __commonJS({
     };
     Parser.prototype._parseGAMA = function(data) {
       this._crc.write(data);
-      this.gamma(data.readUInt32BE(0) / constants4.GAMMA_DIVISION);
+      this.gamma(data.readUInt32BE(0) / constants5.GAMMA_DIVISION);
       this._handleChunkEnd();
     };
     Parser.prototype._handleIDAT = function(length) {
@@ -718,7 +718,7 @@ var require_parser = __commonJS({
     };
     Parser.prototype._parseIDAT = function(length, data) {
       this._crc.write(data);
-      if (this._colorType === constants4.COLORTYPE_PALETTE_COLOR && this._palette.length === 0) {
+      if (this._colorType === constants5.COLORTYPE_PALETTE_COLOR && this._palette.length === 0) {
         throw new Error("Expected palette not found");
       }
       this.inflateData(data);
@@ -1206,9 +1206,9 @@ var require_parser_async = __commonJS({
 var require_bitpacker = __commonJS({
   "node_modules/pngjs/lib/bitpacker.js"(exports, module) {
     "use strict";
-    var constants4 = require_constants();
+    var constants5 = require_constants();
     module.exports = function(dataIn, width, height, options) {
-      let outHasAlpha = [constants4.COLORTYPE_COLOR_ALPHA, constants4.COLORTYPE_ALPHA].indexOf(
+      let outHasAlpha = [constants5.COLORTYPE_COLOR_ALPHA, constants5.COLORTYPE_ALPHA].indexOf(
         options.colorType
       ) !== -1;
       if (options.colorType === options.inputColorType) {
@@ -1228,11 +1228,11 @@ var require_bitpacker = __commonJS({
       }
       let data = options.bitDepth !== 16 ? dataIn : new Uint16Array(dataIn.buffer);
       let maxValue = 255;
-      let inBpp = constants4.COLORTYPE_TO_BPP_MAP[options.inputColorType];
+      let inBpp = constants5.COLORTYPE_TO_BPP_MAP[options.inputColorType];
       if (inBpp === 4 && !options.inputHasAlpha) {
         inBpp = 3;
       }
-      let outBpp = constants4.COLORTYPE_TO_BPP_MAP[options.colorType];
+      let outBpp = constants5.COLORTYPE_TO_BPP_MAP[options.colorType];
       if (options.bitDepth === 16) {
         maxValue = 65535;
         outBpp *= 2;
@@ -1256,24 +1256,24 @@ var require_bitpacker = __commonJS({
         let blue;
         let alpha = maxValue;
         switch (options.inputColorType) {
-          case constants4.COLORTYPE_COLOR_ALPHA:
+          case constants5.COLORTYPE_COLOR_ALPHA:
             alpha = data[inIndex + 3];
             red = data[inIndex];
             green = data[inIndex + 1];
             blue = data[inIndex + 2];
             break;
-          case constants4.COLORTYPE_COLOR:
+          case constants5.COLORTYPE_COLOR:
             red = data[inIndex];
             green = data[inIndex + 1];
             blue = data[inIndex + 2];
             break;
-          case constants4.COLORTYPE_ALPHA:
+          case constants5.COLORTYPE_ALPHA:
             alpha = data[inIndex + 1];
             red = data[inIndex];
             green = red;
             blue = red;
             break;
-          case constants4.COLORTYPE_GRAYSCALE:
+          case constants5.COLORTYPE_GRAYSCALE:
             red = data[inIndex];
             green = red;
             blue = red;
@@ -1306,8 +1306,8 @@ var require_bitpacker = __commonJS({
         for (let x = 0; x < width; x++) {
           let rgba = getRGBA(data, inIndex);
           switch (options.colorType) {
-            case constants4.COLORTYPE_COLOR_ALPHA:
-            case constants4.COLORTYPE_COLOR:
+            case constants5.COLORTYPE_COLOR_ALPHA:
+            case constants5.COLORTYPE_COLOR:
               if (options.bitDepth === 8) {
                 outData[outIndex] = rgba.red;
                 outData[outIndex + 1] = rgba.green;
@@ -1324,8 +1324,8 @@ var require_bitpacker = __commonJS({
                 }
               }
               break;
-            case constants4.COLORTYPE_ALPHA:
-            case constants4.COLORTYPE_GRAYSCALE: {
+            case constants5.COLORTYPE_ALPHA:
+            case constants5.COLORTYPE_GRAYSCALE: {
               let grayscale = (rgba.red + rgba.green + rgba.blue) / 3;
               if (options.bitDepth === 8) {
                 outData[outIndex] = grayscale;
@@ -1498,7 +1498,7 @@ var require_filter_pack = __commonJS({
 var require_packer = __commonJS({
   "node_modules/pngjs/lib/packer.js"(exports, module) {
     "use strict";
-    var constants4 = require_constants();
+    var constants5 = require_constants();
     var CrcStream = require_crc();
     var bitPacker = require_bitpacker();
     var filter = require_filter_pack();
@@ -1511,23 +1511,23 @@ var require_packer = __commonJS({
       options.inputHasAlpha = options.inputHasAlpha != null ? options.inputHasAlpha : true;
       options.deflateFactory = options.deflateFactory || zlib2.createDeflate;
       options.bitDepth = options.bitDepth || 8;
-      options.colorType = typeof options.colorType === "number" ? options.colorType : constants4.COLORTYPE_COLOR_ALPHA;
-      options.inputColorType = typeof options.inputColorType === "number" ? options.inputColorType : constants4.COLORTYPE_COLOR_ALPHA;
+      options.colorType = typeof options.colorType === "number" ? options.colorType : constants5.COLORTYPE_COLOR_ALPHA;
+      options.inputColorType = typeof options.inputColorType === "number" ? options.inputColorType : constants5.COLORTYPE_COLOR_ALPHA;
       if ([
-        constants4.COLORTYPE_GRAYSCALE,
-        constants4.COLORTYPE_COLOR,
-        constants4.COLORTYPE_COLOR_ALPHA,
-        constants4.COLORTYPE_ALPHA
+        constants5.COLORTYPE_GRAYSCALE,
+        constants5.COLORTYPE_COLOR,
+        constants5.COLORTYPE_COLOR_ALPHA,
+        constants5.COLORTYPE_ALPHA
       ].indexOf(options.colorType) === -1) {
         throw new Error(
           "option color type:" + options.colorType + " is not supported at present"
         );
       }
       if ([
-        constants4.COLORTYPE_GRAYSCALE,
-        constants4.COLORTYPE_COLOR,
-        constants4.COLORTYPE_COLOR_ALPHA,
-        constants4.COLORTYPE_ALPHA
+        constants5.COLORTYPE_GRAYSCALE,
+        constants5.COLORTYPE_COLOR,
+        constants5.COLORTYPE_COLOR_ALPHA,
+        constants5.COLORTYPE_ALPHA
       ].indexOf(options.inputColorType) === -1) {
         throw new Error(
           "option input color type:" + options.inputColorType + " is not supported at present"
@@ -1551,7 +1551,7 @@ var require_packer = __commonJS({
     };
     Packer.prototype.filterData = function(data, width, height) {
       let packedData = bitPacker(data, width, height, this._options);
-      let bpp = constants4.COLORTYPE_TO_BPP_MAP[this._options.colorType];
+      let bpp = constants5.COLORTYPE_TO_BPP_MAP[this._options.colorType];
       let filteredData = filter(packedData, width, height, this._options, bpp);
       return filteredData;
     };
@@ -1571,8 +1571,8 @@ var require_packer = __commonJS({
     };
     Packer.prototype.packGAMA = function(gamma) {
       let buf = Buffer.alloc(4);
-      buf.writeUInt32BE(Math.floor(gamma * constants4.GAMMA_DIVISION), 0);
-      return this._packChunk(constants4.TYPE_gAMA, buf);
+      buf.writeUInt32BE(Math.floor(gamma * constants5.GAMMA_DIVISION), 0);
+      return this._packChunk(constants5.TYPE_gAMA, buf);
     };
     Packer.prototype.packIHDR = function(width, height) {
       let buf = Buffer.alloc(13);
@@ -1583,13 +1583,13 @@ var require_packer = __commonJS({
       buf[10] = 0;
       buf[11] = 0;
       buf[12] = 0;
-      return this._packChunk(constants4.TYPE_IHDR, buf);
+      return this._packChunk(constants5.TYPE_IHDR, buf);
     };
     Packer.prototype.packIDAT = function(data) {
-      return this._packChunk(constants4.TYPE_IDAT, data);
+      return this._packChunk(constants5.TYPE_IDAT, data);
     };
     Packer.prototype.packIEND = function() {
-      return this._packChunk(constants4.TYPE_IEND, null);
+      return this._packChunk(constants5.TYPE_IEND, null);
     };
   }
 });
@@ -1600,7 +1600,7 @@ var require_packer_async = __commonJS({
     "use strict";
     var util = __require("util");
     var Stream = __require("stream");
-    var constants4 = require_constants();
+    var constants5 = require_constants();
     var Packer = require_packer();
     var PackerAsync = module.exports = function(opt) {
       Stream.call(this);
@@ -1611,7 +1611,7 @@ var require_packer_async = __commonJS({
     };
     util.inherits(PackerAsync, Stream);
     PackerAsync.prototype.pack = function(data, width, height, gamma) {
-      this.emit("data", Buffer.from(constants4.PNG_SIGNATURE));
+      this.emit("data", Buffer.from(constants5.PNG_SIGNATURE));
       this.emit("data", this._packer.packIHDR(width, height));
       if (gamma) {
         this.emit("data", this._packer.packGAMA(gamma));
@@ -1939,7 +1939,7 @@ var require_packer_sync = __commonJS({
     if (!zlib2.deflateSync) {
       hasSyncZlib = false;
     }
-    var constants4 = require_constants();
+    var constants5 = require_constants();
     var Packer = require_packer();
     module.exports = function(metaData, opt) {
       if (!hasSyncZlib) {
@@ -1950,7 +1950,7 @@ var require_packer_sync = __commonJS({
       let options = opt || {};
       let packer = new Packer(options);
       let chunks = [];
-      chunks.push(Buffer.from(constants4.PNG_SIGNATURE));
+      chunks.push(Buffer.from(constants5.PNG_SIGNATURE));
       chunks.push(packer.packIHDR(metaData.width, metaData.height));
       if (metaData.gamma) {
         chunks.push(packer.packGAMA(metaData.gamma));
@@ -4283,7 +4283,7 @@ import { pathToFileURL } from "node:url";
 import { realpath as realpath2 } from "node:fs/promises";
 
 // src/service.ts
-import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
+import { createHash as createHash2, randomUUID as randomUUID3 } from "node:crypto";
 
 // node_modules/zod/v4/classic/external.js
 var external_exports = {};
@@ -25556,23 +25556,21 @@ async function evaluateProvider(args) {
 }
 
 // src/store.ts
-import { mkdir, open as open2, rename, unlink, link, rmdir, readdir, lstat } from "node:fs/promises";
-import { constants } from "node:fs";
+import { mkdir as mkdir2, open as open3, rename as rename2, unlink as unlink2, link, lstat as lstat2 } from "node:fs/promises";
+import { constants as constants2 } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, isAbsolute, join } from "node:path";
+import { isAbsolute, join as join2 } from "node:path";
+import { randomUUID as randomUUID2 } from "node:crypto";
+
+// src/state-lock.ts
+import { mkdir, open as open2, rename, unlink, rmdir, readdir, lstat } from "node:fs/promises";
+import { constants } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
-var MAX_STATE_FILE_BYTES = 65536;
-var MAX_BUDGET_FILE_BYTES = 4096;
 var LOCK_WAIT_ATTEMPTS = 50;
 var LOCK_WAIT_MS = 10;
 var STALE_LOCK_MS = 3e4;
-function validateReservationBytes(bytes) {
-  if (!Number.isSafeInteger(bytes) || bytes < 0) throw new TypeError("invalid_reservation_bytes");
-}
-function validateLimit(value, name) {
-  if (value !== null && (!Number.isSafeInteger(value) || value < 0)) throw new TypeError(`invalid_${name}`);
-}
 function lockData(token) {
   return { pid: process.pid, token, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
 }
@@ -25636,7 +25634,7 @@ async function reclaimStaleLock(path) {
     return false;
   }
 }
-async function acquireLock(path, attempts = LOCK_WAIT_ATTEMPTS) {
+async function acquireStateLock(path, attempts = LOCK_WAIT_ATTEMPTS) {
   const token = randomUUID();
   const entry = `owner-${token}.json`;
   const temporary = join(dirname(path), `.${basename(path)}-${token}.tmp`);
@@ -25668,7 +25666,7 @@ async function acquireLock(path, attempts = LOCK_WAIT_ATTEMPTS) {
     });
   }
 }
-async function releaseLock(path, handle, token) {
+async function releaseStateLock(path, handle, token) {
   await handle.close().catch(() => {
   });
   try {
@@ -25677,10 +25675,21 @@ async function releaseLock(path, handle, token) {
   } catch {
   }
 }
+
+// src/store.ts
+var MAX_STATE_FILE_BYTES = 65536;
+var MAX_BUDGET_FILE_BYTES = 4096;
+var LOCK_WAIT_ATTEMPTS2 = 50;
+function validateReservationBytes(bytes) {
+  if (!Number.isSafeInteger(bytes) || bytes < 0) throw new TypeError("invalid_reservation_bytes");
+}
+function validateLimit(value, name) {
+  if (value !== null && (!Number.isSafeInteger(value) || value < 0)) throw new TypeError(`invalid_${name}`);
+}
 async function readBudget(path) {
   let handle;
   try {
-    handle = await open2(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    handle = await open3(path, constants2.O_RDONLY | constants2.O_NOFOLLOW | constants2.O_NONBLOCK);
   } catch (error62) {
     if (error62.code === "ENOENT") return { calls: 0, bytes: 0 };
     throw error62;
@@ -25696,14 +25705,14 @@ async function readBudget(path) {
   }
 }
 async function writeBudget(path, temporary, usage) {
-  const handle = await open2(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 384);
+  const handle = await open3(temporary, constants2.O_WRONLY | constants2.O_CREAT | constants2.O_EXCL | constants2.O_NOFOLLOW, 384);
   try {
     await handle.writeFile(JSON.stringify(usage));
     await handle.sync();
   } finally {
     await handle.close();
   }
-  await rename(temporary, path);
+  await rename2(temporary, path);
 }
 async function readBudgetUsage(directory, maxCalls, maxBytes, now = /* @__PURE__ */ new Date()) {
   const date5 = now.toISOString().slice(0, 10);
@@ -25736,10 +25745,10 @@ async function readBudgetUsage(directory, maxCalls, maxBytes, now = /* @__PURE__
     resetsAt,
     status: "ok"
   });
-  const path = join(directory, `budget-${date5}.json`);
+  const path = join2(directory, `budget-${date5}.json`);
   let handle;
   try {
-    handle = await open2(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    handle = await open3(path, constants2.O_RDONLY | constants2.O_NOFOLLOW | constants2.O_NONBLOCK);
   } catch (err) {
     if (err.code === "ENOENT") return available(0, 0);
     return unavailable();
@@ -25759,7 +25768,7 @@ async function readBudgetUsage(directory, maxCalls, maxBytes, now = /* @__PURE__
 function dataDirectory(env = process.env) {
   const override = env.JEV_STATE_DIRECTORY;
   if (override !== void 0 && isAbsolute(override) && !override.includes("\0")) return override;
-  const userDirectory = join(env.XDG_STATE_HOME || join(homedir(), ".local", "state"), "jev-workflows");
+  const userDirectory = join2(env.XDG_STATE_HOME || join2(homedir(), ".local", "state"), "jev-workflows");
   if (env.JEV_STATE_MODE === "user") return userDirectory;
   return env.PLUGIN_DATA || userDirectory;
 }
@@ -25776,20 +25785,20 @@ var FileStore = class {
   maxBytes;
   async reserve(bytes) {
     validateReservationBytes(bytes);
-    await mkdir(this.directory, { recursive: true, mode: 448 });
+    await mkdir2(this.directory, { recursive: true, mode: 448 });
     const day = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-    const path = join(this.directory, `budget-${day}.json`);
+    const path = join2(this.directory, `budget-${day}.json`);
     const lock = `${path}.lock`;
     const unlimited = this.maxCalls === null && this.maxBytes === null;
     if (unlimited) await readBudget(path);
     let acquired;
     try {
-      acquired = await acquireLock(lock, unlimited ? 1 : LOCK_WAIT_ATTEMPTS);
+      acquired = await acquireStateLock(lock, unlimited ? 1 : LOCK_WAIT_ATTEMPTS2);
     } catch (error62) {
       if (unlimited && error62.message === "budget_busy") return true;
       throw error62;
     }
-    const temporary = join(this.directory, `.budget-${randomUUID()}.tmp`);
+    const temporary = join2(this.directory, `.budget-${randomUUID2()}.tmp`);
     try {
       let usage;
       usage = await readBudget(path);
@@ -25799,32 +25808,32 @@ var FileStore = class {
       await writeBudget(path, temporary, next);
       return true;
     } finally {
-      await releaseLock(lock, acquired.handle, acquired.token);
-      await unlink(temporary).catch(() => {
+      await releaseStateLock(lock, acquired.handle, acquired.token);
+      await unlink2(temporary).catch(() => {
       });
     }
   }
   async save(receipt) {
-    const directory = join(this.directory, "receipts");
-    await mkdir(directory, { recursive: true, mode: 448 });
-    const receiptId = typeof receipt.receiptId === "string" && /^[a-f0-9-]{36}$/.test(receipt.receiptId) ? receipt.receiptId : randomUUID();
+    const directory = join2(this.directory, "receipts");
+    await mkdir2(directory, { recursive: true, mode: 448 });
+    const receiptId = typeof receipt.receiptId === "string" && /^[a-f0-9-]{36}$/.test(receipt.receiptId) ? receipt.receiptId : randomUUID2();
     const name = `${receiptId}.json`;
-    const temporary = join(directory, `.receipt-${randomUUID()}.tmp`);
+    const temporary = join2(directory, `.receipt-${randomUUID2()}.tmp`);
     try {
       const contents = JSON.stringify(receipt, null, 2) + "\n";
       if (Buffer.byteLength(contents) > MAX_STATE_FILE_BYTES) throw new Error("receipt_too_large");
-      const handle = await open2(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 384);
+      const handle = await open3(temporary, constants2.O_WRONLY | constants2.O_CREAT | constants2.O_EXCL | constants2.O_NOFOLLOW, 384);
       try {
         await handle.writeFile(contents);
         await handle.sync();
       } finally {
         await handle.close();
       }
-      await link(temporary, join(directory, name));
+      await link(temporary, join2(directory, name));
       await this.updateReceiptIndex(receiptId, receipt.timestamp).catch(() => {
       });
     } finally {
-      await unlink(temporary).catch(() => {
+      await unlink2(temporary).catch(() => {
       });
     }
   }
@@ -25832,21 +25841,21 @@ var FileStore = class {
   async updateReceiptIndex(receiptId, timestamp) {
     if (typeof timestamp !== "string" || !Number.isFinite(Date.parse(timestamp))) return;
     const date5 = new Date(timestamp).toISOString().slice(0, 10);
-    const path = join(this.directory, `receipt-index-${date5}.json`);
+    const path = join2(this.directory, `receipt-index-${date5}.json`);
     const lockPath = `${path}.lock`;
-    const existing = await lstat(path).catch(() => void 0);
+    const existing = await lstat2(path).catch(() => void 0);
     if (existing && (!existing.isFile() || existing.size > MAX_STATE_FILE_BYTES)) return;
     let acquired;
     try {
-      acquired = await acquireLock(lockPath);
+      acquired = await acquireStateLock(lockPath);
     } catch {
       return;
     }
-    const temporary = join(this.directory, `.receipt-index-${randomUUID()}.tmp`);
+    const temporary = join2(this.directory, `.receipt-index-${randomUUID2()}.tmp`);
     try {
       let ids = [];
       try {
-        const handle2 = await open2(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+        const handle2 = await open3(path, constants2.O_RDONLY | constants2.O_NOFOLLOW | constants2.O_NONBLOCK);
         try {
           const info = await handle2.stat();
           if (!info.isFile() || info.size > MAX_STATE_FILE_BYTES) throw new Error("invalid_receipt_index");
@@ -25860,26 +25869,26 @@ var FileStore = class {
         if (error62.code !== "ENOENT") return;
       }
       if (!ids.includes(receiptId)) ids.push(receiptId);
-      const handle = await open2(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 384);
+      const handle = await open3(temporary, constants2.O_WRONLY | constants2.O_CREAT | constants2.O_EXCL | constants2.O_NOFOLLOW, 384);
       try {
         await handle.writeFile(JSON.stringify({ version: 1, date: date5, receiptIds: ids }) + "\n");
         await handle.sync();
       } finally {
         await handle.close();
       }
-      await rename(temporary, path);
+      await rename2(temporary, path);
     } finally {
-      await releaseLock(lockPath, acquired.handle, acquired.token);
-      await unlink(temporary).catch(() => {
+      await releaseStateLock(lockPath, acquired.handle, acquired.token);
+      await unlink2(temporary).catch(() => {
       });
     }
   }
 };
 
 // src/policy.ts
-import { constants as constants2 } from "node:fs";
-import { mkdir as mkdir2, open as open3, rename as rename2, lstat as lstat2, realpath, unlink as unlink2 } from "node:fs/promises";
-import { isAbsolute as isAbsolute2, join as join2, sep } from "node:path";
+import { constants as constants3 } from "node:fs";
+import { mkdir as mkdir3, open as open4, rename as rename3, lstat as lstat3, realpath, unlink as unlink3 } from "node:fs/promises";
+import { isAbsolute as isAbsolute2, join as join3, sep } from "node:path";
 var POLICY_FILE = "policy.json";
 var MAX_POLICY_BYTES = 8 * 1024;
 var DEFAULT_CALL_CAP = null;
@@ -25888,6 +25897,7 @@ var DEFAULT_BYTES_PER_DAY = null;
 var MAX_WORKSPACES = 64;
 var automationPolicySchema = external_exports.strictObject({
   enabled: external_exports.boolean(),
+  consultationMode: external_exports.enum(["changed_state", "always"]).default("always"),
   scope: external_exports.enum(["all-workspaces", "workspaces"]).default("workspaces"),
   workspaces: external_exports.array(external_exports.string().min(1).max(4096).refine(validRoot, "workspace must be absolute")).max(MAX_WORKSPACES).default([]),
   // These are optional user-selected caps. Safe-integer validation protects
@@ -25898,6 +25908,7 @@ var automationPolicySchema = external_exports.strictObject({
 });
 var DEFAULT_POLICY = {
   enabled: false,
+  consultationMode: "changed_state",
   scope: "workspaces",
   workspaces: [],
   maxHookCallsPerSession: DEFAULT_CALL_CAP,
@@ -25907,7 +25918,7 @@ var DEFAULT_POLICY = {
 function policyPath(env) {
   const directory = dataDirectory(env);
   if (!isAbsolute2(directory) || directory.includes("\0")) throw new Error("invalid_policy_directory");
-  return join2(directory, POLICY_FILE);
+  return join3(directory, POLICY_FILE);
 }
 function validRoot(value) {
   return typeof value === "string" && isAbsolute2(value) && !value.includes("\0") && value.length <= 4096;
@@ -25921,7 +25932,7 @@ function normalizePolicy(raw) {
 async function readPolicy(env = process.env) {
   try {
     const path = policyPath(env);
-    const handle = await open3(path, constants2.O_RDONLY | constants2.O_NOFOLLOW);
+    const handle = await open4(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
     try {
       const info = await handle.stat();
       if (!info.isFile() || info.size > MAX_POLICY_BYTES) return { ...DEFAULT_POLICY };
@@ -25936,6 +25947,8 @@ async function readPolicy(env = process.env) {
 }
 
 // src/decision.ts
+var MAX_DECISION_CANDIDATES = 254;
+var MAX_DECISION_PAYLOAD_BYTES = 48e3;
 var DECISION_RUBRIC_VERSION = "decision-2026-09-26.2";
 var identifier = external_exports.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/);
 var decisionSchema = external_exports.strictObject({
@@ -25947,7 +25960,7 @@ var decisionSchema = external_exports.strictObject({
     description: external_exports.string().min(1).max(1600),
     available: external_exports.boolean().default(true),
     metadata: external_exports.record(external_exports.string().regex(/^[a-zA-Z0-9_.-]{1,40}$/), external_exports.union([external_exports.string().max(500), external_exports.number().finite(), external_exports.boolean()])).refine((value) => Object.keys(value).length <= 16, "at most 16 metadata keys").optional()
-  })).min(1).max(12),
+  })).min(1).max(MAX_DECISION_CANDIDATES),
   evidence: external_exports.array(evidenceSchema).max(12).default([]),
   policy: decisionPolicySchema.optional(),
   origin: originSchema.optional(),
@@ -25968,7 +25981,7 @@ Follow the stated objective and constraints supplied in context, using the evide
 }
 
 // src/credential.ts
-import { closeSync, constants as constants3, fstatSync, openSync, readSync } from "node:fs";
+import { closeSync, constants as constants4, fstatSync, openSync, readSync } from "node:fs";
 import { isAbsolute as isAbsolute3 } from "node:path";
 var MAX_FILE_BYTES = 4096;
 var KEY_LINE = /^(?:export )?TYPESAFE_API_KEY=(?:'([A-Za-z0-9._-]{80,512})'|"([A-Za-z0-9._-]{80,512})"|([A-Za-z0-9._-]{80,512}))\n?$/;
@@ -25976,7 +25989,7 @@ function readCredentialFile(path) {
   if (!isAbsolute3(path) || path.length > 4096 || /[\r\n\0]/.test(path)) return null;
   let fd;
   try {
-    fd = openSync(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
+    fd = openSync(path, constants4.O_RDONLY | constants4.O_NOFOLLOW);
     const stat = fstatSync(fd);
     const uid = process.getuid?.();
     if (!stat.isFile() || uid === void 0 || stat.uid !== uid || (stat.mode & 63) !== 0 || stat.size < 1 || stat.size > MAX_FILE_BYTES) return null;
@@ -25999,7 +26012,7 @@ function readCredentialFile(path) {
 }
 
 // src/service.ts
-var maxPayloadBytes = 48e3;
+var maxPayloadBytes = MAX_DECISION_PAYLOAD_BYTES;
 function bestActualCandidate(probabilities, actualCandidateIds) {
   let best;
   let max = Number.NEGATIVE_INFINITY;
@@ -26159,7 +26172,7 @@ function createService(options = {}) {
     }
     async function run() {
       const start = Date.now();
-      const receiptId = randomUUID2();
+      const receiptId = randomUUID3();
       const meta3 = { receiptId, evidenceIds, inputDigest, rubricVersion, ...localMeta };
       let result;
       const limits = status(await readPolicy(env));
@@ -26171,6 +26184,7 @@ function createService(options = {}) {
       }
       try {
         const evaluation = await evaluateProvider({ state, questions, apiKey, timeoutMs, model: selectedModel, longContext: env.JEV_LONG_CONTEXT === "1", signal, fetchFn: options.fetchFn });
+        if (signal?.aborted) throw new ProviderError("cancelled", evaluation.transport ?? null);
         const answer = evaluation.answers[tool === "classify_failure" ? "category" : tool === "check_completion" ? "support" : "decision"];
         if (!answer || answer.type !== "choice") throw new ProviderError("invalid_response", evaluation.transport);
         const minConfidence = decisionPolicy?.minConfidence ?? confidenceFloor;
@@ -26310,7 +26324,7 @@ function createService(options = {}) {
     }
     async function run() {
       const start = Date.now();
-      const receiptId = randomUUID2();
+      const receiptId = randomUUID3();
       const meta3 = { receiptId, ...localMeta };
       let result;
       const limits = status(await readPolicy(env));

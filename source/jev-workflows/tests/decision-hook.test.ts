@@ -260,6 +260,10 @@ describe('decision hook', () => {
     const recursionCalls = {count: 0, inputs: [] as DecisionInput[]};
     assert.deepEqual(await runDecisionHook(JSON.stringify(toolEvent({tool_name: 'mcp__jev-workflows__classify_decision'})), {env: recursionEnv, service: fakeService(recursionCalls)}), {});
     assert.equal(recursionCalls.count, 0);
+    for (const tool_name of ['evaluate_decisions', 'update_task_context', 'record_decision_outcome']) {
+      assert.deepEqual(await runDecisionHook(toolEvent({tool_name, tool_use_id: tool_name}), {env: recursionEnv, service: fakeService(recursionCalls)}), {});
+    }
+    assert.equal(recursionCalls.count, 0);
   });
 
   it('evaluates concurrent distinct events under unlimited policy and atomically deduplicates identical events', async () => {
@@ -589,14 +593,96 @@ describe('decision hook', () => {
     assert.equal((await readdir(invocationDir)).length, 2);
   });
 
+  it('consults once per meaningful state in changed_state mode and preserves legacy always mode', async () => {
+    const environment = env(join(root, 'changed-state'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    const service = fakeService(calls);
+    const event = toolEvent({tool_input: {command: 'read a file'}});
+    await runDecisionHook(event, {env: environment, service});
+    assert.deepEqual(await runDecisionHook({...event, event_id: 'delivery-2', tool_use_id: 'delivery-2', turn_id: 'turn-2'}, {env: environment, service}), {});
+    assert.equal(calls.count, 1);
+    await runDecisionHook({...event, tool_use_id: 'changed-arguments', tool_input: {command: 'read another file'}}, {env: environment, service});
+    assert.equal(calls.count, 2);
+    await runDecisionHook({...event, tool_use_id: 'changed-source', source_versions: {repo: 'new'}}, {env: environment, service});
+    assert.equal(calls.count, 3);
+    await runDecisionHook({...event, tool_use_id: 'changed-pin', pins: {model: 'explicit'}}, {env: environment, service});
+    assert.equal(calls.count, 4);
+    const legacy = env(join(root, 'always-state'));
+    await enabledPolicy(legacy);
+    const legacyCalls = {count: 0, inputs: [] as DecisionInput[]};
+    await runDecisionHook(event, {env: legacy, service: fakeService(legacyCalls)});
+    await runDecisionHook({...event, tool_use_id: 'delivery-2'}, {env: legacy, service: fakeService(legacyCalls)});
+    assert.equal(legacyCalls.count, 2);
+  });
+
+  it('skips deterministic single alternatives in changed_state mode', async () => {
+    const environment = env(join(root, 'deterministic-state'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    const result = await runDecisionHook(toolEvent({task_context: {candidateCatalog: {tool: [{id: 'read', description: 'The only eligible tool'}]}}}), {env: environment, service: fakeService(calls)});
+    assert.deepEqual(result, {});
+    assert.equal(calls.count, 0);
+  });
+
+  it('keeps persistent provider outages quiet across later events and sessions', async () => {
+    const environment = env(join(root, 'persistent-outage'));
+    await enabledPolicy(environment);
+    let calls = 0;
+    const service: DecisionService = {async classifyDecision() {
+      calls++;
+      return {status: 'unavailable', reasonCode: 'rate_limited'};
+    }};
+    const first = await runDecisionHook(toolEvent(), {env: environment, service});
+    assert.match(first.hookSpecificOutput?.additionalContext ?? '', /reason=rate_limited/);
+    const subsequent = await runDecisionHook(toolEvent({tool_use_id: 'tool-2', session_id: 'different-session'}), {env: environment, service});
+    assert.deepEqual(subsequent, {});
+    assert.equal(calls, 1);
+  });
+
+  it('discards an old consultation when a changed revision arrives before its result', async () => {
+    const environment = env(join(root, 'late-revision'));
+    await enabledPolicy(environment);
+    let release: ((result: {status: string; choice: string}) => void) | undefined;
+    let entered: (() => void) | undefined;
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    const first = runDecisionHook(toolEvent({tool_input: {command: 'old task'}}), {env: environment, service: {async classifyDecision() {
+      entered!();
+      return new Promise(resolve => { release = resolve; });
+    }}});
+    await started;
+    await new Promise(resolve => setTimeout(resolve, 2));
+    await runDecisionHook(toolEvent({tool_use_id: 'new-task', tool_input: {command: 'new task'}}), {env: environment, service: {async classifyDecision() { return {status: 'assessed', choice: 'proceed'}; }}});
+    release!({status: 'assessed', choice: 'proceed'});
+    const result = await first;
+    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /reason=stale_context/);
+    assert.doesNotMatch(result.hookSpecificOutput?.additionalContext ?? '', /decision=proceed/);
+  });
+
+  it('rejects a result after task context changes without a new hook event', async () => {
+    const environment = env(join(root, 'changed-task-context'));
+    await enabledPolicy(environment);
+    const scope = {cwd: process.cwd(), sessionId: 'session-1'};
+    await updateTaskContext(scope, {operation: 'replace', rootObjective: 'Old objective'}, {env: environment});
+    const result = await runDecisionHook(toolEvent(), {env: environment, service: {async classifyDecision() {
+      await updateTaskContext(scope, {operation: 'replace', rootObjective: 'New objective'}, {env: environment});
+      return {status: 'assessed', choice: 'proceed'};
+    }}});
+    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /reason=stale_context/);
+    assert.doesNotMatch(result.hookSpecificOutput?.additionalContext ?? '', /decision=proceed/);
+  });
+
   it('reports a provider that ignores abort as an explicit hook timeout', async () => {
     const environment = env(join(root, 'timeout'));
     await enabledPolicy(environment);
-    const service: DecisionService = {classifyDecision: async () => new Promise(() => {})};
+    let calls = 0;
+    const service: DecisionService = {classifyDecision: async () => { calls++; return new Promise(() => {}); }};
     const started = Date.now();
     const result = await runDecisionHook(JSON.stringify(toolEvent()), {env: environment, service, hookTimeoutMs: 25});
     assert.match(result.hookSpecificOutput?.additionalContext ?? '', /status=unavailable; reason=hook_timeout/);
     assert.ok(Date.now() - started < 500);
+    assert.deepEqual(await runDecisionHook(toolEvent({tool_use_id: 'after-timeout'}), {env: environment, service}), {});
+    assert.equal(calls, 1);
   });
 
   it('clips hook context on UTF-8 boundaries while retaining the tail', async () => {
@@ -611,6 +697,23 @@ describe('decision hook', () => {
     assert.equal(calls.count, 1);
     assert.doesNotMatch(calls.inputs[0]?.context ?? '', /\uFFFD/);
     assert.match(calls.inputs[0]?.context ?? '', /HOOK_UTF8_TAIL_KEEP/);
+  });
+
+  it('compares the thirteenth supplied candidate instead of silently dropping it', async () => {
+    const environment = env(join(root, 'complete-catalog'));
+    await enabledPolicy(environment);
+    const candidates = Array.from({length: 13}, (_, index) => ({id: `tool-${index}`, description: `Available tool ${index}`}));
+    const inputs: DecisionInput[] = [];
+    const result = await runDecisionHook(JSON.stringify(toolEvent({
+      task_context: {candidateCatalog: {tool: candidates}},
+    })), {env: environment, service: {
+      async classifyDecision(input) {
+        inputs.push(input);
+        return {status: 'assessed', choice: 'tool-12'};
+      },
+    }});
+    assert.deepEqual(inputs.flatMap(input => input.candidates.map(candidate => candidate.id)), candidates.map(candidate => candidate.id));
+    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /decision=tool-12/);
   });
 
   it('uses a supplied single candidate instead of inventing a fallback catalog', async () => {

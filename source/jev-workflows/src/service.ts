@@ -4,7 +4,7 @@ import { sanitize, redactText } from './redact.js';
 import { evaluateProvider, fingerprintCredential, ProviderError, type ProviderTransport } from './provider.js';
 import { FileStore, dataDirectory, readBudgetUsage, type Store } from './store.js';
 import { readPolicy, DEFAULT_POLICY, type HookPolicy } from './policy.js';
-import { decisionSchema, decisionQuestions, DECISION_RUBRIC_VERSION } from './decision.js';
+import { decisionSchema, decisionQuestions, DECISION_RUBRIC_VERSION, MAX_DECISION_PAYLOAD_BYTES } from './decision.js';
 import { readCredentialFile } from './credential.js';
 import {
   BATCH_RUBRIC_VERSION, evaluateDecisionsSchema, isBoundedJsonStructure, isReservedId, policiesByQuestion, providerQuestions,
@@ -36,7 +36,7 @@ export interface ServiceOptions {
   apiKey?: string; enabled?: boolean; timeoutMs?: number; fetchFn?: typeof fetch;
   store?: Store; confidenceFloor?: number; env?: NodeJS.ProcessEnv;
 }
-const maxPayloadBytes = 48000;
+const maxPayloadBytes = MAX_DECISION_PAYLOAD_BYTES;
 function bestActualCandidate(probabilities: Record<string, number>, actualCandidateIds: string[]): string | undefined {
   let best: string | undefined;
   let max = Number.NEGATIVE_INFINITY;
@@ -197,6 +197,7 @@ export function createService(options: ServiceOptions = {}) {
       } catch { return {status: 'unavailable', reasonCode: 'budget_store_unavailable', ...meta, receiptPersisted: false}; }
       try {
         const evaluation = await evaluateProvider({state, questions: questions as Record<string, Question>, apiKey, timeoutMs, model: selectedModel, longContext: env.JEV_LONG_CONTEXT === '1', signal, fetchFn: options.fetchFn});
+        if (signal?.aborted) throw new ProviderError('cancelled', evaluation.transport ?? null);
         const answer = evaluation.answers[tool === 'classify_failure' ? 'category' : tool === 'check_completion' ? 'support' : 'decision'];
         if (!answer || answer.type !== 'choice') throw new ProviderError('invalid_response', evaluation.transport);
         // Confidence and selected probability are separate signals; neither alone is a correctness guarantee.

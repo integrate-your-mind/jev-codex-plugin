@@ -8,8 +8,8 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
-    "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test --test-concurrency=2 tests/*.test.ts",
+    "typecheck": "node scripts/prepare-claude-types.mjs && tsc --noEmit",
+    "test": "node scripts/prepare-claude-types.mjs && node --import tsx --test --test-concurrency=2 tests/*.test.ts",
     "validate": "node scripts/validate-manifests.mjs",
     "eval": "node --import tsx scripts/evaluate.ts",
     "eval:decision": "node --import tsx scripts/decision-evaluate.ts",
