@@ -21,6 +21,7 @@ export type CandidateCoverage = {
   catalogDigest: string;
   method: 'direct' | 'paged_reduction';
   receiptIds?: string[];
+  factsProjection?: {complete: boolean; omittedFacts: 0 | 'unknown'};
 };
 
 function digest(value: unknown): string {

@@ -263,7 +263,11 @@ function semanticArguments(event: NormalizedEvent, env: NodeJS.ProcessEnv): Argu
   const values: Record<string, unknown> = {};
   for (const key of Object.keys(event.raw.tool_input).slice(0, 32)) {
     const safeKey = SENSITIVE_ARGUMENT_KEY.test(key) ? '[REDACTED]' : boundedWithEnv(key, 80, env) ?? '[OMITTED_KEY]';
-    values[safeKey] = projectArgumentValue(event.raw.tool_input[key], env, state, safeKey);
+    if (SENSITIVE_ARGUMENT_KEY.test(key)) {
+      values[safeKey] = '[REDACTED_FIELD]';
+      state.omitted += 1;
+      if (state.paths.length < 16) state.paths.push(safeKey);
+    } else values[safeKey] = projectArgumentValue(event.raw.tool_input[key], env, state, safeKey);
   }
   if (Object.keys(event.raw.tool_input).length > 32) {
     state.omitted += Object.keys(event.raw.tool_input).length - 32;
@@ -553,11 +557,50 @@ function taskContextView(value: TaskContextRecord | undefined): RecordValue | un
   };
 }
 
-function taskContextSemanticDigest(value: TaskContextRecord | undefined): string {
+function sanitizedSemanticFacts(value: unknown, env: NodeJS.ProcessEnv): unknown {
+  if (typeof value === 'string') return boundedWithEnv(value, Number.POSITIVE_INFINITY, env);
+  if (Array.isArray(value)) return value.map(item => sanitizedSemanticFacts(item, env));
+  if (isRecord(value)) return Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right)).map(([key, item]) => [
+    SENSITIVE_ARGUMENT_KEY.test(key) ? '[REDACTED]' : boundedWithEnv(key, Number.POSITIVE_INFINITY, env),
+    SENSITIVE_ARGUMENT_KEY.test(key) ? '[REDACTED_FIELD]' : sanitizedSemanticFacts(item, env),
+  ]));
+  return value;
+}
+
+function fullSemanticFactsDigest(event: NormalizedEvent, env: NodeJS.ProcessEnv, taskContext: TaskContextRecord | undefined, currentPrompt: string | undefined, turnResults: TurnResultContext | undefined): string {
+  const rawContext = isRecord(event.raw.task_context) ? event.raw.task_context : isRecord(event.raw.taskContext) ? event.raw.taskContext : {};
+  const taskView = taskContextView(taskContext);
+  if (taskView) { delete taskView.updatedAt; delete taskView.version; }
+  return hash(JSON.stringify(sanitizedSemanticFacts({
+    toolName: event.toolName, model: event.model, permissionMode: event.permissionMode, source: event.source,
+    trigger: event.trigger, reason: event.reason, agentType: event.agentType,
+    arguments: event.raw.tool_input, response: event.raw.tool_response,
+    prompt: event.prompt ?? currentPrompt, finalMessage: event.finalMessage, taskContext: taskView, turnResults,
+    eventCatalog: rawContext.candidateCatalog ?? rawContext.candidate_catalog ?? event.raw.candidate_catalog,
+    availableCandidates: rawContext.availableCandidates ?? rawContext.available_candidates ?? event.raw.available_candidates,
+    savedCatalog: taskContext?.candidateCatalogs,
+    rootObjective: rawContext.rootObjective ?? rawContext.root_objective,
+    latestStep: rawContext.latestStep ?? rawContext.latest_step,
+    evidence: rawContext.evidence ?? event.raw.evidence,
+  }, env)));
+}
+
+function factsProjectionCoverage(input: DecisionInput): {complete: boolean; omittedFacts: 0 | 'unknown'} {
+  let complete = false;
+  try {
+    const context = JSON.parse(input.context) as RecordValue;
+    const truncation = isRecord(context.truncation) ? context.truncation : {};
+    const argumentsView = isRecord(context.argumentProjection) ? context.argumentProjection : {};
+    complete = context.contextTruncated !== true && argumentsView.truncated !== true && !Object.values(truncation).some(value => value === true) && !input.evidence.some(item => item.text.includes('...[truncated]...'));
+  } catch {}
+  return {complete, omittedFacts: complete ? 0 : 'unknown'};
+}
+
+function taskContextSemanticDigest(value: TaskContextRecord | undefined, env: NodeJS.ProcessEnv): string {
   const view = taskContextView(value);
   if (!view) return hash('null');
   const {version: _version, updatedAt: _updatedAt, ...facts} = view;
-  return hash(JSON.stringify({...facts, candidateCatalogs: value?.candidateCatalogs}));
+  return hash(JSON.stringify(sanitizedSemanticFacts({...facts, candidateCatalogs: value?.candidateCatalogs}, env)));
 }
 
 function promptContextUpdate(event: NormalizedEvent, prior: TaskContextRecord | undefined, env: NodeJS.ProcessEnv): Parameters<typeof updateTaskContext>[1] | undefined {
@@ -983,6 +1026,7 @@ async function writeInvocationReceipt(event: NormalizedEvent, env: NodeJS.Proces
       inputDigest: hash(JSON.stringify(input)),
       evidenceIds: input.evidence.map(item => item.id),
       contextBytes: Buffer.byteLength(input.context),
+      factsProjection: factsProjectionCoverage(input),
       contextTruncated: input.context.includes('"contextTruncated":true'),
       evidenceTruncated: input.evidence.some(item => {
         const bytes = Buffer.byteLength(item.text);
@@ -1102,6 +1146,7 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
     const revisionDirectory = join(consultationDirectory, 'revisions');
     const semanticId = consultationIdentity(input, {
       provider: 'TypeSafe', model: env.JEV_MODEL ?? '', credential: hash(env.TYPESAFE_API_KEY ?? ''), policy,
+      fullFactsDigest: fullSemanticFactsDigest(event, env, taskContext, cachedPrompt, turnResults),
       pins: event.raw.pins ?? event.raw.user_pins,
       sourceVersions: event.raw.source_versions, evidenceVersions: event.raw.evidence_versions,
       catalogGeneration: event.raw.catalog_generation,
@@ -1144,12 +1189,13 @@ export async function runDecisionHook(raw: string | Uint8Array | unknown, option
       } finally {
         clearTimeout(timer);
       }
+      if (result.coverage) result.coverage = {...result.coverage, factsProjection: factsProjectionCoverage(input)};
       if (Date.now() >= deadline) result = timeoutAssessment;
       else result = normalizeDecisionAssessment(input, result);
       const current = await withinHookDeadline(deadline, async () => {
         if (!(await consultationRevisionCurrent(revisionDirectory, semanticId, startedAt))) return false;
         const latest = await loadTaskContext(scope, {env});
-        return taskContextSemanticDigest(latest) === taskContextSemanticDigest(taskContext);
+        return taskContextSemanticDigest(latest, env) === taskContextSemanticDigest(taskContext, env);
       });
       if (current.expired || !current.value) result = {status: 'unavailable', reasonCode: current.expired ? 'hook_timeout' : 'stale_context', ...(result.coverage ? {coverage: {...result.coverage, complete: false}} : {})};
       if (semanticClaim && (result.status === 'assessed' || result.status === 'abstained')) {
