@@ -34,7 +34,7 @@ Freeze the contract before the first attempt. Its schema is `whole-plugin-launch
 
 Persist the normal `start` event before preparation. A request uses `whole-plugin-launch-preparation-v1`, `manifestHash`, `slotId`, observed ISO `at`, `selected`, `commonPromptPath`, `promptTemplatePath`, and `prerequisites`. `selected` contains the observed `projectId`, `workspace`, `model`, `effort`, `baseRevision`, and `configurationHash`. Each prerequisite contains `id`, literal `exitCode: 0`, `signal: null`, `artifactPath`, and `artifactHash`. Command failure or an absent prompt file returns an error and no native arguments. Do not concatenate, pipe or reuse command stdout/stderr as prompt content.
 
-Required artifacts are JSON. `prompt-preparation` uses `whole-plugin-prompt-ready-v1` with `manifestHash`, `slotId`, `commonPromptHash`, and `promptTemplateHash`. `workspace-validation` uses `whole-plugin-workspace-ready-v1` with `slotId` and the same `selected` observation. `prior-outcomes` uses `whole-plugin-prior-outcomes-v1` with `grades`, containing the preceding completed independent receipts. A grade receipt must use `whole-plugin-independent-grade-v1`, matching `slotId`, `patchHash`, `graderHash`, `studyVerdict`, its actual grading `exitCode`, and healthy `terminal.verdict`. Missing `studyVerdict` is a schema failure.
+Required artifacts are JSON. `prompt-preparation` uses `whole-plugin-prompt-ready-v1` with `manifestHash`, `slotId`, `commonPromptHash`, and `promptTemplateHash`. `workspace-validation` uses `whole-plugin-workspace-ready-v1` with `slotId`, the same `selected` observation, and `nativeProject` from the latest supported project listing. That readback must contain matching `projectId`, exact workspace `path`, `isGitRepository: true`, and `projectKind: "local"`. A future unregistered contract project ID may be null; a known ID must match, and every actual selected ID must be valid. The prepared artifact binds it once. `prior-outcomes` uses `whole-plugin-prior-outcomes-v1` with `grades`, containing the preceding completed independent receipts. A grade receipt must use `whole-plugin-independent-grade-v1`, matching `slotId`, `patchHash`, `graderHash`, `studyVerdict`, its actual grading `exitCode`, and healthy `terminal.verdict`. Missing `studyVerdict` is a schema failure.
 
 Successful preparation exclusively writes a private `launches/<slot-id>.json`, verifies readback, records `native_launch_prepared`, and returns a structured `nativeArgs` object. It makes no native call. Use the exported final bridge below so the actual command status and structured result are checked at the native-call boundary. A second preparation is rejected. Uncertain publication is retained for reconciliation, never silently retried or bypassed. The guard establishes validated launch inputs; actual chat exposure and model identity still require native observations.
 
@@ -54,3 +54,15 @@ const nativeResult = await dispatchPreparedNativeLaunch(
 ```
 
 Here `runPreparation` is the host's narrow `prepare-launch` invocation, returning its actual command receipt, and `createThread` is its supported native chat-creation binding. Tests inject a stub and assert zero calls for failure, stderr, malformed JSON or a wrong prepared schema. This recipe does not create a new transport or grant permission to launch a held study.
+
+## Approved sixteen-attempt linked continuation
+
+```sh
+node benchmarks/desktop-ranking-pilot/whole-plugin-v1/cli.mjs freeze-continuation parent-run new-private-child-run continuation-config.json
+```
+
+The approved config supplies a new `studyId`, actual `humanApprovalEvidenceHash`, and optional observed ISO `at`. The parent directory is read-only to this command. It replays the retained original event history, requires the valid first Standard Codex result plus the invalid second cheap launch and sixteen untouched slots, and creates a new directory exclusively. Existing child output causes failure rather than replacement.
+
+The child manifest pins parent manifest/state/imported-slot hashes and the approval receipt. Its first global `continuation_import` event retains the parent snapshot and copies exactly the first two slot records, including their raw timing, usage and missing-start limitations. Imported records are immutable in the child. No start can occur before this import; only the original third slot is next. Native launch contracts may freeze after the sole import event, before any new start. Existing prepared/native identity checks then apply normally.
+
+After that third terminal result, retain the first-three comparison charts before starting the fourth slot. Reports count the two imported attempts once, permit at most sixteen new attempts, expose parent linkage and keep the original eighteen-slot screen inconclusive. The linked continuation is not a new independent full benchmark. No CLI command here launches coding work.

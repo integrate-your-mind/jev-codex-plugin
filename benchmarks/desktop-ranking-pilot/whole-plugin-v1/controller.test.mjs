@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile, writeFile, mkdir, mkdtemp, rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {ARMS, TASK_IDS, freezeStudy, hash, reduceEvent, deadlines} from './controller.mjs';
+import {ARMS, TASK_IDS, freezeStudy, hash, reduceEvent, deadlines, continuationManifest, validateContinuationParent} from './controller.mjs';
 import {summarizeStudy, exportCsv} from './report.mjs';
 import {main, readStudy} from './cli.mjs';
 import {prepareNativeLaunch, validateLaunchContract, renderPromptTemplate, dispatchPreparedNativeLaunch} from './launch.mjs';
@@ -276,7 +276,7 @@ function launchData(state) {
     terminal:{verdict:row.verdict==='verified-fix'?'pass':'fail',healthy:true},studyVerdict:row.verdict}));
   const artifacts={
     'prompt-preparation':{schemaVersion:'whole-plugin-prompt-ready-v1',manifestHash:state.manifestHash,slotId:slot.id,commonPromptHash:contract.commonPromptHash,promptTemplateHash:pin.promptTemplateHash},
-    'workspace-validation':{schemaVersion:'whole-plugin-workspace-ready-v1',slotId:slot.id,selected},
+    'workspace-validation':{schemaVersion:'whole-plugin-workspace-ready-v1',slotId:slot.id,selected,nativeProject:{projectId:selected.projectId,path:selected.workspace,isGitRepository:true,projectKind:'local'}},
     'prior-outcomes':{schemaVersion:'whole-plugin-prior-outcomes-v1',grades},
   };
   return {contract,request:{schemaVersion:'whole-plugin-launch-preparation-v1',manifestHash:state.manifestHash,slotId:slot.id,
@@ -405,4 +405,105 @@ test('final native bridge checks actual command exit and prepared JSON before di
   let received=null,calls=0;
   const result=await dispatchPreparedNativeLaunch(good,async args=>{calls++;received=args;return {threadId:'synthetic-only'};});
   assert.equal(calls,1);assert.deepEqual(received,payload.nativeArgs);assert.equal(result.threadId,'synthetic-only');
+});
+
+function retainedHaltedParent() {
+  let state=freezeStudy(manifest()); state=apply(state,'start',0,{evidenceHash:evidence}); state=finish(state,1);
+  state=apply(state,'usage',30,{slotId:state.slots[0].id,inputTokens:100,outputTokens:20,cachedInputTokens:null,evidenceHash:evidence});
+  state=apply(state,'billing',31,{slotId:state.slots[0].id,codingUsd:null,jevUsd:0,complete:false,subscriptionCapacity:null,evidenceHash:evidence});
+  return apply(state,'recovery_untracked_launch',60000,{chatId:'synthetic-parent-invalid-native',createdAt:new Date(origin+1000).toISOString(),completedAt:new Date(origin+55000).toISOString(),prelaunchStartedAt:null,evidenceHash:evidence});
+}
+function continuationInput(parent) {
+  const manifest=continuationManifest(parent,{studyId:'synthetic-linked-child',humanApprovalEvidenceHash:hash('synthetic explicit approval')});
+  const frozen=freezeStudy(manifest);
+  return {frozen,event:{id:'synthetic-continuation-import',type:'continuation_import',at:new Date(origin+70000).toISOString(),manifestHash:frozen.manifestHash,parentState:parent,evidenceHash:evidence}};
+}
+
+test('linked continuation replays parent, imports exactly two original records and permits only the next ON slot',()=>{
+  const parent=retainedHaltedParent(),before=hash(parent),input=continuationInput(parent);
+  assert.throws(()=>apply(input.frozen,'start',80000,{evidenceHash:evidence}),/Import the consumed parent slots/);
+  let state=reduceEvent(input.frozen,input.event);
+  assert.equal(hash(parent),before); assert.equal(parent.halted.reason,'untracked-native-launch'); assert.equal(state.halted,null);
+  assert.deepEqual(state.slots.slice(0,2),parent.slots.slice(0,2));
+  assert.equal(state.slots[0].usage.inputTokens,100); assert.equal(state.slots[1].startedAt,null);
+  assert.equal(state.slots.filter(row=>row.status==='NOTSTARTED').length,16);
+  for(const slotId of state.manifest.continuation.importedSlotIds) {
+    assert.throws(()=>apply(state,'start',80000,{slotId,evidenceHash:evidence}),/Imported consumed slots are immutable/);
+    assert.throws(()=>apply(state,'usage',80000,{slotId,inputTokens:1,outputTokens:1,cachedInputTokens:null,evidenceHash:evidence}),/Imported consumed slots are immutable/);
+  }
+  assert.throws(()=>reduceEvent(state,{...input.event,id:'duplicate-import',at:new Date(origin+80000).toISOString()}),/exactly once/);
+  state=apply(state,'start',80000,{evidenceHash:evidence}); assert.equal(state.slots[2].arm,'plugin-on');
+  const launch=launchData(state); assert.doesNotThrow(()=>prepareNativeLaunch(state,launch.contract,launch.request));
+  state=finish(state,80001); assert.throws(()=>apply(state,'start',81000,{evidenceHash:evidence}),/first-three interim/);
+  state=apply(state,'interim_report',81000,{reportHash:evidence,artifactsHash:evidence,evidenceHash:evidence});
+  state=apply(state,'start',82000,{evidenceHash:evidence}); assert.equal(state.slots[3].status,'CODING');
+});
+
+test('continuation rejects missing approval, tampered parent history, extra consumed slots and changed frozen pins',()=>{
+  const parent=retainedHaltedParent();
+  assert.throws(()=>continuationManifest(parent,{studyId:'child'}),/approval evidence hash/);
+  assert.throws(()=>continuationManifest(parent,{studyId:parent.manifest.studyId,humanApprovalEvidenceHash:evidence}),/new study ID/);
+  for(const mutate of [value=>{value.events[0].evidenceHash=hash('tampered');},value=>{value.slots[0].patchHash=hash('other-patch');},value=>{value.slots[2].status='COMPLETE';}]) {
+    const input=continuationInput(parent),changed=structuredClone(parent); mutate(changed);
+    assert.throws(()=>reduceEvent(input.frozen,{...input.event,parentState:changed}));
+  }
+  for(const mutate of [value=>{value.host.model='other-model';},value=>{value.host.effort='low';},value=>{value.arms['plugin-on'].configurationHash=hash('other-config');},value=>{value.tasks[1].cheapPacketHash=hash('other-packet');},value=>{value.continuation.parentStateHash=hash('other-parent');}]) {
+    const input=continuationInput(parent), changed=structuredClone(input.frozen.manifest); mutate(changed);
+    assert.throws(()=>{const frozen=freezeStudy(changed);reduceEvent(frozen,{...input.event,manifestHash:frozen.manifestHash});});
+  }
+});
+
+test('continuation report counts imported outcomes once and remains inconclusive after all sixteen new slots',()=>{
+  const parent=retainedHaltedParent(),input=continuationInput(parent); let state=reduceEvent(input.frozen,input.event);
+  for(let index=2;index<18;index++) {
+    const at=80000+index*1000;state=apply(state,'start',at,{evidenceHash:evidence});state=finish(state,at+1);
+    if(index===2)state=apply(state,'interim_report',at+30,{reportHash:evidence,artifactsHash:evidence,evidenceHash:evidence});
+  }
+  const report=summarizeStudy(state);
+  assert.equal(report.completedAttempts,17);assert.equal(report.invalidAttempts,1);assert.equal(report.pendingAttempts,0);
+  assert.deepEqual(report.arms.map(row=>row.completed),[6,5,6]);assert.equal(report.arms[1].elapsedTimeCoverage,'lower-bound');
+  assert.equal(report.continuation.importedAttempts,2);assert.equal(report.continuation.newAssignedAttempts,16);assert.equal(report.continuation.continuationAttemptLimit,16);
+  assert.equal(report.continuation.parentStateHash,hash(parent));assert.equal(report.continuation.independentStudy,false);assert.equal(report.continuation.parentHalted,true);
+  assert.equal(report.interpretation.verdict,'inconclusive');assert.match(report.limitations.join(' '),/parent study/);
+  assert.doesNotMatch(JSON.stringify(report),/synthetic-parent-invalid-native/);
+  assert.throws(()=>apply(state,'start',1000000,{slotId:state.slots[2].id,evidenceHash:evidence}),/starts once/);
+});
+
+test('continuation CLI leaves original files unchanged, replays import and freezes launch contract before new work',async()=>{
+  const owned=new URL('../../../.agent-work/whole-plugin-tests/',import.meta.url);await mkdir(owned,{recursive:true});const directory=await mkdtemp(join(owned.pathname,'continuation-synthetic-'));
+  try {
+    const parent=retainedHaltedParent(),parentRun=join(directory,'parent'),childRun=join(directory,'child');await mkdir(join(parentRun,'events'),{recursive:true});
+    await writeFile(join(parentRun,'frozen.json'),JSON.stringify(freezeStudy(parent.manifest)));
+    for(const [index,event] of parent.events.entries())await writeFile(join(parentRun,'events',`${String(index+1).padStart(4,'0')}.json`),JSON.stringify(event));
+    const original=hash(await readStudy(parentRun)),configPath=join(directory,'config.json');
+    await writeFile(configPath,JSON.stringify({studyId:'synthetic-linked-child',humanApprovalEvidenceHash:evidence,at:new Date(origin+70000).toISOString()}));
+    const receipt=await main(['freeze-continuation',parentRun,childRun,configPath]);const child=await readStudy(childRun);
+    assert.equal(receipt.remainingAttempts,16);assert.equal(receipt.nextSlotId,parent.slots[2].id);
+    assert.deepEqual(child.slots.slice(0,2),parent.slots.slice(0,2));assert.equal(hash(await readStudy(parentRun)),original);
+    const contractPath=join(directory,'contract.json');await writeFile(contractPath,JSON.stringify(launchData(child).contract));
+    await assert.doesNotReject(main(['freeze-launch-contract',childRun,contractPath]));
+    await assert.rejects(main(['freeze-continuation',parentRun,childRun,configPath]),/EEXIST/);
+    await writeFile(configPath,JSON.stringify({studyId:'synthetic-no-approval'}));
+    await assert.rejects(main(['freeze-continuation',parentRun,join(directory,'bad-child'),configPath]),/approval evidence hash/);
+    assert.equal(hash(await readStudy(parentRun)),original);
+  }finally{await rm(directory,{recursive:true,force:true});}
+});
+
+test('unknown future host project IDs do not block a qualified current workspace and bind only actual native readback',()=>{
+  let state=freezeStudy(manifest());state=apply(state,'start',0,{evidenceHash:evidence});
+  const known=launchData(state);for(const pin of known.contract.slots.slice(1))pin.projectId=null;
+  assert.doesNotThrow(()=>prepareNativeLaunch(state,known.contract,known.request));
+  const unregistered=launchData(state);for(const pin of unregistered.contract.slots)pin.projectId=null;
+  const prepared=prepareNativeLaunch(state,unregistered.contract,unregistered.request);
+  assert.equal(prepared.nativeArgs.target.projectId,unregistered.request.selected.projectId);
+  for(const mutate of [
+    project=>{project.projectId='other-real-project';},project=>{project.path='/other/native-workspace';},
+    project=>{project.isGitRepository=false;},project=>{project.projectKind='chatgpt';},
+  ]) {
+    const input=launchData(state);for(const pin of input.contract.slots)pin.projectId=null;
+    const receipt=input.request.prerequisites.find(row=>row.id==='workspace-validation');mutate(receipt.artifact.nativeProject);receipt.artifactHash=hash(receipt.artifact);
+    assert.throws(()=>prepareNativeLaunch(state,input.contract,input.request),/actual local native project readback/);
+  }
+  const mismatch=launchData(state);mismatch.request.selected.projectId='different-known-project';
+  assert.throws(()=>prepareNativeLaunch(state,mismatch.contract,mismatch.request),/frozen pins/);
 });

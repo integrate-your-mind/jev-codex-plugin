@@ -24,12 +24,13 @@ export function validateLaunchContract(state, contract) {
   assert(exact(contract, ['schemaVersion','manifestHash','commonPromptHash','slots'])
     && contract.schemaVersion === 'whole-plugin-launch-contract-v1' && contract.manifestHash === state.manifestHash
     && digest(contract.commonPromptHash) && Array.isArray(contract.slots) && contract.slots.length === 18, 'Pin an eighteen-slot launch contract to the frozen study');
-  assert(new Set(contract.slots.map(row => row.projectId)).size === 18 && new Set(contract.slots.map(row => row.workspace)).size === 18,
+  const knownProjects=contract.slots.map(row=>row.projectId).filter(id=>id!==null);
+  assert(new Set(knownProjects).size === knownProjects.length && new Set(contract.slots.map(row => row.workspace)).size === 18,
     'Launch projects and workspaces must be independent');
   for (const [index, pin] of contract.slots.entries()) {
     const slot = state.slots[index], task = state.manifest.tasks.find(row => row.id === slot.taskId);
     assert(exact(pin, ['slotId','projectId','workspace','baseRevision','configurationHash','promptTemplateHash'])
-      && pin.slotId === slot.id && projectId(pin.projectId) && workspace(pin.workspace) && pin.baseRevision === task.baseRevision
+      && pin.slotId === slot.id && (pin.projectId===null || projectId(pin.projectId)) && workspace(pin.workspace) && pin.baseRevision === task.baseRevision
       && pin.configurationHash === state.manifest.arms[slot.arm].configurationHash && digest(pin.promptTemplateHash), 'Launch contract slot, project, workspace or source/configuration pin is invalid');
   }
   return true;
@@ -65,7 +66,7 @@ export function prepareNativeLaunch(state, contract, request) {
     'Launch preparation time must be observed within the existing coding clock');
   const pin = contract.slots.find(row => row.slotId === slot.id), selected = request.selected;
   assert(exact(selected, ['projectId','workspace','model','effort','baseRevision','configurationHash'])
-    && selected.projectId === pin.projectId && selected.workspace === pin.workspace && selected.baseRevision === pin.baseRevision
+    && projectId(selected.projectId) && (pin.projectId===null || selected.projectId === pin.projectId) && selected.workspace === pin.workspace && selected.baseRevision === pin.baseRevision
     && selected.configurationHash === pin.configurationHash && selected.model === state.manifest.host.model && selected.effort === state.manifest.host.effort,
     'Observed native project, workspace, source, configuration and model/effort must match frozen pins');
   assert(typeof request.commonPrompt === 'string' && request.commonPrompt.trim().length >= 80
@@ -88,7 +89,9 @@ export function prepareNativeLaunch(state, contract, request) {
     && prompt.commonPromptHash === contract.commonPromptHash && prompt.promptTemplateHash === pin.promptTemplateHash, 'Prompt preparation artifact does not bind expected coding content');
   const observed = receipts['workspace-validation'];
   assert(observed?.schemaVersion === 'whole-plugin-workspace-ready-v1' && observed.slotId === slot.id
-    && hash(observed.selected) === hash(selected), 'Workspace prerequisite does not bind the selected native project and settings');
+    && hash(observed.selected) === hash(selected) && observed.nativeProject?.projectId===selected.projectId
+    && observed.nativeProject.path===selected.workspace && observed.nativeProject.isGitRepository===true && observed.nativeProject.projectKind==='local',
+    'Workspace prerequisite must bind the actual local native project readback, workspace and selected settings');
   const outcomes = receipts['prior-outcomes'];
   assert(outcomes?.schemaVersion === 'whole-plugin-prior-outcomes-v1', 'Prior outcome artifact schema is invalid');
   validatePriorGrades(state, outcomes.grades, slot.id);
@@ -96,7 +99,7 @@ export function prepareNativeLaunch(state, contract, request) {
     schemaVersion:'whole-plugin-prepared-native-launch-v1', manifestHash:state.manifestHash, stateHash:hash(state), slotId:slot.id,
     contractHash:hash(contract), at:request.at, commonPromptHash:contract.commonPromptHash, promptTemplateHash:pin.promptTemplateHash, promptHash:hash(renderedPrompt),
     prerequisiteHashes:Object.fromEntries(request.prerequisites.map(row=>[row.id,row.artifactHash])),
-    nativeArgs:{target:{type:'project',projectId:pin.projectId,environment:{type:'local'}}, model:selected.model, thinking:selected.effort,
+    nativeArgs:{target:{type:'project',projectId:selected.projectId,environment:{type:'local'}}, model:selected.model, thinking:selected.effort,
       prompt:renderedPrompt,title:`Jev pilot ${slot.id}`},
   };
 }
