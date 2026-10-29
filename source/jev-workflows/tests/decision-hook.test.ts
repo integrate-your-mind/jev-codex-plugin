@@ -221,6 +221,16 @@ describe('decision hook', () => {
     assert.match(projection, /public query/);
   });
 
+  it('excludes sensitive argument values from semantic identity', async () => {
+    const environment = env(join(root, 'sensitive-identity'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    await runDecisionHook(toolEvent({tool_input: {api_key: 'synthetic-private-one', query: 'public query'}}), {env: environment, service: fakeService(calls)});
+    await runDecisionHook(toolEvent({tool_use_id: 'another-delivery', tool_input: {api_key: 'synthetic-private-two', query: 'public query'}}), {env: environment, service: fakeService(calls)});
+    assert.equal(calls.count, 1);
+    assert.equal(JSON.stringify(calls.inputs).includes('synthetic-private'), false);
+  });
+
   it('consults when only an omitted middle portion of the sanitized command changes', async () => {
     const environment = env(join(root, 'full-facts-identity'));
     await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
@@ -230,6 +240,10 @@ describe('decision hook', () => {
     await runDecisionHook(toolEvent({tool_use_id: 'different-delivery', tool_input: {command: command('TARGET_TWO')}}), {env: environment, service: fakeService(calls)});
     assert.equal(calls.count, 2);
     assert.equal(calls.inputs.some(input => input.context.includes('TARGET_ONE') || input.context.includes('TARGET_TWO')), false);
+    assert.equal(calls.inputs.every(input => Buffer.byteLength(input.context) <= 5_000), true);
+    const receiptPath = join(environment.PLUGIN_DATA!, 'decision-hook-v1', digest(process.cwd()), digest('session-1'), 'invocations', `${digest('PreToolUse\0session-1\0turn-1\0tool-1')}.json`);
+    const receipt = JSON.parse(await readFile(receiptPath, 'utf8'));
+    assert.deepEqual(receipt.factsProjection, {complete: false, omittedFacts: 'unknown'});
   });
 
   it('rejects an earlier result after a changed omitted command fact arrives', async () => {

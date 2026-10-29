@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, rm, symlink, writeFile, readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -79,6 +80,35 @@ describe('automation policy', () => {
     assert.deepEqual(await readPolicy(environment), recovered);
     await writeFile(join(environment.PLUGIN_DATA!, '.policy-mode-interrupted.tmp'), JSON.stringify({consultationMode: 'changed_state', enabled: true}));
     assert.deepEqual(await readPolicy(environment), recovered);
+  });
+
+  it('keeps old authority after interruption between mode and policy publication', async () => {
+    const environment = env(join(root, 'mode-before-authority'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: [], maxCallsPerDay: 9}, environment);
+    const path = join(environment.PLUGIN_DATA!, 'policy.json');
+    const before = await readFile(path, 'utf8');
+    const pending = JSON.parse(before);
+    pending.enabled = false;
+    pending.maxCallsPerDay = 2;
+    const pendingContents = JSON.stringify(pending) + '\n';
+    await writeFile(join(environment.PLUGIN_DATA!, 'policy-mode-v1.json'), JSON.stringify({version: 1, policyDigest: createHash('sha256').update(pendingContents).digest('hex'), consultationMode: 'changed_state'}));
+    const recovered = await readPolicy(environment);
+    assert.equal(recovered.enabled, true);
+    assert.equal(recovered.scope, 'all-workspaces');
+    assert.equal(recovered.maxCallsPerDay, 9);
+    assert.equal(recovered.consultationMode, 'always');
+    assert.equal(await readFile(path, 'utf8'), before);
+  });
+
+  it('serializes concurrent mode-preserving configuration updates', async () => {
+    const environment = env(join(root, 'mode-concurrent'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
+    const policies = await Promise.all([2, 3, 4].map(maxCallsPerDay => configurePolicy({enabled: true, scope: 'all-workspaces', workspaces: [], maxCallsPerDay}, environment)));
+    assert.equal(policies.every(policy => policy.consultationMode === 'changed_state'), true);
+    const current = await readPolicy(environment);
+    assert.equal(current.enabled, true);
+    assert.equal(current.consultationMode, 'changed_state');
+    assert.equal([2, 3, 4].includes(current.maxCallsPerDay!), true);
   });
 
   it('rejects a substituted mode path before changing the authoritative policy', async () => {

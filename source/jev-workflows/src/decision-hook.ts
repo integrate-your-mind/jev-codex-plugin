@@ -591,7 +591,7 @@ function factsProjectionCoverage(input: DecisionInput): {complete: boolean; omit
     const context = JSON.parse(input.context) as RecordValue;
     const truncation = isRecord(context.truncation) ? context.truncation : {};
     const argumentsView = isRecord(context.argumentProjection) ? context.argumentProjection : {};
-    complete = context.contextTruncated !== true && argumentsView.truncated !== true && !Object.values(truncation).some(value => value === true) && !input.evidence.some(item => item.text.includes('...[truncated]...'));
+    complete = !input.context.includes('...[truncated]...') && !JSON.stringify(input.candidates).includes('...[truncated]...') && context.contextTruncated !== true && argumentsView.truncated !== true && !Object.values(truncation).some(value => value === true) && !input.evidence.some(item => item.text.includes('...[truncated]...'));
   } catch {}
   return {complete, omittedFacts: complete ? 0 : 'unknown'};
 }
