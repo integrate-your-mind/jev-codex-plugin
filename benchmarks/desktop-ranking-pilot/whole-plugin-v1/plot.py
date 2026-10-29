@@ -30,6 +30,11 @@ def _validate(report: Any) -> dict[str, Any]:
         raise ValueError("arms must contain plugin-off, cheap, plugin-on in order")
     if not isinstance(report.get("paired"), list) or not isinstance(report.get("curves"), dict):
         raise ValueError("paired and curves must be provided")
+    continuation = report.get("continuation")
+    if continuation is not None and (not isinstance(continuation, dict) or continuation.get("schemaVersion") != "whole-plugin-continuation-report-v1"
+            or continuation.get("parentHalted") is not True or continuation.get("independentStudy") is not False
+            or continuation.get("importedAttempts") != 2 or continuation.get("continuationAttemptLimit") != 16):
+        raise ValueError("continuation must identify two imported attempts and a sixteen-attempt continuation of the halted parent")
     return report
 
 
@@ -50,9 +55,15 @@ def _finish(fig: plt.Figure, report: dict[str, Any], output: Path, name: str) ->
     disposition = "HALTED / integrity failure\n" if report.get("halted") is True else ""
     fig.suptitle(f"{disposition}Six-bug exploratory pilot | {completed}/18 completed; {pending} pending; {invalid} invalid\nNot an official SWE-bench score", fontsize=11)
     lower_bound = any(row.get("elapsedTimeCoverage") == "lower-bound" for row in report["arms"])
+    captions = []
     if lower_bound:
-        fig.text(0.5, 0.01, "Elapsed time is a measured lower bound; pre-launch timing is unknown", ha="center", fontsize=9, color="#9a3412")
-    fig.tight_layout(rect=(0, 0.06 if lower_bound else 0, 1, 0.92))
+        captions.append("Elapsed time is a measured lower bound; pre-launch timing is unknown")
+    continuation = report.get("continuation")
+    if continuation is not None:
+        captions.append(f"Linked continuation: {continuation['importedAttempts']} imported attempts; {continuation['continuationAttemptLimit']} new attempts maximum; parent halted. Not an independent full comparison.")
+    for index, caption in enumerate(captions):
+        fig.text(0.5, 0.01 + index * 0.03, caption, ha="center", fontsize=8, color="#9a3412")
+    fig.tight_layout(rect=(0, 0.03 * len(captions) + 0.03 if captions else 0, 1, 0.92))
     for extension in ("svg", "png"):
         path = output / f"{name}.{extension}"
         fig.savefig(path, bbox_inches="tight", dpi=160)

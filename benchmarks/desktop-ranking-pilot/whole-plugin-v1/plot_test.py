@@ -89,6 +89,20 @@ class PlotRenderingTest(unittest.TestCase):
             self.assertIn("No scored observations; no performance curve", curve)
             self.assertNotIn("Cheap retrieval", curve)
 
+    def test_linked_continuation_caption_is_explicit_without_claiming_child_halted(self):
+        report = synthetic_report()
+        report["continuation"] = {"schemaVersion": "whole-plugin-continuation-report-v1", "importedAttempts": 2, "continuationAttemptLimit": 16, "parentHalted": True, "independentStudy": False}
+        report["arms"][0]["elapsedTimeCoverage"] = "lower-bound"
+        with tempfile.TemporaryDirectory(prefix="continuation-", dir=WORK) as temp:
+            path = Path(temp) / "synthetic.json"
+            path.write_text(json.dumps(report))
+            render(path, Path(temp) / "plots")
+            for name in ("verified-fixes", "cumulative-fixes", "paired-outcomes", "cost-approvals-uptake"):
+                svg = (Path(temp) / "plots" / f"{name}.svg").read_text()
+                self.assertIn("Linked continuation: 2 imported attempts; 16 new attempts maximum; parent halted. Not an independent full comparison.", svg)
+                self.assertIn("Elapsed time is a measured lower bound; pre-launch timing is unknown", svg)
+                self.assertNotIn("HALTED / integrity failure", svg)
+
     def test_no_scored_curve_or_completed_result_is_invented(self):
         report = synthetic_report()
         report["curves"] = {}
