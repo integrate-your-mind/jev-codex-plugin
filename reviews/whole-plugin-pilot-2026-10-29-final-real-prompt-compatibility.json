@@ -1,0 +1,10 @@
+{
+  "scope": "pure validation and stub dispatch only; no native coding call",
+  "preservedRealCommonPrompt": true,
+  "preservedTrailingNewline": true,
+  "distinctStartsSameFrozenContract": true,
+  "deadlineMinutes": 35,
+  "originalDeadlineInstantPreserved": true,
+  "failedCommandStubDispatches": 0,
+  "validCommandStubDispatchesPerCase": 1
+}

@@ -1,0 +1,10 @@
+Matplotlib is building the font cache; this may take a moment.
+test_lower_bound_timing_is_explicit_on_every_chart_and_invalid_only_has_no_curve (plot_test.PlotRenderingTest.test_lower_bound_timing_is_explicit_on_every_chart_and_invalid_only_has_no_curve) ... ok
+test_no_scored_curve_or_completed_result_is_invented (plot_test.PlotRenderingTest.test_no_scored_curve_or_completed_result_is_invented) ... ok
+test_rejects_wrong_schema_and_missing_arms (plot_test.PlotRenderingTest.test_rejects_wrong_schema_and_missing_arms) ... ok
+test_renders_four_svg_png_pairs_with_percentages_and_unknown_billing (plot_test.PlotRenderingTest.test_renders_four_svg_png_pairs_with_percentages_and_unknown_billing) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.053s
+
+OK

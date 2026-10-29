@@ -1,0 +1,30 @@
+✔ synthetic schedule keeps six tasks, eighteen slots and every counterbalanced order (5.075333ms)
+✔ start intent counts startup before chat identity and failed integration consumes one slot (10.898291ms)
+✔ actual loaded source, profile and exposure mismatch halts scoring without replacement (11.7075ms)
+✔ coding and independent grading deadlines include startup and waits (8.529625ms)
+✔ wrong patch, grader, missing actual identity and missing cheap delivery cannot pass (5.67725ms)
+✔ normal ON consultation outages and multiple delivered decisions retain separate uptake (9.031708ms)
+✔ first real comparison artifacts must be retained before attempt four (6.575666ms)
+✔ reports retain unsuccessful elapsed, actual completed denominators and pending unknowns (2.302ms)
+✔ public exports omit native private identities and retain unknown billing and observed usage (5.921584ms)
+✔ immutable native event replay rejects tampering, gaps and unpublished partial files (180.680333ms)
+✔ frozen source, retrieval parameters and private event fields cannot silently change (2.311958ms)
+✔ missing cheap packet remains an assigned graded result with missing coverage (2.755291ms)
+✔ exploratory extra-fix screen requires actual uptake and no increased approval burden (134.515334ms)
+✔ time screen sums all unsuccessful attempt time and never rewards zero fixes (74.219166ms)
+✔ infrastructure-invalid data retains its assigned clock and cannot establish superiority (1.23475ms)
+✔ untracked native launch recovery consumes the next slot without fabricating its start and permanently halts (2.832791ms)
+✔ validated launch returns exact native project arguments only after persisted start and successful structured prerequisites (3.115416ms)
+✔ failed prerequisite, missing/stderr prompt, wrong slot/config/profile prevent even a stub native dispatch (5.209583ms)
+✔ prior-grade preparation validates actual studyVerdict and healthy terminal instead of nonexistent verdict field (4.389208ms)
+✔ file launch preparation fails closed on missing prompt and nonzero command status, then publishes only once (106.617458ms)
+✔ trailing-newline common prompt is preserved and one frozen template renders two different persisted starts (2.942084ms)
+✔ final native bridge checks actual command exit and prepared JSON before dispatching exact native arguments (1.539541ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 768.327625
