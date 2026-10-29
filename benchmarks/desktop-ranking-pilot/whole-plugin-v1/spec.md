@@ -31,6 +31,7 @@ Every event has unique `id`, ISO `at`, `manifestHash`, `type`, and a slot ID, ex
 | `billing` | `codingUsd`, `jevUsd`, `complete`, `subscriptionCapacity`, `evidenceHash`; missing dollars/capacity are null |
 | `usage` | `inputTokens`, `outputTokens`, `cachedInputTokens`, `evidenceHash`; one observed per-attempt total, unknown counts null |
 | `integration_failed` | `reason`, `evidenceHash`; consumes an assigned startup failure |
+| `recovery_untracked_launch` | `chatId`, `createdAt`, `completedAt`, `prelaunchStartedAt: null`, `evidenceHash`; consumes the next untouched slot and permanently halts scoring |
 | `identity_broken` | `reason`, `evidenceHash` |
 | `tick` | No additional fields; records observed elapsed support |
 | `interim_report` | `reportHash`, `artifactsHash`, `evidenceHash`; no slot ID |

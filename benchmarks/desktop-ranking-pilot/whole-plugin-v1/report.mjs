@@ -9,11 +9,12 @@ export function summarizeStudy(state, asOf = state.lastAt) {
   if (!asOf && state.slots.some(slot => slot.startedAt)) throw new Error('An observed report time is required');
   const observedAt = asOf === null ? null : Date.parse(asOf);
   if (asOf !== null && (!Number.isFinite(observedAt) || state.lastAt && observedAt < Date.parse(state.lastAt))) throw new Error('Report time precedes retained observations');
-  const duration = slot => slot.startedAt === null ? 0 : Math.max(0, Date.parse(slot.endedAt ?? asOf) - Date.parse(slot.startedAt));
+  const duration = slot => slot.untrackedLaunch ? Date.parse(slot.untrackedLaunch.completedAt) - Date.parse(slot.untrackedLaunch.createdAt)
+    : slot.startedAt === null ? 0 : Math.max(0, Date.parse(slot.endedAt ?? asOf) - Date.parse(slot.startedAt));
   const curves = {};
   const arms = ARMS.map(id => {
     const slots = state.slots.filter(slot => slot.arm === id);
-    const assigned = slots.filter(slot => slot.startedAt !== null);
+    const assigned = slots.filter(slot => slot.startedAt !== null || slot.untrackedLaunch);
     const complete = slots.filter(slot => slot.status === 'COMPLETE');
     const advice = assigned.flatMap(slot => slot.consultations);
     let elapsed = 0, fixes = 0;
@@ -25,15 +26,17 @@ export function summarizeStudy(state, asOf = state.lastAt) {
       fixes += Number(slot.verdict === 'verified-fix' && slot.status === 'COMPLETE');
       curve.push({elapsedMs: elapsed, verifiedFixes: fixes});
     }
-    curves[id] = curve;
+    curves[id] = complete.length ? curve : [];
     const verifiedFixes = complete.filter(slot => slot.verdict === 'verified-fix').length;
     const elapsedMs = total(assigned, duration);
+    const elapsedTimeCoverage = assigned.some(slot => slot.untrackedLaunch) ? 'lower-bound' : 'complete';
     return {
       id, label: labels[id], assigned: assigned.length, completed: complete.length,
       pending: slots.filter(slot => !terminal(slot)).length, invalid: slots.filter(slot => slot.status === 'INFRASTRUCTURE_INVALID').length,
       verifiedFixes, fixRate: complete.length ? verifiedFixes / complete.length : null,
       verifiedFixBounds: {lower: verifiedFixes, upper: verifiedFixes + slots.filter(slot => slot.status !== 'COMPLETE').length},
-      elapsedMs, observedTerminalElapsedMs: elapsed, timePerVerifiedFixMs: verifiedFixes ? elapsedMs / verifiedFixes : null,
+      elapsedMs, elapsedLowerBoundMs:elapsedMs, elapsedTimeCoverage, observedTerminalElapsedMs: elapsed,
+      timePerVerifiedFixMs: verifiedFixes && elapsedTimeCoverage === 'complete' ? elapsedMs / verifiedFixes : null,
       approvals: total(assigned, slot => slot.approvals), failedPublicCycles: total(assigned, slot => slot.failedPublicCycles),
       consultations: advice.length, providerRequests: advice.filter(row => row.providerInvoked === true).length,
       providerRequestUnknown: advice.filter(row => row.providerInvoked === null).length,
@@ -78,14 +81,15 @@ export function summarizeStudy(state, asOf = state.lastAt) {
     }))})), curves, interpretation: {verdict, reason},
     limitations: ['Six-bug exploratory pilot, not an official full SWE-bench score.', 'Provider requests count observed invocations, not successful responses.',
       'Elapsed time includes all assigned attempts, startup, consultations, waits and grading; pending elapsed does not extend fix curves.',
-      'Unknown billing stays unknown. Subscription capacity is not cash savings.'],
+      'Unknown billing stays unknown. Subscription capacity is not cash savings.',
+      ...(arms.some(arm=>arm.elapsedTimeCoverage==='lower-bound') ? ['Elapsed time is a measured lower bound; pre-launch timing is unknown. The untracked native launch invalidated isolation and halted this study.'] : [])],
   };
 }
 
 const csvCell = value => value === null || value === undefined ? '' : `"${String(value).replaceAll('"', '""')}"`;
 const csv = (columns, rows) => `${columns.join(',')}\n${rows.map(row => columns.map(key => csvCell(row[key])).join(',')).join('\n')}\n`;
 export function exportCsv(report) {
-  const columns = ['id','label','assigned','completed','pending','invalid','verifiedFixes','fixRate','elapsedMs','timePerVerifiedFixMs','approvals','failedPublicCycles','consultations','providerRequests','providerRequestUnknown','adviceDelivered','uptakeObserved','uptakeIgnored','uptakeUnknown','codingUsd','jevUsd','billingComplete','inputTokens','outputTokens','cachedInputTokens','usageObservedAttempts','packetDeliveries','packetMissing'];
+  const columns = ['id','label','assigned','completed','pending','invalid','verifiedFixes','fixRate','elapsedMs','elapsedLowerBoundMs','elapsedTimeCoverage','timePerVerifiedFixMs','approvals','failedPublicCycles','consultations','providerRequests','providerRequestUnknown','adviceDelivered','uptakeObserved','uptakeIgnored','uptakeUnknown','codingUsd','jevUsd','billingComplete','inputTokens','outputTokens','cachedInputTokens','usageObservedAttempts','packetDeliveries','packetMissing'];
   return {
     'summary.csv': csv(columns, report.arms.map(arm => ({...arm, ...arm.usage}))),
     'paired.csv': csv(['taskId', ...ARMS], report.paired.map(row => ({taskId: row.taskId, ...row.conditions}))),
