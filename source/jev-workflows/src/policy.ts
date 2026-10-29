@@ -8,6 +8,7 @@ import { dataDirectory } from './store.js';
 
 const POLICY_FILE = 'policy.json';
 const POLICY_MODE_FILE = 'policy-mode-v1.json';
+const NEXT_POLICY_MODE_FILE = 'policy-mode-next-v1.json';
 const MAX_POLICY_BYTES = 8 * 1024;
 const DEFAULT_CALL_CAP = null;
 const DEFAULT_CALLS_PER_DAY = null;
@@ -74,32 +75,39 @@ function policyDigest(contents: string): string {
   return createHash('sha256').update(contents).digest('hex');
 }
 
-async function readMode(path: string, digest: string): Promise<ConsultationMode> {
+async function readMode(path: string, digest: string): Promise<ConsultationMode | undefined> {
   try {
     const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {
       const info = await handle.stat();
-      if (!info.isFile() || info.size > 512) return 'always';
+      if (!info.isFile() || info.size > 512) return undefined;
       const parsed = policyModeSchema.safeParse(JSON.parse(await handle.readFile('utf8')));
-      return parsed.success && parsed.data.policyDigest === digest ? parsed.data.consultationMode : 'always';
+      return parsed.success && parsed.data.policyDigest === digest ? parsed.data.consultationMode : undefined;
     } finally { await handle.close(); }
-  } catch { return 'always'; }
+  } catch { return undefined; }
 }
 
-/** V1 authority remains readable by cached strict readers. The sidecar controls mode only. */
+async function readAuthority(path: string): Promise<{contents: string; policy: Omit<HookPolicy, 'consultationMode'>}> {
+  const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  let contents: string;
+  try {
+    const info = await handle.stat();
+    if (!info.isFile() || info.size > MAX_POLICY_BYTES) throw new Error('invalid_policy');
+    contents = await handle.readFile('utf8');
+  } finally { await handle.close(); }
+  const policy = v1PolicySchema.parse(JSON.parse(contents));
+  if (policy.enabled && policy.scope === 'workspaces' && policy.workspaces.length === 0) throw new Error('no_allowed_roots');
+  return {contents, policy};
+}
+
+/** V1 authority remains readable by cached strict readers. Both mode bindings control mode only. */
 export async function readPolicy(env: NodeJS.ProcessEnv = process.env): Promise<HookPolicy> {
   try {
-    const path = policyPath(env);
-    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
-    let contents: string;
-    try {
-      const info = await handle.stat();
-      if (!info.isFile() || info.size > MAX_POLICY_BYTES) return {...DEFAULT_POLICY};
-      contents = await handle.readFile('utf8');
-    } finally { await handle.close(); }
-    const policy = v1PolicySchema.parse(JSON.parse(contents));
-    if (policy.enabled && policy.scope === 'workspaces' && policy.workspaces.length === 0) return {...DEFAULT_POLICY};
-    const consultationMode = await readMode(join(dataDirectory(env), POLICY_MODE_FILE), policyDigest(contents));
+    const {contents, policy} = await readAuthority(policyPath(env));
+    const digest = policyDigest(contents);
+    const directory = dataDirectory(env);
+    const consultationMode = await readMode(join(directory, POLICY_MODE_FILE), digest)
+      ?? await readMode(join(directory, NEXT_POLICY_MODE_FILE), digest) ?? 'always';
     return {...policy, consultationMode};
   } catch { return {...DEFAULT_POLICY}; }
 }
@@ -118,7 +126,7 @@ async function stagePolicyFile(path: string, contents: string): Promise<void> {
   finally { await handle.close(); }
 }
 
-/** Publish the mode binding before committing V1 authority; incomplete bindings never grant scope. */
+/** Retain the current binding while the pending binding and V1 authority are published. */
 export async function configurePolicy(raw: unknown, env: NodeJS.ProcessEnv = process.env): Promise<HookPolicy> {
   const parsed = normalizePolicy(raw);
   const canonicalWorkspaces: string[] = [];
@@ -132,28 +140,43 @@ export async function configurePolicy(raw: unknown, env: NodeJS.ProcessEnv = pro
   const directory = dataDirectory(env);
   await mkdir(directory, {recursive: true, mode: 0o700});
   const modePath = join(directory, POLICY_MODE_FILE);
+  const nextModePath = join(directory, NEXT_POLICY_MODE_FILE);
   const lockPath = join(directory, 'policy.lock');
   const lock = await acquireStateLock(lockPath);
   const token = randomUUID();
   const temporary = join(directory, `.policy-${token}.tmp`);
   const modeTemporary = join(directory, `.policy-mode-${token}.tmp`);
+  const recoveryTemporary = join(directory, `.policy-mode-recovery-${token}.tmp`);
   try {
     await assertPolicyTarget(path);
     await assertPolicyTarget(modePath);
-    const previous = await readPolicy(env);
-    const policy: HookPolicy = {...parsed, workspaces: canonicalWorkspaces, consultationMode: parsed.consultationMode ?? previous.consultationMode ?? 'always'};
+    await assertPolicyTarget(nextModePath);
+    const current = await readAuthority(path).catch(() => undefined);
+    const currentDigest = current ? policyDigest(current.contents) : undefined;
+    const currentMode = currentDigest ? await readMode(modePath, currentDigest) : undefined;
+    const pendingMode = currentDigest ? await readMode(nextModePath, currentDigest) : undefined;
+    const previousMode = current ? currentMode ?? pendingMode ?? 'always' : DEFAULT_POLICY.consultationMode;
+    if (currentDigest && currentMode === undefined && pendingMode !== undefined) {
+      await stagePolicyFile(recoveryTemporary, JSON.stringify({version: 1, policyDigest: currentDigest, consultationMode: pendingMode}) + '\n');
+      await rename(recoveryTemporary, modePath);
+    }
+    const policy: HookPolicy = {...parsed, workspaces: canonicalWorkspaces, consultationMode: parsed.consultationMode ?? previousMode ?? 'always'};
     const {consultationMode, ...v1Policy} = policy;
     const contents = JSON.stringify(v1Policy) + '\n';
     if (Buffer.byteLength(contents) > MAX_POLICY_BYTES) throw new Error('policy_too_large');
     const modeContents = JSON.stringify({version: 1, policyDigest: policyDigest(contents), consultationMode}) + '\n';
     await stagePolicyFile(temporary, contents);
     await stagePolicyFile(modeTemporary, modeContents);
-    await rename(modeTemporary, modePath);
+    await rename(modeTemporary, nextModePath);
     await rename(temporary, path);
+    await stagePolicyFile(modeTemporary, modeContents);
+    await rename(modeTemporary, modePath);
+    await unlink(nextModePath).catch(() => {});
     return policy;
   } finally {
     await unlink(temporary).catch(() => {});
     await unlink(modeTemporary).catch(() => {});
+    await unlink(recoveryTemporary).catch(() => {});
     await releaseStateLock(lockPath, lock.handle, lock.token);
   }
 }

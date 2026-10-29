@@ -92,12 +92,12 @@ describe('automation policy', () => {
     pending.enabled = false;
     pending.maxCallsPerDay = 2;
     const pendingContents = JSON.stringify(pending) + '\n';
-    await writeFile(join(environment.PLUGIN_DATA!, 'policy-mode-v1.json'), JSON.stringify({version: 1, policyDigest: createHash('sha256').update(pendingContents).digest('hex'), consultationMode: 'changed_state'}));
+    await writeFile(join(environment.PLUGIN_DATA!, 'policy-mode-next-v1.json'), JSON.stringify({version: 1, policyDigest: createHash('sha256').update(pendingContents).digest('hex'), consultationMode: 'changed_state'}));
     const recovered = await readPolicy(environment);
     assert.equal(recovered.enabled, true);
     assert.equal(recovered.scope, 'all-workspaces');
     assert.equal(recovered.maxCallsPerDay, 9);
-    assert.equal(recovered.consultationMode, 'always');
+    assert.equal(recovered.consultationMode, 'changed_state');
     assert.equal(await readFile(path, 'utf8'), before);
   });
 
@@ -121,6 +121,39 @@ describe('automation policy', () => {
     assert.equal(retried.consultationMode, 'changed_state');
     assert.equal((await readPolicy(environment)).consultationMode, 'changed_state');
     assert.equal((await readPolicy(environment)).maxCallsPerDay, 3);
+  });
+
+  it('recovers a committed pending binding before another interrupted update', async () => {
+    const environment = env(join(root, 'mode-pending-recovery'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
+    const path = join(environment.PLUGIN_DATA!, 'policy.json');
+    const modePath = join(environment.PLUGIN_DATA!, 'policy-mode-v1.json');
+    const rename = fs.rename;
+    let authorityCommitted = false;
+    fs.rename = async (source, destination) => {
+      if (authorityCommitted && String(destination) === modePath) throw Object.assign(new Error('synthetic_mode_promotion_failure'), {code: 'EIO'});
+      await rename(source, destination);
+      if (String(destination) === path) authorityCommitted = true;
+    };
+    syncBuiltinESMExports();
+    try {
+      await assert.rejects(configurePolicy({enabled: true, scope: 'all-workspaces', workspaces: [], maxCallsPerDay: 3}, environment), {code: 'EIO'});
+    } finally { fs.rename = rename; syncBuiltinESMExports(); }
+    assert.equal((await readPolicy(environment)).maxCallsPerDay, 3);
+    assert.equal((await readPolicy(environment)).consultationMode, 'changed_state');
+    fs.rename = async (source, destination) => {
+      if (String(destination) === path) throw Object.assign(new Error('synthetic_retry_commit_failure'), {code: 'EIO'});
+      return rename(source, destination);
+    };
+    syncBuiltinESMExports();
+    try {
+      await assert.rejects(configurePolicy({enabled: true, scope: 'all-workspaces', workspaces: [], maxCallsPerDay: 4}, environment), {code: 'EIO'});
+    } finally { fs.rename = rename; syncBuiltinESMExports(); }
+    assert.equal((await readPolicy(environment)).maxCallsPerDay, 3);
+    assert.equal((await readPolicy(environment)).consultationMode, 'changed_state');
+    const recovered = await configurePolicy({enabled: true, scope: 'all-workspaces', workspaces: [], maxCallsPerDay: 4}, environment);
+    assert.equal(recovered.consultationMode, 'changed_state');
+    assert.equal((await readPolicy(environment)).maxCallsPerDay, 4);
   });
 
   it('serializes concurrent mode-preserving configuration updates', async () => {
