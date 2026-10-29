@@ -1,20 +1,25 @@
 import { constants } from 'node:fs';
 import { mkdir, open, rename, lstat, realpath, unlink } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { isAbsolute, join, sep } from 'node:path';
 import { z } from 'zod';
+import { acquireStateLock, releaseStateLock } from './state-lock.js';
 import { dataDirectory } from './store.js';
 
 const POLICY_FILE = 'policy.json';
+const POLICY_MODE_FILE = 'policy-mode-v1.json';
+const NEXT_POLICY_MODE_FILE = 'policy-mode-next-v1.json';
 const MAX_POLICY_BYTES = 8 * 1024;
 const DEFAULT_CALL_CAP = null;
 const DEFAULT_CALLS_PER_DAY = null;
 const DEFAULT_BYTES_PER_DAY = null;
 const MAX_WORKSPACES = 64;
 
+export type ConsultationMode = 'changed_state' | 'always';
 export type HookScope = 'all-workspaces' | 'workspaces';
 export type HookPolicy = {
   enabled: boolean;
+  consultationMode?: ConsultationMode;
   scope: HookScope;
   workspaces: string[];
   maxHookCallsPerSession: number | null;
@@ -24,6 +29,7 @@ export type HookPolicy = {
 
 export const automationPolicySchema = z.strictObject({
   enabled: z.boolean(),
+  consultationMode: z.enum(['changed_state', 'always']).optional(),
   scope: z.enum(['all-workspaces', 'workspaces']).default('workspaces'),
   workspaces: z.array(z.string().min(1).max(4096).refine(validRoot, 'workspace must be absolute')).max(MAX_WORKSPACES).default([]),
   // These are optional user-selected caps. Safe-integer validation protects
@@ -35,6 +41,7 @@ export const automationPolicySchema = z.strictObject({
 
 export const DEFAULT_POLICY: HookPolicy = {
   enabled: false,
+  consultationMode: 'changed_state',
   scope: 'workspaces',
   workspaces: [],
   maxHookCallsPerSession: DEFAULT_CALL_CAP,
@@ -59,25 +66,67 @@ function normalizePolicy(raw: unknown): HookPolicy {
   return parsed.data;
 }
 
-/** Read only the exact bounded policy file. Malformed or symlinked state fails closed. */
-export async function readPolicy(env: NodeJS.ProcessEnv = process.env): Promise<HookPolicy> {
+const v1PolicySchema = automationPolicySchema.omit({consultationMode: true});
+const policyModeSchema = z.strictObject({
+  version: z.literal(1), policyDigest: z.string().regex(/^[a-f0-9]{64}$/), consultationMode: z.enum(['changed_state', 'always']),
+});
+
+function policyDigest(contents: string): string {
+  return createHash('sha256').update(contents).digest('hex');
+}
+
+async function readMode(path: string, digest: string): Promise<ConsultationMode | undefined> {
   try {
-    const path = policyPath(env);
     const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {
       const info = await handle.stat();
-      if (!info.isFile() || info.size > MAX_POLICY_BYTES) return {...DEFAULT_POLICY};
-      const value = JSON.parse(await handle.readFile('utf8')) as unknown;
-      return normalizePolicy(value);
-    } finally {
-      await handle.close();
-    }
-  } catch {
-    return {...DEFAULT_POLICY};
-  }
+      if (!info.isFile() || info.size > 512) return undefined;
+      const parsed = policyModeSchema.safeParse(JSON.parse(await handle.readFile('utf8')));
+      return parsed.success && parsed.data.policyDigest === digest ? parsed.data.consultationMode : undefined;
+    } finally { await handle.close(); }
+  } catch { return undefined; }
 }
 
-/** Atomically write validated private policy state for the MCP configure handler. */
+async function readAuthority(path: string): Promise<{contents: string; policy: Omit<HookPolicy, 'consultationMode'>}> {
+  const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  let contents: string;
+  try {
+    const info = await handle.stat();
+    if (!info.isFile() || info.size > MAX_POLICY_BYTES) throw new Error('invalid_policy');
+    contents = await handle.readFile('utf8');
+  } finally { await handle.close(); }
+  const policy = v1PolicySchema.parse(JSON.parse(contents));
+  if (policy.enabled && policy.scope === 'workspaces' && policy.workspaces.length === 0) throw new Error('no_allowed_roots');
+  return {contents, policy};
+}
+
+/** V1 authority remains readable by cached strict readers. Both mode bindings control mode only. */
+export async function readPolicy(env: NodeJS.ProcessEnv = process.env): Promise<HookPolicy> {
+  try {
+    const {contents, policy} = await readAuthority(policyPath(env));
+    const digest = policyDigest(contents);
+    const directory = dataDirectory(env);
+    const consultationMode = await readMode(join(directory, POLICY_MODE_FILE), digest)
+      ?? await readMode(join(directory, NEXT_POLICY_MODE_FILE), digest) ?? 'always';
+    return {...policy, consultationMode};
+  } catch { return {...DEFAULT_POLICY}; }
+}
+
+async function assertPolicyTarget(path: string): Promise<void> {
+  try {
+    const info = await lstat(path);
+    if (info.isSymbolicLink()) throw new Error('policy_symlink');
+    if (!info.isFile()) throw new Error('policy_not_file');
+  } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+}
+
+async function stagePolicyFile(path: string, contents: string): Promise<void> {
+  const handle = await open(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+  try { await handle.writeFile(contents, 'utf8'); await handle.sync(); }
+  finally { await handle.close(); }
+}
+
+/** Retain the current binding while the pending binding and V1 authority are published. */
 export async function configurePolicy(raw: unknown, env: NodeJS.ProcessEnv = process.env): Promise<HookPolicy> {
   const parsed = normalizePolicy(raw);
   const canonicalWorkspaces: string[] = [];
@@ -87,34 +136,49 @@ export async function configurePolicy(raw: unknown, env: NodeJS.ProcessEnv = pro
     if (!info.isDirectory()) throw new Error('workspace_not_directory');
     canonicalWorkspaces.push(resolved);
   }
-  const policy: HookPolicy = {...parsed, workspaces: canonicalWorkspaces};
-  const directory = dataDirectory(env);
-  if (!isAbsolute(directory) || directory.includes('\0')) throw new Error('invalid_policy_directory');
-  await mkdir(directory, {recursive: true, mode: 0o700});
   const path = policyPath(env);
+  const directory = dataDirectory(env);
+  await mkdir(directory, {recursive: true, mode: 0o700});
+  const modePath = join(directory, POLICY_MODE_FILE);
+  const nextModePath = join(directory, NEXT_POLICY_MODE_FILE);
+  const lockPath = join(directory, 'policy.lock');
+  const lock = await acquireStateLock(lockPath);
+  const token = randomUUID();
+  const temporary = join(directory, `.policy-${token}.tmp`);
+  const modeTemporary = join(directory, `.policy-mode-${token}.tmp`);
+  const recoveryTemporary = join(directory, `.policy-mode-recovery-${token}.tmp`);
   try {
-    const link = await lstat(path);
-    if (link.isSymbolicLink()) throw new Error('policy_symlink');
-    if (!link.isFile()) throw new Error('policy_not_file');
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-  }
-  const temporary = join(directory, `.policy-${randomUUID()}.tmp`);
-  const contents = JSON.stringify(policy) + '\n';
-  if (Buffer.byteLength(contents) > MAX_POLICY_BYTES) throw new Error('policy_too_large');
-  const handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
-  try {
-    await handle.writeFile(contents, 'utf8');
-  } finally {
-    await handle.close();
-  }
-  try {
+    await assertPolicyTarget(path);
+    await assertPolicyTarget(modePath);
+    await assertPolicyTarget(nextModePath);
+    const current = await readAuthority(path).catch(() => undefined);
+    const currentDigest = current ? policyDigest(current.contents) : undefined;
+    const currentMode = currentDigest ? await readMode(modePath, currentDigest) : undefined;
+    const pendingMode = currentDigest ? await readMode(nextModePath, currentDigest) : undefined;
+    const previousMode = current ? currentMode ?? pendingMode ?? 'always' : DEFAULT_POLICY.consultationMode;
+    if (currentDigest && currentMode === undefined && pendingMode !== undefined) {
+      await stagePolicyFile(recoveryTemporary, JSON.stringify({version: 1, policyDigest: currentDigest, consultationMode: pendingMode}) + '\n');
+      await rename(recoveryTemporary, modePath);
+    }
+    const policy: HookPolicy = {...parsed, workspaces: canonicalWorkspaces, consultationMode: parsed.consultationMode ?? previousMode ?? 'always'};
+    const {consultationMode, ...v1Policy} = policy;
+    const contents = JSON.stringify(v1Policy) + '\n';
+    if (Buffer.byteLength(contents) > MAX_POLICY_BYTES) throw new Error('policy_too_large');
+    const modeContents = JSON.stringify({version: 1, policyDigest: policyDigest(contents), consultationMode}) + '\n';
+    await stagePolicyFile(temporary, contents);
+    await stagePolicyFile(modeTemporary, modeContents);
+    await rename(modeTemporary, nextModePath);
     await rename(temporary, path);
-  } catch (error) {
+    await stagePolicyFile(modeTemporary, modeContents);
+    await rename(modeTemporary, modePath);
+    await unlink(nextModePath).catch(() => {});
+    return policy;
+  } finally {
     await unlink(temporary).catch(() => {});
-    throw error;
+    await unlink(modeTemporary).catch(() => {});
+    await unlink(recoveryTemporary).catch(() => {});
+    await releaseStateLock(lockPath, lock.handle, lock.token);
   }
-  return policy;
 }
 
 export async function workspaceAllowed(policy: HookPolicy, cwd: string): Promise<boolean> {

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "desktop-pilot-reviewed-selection-v1",
+  "selectionBasis": "Public problem statements describe existing incorrect behavior. Selection precedes coding and grader outcomes. These are new candidates, not a resumed cohort or an execution-ready freeze.",
+  "tasks": [
+    {"id": "psf__requests-2931", "issue": 2930, "taskType": "binary-body-encoding", "evidence": "A binary UTF-8 payload worked in Requests 2.8.1 and fails after the 2.9 regression."},
+    {"id": "psf__requests-5414", "issue": 5367, "taskType": "url-error-handling", "evidence": "A host beginning with a dot raises UnicodeError instead of the library's InvalidURL exception."},
+    {"id": "psf__requests-6028", "issue": 6027, "taskType": "proxy-authentication", "evidence": "Proxy URL parsing drops authentication and produces HTTP 407 instead of successful proxy authentication."},
+    {"id": "sympy__sympy-16886", "issue": 16884, "taskType": "morse-encoding", "evidence": "The existing Morse mapping encodes the numeral one incorrectly."},
+    {"id": "sympy__sympy-19346", "issue": 19329, "taskType": "symbolic-representation", "evidence": "srepr omits symbolic element representations inside dictionaries and sets."},
+    {"id": "sympy__sympy-24562", "issue": 24543, "taskType": "rational-arithmetic", "evidence": "Constructing a Rational from string inputs returns a different incorrect value from equivalent numeric inputs."}
+  ]
+}

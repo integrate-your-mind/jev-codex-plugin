@@ -1,4 +1,6 @@
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import fs, { mkdir, mkdtemp, rm, symlink, writeFile, readFile } from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,12 +25,158 @@ describe('automation policy', () => {
   it('defaults to disabled and writes a bounded private policy on first use', async () => {
     const data = join(root, 'first-run');
     assert.deepEqual(await readPolicy(env(data)), DEFAULT_POLICY);
+    assert.equal(DEFAULT_POLICY.consultationMode, 'changed_state');
     const configured = await configurePolicy({enabled: true, scope: 'workspaces', workspaces: [process.cwd()]}, env(data));
     assert.equal(configured.enabled, true);
     assert.equal(configured.maxHookCallsPerSession, null);
     assert.equal(configured.maxCallsPerDay, null);
     assert.equal(configured.maxBytesPerDay, null);
     assert.deepEqual(await readPolicy(env(data)), configured);
+  });
+
+  it('keeps the V1 policy readable by the legacy strict schema', async () => {
+    const environment = env(join(root, 'legacy-reader'));
+    const configured = await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: [], maxHookCallsPerSession: null, maxCallsPerDay: null, maxBytesPerDay: null}, environment);
+    const saved = JSON.parse(await readFile(join(environment.PLUGIN_DATA!, 'policy.json'), 'utf8'));
+    const legacySchema = automationPolicySchema.omit({consultationMode: true});
+    const legacy = legacySchema.safeParse(saved);
+    assert.equal(legacy.success, true);
+    assert.equal(legacy.success && legacy.data.enabled, true);
+    assert.equal(Object.hasOwn(saved, 'consultationMode'), false);
+    assert.equal((await readPolicy(environment)).consultationMode, configured.consultationMode);
+  });
+
+  it('defaults first enable to changed_state and preserves the resolved mode when omitted later', async () => {
+    const environment = env(join(root, 'fresh-mode'));
+    const input = {enabled: true, scope: 'all-workspaces', workspaces: []};
+    assert.equal((await configurePolicy(input, environment)).consultationMode, 'changed_state');
+    await configurePolicy({...input, consultationMode: 'always'}, environment);
+    assert.equal((await configurePolicy(input, environment)).consultationMode, 'always');
+    await configurePolicy({...input, consultationMode: 'changed_state'}, environment);
+    assert.equal((await configurePolicy(input, environment)).consultationMode, 'changed_state');
+  });
+
+  it('preserves legacy always mode on configure calls that omit mode', async () => {
+    const environment = env(join(root, 'legacy-omitted-mode'));
+    await mkdir(environment.PLUGIN_DATA!, {recursive: true});
+    const legacy = {enabled: true, scope: 'all-workspaces', workspaces: [], maxHookCallsPerSession: null, maxCallsPerDay: null, maxBytesPerDay: null};
+    await writeFile(join(environment.PLUGIN_DATA!, 'policy.json'), JSON.stringify(legacy));
+    assert.equal((await configurePolicy(legacy, environment)).consultationMode, 'always');
+  });
+
+  it('ignores mismatched or partial mode publication without changing V1 authority', async () => {
+    const environment = env(join(root, 'mode-recovery'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: [], maxCallsPerDay: 9}, environment);
+    const path = join(environment.PLUGIN_DATA!, 'policy.json');
+    const sidecar = join(environment.PLUGIN_DATA!, 'policy-mode-v1.json');
+    const changed = JSON.parse(await readFile(path, 'utf8'));
+    changed.enabled = false;
+    changed.maxCallsPerDay = 4;
+    await writeFile(path, JSON.stringify(changed));
+    const recovered = await readPolicy(environment);
+    assert.equal(recovered.enabled, false);
+    assert.equal(recovered.maxCallsPerDay, 4);
+    assert.equal(recovered.consultationMode, 'always');
+    await writeFile(sidecar, '{');
+    assert.deepEqual(await readPolicy(environment), recovered);
+    await writeFile(join(environment.PLUGIN_DATA!, '.policy-mode-interrupted.tmp'), JSON.stringify({consultationMode: 'changed_state', enabled: true}));
+    assert.deepEqual(await readPolicy(environment), recovered);
+  });
+
+  it('keeps old authority after interruption between mode and policy publication', async () => {
+    const environment = env(join(root, 'mode-before-authority'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: [], maxCallsPerDay: 9}, environment);
+    const path = join(environment.PLUGIN_DATA!, 'policy.json');
+    const before = await readFile(path, 'utf8');
+    const pending = JSON.parse(before);
+    pending.enabled = false;
+    pending.maxCallsPerDay = 2;
+    const pendingContents = JSON.stringify(pending) + '\n';
+    await writeFile(join(environment.PLUGIN_DATA!, 'policy-mode-next-v1.json'), JSON.stringify({version: 1, policyDigest: createHash('sha256').update(pendingContents).digest('hex'), consultationMode: 'changed_state'}));
+    const recovered = await readPolicy(environment);
+    assert.equal(recovered.enabled, true);
+    assert.equal(recovered.scope, 'all-workspaces');
+    assert.equal(recovered.maxCallsPerDay, 9);
+    assert.equal(recovered.consultationMode, 'changed_state');
+    assert.equal(await readFile(path, 'utf8'), before);
+  });
+
+  it('preserves changed_state after an interrupted authority update and retry', async () => {
+    const environment = env(join(root, 'mode-failed-authority'));
+    const original = await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
+    const path = join(environment.PLUGIN_DATA!, 'policy.json');
+    const before = await readFile(path, 'utf8');
+    const rename = fs.rename;
+    fs.rename = async (source, destination) => {
+      if (String(destination) === path) throw Object.assign(new Error('synthetic_policy_commit_failure'), {code: 'EIO'});
+      return rename(source, destination);
+    };
+    syncBuiltinESMExports();
+    try {
+      await assert.rejects(configurePolicy({enabled: true, scope: 'workspaces', workspaces: [process.cwd()], maxCallsPerDay: 3}, environment), {code: 'EIO'});
+    } finally { fs.rename = rename; syncBuiltinESMExports(); }
+    assert.equal(await readFile(path, 'utf8'), before);
+    assert.deepEqual(await readPolicy(environment), original);
+    const retried = await configurePolicy({enabled: true, scope: 'workspaces', workspaces: [process.cwd()], maxCallsPerDay: 3}, environment);
+    assert.equal(retried.consultationMode, 'changed_state');
+    assert.equal((await readPolicy(environment)).consultationMode, 'changed_state');
+    assert.equal((await readPolicy(environment)).maxCallsPerDay, 3);
+  });
+
+  it('recovers a committed pending binding before another interrupted update', async () => {
+    const environment = env(join(root, 'mode-pending-recovery'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
+    const path = join(environment.PLUGIN_DATA!, 'policy.json');
+    const modePath = join(environment.PLUGIN_DATA!, 'policy-mode-v1.json');
+    const rename = fs.rename;
+    let authorityCommitted = false;
+    fs.rename = async (source, destination) => {
+      if (authorityCommitted && String(destination) === modePath) throw Object.assign(new Error('synthetic_mode_promotion_failure'), {code: 'EIO'});
+      await rename(source, destination);
+      if (String(destination) === path) authorityCommitted = true;
+    };
+    syncBuiltinESMExports();
+    try {
+      await assert.rejects(configurePolicy({enabled: true, scope: 'all-workspaces', workspaces: [], maxCallsPerDay: 3}, environment), {code: 'EIO'});
+    } finally { fs.rename = rename; syncBuiltinESMExports(); }
+    assert.equal((await readPolicy(environment)).maxCallsPerDay, 3);
+    assert.equal((await readPolicy(environment)).consultationMode, 'changed_state');
+    fs.rename = async (source, destination) => {
+      if (String(destination) === path) throw Object.assign(new Error('synthetic_retry_commit_failure'), {code: 'EIO'});
+      return rename(source, destination);
+    };
+    syncBuiltinESMExports();
+    try {
+      await assert.rejects(configurePolicy({enabled: true, scope: 'all-workspaces', workspaces: [], maxCallsPerDay: 4}, environment), {code: 'EIO'});
+    } finally { fs.rename = rename; syncBuiltinESMExports(); }
+    assert.equal((await readPolicy(environment)).maxCallsPerDay, 3);
+    assert.equal((await readPolicy(environment)).consultationMode, 'changed_state');
+    const recovered = await configurePolicy({enabled: true, scope: 'all-workspaces', workspaces: [], maxCallsPerDay: 4}, environment);
+    assert.equal(recovered.consultationMode, 'changed_state');
+    assert.equal((await readPolicy(environment)).maxCallsPerDay, 4);
+  });
+
+  it('serializes concurrent mode-preserving configuration updates', async () => {
+    const environment = env(join(root, 'mode-concurrent'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
+    const policies = await Promise.all([2, 3, 4].map(maxCallsPerDay => configurePolicy({enabled: true, scope: 'all-workspaces', workspaces: [], maxCallsPerDay}, environment)));
+    assert.equal(policies.every(policy => policy.consultationMode === 'changed_state'), true);
+    const current = await readPolicy(environment);
+    assert.equal(current.enabled, true);
+    assert.equal(current.consultationMode, 'changed_state');
+    assert.equal([2, 3, 4].includes(current.maxCallsPerDay!), true);
+  });
+
+  it('rejects a substituted mode path before changing the authoritative policy', async () => {
+    const environment = env(join(root, 'mode-symlink'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
+    const path = join(environment.PLUGIN_DATA!, 'policy.json');
+    const before = await readFile(path, 'utf8');
+    const sidecar = join(environment.PLUGIN_DATA!, 'policy-mode-v1.json');
+    await rm(sidecar, {force: true});
+    await symlink(join(root, 'unowned-mode-target'), sidecar);
+    await assert.rejects(configurePolicy({enabled: false, consultationMode: 'always'}, environment));
+    assert.equal(await readFile(path, 'utf8'), before);
   });
 
   it('accepts unlimited or user-selected caps without a plugin usage ceiling', () => {
@@ -51,9 +199,19 @@ describe('automation policy', () => {
     await mkdir(data, {recursive: true});
     await writeFile(join(data, 'policy.json'), JSON.stringify({enabled: false, scope: 'workspaces', workspaces: [], maxHookCallsPerSession: 50}), {mode: 0o600});
     const policy = await readPolicy(env(data));
+    assert.equal(policy.consultationMode, 'always');
     assert.equal(policy.maxHookCallsPerSession, 50);
     assert.equal(policy.maxCallsPerDay, null);
     assert.equal(policy.maxBytesPerDay, null);
+  });
+
+  it('changes only consultation mode on explicit migration and preserves existing opt-ins', async () => {
+    const environment = env(join(root, 'migration'));
+    const legacy = await configurePolicy({enabled: true, consultationMode: 'always', scope: 'all-workspaces', workspaces: [], maxHookCallsPerSession: null, maxCallsPerDay: null, maxBytesPerDay: null}, environment);
+    assert.equal(legacy.consultationMode, 'always');
+    const migrated = await configurePolicy({...legacy, consultationMode: 'changed_state'}, environment);
+    assert.deepEqual(migrated, {...legacy, consultationMode: 'changed_state'});
+    assert.deepEqual(await readPolicy(environment), migrated);
   });
 
   it('rejects a policy path symlink instead of following it', async () => {

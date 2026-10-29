@@ -43,7 +43,7 @@ function digest(value: string): string {
 }
 
 async function enabledPolicy(environment: NodeJS.ProcessEnv, cap: number | null = 50): Promise<void> {
-  await configurePolicy({enabled: true, scope: 'workspaces', workspaces: [process.cwd()], maxHookCallsPerSession: cap}, environment);
+  await configurePolicy({enabled: true, consultationMode: 'always', scope: 'workspaces', workspaces: [process.cwd()], maxHookCallsPerSession: cap}, environment);
 }
 
 function fakeService(calls: {count: number; inputs: DecisionInput[]}): DecisionService {
@@ -209,6 +209,62 @@ describe('decision hook', () => {
     assert.doesNotMatch(mcpEvidence, /should-not-leak/);
   });
 
+  it('removes top-level and nested sensitive argument values before provider projection', async () => {
+    const environment = env(join(root, 'sensitive-argument-values'));
+    await enabledPolicy(environment);
+    const secret = 'synthetic-sensitive-value-12345';
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    await runDecisionHook(toolEvent({tool_input: {api_key: secret, config: {password: secret}, query: 'public query'}}), {env: environment, service: fakeService(calls)});
+    const projection = JSON.stringify(calls.inputs);
+    assert.equal(projection.includes(secret), false);
+    assert.match(projection, /REDACTED_FIELD/);
+    assert.match(projection, /public query/);
+  });
+
+  it('excludes sensitive argument values from semantic identity', async () => {
+    const environment = env(join(root, 'sensitive-identity'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    await runDecisionHook(toolEvent({tool_input: {api_key: 'synthetic-private-one', query: 'public query'}}), {env: environment, service: fakeService(calls)});
+    await runDecisionHook(toolEvent({tool_use_id: 'another-delivery', tool_input: {api_key: 'synthetic-private-two', query: 'public query'}}), {env: environment, service: fakeService(calls)});
+    assert.equal(calls.count, 1);
+    assert.equal(JSON.stringify(calls.inputs).includes('synthetic-private'), false);
+  });
+
+  it('consults when only an omitted middle portion of the sanitized command changes', async () => {
+    const environment = env(join(root, 'full-facts-identity'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    const command = (middle: string) => `${'prefix segment '.repeat(150)}${middle}${' suffix segment'.repeat(150)}`;
+    await runDecisionHook(toolEvent({tool_input: {command: command('TARGET_ONE')}}), {env: environment, service: fakeService(calls)});
+    await runDecisionHook(toolEvent({tool_use_id: 'different-delivery', tool_input: {command: command('TARGET_TWO')}}), {env: environment, service: fakeService(calls)});
+    assert.equal(calls.count, 2);
+    assert.equal(calls.inputs.some(input => input.context.includes('TARGET_ONE') || input.context.includes('TARGET_TWO')), false);
+    assert.equal(calls.inputs.every(input => Buffer.byteLength(input.context) <= 5_000), true);
+    const receiptPath = join(environment.PLUGIN_DATA!, 'decision-hook-v1', digest(process.cwd()), digest('session-1'), 'invocations', `${digest('PreToolUse\0session-1\0turn-1\0tool-1')}.json`);
+    const receipt = JSON.parse(await readFile(receiptPath, 'utf8'));
+    assert.deepEqual(receipt.factsProjection, {complete: false, omittedFacts: 'unknown'});
+  });
+
+  it('rejects an earlier result after a changed omitted command fact arrives', async () => {
+    const environment = env(join(root, 'full-facts-late-result'));
+    await enabledPolicy(environment);
+    const command = (middle: string) => `${'prefix segment '.repeat(150)}${middle}${' suffix segment'.repeat(150)}`;
+    let release: ((value: {status: string; choice: string}) => void) | undefined;
+    let entered: (() => void) | undefined;
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    const first = runDecisionHook(toolEvent({tool_input: {command: command('TARGET_ONE')}}), {env: environment, service: {async classifyDecision() {
+      entered!();
+      return new Promise(resolve => { release = resolve; });
+    }}});
+    await started;
+    await new Promise(resolve => setTimeout(resolve, 2));
+    await runDecisionHook(toolEvent({tool_use_id: 'new-delivery', tool_input: {command: command('TARGET_TWO')}}), {env: environment, service: fakeService({count: 0, inputs: []})});
+    release!({status: 'assessed', choice: 'proceed'});
+    const result = await first;
+    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /reason=stale_context/);
+  });
+
   it('captures raw string tool input and failure evidence', async () => {
     const environment = env(join(root, 'raw-and-failure'));
     await enabledPolicy(environment);
@@ -259,6 +315,10 @@ describe('decision hook', () => {
     await enabledPolicy(recursionEnv);
     const recursionCalls = {count: 0, inputs: [] as DecisionInput[]};
     assert.deepEqual(await runDecisionHook(JSON.stringify(toolEvent({tool_name: 'mcp__jev-workflows__classify_decision'})), {env: recursionEnv, service: fakeService(recursionCalls)}), {});
+    assert.equal(recursionCalls.count, 0);
+    for (const tool_name of ['evaluate_decisions', 'update_task_context', 'record_decision_outcome']) {
+      assert.deepEqual(await runDecisionHook(toolEvent({tool_name, tool_use_id: tool_name}), {env: recursionEnv, service: fakeService(recursionCalls)}), {});
+    }
     assert.equal(recursionCalls.count, 0);
   });
 
@@ -589,14 +649,112 @@ describe('decision hook', () => {
     assert.equal((await readdir(invocationDir)).length, 2);
   });
 
-  it('reports a provider that ignores abort as an explicit hook timeout', async () => {
+  it('consults once per meaningful state in changed_state mode and preserves legacy always mode', async () => {
+    const environment = env(join(root, 'changed-state'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    const service = fakeService(calls);
+    const event = toolEvent({tool_input: {command: 'read a file'}});
+    await runDecisionHook(event, {env: environment, service});
+    assert.deepEqual(await runDecisionHook({...event, event_id: 'delivery-2', tool_use_id: 'delivery-2', turn_id: 'turn-2'}, {env: environment, service}), {});
+    assert.equal(calls.count, 1);
+    await runDecisionHook({...event, tool_use_id: 'changed-arguments', tool_input: {command: 'read another file'}}, {env: environment, service});
+    assert.equal(calls.count, 2);
+    await runDecisionHook({...event, tool_use_id: 'changed-source', source_versions: {repo: 'new'}}, {env: environment, service});
+    assert.equal(calls.count, 3);
+    await runDecisionHook({...event, tool_use_id: 'changed-pin', pins: {model: 'explicit'}}, {env: environment, service});
+    assert.equal(calls.count, 4);
+    const legacy = env(join(root, 'always-state'));
+    await enabledPolicy(legacy);
+    const legacyCalls = {count: 0, inputs: [] as DecisionInput[]};
+    await runDecisionHook(event, {env: legacy, service: fakeService(legacyCalls)});
+    await runDecisionHook({...event, tool_use_id: 'delivery-2'}, {env: legacy, service: fakeService(legacyCalls)});
+    assert.equal(legacyCalls.count, 2);
+  });
+
+  it('skips deterministic single alternatives in changed_state mode', async () => {
+    const environment = env(join(root, 'deterministic-state'));
+    await configurePolicy({enabled: true, consultationMode: 'changed_state', scope: 'all-workspaces', workspaces: []}, environment);
+    const calls = {count: 0, inputs: [] as DecisionInput[]};
+    const result = await runDecisionHook(toolEvent({task_context: {candidateCatalog: {tool: [{id: 'read', description: 'The only eligible tool'}]}}}), {env: environment, service: fakeService(calls)});
+    assert.deepEqual(result, {});
+    assert.equal(calls.count, 0);
+  });
+
+  it('keeps persistent provider outages quiet across later events and sessions', async () => {
+    const environment = env(join(root, 'persistent-outage'));
+    await enabledPolicy(environment);
+    let calls = 0;
+    const service: DecisionService = {async classifyDecision() {
+      calls++;
+      return {status: 'unavailable', reasonCode: 'rate_limited'};
+    }};
+    const first = await runDecisionHook(toolEvent(), {env: environment, service});
+    assert.match(first.hookSpecificOutput?.additionalContext ?? '', /reason=rate_limited/);
+    const subsequent = await runDecisionHook(toolEvent({tool_use_id: 'tool-2', session_id: 'different-session'}), {env: environment, service});
+    assert.deepEqual(subsequent, {});
+    assert.equal(calls, 1);
+  });
+
+  it('discards an old consultation when a changed revision arrives before its result', async () => {
+    const environment = env(join(root, 'late-revision'));
+    await enabledPolicy(environment);
+    let release: ((result: {status: string; choice: string}) => void) | undefined;
+    let entered: (() => void) | undefined;
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    const first = runDecisionHook(toolEvent({tool_input: {command: 'old task'}}), {env: environment, service: {async classifyDecision() {
+      entered!();
+      return new Promise(resolve => { release = resolve; });
+    }}});
+    await started;
+    await new Promise(resolve => setTimeout(resolve, 2));
+    await runDecisionHook(toolEvent({tool_use_id: 'new-task', tool_input: {command: 'new task'}}), {env: environment, service: {async classifyDecision() { return {status: 'assessed', choice: 'proceed'}; }}});
+    release!({status: 'assessed', choice: 'proceed'});
+    const result = await first;
+    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /reason=stale_context/);
+    assert.doesNotMatch(result.hookSpecificOutput?.additionalContext ?? '', /decision=proceed/);
+  });
+
+  it('rejects a result after task context changes without a new hook event', async () => {
+    const environment = env(join(root, 'changed-task-context'));
+    await enabledPolicy(environment);
+    const scope = {cwd: process.cwd(), sessionId: 'session-1'};
+    await updateTaskContext(scope, {operation: 'replace', rootObjective: 'Old objective'}, {env: environment});
+    const result = await runDecisionHook(toolEvent(), {env: environment, service: {async classifyDecision() {
+      await updateTaskContext(scope, {operation: 'replace', rootObjective: 'New objective'}, {env: environment});
+      return {status: 'assessed', choice: 'proceed'};
+    }}});
+    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /reason=stale_context/);
+    assert.doesNotMatch(result.hookSpecificOutput?.additionalContext ?? '', /decision=proceed/);
+  });
+
+  it('reports a provider that ignores abort as an explicit hook timeout', async t => {
     const environment = env(join(root, 'timeout'));
     await enabledPolicy(environment);
-    const service: DecisionService = {classifyDecision: async () => new Promise(() => {})};
-    const started = Date.now();
-    const result = await runDecisionHook(JSON.stringify(toolEvent()), {env: environment, service, hookTimeoutMs: 25});
-    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /status=unavailable; reason=hook_timeout/);
-    assert.ok(Date.now() - started < 500);
+    let calls = 0;
+    let observedSignal: AbortSignal | undefined;
+    let enter!: () => void;
+    const entered = new Promise<void>(resolve => { enter = resolve; });
+    const service: DecisionService = {classifyDecision: async (_input, signal) => {
+      calls++;
+      observedSignal = signal;
+      enter();
+      return new Promise(() => {});
+    }};
+    t.mock.timers.enable({apis: ['Date', 'setTimeout'], now: Date.now()});
+    try {
+      const started = Date.now();
+      const pending = runDecisionHook(JSON.stringify(toolEvent()), {env: environment, service, hookTimeoutMs: 25});
+      await entered;
+      assert.equal(observedSignal?.aborted, false);
+      for (let elapsed = 0; !observedSignal?.aborted && elapsed < 25; elapsed++) t.mock.timers.tick(1);
+      assert.equal(observedSignal?.aborted, true);
+      const result = await pending;
+      assert.match(result.hookSpecificOutput?.additionalContext ?? '', /status=unavailable; reason=hook_timeout/);
+      assert.ok(Date.now() - started < 25);
+      assert.deepEqual(await runDecisionHook(toolEvent({tool_use_id: 'after-timeout'}), {env: environment, service}), {});
+      assert.equal(calls, 1);
+    } finally { t.mock.timers.reset(); }
   });
 
   it('clips hook context on UTF-8 boundaries while retaining the tail', async () => {
@@ -611,6 +769,23 @@ describe('decision hook', () => {
     assert.equal(calls.count, 1);
     assert.doesNotMatch(calls.inputs[0]?.context ?? '', /\uFFFD/);
     assert.match(calls.inputs[0]?.context ?? '', /HOOK_UTF8_TAIL_KEEP/);
+  });
+
+  it('compares the thirteenth supplied candidate instead of silently dropping it', async () => {
+    const environment = env(join(root, 'complete-catalog'));
+    await enabledPolicy(environment);
+    const candidates = Array.from({length: 13}, (_, index) => ({id: `tool-${index}`, description: `Available tool ${index}`}));
+    const inputs: DecisionInput[] = [];
+    const result = await runDecisionHook(JSON.stringify(toolEvent({
+      task_context: {candidateCatalog: {tool: candidates}},
+    })), {env: environment, service: {
+      async classifyDecision(input) {
+        inputs.push(input);
+        return {status: 'assessed', choice: 'tool-12'};
+      },
+    }});
+    assert.deepEqual(inputs.flatMap(input => input.candidates.map(candidate => candidate.id)), candidates.map(candidate => candidate.id));
+    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /decision=tool-12/);
   });
 
   it('uses a supplied single candidate instead of inventing a fallback catalog', async () => {

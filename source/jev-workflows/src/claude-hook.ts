@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { dataDirectory } from './store.js';
 import { readPolicy, workspaceAllowed } from './policy.js';
 import { runDecisionHook, deadlineOutput, type DecisionService } from './decision-hook.js';
+import {captureClaudeObjective, runPostToolBatch} from './hosts/claude/producer.js';
 
 type RecordValue = Record<string, unknown>;
 type ClaudeHookResult = {
@@ -32,7 +33,7 @@ type ClaudeHookOptions = {
 // SessionStart, 3 s for SessionEnd, 5 s otherwise) to leave room for shell and
 // process start-up, which the in-process clock cannot observe.
 const DEFAULT_DEADLINE_MS = 2_500;
-const EVENT_DEADLINE_MS = new Map([['UserPromptSubmit', 3_500], ['SessionStart', 3_500], ['SessionEnd', 1_500]]);
+const EVENT_DEADLINE_MS = new Map([['UserPromptSubmit', 3_500], ['SessionStart', 3_500], ['SessionEnd', 1_500], ['PostToolBatch', 5_000]]);
 /** Reserved before the hard deadline to serialize and flush the result. */
 const OUTPUT_RESERVE_MS = 250;
 /** Longest wait for stdout to flush before the process exits regardless. */
@@ -42,6 +43,7 @@ const SUPPORTED_EVENTS = new Set([
   'SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse',
   'PostToolUseFailure', 'PermissionRequest', 'PreCompact', 'PostCompact',
   'SubagentStart', 'SubagentStop', 'Stop',
+  'PostToolBatch',
 ]);
 const TURN_EVENTS = new Set([
   'UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'PostToolUseFailure',
@@ -210,6 +212,14 @@ export async function runClaudeHook(
     const policy = await readPolicy(env);
     if (!policy.enabled || env.JEV_ENABLED === '0' || !await workspaceAllowed(policy, parsed.cwd as string)) return {};
     if (isClaudeInternalTool(parsed)) return {};
+    if (env.JEV_CLAUDE_NATIVE_BRIDGE === '1') {
+      if (originalName === 'UserPromptSubmit') { await captureClaudeObjective(parsed, env); return {}; }
+      if (originalName !== 'PostToolBatch') return {};
+      return await runPostToolBatch(parsed, {env, service: options.service, fetchFn: options.fetchFn, consultationMode: policy.consultationMode,
+        timeoutMs: Math.min(5_000, options.hookTimeoutMs ?? (options.deadlineAt === undefined ? 5_000 : Math.max(1, Math.floor(options.deadlineAt - performance.now())))),
+        ensureDirectory: ensurePrivateDirectory});
+    }
+    if (originalName === 'PostToolBatch') return {};
     const turnId = await resolveTurn(parsed, env);
     if (TURN_EVENTS.has(originalName) && !turnId) return {};
     const {deadlineAt, onConsult, ...decisionOptions} = options;

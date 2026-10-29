@@ -1,17 +1,19 @@
 import assert from 'node:assert/strict';
 import {execFile} from 'node:child_process';
 import {mkdtemp, mkdir, readFile, rm, writeFile} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {promisify} from 'node:util';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
+import {entryPoints, standaloneSkills} from '../source/jev-workflows/scripts/build-outputs.mjs';
 
 const exec = promisify(execFile);
 const verifier = fileURLToPath(new URL('./verify-build.mjs', import.meta.url));
 test('build verification rejects source and standalone bundles that a build silently repairs', async () => {
-  const fixture = await mkdtemp(join(tmpdir(), 'jev-build-drift-'));
-  const paths = [...['server', 'hook', 'decision-hook', 'claude-hook', 'cli'].map(name => `dist/${name}.mjs`), ...['classify-decision', 'diagnose-failure', 'check-completion'].map(skill => `skills/${skill}/scripts/jev.mjs`)];
+  const owned = fileURLToPath(new URL('../.agent-work/', import.meta.url));
+  await mkdir(owned, {recursive: true});
+  const fixture = await mkdtemp(join(owned, 'jev-build-drift-'));
+  const paths = [...Object.keys(entryPoints).map(name => `dist/${name}.mjs`), ...standaloneSkills.map(skill => `skills/${skill}/scripts/jev.mjs`)];
   try {
     for (const path of [...paths, 'scripts/build.mjs']) await mkdir(join(fixture, path, '..'), {recursive: true});
     await writeFile(join(fixture, 'scripts/build.mjs'), `import {writeFileSync} from 'node:fs';\nfor (const path of ${JSON.stringify(paths)}) writeFileSync(path, 'generated runtime\\n');\n`);

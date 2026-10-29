@@ -4,7 +4,7 @@ import { sanitize, redactText } from './redact.js';
 import { evaluateProvider, fingerprintCredential, ProviderError, type ProviderTransport } from './provider.js';
 import { FileStore, dataDirectory, readBudgetUsage, type Store } from './store.js';
 import { readPolicy, DEFAULT_POLICY, type HookPolicy } from './policy.js';
-import { decisionSchema, decisionQuestions, DECISION_RUBRIC_VERSION } from './decision.js';
+import { decisionSchema, decisionQuestions, DECISION_RUBRIC_VERSION, MAX_DECISION_PAYLOAD_BYTES } from './decision.js';
 import { readCredentialFile } from './credential.js';
 import {
   BATCH_RUBRIC_VERSION, evaluateDecisionsSchema, isBoundedJsonStructure, isReservedId, policiesByQuestion, providerQuestions,
@@ -12,6 +12,7 @@ import {
 } from './batch.js';
 import type { Answer } from './provider.js';
 import { MediaValidationError, validateMediaAssets, type ImageAsset } from './media.js';
+import {sanitizeCandidateMetadata, sanitizeStructuredCandidateMetadata} from './candidate-metadata.js';
 
 export type BatchAnswerAssessment =
   | {type: 'choice'; domain?: DecisionDomain; providerChoice: string; bestCandidate?: string; probabilities: Record<string, number>; confidence: number; disposition: 'recommendation' | 'ranking' | 'abstained'; recommendation?: string; reasonCode?: 'insufficient_evidence' | 'low_confidence'; policy: DecisionPolicy}
@@ -36,7 +37,7 @@ export interface ServiceOptions {
   apiKey?: string; enabled?: boolean; timeoutMs?: number; fetchFn?: typeof fetch;
   store?: Store; confidenceFloor?: number; env?: NodeJS.ProcessEnv;
 }
-const maxPayloadBytes = 48000;
+const maxPayloadBytes = MAX_DECISION_PAYLOAD_BYTES;
 function bestActualCandidate(probabilities: Record<string, number>, actualCandidateIds: string[]): string | undefined {
   let best: string | undefined;
   let max = Number.NEGATIVE_INFINITY;
@@ -105,7 +106,7 @@ export function createService(options: ServiceOptions = {}) {
   const digestOf = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
   function status(policy: HookPolicy = DEFAULT_POLICY) {
     const current = credential();
-    return {version: '0.5.3', provider: 'TypeSafe', endpoint: ENDPOINT, model: model ?? env.JEV_MODEL ?? MODEL,
+    return {version: '0.6.0-rc.1', provider: 'TypeSafe', endpoint: ENDPOINT, model: model ?? env.JEV_MODEL ?? MODEL,
       credentialConfigured: Boolean(current.apiKey), credentialFingerprint: current.fingerprint, enabled,
       stateDirectory: dataDirectory(env), defaultMode: 'preview', rubricVersion: RUBRIC_VERSION, completionRubricVersion: COMPLETION_RUBRIC_VERSION, decisionRubricVersion: DECISION_RUBRIC_VERSION, batchRubricVersion: BATCH_RUBRIC_VERSION, maxPayloadBytes,
       maxCallsPerDay: positiveLimit(env.JEV_MAX_CALLS_PER_DAY, policy.maxCallsPerDay),
@@ -151,7 +152,9 @@ export function createService(options: ServiceOptions = {}) {
       if (input.exitCode === null) return {status: 'abstained', reasonCode: 'command_not_completed'};
     }
     const selected = Object.fromEntries(Object.entries(input).filter(([key]) => !['mode', 'policy', 'origin', 'correlation'].includes(key)));
-    if ('candidates' in input) selected.candidates = input.candidates.filter(candidate => candidate.available);
+    if ('candidates' in input) selected.candidates = input.candidates.filter(candidate => candidate.available).map(candidate => ({...candidate,
+      ...(candidate.metadata ? {metadata: sanitizeCandidateMetadata(candidate.metadata, text => redactText(text, secrets))} : {}),
+    }));
     const state = sanitize(selected, secrets);
     // Sanitize caller-defined questions and criteria as well as state before any egress.
     const rawQuestions = 'candidates' in input ? decisionQuestions(input)
@@ -197,6 +200,7 @@ export function createService(options: ServiceOptions = {}) {
       } catch { return {status: 'unavailable', reasonCode: 'budget_store_unavailable', ...meta, receiptPersisted: false}; }
       try {
         const evaluation = await evaluateProvider({state, questions: questions as Record<string, Question>, apiKey, timeoutMs, model: selectedModel, longContext: env.JEV_LONG_CONTEXT === '1', signal, fetchFn: options.fetchFn});
+        if (signal?.aborted) throw new ProviderError('cancelled', evaluation.transport ?? null);
         const answer = evaluation.answers[tool === 'classify_failure' ? 'category' : tool === 'check_completion' ? 'support' : 'decision'];
         if (!answer || answer.type !== 'choice') throw new ProviderError('invalid_response', evaluation.transport);
         // Confidence and selected probability are separate signals; neither alone is a correctness guarantee.
@@ -266,7 +270,12 @@ export function createService(options: ServiceOptions = {}) {
     }
 
     const state = sanitize(input.state, secrets);
-    const questions = sanitize(providerQuestions(input), secrets) as Record<string, Question>;
+    const selectedQuestions: typeof input.questions = Object.fromEntries(Object.entries(input.questions).map(([id, question]) => [id,
+      question.type === 'choice' ? {...question, candidates: question.candidates.map(candidate => ({...candidate,
+        ...(candidate.metadata !== undefined ? {metadata: sanitizeStructuredCandidateMetadata(candidate.metadata, text => redactText(text, secrets))} : {}),
+      }))} : question,
+    ]));
+    const questions = sanitize(providerQuestions({...input, questions: selectedQuestions}), secrets) as Record<string, Question>;
     const policies = policiesByQuestion(input, {minConfidence: confidenceFloor, minProbability: confidenceFloor});
     let selectedModel: ModelSelector;
     try { selectedModel = resolveModelSelector(input.model ?? (model ?? undefined)); }

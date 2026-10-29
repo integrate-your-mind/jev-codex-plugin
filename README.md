@@ -4,7 +4,7 @@
 
 An open-source Codex and Claude Code plugin for consulting [TypeSafe Jev](https://docs.typesafe.ai/) about tools, models, tasks, skills, context, strategies, and custom decisions. It also diagnoses failed commands and checks completion claims against evidence.
 
-The current source package is version **0.5.3**. It includes the full MCP plugin, eight MCP tools, twelve lifecycle adapters, and three standalone skills that work without MCP. See [verification results](VERIFICATION.md) for tests and independent agent QA. This community Git marketplace is publicly installable; OpenAI Directory review is separate.
+This branch prepares **0.6.0-rc.1**. Stable remains **0.5.3** until the pilot results are reviewed. See the [release candidate report](docs/routing-release-candidate.md) for implemented features, checks and unfinished host capabilities. The package includes the full MCP plugin, eight MCP tools, twelve lifecycle adapters, and three standalone skills that work without MCP. See [verification results](VERIFICATION.md) for tests and independent agent QA. This community Git marketplace is publicly installable; OpenAI Directory review is separate.
 
 **Official catalog status:** the catalog contribution is [prepared in a public fork](https://github.com/openai/plugins/compare/main...integrate-your-mind:codex-official-plugins:jev-workflows-marketplace-entry), but OpenAI restricts upstream PR creation to repository collaborators. No official store listing is live. The separate directory draft also needs local-plugin compatibility review; [publication requirements](source/jev-workflows/docs/publication.md) record the remaining dependencies.
 
@@ -63,7 +63,7 @@ The CLI defaults to a local preview. Authorized evaluation requires `--evaluate`
 - `jev_status` and `configure_automation`: inspect and control local operation.
 - Three skills include prebuilt CLI fallbacks, and twelve Codex lifecycle adapters provide consultation during work, where the host exposes events.
 
-Jev returns a candidate or an abstention. It does not execute a decision, grant permissions, switch models automatically, or prove deployment. Hook coverage depends on the host; hidden reasoning and tools that bypass hooks are not observable.
+Jev returns a candidate or an abstention. Ordinary tool permissions remain authoritative. Codex desktop automatic switching is unqualified. The optional Claude native adapter is tested offline; live application and inference remain unverified. Advice does not prove deployment. Hook coverage depends on the host; hidden reasoning and tools that bypass hooks are not observable.
 
 The batch interface sends independent questions together over one selected, bounded state. Choice questions rank supplied candidates, Noul questions provide a bounded signal, and Score questions use an explicit ordinal rubric. Conservative policy can abstain when the applicable confidence or probability threshold is not met; ranking policy preserves the returned distributions for caller-side ranking. These outputs remain advisory and do not authorize actions.
 

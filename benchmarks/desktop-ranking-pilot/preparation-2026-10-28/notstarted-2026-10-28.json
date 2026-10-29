@@ -1,0 +1,268 @@
+{
+  "schemaVersion": "desktop-pilot-preparation-v1",
+  "corpusHash": "21b7a273713c39766453e9edf80f9a309cab04cd5d865c8b5191003a00315514",
+  "reservationsHash": "7ca404219d785404f3b3997792ad480731d3228f886227221c98e70bc26dbefe",
+  "qualificationHash": "67a1651efcb969cb4b6fd65c1e01160bb5c82ea6f0030def4938c4f0829c71b4",
+  "preflightHash": "4854b1d1d6820c1a1ad5a7533fd322d85e04658e94dfa6a3d47527e715dbe0ec",
+  "graderHash": "56818dddc0f751dd0df2cacb7c96bd2de30d19ced44d4bf8850071241a6c0b61",
+  "manifestFrozen": false,
+  "codingAttempts": 0,
+  "codingOutcomes": null,
+  "codingReward": null,
+  "graderControlCount": 24,
+  "graderControlsQualified": true,
+  "dependencies": [
+    "freeze-native-profile-permissions-package-input-and-evidence-packets",
+    "supported-desktop-owned-runtime-identity",
+    "native-baseline-isolation.tools",
+    "native-baseline-isolation.hooks",
+    "native-baseline-isolation.instructions",
+    "native-baseline-isolation.candidatePacket",
+    "native-baseline-isolation.transport"
+  ],
+  "slots": [
+    {
+      "id": "psf__requests-2931.model-alone",
+      "taskId": "psf__requests-2931",
+      "arm": "model-alone",
+      "position": 0,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "psf__requests-2931.cheap",
+      "taskId": "psf__requests-2931",
+      "arm": "cheap",
+      "position": 1,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "psf__requests-2931.jev-first",
+      "taskId": "psf__requests-2931",
+      "arm": "jev-first",
+      "position": 2,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "psf__requests-5414.model-alone",
+      "taskId": "psf__requests-5414",
+      "arm": "model-alone",
+      "position": 0,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "psf__requests-5414.jev-first",
+      "taskId": "psf__requests-5414",
+      "arm": "jev-first",
+      "position": 1,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "psf__requests-5414.cheap",
+      "taskId": "psf__requests-5414",
+      "arm": "cheap",
+      "position": 2,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "psf__requests-6028.cheap",
+      "taskId": "psf__requests-6028",
+      "arm": "cheap",
+      "position": 0,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "psf__requests-6028.model-alone",
+      "taskId": "psf__requests-6028",
+      "arm": "model-alone",
+      "position": 1,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "psf__requests-6028.jev-first",
+      "taskId": "psf__requests-6028",
+      "arm": "jev-first",
+      "position": 2,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "sympy__sympy-16886.cheap",
+      "taskId": "sympy__sympy-16886",
+      "arm": "cheap",
+      "position": 0,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "sympy__sympy-16886.jev-first",
+      "taskId": "sympy__sympy-16886",
+      "arm": "jev-first",
+      "position": 1,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "sympy__sympy-16886.model-alone",
+      "taskId": "sympy__sympy-16886",
+      "arm": "model-alone",
+      "position": 2,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "sympy__sympy-19346.jev-first",
+      "taskId": "sympy__sympy-19346",
+      "arm": "jev-first",
+      "position": 0,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "sympy__sympy-19346.model-alone",
+      "taskId": "sympy__sympy-19346",
+      "arm": "model-alone",
+      "position": 1,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "sympy__sympy-19346.cheap",
+      "taskId": "sympy__sympy-19346",
+      "arm": "cheap",
+      "position": 2,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "sympy__sympy-24562.jev-first",
+      "taskId": "sympy__sympy-24562",
+      "arm": "jev-first",
+      "position": 0,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "sympy__sympy-24562.cheap",
+      "taskId": "sympy__sympy-24562",
+      "arm": "cheap",
+      "position": 1,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    },
+    {
+      "id": "sympy__sympy-24562.model-alone",
+      "taskId": "sympy__sympy-24562",
+      "arm": "model-alone",
+      "position": 2,
+      "status": "NOTSTARTED",
+      "disposition": "Native qualification and frozen execution identity required; no coding attempt occurred."
+    }
+  ],
+  "publicFailures": [
+    {
+      "taskId": "psf__requests-2931",
+      "baseRevision": "5f7a3a74aab1625c2bb65f643197ee885e3da576",
+      "graderHash": "56818dddc0f751dd0df2cacb7c96bd2de30d19ced44d4bf8850071241a6c0b61",
+      "trigger": "Run the inspected grade.py for psf__requests-2931 on its broken base",
+      "expected": "healthy behavioral failure",
+      "observed": {
+        "verdict": "fail",
+        "healthy": true,
+        "durationMs": 168.41308300354285,
+        "evidenceHash": "ac939b30da42bcd3c07f012e80baa7d73a6af681620936ad45c6f9714c2b4de3",
+        "patchHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "exitCode": 1
+      },
+      "source": "Non-model broken-base preflight; no reference repair applied."
+    },
+    {
+      "taskId": "psf__requests-5414",
+      "baseRevision": "39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e",
+      "graderHash": "56818dddc0f751dd0df2cacb7c96bd2de30d19ced44d4bf8850071241a6c0b61",
+      "trigger": "Run the inspected grade.py for psf__requests-5414 on its broken base",
+      "expected": "healthy behavioral failure",
+      "observed": {
+        "verdict": "fail",
+        "healthy": true,
+        "durationMs": 189.01937500049826,
+        "evidenceHash": "c92b44f886a26fe64fb3703b5e2830dc69a84d4eb02c8b32d9e47c802500b183",
+        "patchHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "exitCode": 1
+      },
+      "source": "Non-model broken-base preflight; no reference repair applied."
+    },
+    {
+      "taskId": "psf__requests-6028",
+      "baseRevision": "0192aac24123735b3eaf9b08df46429bb770c283",
+      "graderHash": "56818dddc0f751dd0df2cacb7c96bd2de30d19ced44d4bf8850071241a6c0b61",
+      "trigger": "Run the inspected grade.py for psf__requests-6028 on its broken base",
+      "expected": "healthy behavioral failure",
+      "observed": {
+        "verdict": "fail",
+        "healthy": true,
+        "durationMs": 164.8132499976782,
+        "evidenceHash": "c1638327b82821224384ddd99098d07f306649b78c6a1419432b6c2ce27973a7",
+        "patchHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "exitCode": 1
+      },
+      "source": "Non-model broken-base preflight; no reference repair applied."
+    },
+    {
+      "taskId": "sympy__sympy-16886",
+      "baseRevision": "c50643a49811e9fe2f4851adff4313ad46f7325e",
+      "graderHash": "56818dddc0f751dd0df2cacb7c96bd2de30d19ced44d4bf8850071241a6c0b61",
+      "trigger": "Run the inspected grade.py for sympy__sympy-16886 on its broken base",
+      "expected": "healthy behavioral failure",
+      "observed": {
+        "verdict": "fail",
+        "healthy": true,
+        "durationMs": 826.2332079975749,
+        "evidenceHash": "aa30768f8c5083f87c97ed36159bf2ac3e2566bc43940cef043f0dd81a4800a1",
+        "patchHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "exitCode": 1
+      },
+      "source": "Non-model broken-base preflight; no reference repair applied."
+    },
+    {
+      "taskId": "sympy__sympy-19346",
+      "baseRevision": "94fb720696f5f5d12bad8bc813699fd696afd2fb",
+      "graderHash": "56818dddc0f751dd0df2cacb7c96bd2de30d19ced44d4bf8850071241a6c0b61",
+      "trigger": "Run the inspected grade.py for sympy__sympy-19346 on its broken base",
+      "expected": "healthy behavioral failure",
+      "observed": {
+        "verdict": "fail",
+        "healthy": true,
+        "durationMs": 748.6164590009139,
+        "evidenceHash": "c1638327b82821224384ddd99098d07f306649b78c6a1419432b6c2ce27973a7",
+        "patchHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "exitCode": 1
+      },
+      "source": "Non-model broken-base preflight; no reference repair applied."
+    },
+    {
+      "taskId": "sympy__sympy-24562",
+      "baseRevision": "b1cb676cf92dd1a48365b731979833375b188bf2",
+      "graderHash": "56818dddc0f751dd0df2cacb7c96bd2de30d19ced44d4bf8850071241a6c0b61",
+      "trigger": "Run the inspected grade.py for sympy__sympy-24562 on its broken base",
+      "expected": "healthy behavioral failure",
+      "observed": {
+        "verdict": "fail",
+        "healthy": true,
+        "durationMs": 797.9137500005891,
+        "evidenceHash": "7f6331e06069dc5e6862a390178ae3fa1fa1503dd3e5bd4319556b7058310a05",
+        "patchHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "exitCode": 1
+      },
+      "source": "Non-model broken-base preflight; no reference repair applied."
+    }
+  ],
+  "nextAction": "Root must prove task-scoped native baseline isolation and owning-runtime identity, then freeze exact profile, package, input and packets. If unsupported, return these eighteen NOTSTARTED dispositions for human review."
+}

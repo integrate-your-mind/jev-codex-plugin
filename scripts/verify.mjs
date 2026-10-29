@@ -16,6 +16,8 @@ const steps = [
   ...['test', 'validate'].map(name => ['npm', ['run', name], source]),
   [process.execPath, ['scripts/verify-distribution.mjs'], root],
   [process.execPath, ['--test', ...['compare', 'export-smoke', 'freeze-upstream', 'normalize-paired'].map(name => `benchmarks/cross-agent/tests/${name}.test.mjs`)], root],
+  [process.execPath, ['--test', ...['pilot', 'corpus', 'cli', 'preparation', 'grader-classification'].map(name => `benchmarks/desktop-ranking-pilot/${name}.test.mjs`)], root],
+  [process.execPath, ['--test', 'benchmarks/desktop-ranking-pilot/whole-plugin-v1/controller.test.mjs'], root],
   [process.execPath, ['--test', 'scripts/verify-build.test.mjs', 'scripts/verify-distribution.test.mjs', 'scripts/sync-jev-contract.test.mjs', 'scripts/local-ci.test.mjs'], root],
 ];
 

@@ -3,6 +3,9 @@ import { evidenceSchema, type Question } from './contracts.js';
 import { correlationSchema, decisionDomains, decisionPolicySchema, INSUFFICIENT_EVIDENCE_ID, originSchema } from './batch.js';
 export { decisionDomains } from './batch.js';
 
+export const MAX_DECISION_CANDIDATES = 254;
+export const MAX_DECISION_PAYLOAD_BYTES = 48_000;
+
 export const DECISION_RUBRIC_VERSION = 'decision-2026-09-26.2';
 const identifier = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,79}$/);
 export const decisionSchema = z.strictObject({
@@ -14,7 +17,7 @@ export const decisionSchema = z.strictObject({
     description: z.string().min(1).max(1600),
     available: z.boolean().default(true),
     metadata: z.record(z.string().regex(/^[a-zA-Z0-9_.-]{1,40}$/), z.union([z.string().max(500), z.number().finite(), z.boolean()])).refine(value => Object.keys(value).length <= 16, 'at most 16 metadata keys').optional()
-  })).min(1).max(12),
+  })).min(1).max(MAX_DECISION_CANDIDATES),
   evidence: z.array(evidenceSchema).max(12).default([]),
   policy: decisionPolicySchema.optional(),
   origin: originSchema.optional(),

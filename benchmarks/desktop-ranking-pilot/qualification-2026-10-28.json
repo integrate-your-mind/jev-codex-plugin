@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "desktop-qualification-v1",
+  "observedAt": "2026-10-28T23:54:26.281137+00:00",
+  "host": {
+    "kind": "codex-desktop",
+    "version": "26.1023.50603",
+    "build": "22391",
+    "runtimeIdentity": {
+      "status": "unverified",
+      "evidence": [
+        "Installed bundle metadata identifies com.openai.codex and the recorded version/build. A supported connection to the runtime owning the desktop task was not established."
+      ]
+    }
+  },
+  "nativeRouting": {
+    "supportedOwningTransport": {
+      "status": "unverified",
+      "evidence": [
+        "Read-only filesystem check found the default app-server-control socket absent. No custom endpoint or separate CLI runtime was contacted."
+      ]
+    },
+    "orderedPreDispatch": {
+      "status": "unverified",
+      "evidence": [
+        "The available native thread creation interface selects settings for a new task but exposes no ordered pre-dispatch callback. No private IPC was contacted."
+      ]
+    },
+    "effectiveActuation": {
+      "status": "unverified",
+      "evidence": [
+        "No model request or settings mutation was attempted. Configuration and schema advertisement do not establish inference settings."
+      ]
+    }
+  },
+  "baselineIsolation": {
+    "tools": {
+      "status": "unverified",
+      "evidence": [
+        "Current tool schema exposes Jev tools. Native create_thread has no plugin-exposure override. No isolated baseline task was created."
+      ]
+    },
+    "hooks": {
+      "status": "unverified",
+      "evidence": [
+        "A per-workspace plugin-off setting alone has not proved absence of all task guidance and automatic consultation paths."
+      ]
+    },
+    "instructions": {
+      "status": "unverified",
+      "evidence": [
+        "This current task receives developer Jev advisory messages. Native create_thread exposes no instruction override. Global AGENTS exists and mentions pstack but does not contain a literal Jev name. No claim is made that another task inherits identical instructions."
+      ]
+    },
+    "candidatePacket": {
+      "status": "unverified",
+      "evidence": [
+        "No baseline coding task or candidate packet was dispatched."
+      ]
+    },
+    "transport": {
+      "status": "unverified",
+      "evidence": [
+        "No task-scoped proof excludes a Jev transport from the actual desktop baseline."
+      ]
+    }
+  },
+  "scope": {
+    "readOnly": true,
+    "inferenceAttempted": false,
+    "newThreadCreated": false,
+    "configurationChanged": false,
+    "privateIpcContacted": false,
+    "cliSubstituted": false
+  },
+  "disposition": "NOT_QUALIFIED",
+  "nextAction": "Root must establish a supported native baseline with no Jev tools, hooks, instructions, packet or transport and identify the actual desktop-owned runtime. Freeze and execute only after those observations and all grader controls qualify. If the available host cannot provide that isolation, return the eighteen NOTSTARTED dispositions for human review; do not substitute CLI or alter authentication."
+}

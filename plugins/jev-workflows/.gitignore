@@ -4,3 +4,4 @@ node_modules/
 work/
 coverage/
 *.tsbuildinfo
+/tests/fixtures/claude-code.d.ts
