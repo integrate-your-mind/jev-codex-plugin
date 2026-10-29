@@ -117,7 +117,9 @@ export type UpdateTaskContextInput = z.input<typeof updateTaskContextInputSchema
 export type TaskContextOptions = {
   env?: NodeJS.ProcessEnv;
   now?: Date;
+  publishUnderLock?: (context: TaskContextRecord) => Promise<void>;
 };
+export type TaskContextIdentity = TaskContextRecord['scope'];
 
 function digest(value: string): string {
   return createHash('sha256').update(value).digest('hex');
@@ -224,21 +226,52 @@ async function writeRecord(path: string, directory: string, record: TaskContextR
   try { await rename(temporary, path); } finally { await unlink(temporary).catch(() => {}); }
 }
 
-export async function loadTaskContext(scope: TaskContextScope, options: TaskContextOptions = {}): Promise<TaskContextRecord | undefined> {
-  const target = await contextPath(scope, options.env ?? process.env);
-  if (!target) return undefined;
+async function readContextRecord(path: string, identity: TaskContextIdentity, env: NodeJS.ProcessEnv): Promise<TaskContextRecord | undefined> {
   try {
-    const handle = await open(target.path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {
       const info = await handle.stat();
       if (!info.isFile()) return undefined;
       const parsed = taskContextRecordSchema.safeParse(JSON.parse(await handle.readFile('utf8')));
       if (!parsed.success) return undefined;
-      if (parsed.data.scope.workspaceHash !== target.scope!.workspaceHash || parsed.data.scope.sessionHash !== target.scope!.sessionHash || parsed.data.scope.agentHash !== target.scope!.agentHash) return undefined;
-      parsed.data.candidateCatalogs = sanitizeCatalog(parsed.data.candidateCatalogs, currentSecrets(options.env ?? process.env));
+      if (parsed.data.scope.workspaceHash !== identity.workspaceHash || parsed.data.scope.sessionHash !== identity.sessionHash || parsed.data.scope.agentHash !== identity.agentHash) return undefined;
+      parsed.data.candidateCatalogs = sanitizeCatalog(parsed.data.candidateCatalogs, currentSecrets(env));
       return parsed.data;
     } finally { await handle.close(); }
   } catch { return undefined; }
+}
+
+function identityPath(identity: TaskContextIdentity, env: NodeJS.ProcessEnv): {path: string; directory: string} | undefined {
+  if (!identity || ![identity.workspaceHash, identity.sessionHash, identity.agentHash].every(value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value))) return undefined;
+  const root = dataDirectory(env);
+  if (!isAbsolute(root) || root.includes('\0')) return undefined;
+  const directory = join(root, CONTEXT_DIRECTORY, identity.workspaceHash, identity.sessionHash, identity.agentHash);
+  return {directory, path: join(directory, 'context.json')};
+}
+
+export async function loadTaskContextIdentity(identity: TaskContextIdentity, options: TaskContextOptions = {}): Promise<TaskContextRecord | undefined> {
+  const env = options.env ?? process.env;
+  const target = identityPath(identity, env);
+  return target ? readContextRecord(target.path, identity, env) : undefined;
+}
+
+export async function withTaskContextIdentity<T>(identity: TaskContextIdentity, operation: (context: TaskContextRecord) => Promise<T>, options: TaskContextOptions = {}): Promise<T | undefined> {
+  const env = options.env ?? process.env;
+  const target = identityPath(identity, env);
+  if (!target) return undefined;
+  const lockPath = join(target.directory, '.context.lock');
+  let lock: Awaited<ReturnType<typeof acquireStateLock>>;
+  try {lock = await acquireStateLock(lockPath, CONTEXT_LOCK_ATTEMPTS);} catch {return undefined;}
+  try {
+    const context = await readContextRecord(target.path, identity, env);
+    return context ? await operation(context) : undefined;
+  } finally {await releaseStateLock(lockPath, lock.handle, lock.token);}
+}
+
+export async function loadTaskContext(scope: TaskContextScope, options: TaskContextOptions = {}): Promise<TaskContextRecord | undefined> {
+  const env = options.env ?? process.env;
+  const target = await contextPath(scope, env);
+  return target?.scope ? readContextRecord(target.path, target.scope, env) : undefined;
 }
 
 /**
@@ -295,6 +328,7 @@ export async function updateTaskContext(scope: TaskContextScope, update: TaskCon
     const valid = taskContextRecordSchema.safeParse(next);
     if (!valid.success) return undefined;
     await writeRecord(target.path, target.directory, valid.data);
+    await options.publishUnderLock?.(structuredClone(valid.data));
     return valid.data;
   } finally {
     await releaseStateLock(lockPath, lock.handle, lock.token);

@@ -195,7 +195,7 @@ test('a late provider result cannot publish after an ordinary legacy context upd
 test('context saving and routing publication serialize against newer scoped updates', async () => {
   const f = await fixture();
   const originalLstat = fs.lstat;
-  const originalOpen = fs.open;
+  const originalRename = fs.rename;
   let paused = false;
   let signalPause: (() => void) | undefined;
   let resume: (() => void) | undefined;
@@ -212,10 +212,10 @@ test('context saving and routing publication serialize against newer scoped upda
     }
     return originalLstat(...args);
   }) as typeof fs.lstat;
-  fs.open = (async (...args: Parameters<typeof fs.open>) => {
-    try {return await originalOpen(...args);}
-    catch (error) {if (paused && String(args[0]).endsWith('/.context.lock') && (error as NodeJS.ErrnoException).code === 'EEXIST') signalWaiting?.(); throw error;}
-  }) as typeof fs.open;
+  fs.rename = (async (...args: Parameters<typeof fs.rename>) => {
+    try {return await originalRename(...args);}
+    catch (error) {if (paused && String(args[1]).endsWith('/.context.lock') && ['EEXIST', 'ENOTEMPTY', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) signalWaiting?.(); throw error;}
+  }) as typeof fs.rename;
   syncBuiltinESMExports();
   try {
     const old = f.api.updateTaskContext({scope, update: {operation: 'replace', rootObjective: 'Old'}, routing: metadata});
@@ -230,7 +230,7 @@ test('context saving and routing publication serialize against newer scoped upda
     const task = await f.store(newResult.routing.catalogRef).read(current.records.task!);
     assert.equal((task as unknown as {objective: string}).objective, 'New');
     assert.equal((await loadTaskContext(scope, {env: {PLUGIN_DATA: f.root}}))?.rootObjective?.value, 'New');
-  } finally {resume?.(); fs.lstat = originalLstat; fs.open = originalOpen; syncBuiltinESMExports(); await f.close();}
+  } finally {resume?.(); fs.lstat = originalLstat; fs.rename = originalRename; syncBuiltinESMExports(); await f.close();}
 });
 
 test('a non-cooperative provider reaches the consultation deadline and no late result changes the pointer', async () => {

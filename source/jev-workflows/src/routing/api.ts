@@ -7,8 +7,8 @@ import {decisionDomains} from '../batch.js';
 import type {DecisionAssessment, DecisionInput, DecisionService} from '../decision-hook.js';
 import {consultCandidateCatalog} from '../routing-consultation.js';
 import {dataDirectory} from '../store.js';
-import {updateTaskContext, updateTaskContextInputSchema, type TaskContextRecord} from '../task-context.js';
-import {redactText} from '../redact.js';
+import {loadTaskContextIdentity, withTaskContextIdentity, updateTaskContext, updateTaskContextInputSchema, type TaskContextIdentity, type TaskContextRecord} from '../task-context.js';
+import {sanitize} from '../redact.js';
 import {readCredentialFile} from '../credential.js';
 import {sanitizeCandidateMetadata} from '../candidate-metadata.js';
 import {ROUTING_SCHEMA_VERSION, sameProfile, type CatalogSnapshot, type DecisionProposal, type DeliveryObservation, type HostCapabilities, type ModelEffortProfile, type RoutingRecord, type RoutingScope, type TaskRevision} from './contracts.js';
@@ -23,6 +23,8 @@ export const catalogRefSchema = z.strictObject({
   catalogId: digestSchema, digest: digestSchema, taskRevisionId: digestSchema, capabilityId: digestSchema,
 });
 export type CatalogRef = z.output<typeof catalogRefSchema>;
+type ContextBoundTask = TaskRevision & {readonly contextDigest: string};
+function contextIdentity(scope: RoutingScope): TaskContextIdentity {return {workspaceHash: scope.workspaceId, sessionHash: scope.sessionId, agentHash: scope.agentId};}
 
 const coverageSchema = z.strictObject({
   discovery: z.enum(['complete_supported_inventory', 'partial']),
@@ -106,7 +108,7 @@ export function createRoutingApi(options: {service: DecisionService; env?: NodeJ
     const key = env.JEV_API_KEY_FILE ? readCredentialFile(env.JEV_API_KEY_FILE) : null;
     const secrets = [env.TYPESAFE_API_KEY, key].filter((item): item is string => Boolean(item));
     const text = JSON.stringify(value);
-    if (redactText(text, secrets) !== text) throw new Error('unsafe_routing_metadata');
+    if (JSON.stringify(sanitize(value, secrets)) !== text) throw new Error('unsafe_routing_metadata');
   }
   function scopeFor(context: TaskContextRecord, input: z.output<typeof routingUpdateSchema>): RoutingScope {
     return {hostId: input.hostId, accountId: input.accountId, workspaceId: context.scope.workspaceHash, sessionId: context.scope.sessionHash, agentId: context.scope.agentHash};
@@ -133,13 +135,13 @@ export function createRoutingApi(options: {service: DecisionService; env?: NodeJ
     const previous = current.records.task ? await store.read<TaskRevision>(current.records.task) : null;
     const task = await store.publish({
       ...base(scope, 'task_revision', 'facts'), kind: 'task_revision', revision: (previous?.revision ?? 0) + 1,
-      factsRevision: input.task?.factsRevision ?? digest(context), objective: context.rootObjective?.value ?? '', subtask: context.latestStep?.value ?? '',
+      factsRevision: input.task?.factsRevision ?? digest(context), contextDigest: digest(context), objective: context.rootObjective?.value ?? '', subtask: context.latestStep?.value ?? '',
       sourceRevision: input.sourceRevision, evidenceRevision: input.task?.evidenceRevision ?? digest(context.evidenceRefs), catalogId: catalog.id,
       observedFailureIds: input.task?.observedFailureIds ?? [], pendingToolCycle: input.task?.pendingToolCycle ?? false,
       completedSubtask: input.task?.completedSubtask ?? false, unknowns: input.task?.unknowns ?? [],
       ...(input.task?.pin ? {pin: input.task.pin} : {}), ...(input.task?.currentProfile ? {currentProfile: input.task.currentProfile} : {}),
       dependsOn: [catalog.id, capabilities.id],
-    } as TaskRevision);
+    } as ContextBoundTask);
     const commit = await store.compareAndSet(current.revision, {catalog: catalog.id, capabilities: capabilities.id, task: task.id});
     if (commit.status === 'conflict') return {status: 'unavailable', reasonCode: 'routing_state_conflict'};
     const catalogRef: CatalogRef = {schemaVersion: ROUTING_SCHEMA_VERSION, scope, catalogId: catalog.id, digest: catalogDigest(catalog), taskRevisionId: task.id, capabilityId: capabilities.id};
@@ -150,11 +152,16 @@ export function createRoutingApi(options: {service: DecisionService; env?: NodeJ
   }
   async function update(raw: unknown) {
     const input = routingUpdateTaskContextInputSchema.parse(raw);
-    const context = await updateTaskContext(input.scope, input.update, {env, now: now()});
+    let publishedRouting: unknown;
+    const context = await updateTaskContext(input.scope, input.update, {env, now: now(),
+      ...(input.routing ? {publishUnderLock: async (saved: TaskContextRecord) => {
+        try {publishedRouting = await publishContext(saved, input.routing!);}
+        catch (error) {publishedRouting = {status: 'unavailable', reasonCode: reasonFor(error)};}
+      }} : {}),
+    });
     if (!context) return {status: 'unavailable', reasonCode: 'task_context_unavailable'};
     if (!input.routing) return {status: 'updated', context};
-    try {return {status: 'updated', context, routing: await publishContext(context, input.routing)};}
-    catch (error) {return {status: 'updated', context, routing: {status: 'unavailable', reasonCode: reasonFor(error)}};}
+    return {status: 'updated', context, routing: publishedRouting};
   }
   async function resolveRef(ref: CatalogRef) {
     await privateState();
@@ -166,9 +173,10 @@ export function createRoutingApi(options: {service: DecisionService; env?: NodeJ
     if (catalogDigest(catalog) !== ref.digest) throw new Error('catalog_ref_digest_mismatch');
     if (catalog.entries.some(entry => JSON.stringify(entry.metadata ?? {}) !== JSON.stringify(sanitizeCandidateMetadata(entry.metadata, value => value)))) throw new Error('unsafe_catalog_metadata');
     safeMetadata(catalog.entries);
-    const [current, task, capabilities] = await Promise.all([store.current(), store.read<TaskRevision>(ref.taskRevisionId), store.read<HostCapabilities>(ref.capabilityId)]);
+    const [current, task, capabilities, context] = await Promise.all([store.current(), store.read<ContextBoundTask>(ref.taskRevisionId), store.read<HostCapabilities>(ref.capabilityId), loadTaskContextIdentity(contextIdentity(ref.scope), {env})]);
     if (!task || !capabilities || task.kind !== 'task_revision' || capabilities.kind !== 'host_capabilities') throw new Error('catalog_ref_dependencies_unavailable');
     if (current.records.catalog !== ref.catalogId || current.records.task !== ref.taskRevisionId || current.records.capabilities !== ref.capabilityId || task.catalogId !== ref.catalogId) throw new Error('stale_task_revision');
+    if (!context || task.contextDigest !== digest(context)) throw new Error('stale_task_revision');
     return {store, catalog, current, task, capabilities};
   }
   async function boundedConsult(input: DecisionInput, signal?: AbortSignal): Promise<DecisionAssessment> {
@@ -203,7 +211,16 @@ export function createRoutingApi(options: {service: DecisionService; env?: NodeJ
         available: entry.available && (question.domain !== 'model' || eligibleProfile(entry.metadata, capabilities, task)),
         ...(entry.metadata ? {metadata: {...entry.metadata}} : {}),
       }));
-      const result = publicAssessment(await boundedConsult({...question, candidates}, signal));
+      const pending = await withTaskContextIdentity(contextIdentity(catalogRef.scope), async context => {
+        if (task.contextDigest !== digest(context)) throw new Error('stale_task_revision');
+        await resolveRef(catalogRef);
+        return {consultation: boundedConsult({...question, candidates}, signal)};
+      }, {env});
+      if (!pending) return {status: 'unavailable', reasonCode: 'stale_task_revision'};
+      const result = publicAssessment(await pending.consultation);
+      return await withTaskContextIdentity(contextIdentity(catalogRef.scope), async context => {
+      if (signal?.aborted) return {status: 'unavailable', reasonCode: 'cancelled'};
+      if (task.contextDigest !== digest(context)) throw new Error('stale_task_revision');
       await resolveRef(catalogRef);
       const coverage = {catalogId: catalog.id, inventoryCount: catalog.coverage.inventoryCount, domainInventoryCount: entries.length,
         discovery: catalog.coverage.discovery, source: 'caller_scoped_mcp', inaccessibleCategories: catalog.coverage.inaccessibleCategories,
@@ -229,6 +246,7 @@ export function createRoutingApi(options: {service: DecisionService; env?: NodeJ
       return {...result, routing: {schemaVersion: ROUTING_SCHEMA_VERSION, catalogRef, coverage, proposal: {id: proposal.id, disposition: proposal.disposition},
         delivery: {status: 'prepared', observationId: delivery.id, acknowledgment: 'unknown'},
         application: {status: 'not_attempted', reasonCode: 'mcp_has_no_host_actuator'}, execution: {status: 'unknown'}, outcome: {status: 'unknown'}}};
+      }, {env}) ?? {status: 'unavailable', reasonCode: 'stale_task_revision'};
     } catch (error) {return {status: 'unavailable', reasonCode: reasonFor(error)};}
   }
   async function status(scope?: RoutingScope) {
