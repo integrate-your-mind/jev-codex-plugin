@@ -20,3 +20,20 @@ The first three terminal outcomes require a retained `interim_report` event befo
 All assigned elapsed time contributes to cost per verified fix. Fix percentages use actual completed, source-valid observations. Curves stop at terminal observations and include unsuccessful assigned time. Unknown model billing remains unknown, provider invocations are separate from success, and consultation counts do not establish benefit. The exploratory verdict requires all eighteen source-valid outcomes, observed advice uptake, no increased approval interruptions, and the approved fix/time screen.
 
 This is not an official full SWE-bench score. Completion does not launch a confirmation study or lift Claude, QQ, routing or stable-promotion holds.
+
+## Guarded native launch preparation
+
+Use the guard for an independently authorized future study. It cannot resume a halted cohort or replace its consumed attempts.
+
+```sh
+node benchmarks/desktop-ranking-pilot/whole-plugin-v1/cli.mjs freeze-launch-contract private-run-dir launch-contract.json
+node benchmarks/desktop-ranking-pilot/whole-plugin-v1/cli.mjs prepare-launch private-run-dir launch-request.json
+```
+
+Freeze the contract before the first attempt. Its schema is `whole-plugin-launch-contract-v1`, with `manifestHash`, `commonPromptHash`, and the eighteen ordered `slots`. Each slot pins `slotId`, trusted native `projectId`, absolute `workspace`, `baseRevision`, `configurationHash` and the full expected `promptHash`. Hashes use the canonical `hash` export from `controller.mjs`.
+
+Persist the normal `start` event before preparation. A request uses `whole-plugin-launch-preparation-v1`, `manifestHash`, `slotId`, observed ISO `at`, `selected`, `commonPromptPath`, `promptPath`, and `prerequisites`. `selected` contains the observed `projectId`, `workspace`, `model`, `effort`, `baseRevision`, and `configurationHash`. Each prerequisite contains `id`, literal `exitCode: 0`, `signal: null`, `artifactPath`, and `artifactHash`. Command failure or an absent prompt file returns an error and no native arguments. Do not concatenate, pipe or reuse command stdout/stderr as prompt content.
+
+Required artifacts are JSON. `prompt-preparation` uses `whole-plugin-prompt-ready-v1` with `manifestHash`, `slotId`, `commonPromptHash`, and `promptHash`. `workspace-validation` uses `whole-plugin-workspace-ready-v1` with `slotId` and the same `selected` observation. `prior-outcomes` uses `whole-plugin-prior-outcomes-v1` with `grades`, containing the preceding completed independent receipts. A grade receipt must use `whole-plugin-independent-grade-v1`, matching `slotId`, `patchHash`, `graderHash`, `studyVerdict`, its actual grading `exitCode`, and healthy `terminal.verdict`. Missing `studyVerdict` is a schema failure.
+
+Successful preparation exclusively writes a private `launches/<slot-id>.json`, verifies readback, records `native_launch_prepared`, and returns a structured `nativeArgs` object. It makes no native call. A caller must inspect the successful command result and pass that object directly to the supported native creation tool. A second preparation is rejected. Uncertain publication is retained for reconciliation, never silently retried or bypassed. The guard establishes validated launch inputs; actual chat exposure and model identity still require native observations.
