@@ -49,6 +49,14 @@ The report returns JSON, CSV and SVG/PNG plots for observed verified fixes, cumu
 
 The report is descriptive. It does not infer benefit from connections, advice counts or synthetic fixtures, and it does not launch another study. Real results are supplied only by root's native executions and independent grader receipts. Tests use clearly synthetic events and check normal, failure, outage, exposure-break, deadline, pending and recovery behavior.
 
+## Native launch preparation and incident recovery
+
+A directly reproduced orchestration bug scored likelihood 10 × impact 8 = 80. A failed prerequisite was ignored, and missing-file stderr was passed to native chat creation as the coding prompt. The reusable correction is a narrow launch-data validator and CLI. They prepare native create arguments without executing tools, creating chats or opening a general host tunnel.
+
+An immutable private launch contract joins the existing manifest hash and all eighteen slot IDs to their trusted project IDs, absolute workspace paths, base/configuration hashes and expected prompt hashes. It pins the common coding prompt independently. The preparation request supplies explicit command-success receipts, prompt files and observed native project settings. The CLI reads the prompt files itself. It never takes command stdout or stderr as prompt content. Missing files, nonzero exits, an incorrect grade receipt schema, mismatched hashes/settings, occupied slots or a changed study produce no native arguments. Preparation requires the actual slot's persisted `start` event before returning arguments. Publication uses an exclusive file, readback and a state digest; a failed or uncertain publication must be reconciled rather than retried under another name.
+
+Already-created native launches without pre-launch intent require honest recovery accounting. `recovery_untracked_launch` is accepted only for the next untouched slot, with no active attempt, a unique actual chat ID, observed creation/completion timestamps, explicit `prelaunchStartedAt: null`, and retained evidence. It consumes that slot as infrastructure-invalid and permanently halts scoring. It never invents a start time, native profile or valid exposure. The report includes the observed runtime as a measured lower bound, labels incomplete elapsed coverage, and leaves time per verified fix unknown when its denominator includes unknown time. Invalid-only arms have no scored fix curve. This event cannot authorize another launch, replacement attempt or new cohort.
+
 ## Throughput checkpoint
 
 - Blocking first steps. Freeze this amendment and the event interface, then validate current source/grader/task pins and native exposure evidence before each attempt.
