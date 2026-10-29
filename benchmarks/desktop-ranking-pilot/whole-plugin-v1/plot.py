@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 from pathlib import Path
 from typing import Any
 
@@ -53,7 +54,10 @@ def _finish(fig: plt.Figure, report: dict[str, Any], output: Path, name: str) ->
         fig.text(0.5, 0.01, "Elapsed time is a measured lower bound; pre-launch timing is unknown", ha="center", fontsize=9, color="#9a3412")
     fig.tight_layout(rect=(0, 0.06 if lower_bound else 0, 1, 0.92))
     for extension in ("svg", "png"):
-        fig.savefig(output / f"{name}.{extension}", bbox_inches="tight", dpi=160)
+        path = output / f"{name}.{extension}"
+        fig.savefig(path, bbox_inches="tight", dpi=160)
+        if extension == "svg":
+            path.write_bytes(re.sub(rb"[ \t]+(?=\r?$)", b"", path.read_bytes(), flags=re.MULTILINE))
     plt.close(fig)
 
 

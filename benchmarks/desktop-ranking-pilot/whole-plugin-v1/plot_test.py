@@ -3,6 +3,7 @@
 import json
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from plot import render
@@ -49,6 +50,9 @@ class PlotRenderingTest(unittest.TestCase):
                 self.assertGreater(file.stat().st_size, 500)
                 if file.suffix == ".png":
                     self.assertEqual(file.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+                else:
+                    self.assertTrue(ET.parse(file).getroot().tag.endswith("}svg"))
+                    self.assertFalse(any(line.endswith((b" ", b"\t")) for line in file.read_bytes().splitlines()))
             fixes = (root / "plots" / "verified-fixes.svg").read_text()
             self.assertIn("1/1 (100%)", fixes)
             self.assertIn("5 pending; 0 invalid", fixes)
