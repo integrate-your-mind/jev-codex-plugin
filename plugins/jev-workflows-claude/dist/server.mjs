@@ -34592,7 +34592,7 @@ function completionQuestionsFor(input2) {
 }
 
 // src/service.ts
-import { createHash as createHash2, randomUUID as randomUUID4 } from "node:crypto";
+import { createHash as createHash3, randomUUID as randomUUID4 } from "node:crypto";
 
 // src/redact.ts
 function redactText(value, explicitSecrets = []) {
@@ -36432,9 +36432,10 @@ var FileStore = class {
 // src/policy.ts
 import { constants as constants3 } from "node:fs";
 import { mkdir as mkdir3, open as open4, rename as rename3, lstat as lstat3, realpath, unlink as unlink3 } from "node:fs/promises";
-import { randomUUID as randomUUID3 } from "node:crypto";
+import { randomUUID as randomUUID3, createHash as createHash2 } from "node:crypto";
 import { isAbsolute as isAbsolute2, join as join3, sep } from "node:path";
 var POLICY_FILE = "policy.json";
+var POLICY_MODE_FILE = "policy-mode-v1.json";
 var MAX_POLICY_BYTES = 8 * 1024;
 var DEFAULT_CALL_CAP = null;
 var DEFAULT_CALLS_PER_DAY = null;
@@ -36442,7 +36443,7 @@ var DEFAULT_BYTES_PER_DAY = null;
 var MAX_WORKSPACES = 64;
 var automationPolicySchema = external_exports.strictObject({
   enabled: external_exports.boolean(),
-  consultationMode: external_exports.enum(["changed_state", "always"]).default("always"),
+  consultationMode: external_exports.enum(["changed_state", "always"]).optional(),
   scope: external_exports.enum(["all-workspaces", "workspaces"]).default("workspaces"),
   workspaces: external_exports.array(external_exports.string().min(1).max(4096).refine(validRoot, "workspace must be absolute")).max(MAX_WORKSPACES).default([]),
   // These are optional user-selected caps. Safe-integer validation protects
@@ -36474,20 +36475,66 @@ function normalizePolicy(raw) {
   if (parsed.data.scope === "workspaces" && parsed.data.workspaces.length === 0 && parsed.data.enabled) throw new Error("no_allowed_roots");
   return parsed.data;
 }
-async function readPolicy(env = process.env) {
+var v1PolicySchema = automationPolicySchema.omit({ consultationMode: true });
+var policyModeSchema = external_exports.strictObject({
+  version: external_exports.literal(1),
+  policyDigest: external_exports.string().regex(/^[a-f0-9]{64}$/),
+  consultationMode: external_exports.enum(["changed_state", "always"])
+});
+function policyDigest(contents) {
+  return createHash2("sha256").update(contents).digest("hex");
+}
+async function readMode(path, digest4) {
   try {
-    const path = policyPath(env);
     const handle = await open4(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
     try {
       const info = await handle.stat();
-      if (!info.isFile() || info.size > MAX_POLICY_BYTES) return { ...DEFAULT_POLICY };
-      const value = JSON.parse(await handle.readFile("utf8"));
-      return normalizePolicy(value);
+      if (!info.isFile() || info.size > 512) return "always";
+      const parsed = policyModeSchema.safeParse(JSON.parse(await handle.readFile("utf8")));
+      return parsed.success && parsed.data.policyDigest === digest4 ? parsed.data.consultationMode : "always";
     } finally {
       await handle.close();
     }
   } catch {
+    return "always";
+  }
+}
+async function readPolicy(env = process.env) {
+  try {
+    const path = policyPath(env);
+    const handle = await open4(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
+    let contents;
+    try {
+      const info = await handle.stat();
+      if (!info.isFile() || info.size > MAX_POLICY_BYTES) return { ...DEFAULT_POLICY };
+      contents = await handle.readFile("utf8");
+    } finally {
+      await handle.close();
+    }
+    const policy = v1PolicySchema.parse(JSON.parse(contents));
+    if (policy.enabled && policy.scope === "workspaces" && policy.workspaces.length === 0) return { ...DEFAULT_POLICY };
+    const consultationMode = await readMode(join3(dataDirectory(env), POLICY_MODE_FILE), policyDigest(contents));
+    return { ...policy, consultationMode };
+  } catch {
     return { ...DEFAULT_POLICY };
+  }
+}
+async function assertPolicyTarget(path) {
+  try {
+    const info = await lstat3(path);
+    if (info.isSymbolicLink()) throw new Error("policy_symlink");
+    if (!info.isFile()) throw new Error("policy_not_file");
+  } catch (error62) {
+    if (error62.code !== "ENOENT") throw error62;
+  }
+}
+async function stagePolicyFile(path, contents) {
+  const handle = await open4(path, constants3.O_WRONLY | constants3.O_CREAT | constants3.O_EXCL | constants3.O_NOFOLLOW, 384);
+  try {
+    await handle.writeFile(contents, "utf8");
+    await handle.sync();
+  } finally {
+    await handle.close();
   }
 }
 async function configurePolicy(raw, env = process.env) {
@@ -36499,35 +36546,36 @@ async function configurePolicy(raw, env = process.env) {
     if (!info.isDirectory()) throw new Error("workspace_not_directory");
     canonicalWorkspaces.push(resolved);
   }
-  const policy = { ...parsed, workspaces: canonicalWorkspaces };
-  const directory = dataDirectory(env);
-  if (!isAbsolute2(directory) || directory.includes("\0")) throw new Error("invalid_policy_directory");
-  await mkdir3(directory, { recursive: true, mode: 448 });
   const path = policyPath(env);
+  const directory = dataDirectory(env);
+  await mkdir3(directory, { recursive: true, mode: 448 });
+  const modePath = join3(directory, POLICY_MODE_FILE);
+  const lockPath = join3(directory, "policy.lock");
+  const lock = await acquireStateLock(lockPath);
+  const token = randomUUID3();
+  const temporary = join3(directory, `.policy-${token}.tmp`);
+  const modeTemporary = join3(directory, `.policy-mode-${token}.tmp`);
   try {
-    const link5 = await lstat3(path);
-    if (link5.isSymbolicLink()) throw new Error("policy_symlink");
-    if (!link5.isFile()) throw new Error("policy_not_file");
-  } catch (error62) {
-    if (error62.code !== "ENOENT") throw error62;
-  }
-  const temporary = join3(directory, `.policy-${randomUUID3()}.tmp`);
-  const contents = JSON.stringify(policy) + "\n";
-  if (Buffer.byteLength(contents) > MAX_POLICY_BYTES) throw new Error("policy_too_large");
-  const handle = await open4(temporary, constants3.O_WRONLY | constants3.O_CREAT | constants3.O_EXCL | constants3.O_NOFOLLOW, 384);
-  try {
-    await handle.writeFile(contents, "utf8");
-  } finally {
-    await handle.close();
-  }
-  try {
+    await assertPolicyTarget(path);
+    await assertPolicyTarget(modePath);
+    const previous = await readPolicy(env);
+    const policy = { ...parsed, workspaces: canonicalWorkspaces, consultationMode: parsed.consultationMode ?? previous.consultationMode ?? "always" };
+    const { consultationMode, ...v1Policy } = policy;
+    const contents = JSON.stringify(v1Policy) + "\n";
+    if (Buffer.byteLength(contents) > MAX_POLICY_BYTES) throw new Error("policy_too_large");
+    const modeContents = JSON.stringify({ version: 1, policyDigest: policyDigest(contents), consultationMode }) + "\n";
+    await stagePolicyFile(temporary, contents);
+    await stagePolicyFile(modeTemporary, modeContents);
+    await rename3(modeTemporary, modePath);
     await rename3(temporary, path);
-  } catch (error62) {
+    return policy;
+  } finally {
     await unlink3(temporary).catch(() => {
     });
-    throw error62;
+    await unlink3(modeTemporary).catch(() => {
+    });
+    await releaseStateLock(lockPath, lock.handle, lock.token);
   }
-  return policy;
 }
 
 // src/decision.ts
@@ -36645,7 +36693,7 @@ function mediaPreviewAssets(assets) {
   return Object.fromEntries(Object.entries(assets).map(([name, asset]) => [name, {
     format: asset.format,
     bytes: Buffer.byteLength(asset.data_base64, "base64"),
-    sha256: createHash2("sha256").update(Buffer.from(asset.data_base64, "base64")).digest("hex")
+    sha256: createHash3("sha256").update(Buffer.from(asset.data_base64, "base64")).digest("hex")
   }]));
 }
 function createService(options = {}) {
@@ -36667,7 +36715,7 @@ function createService(options = {}) {
   const confidenceFloor = options.confidenceFloor ?? 0.6;
   const cache = /* @__PURE__ */ new Map();
   const inFlight = /* @__PURE__ */ new Map();
-  const digestOf = (value) => createHash2("sha256").update(JSON.stringify(value)).digest("hex");
+  const digestOf = (value) => createHash3("sha256").update(JSON.stringify(value)).digest("hex");
   function status(policy = DEFAULT_POLICY) {
     const current = credential();
     return {
@@ -37415,16 +37463,16 @@ async function recordDecisionOutcome(raw, options = {}) {
 }
 
 // src/routing/api.ts
-import { createHash as createHash6, randomUUID as randomUUID10 } from "node:crypto";
+import { createHash as createHash7, randomUUID as randomUUID10 } from "node:crypto";
 import { lstat as lstat5, mkdir as mkdir7 } from "node:fs/promises";
 import { isAbsolute as isAbsolute5, join as join8 } from "node:path";
 
 // src/routing-consultation.ts
-import { createHash as createHash3, randomUUID as randomUUID7 } from "node:crypto";
+import { createHash as createHash4, randomUUID as randomUUID7 } from "node:crypto";
 var CONSULTATION_FACT_TTL_MS = 7 * 24 * 60 * 60 * 1e3;
 var CONSULTATION_METADATA_TTL_MS = 90 * 24 * 60 * 60 * 1e3;
 function digest(value) {
-  return createHash3("sha256").update(JSON.stringify(value)).digest("hex");
+  return createHash4("sha256").update(JSON.stringify(value)).digest("hex");
 }
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
@@ -37514,7 +37562,7 @@ async function consultCandidateCatalog(input2, service2, signal, deadline = Date
 // src/task-context.ts
 import { constants as constants7 } from "node:fs";
 import { mkdir as mkdir5, open as open7, realpath as realpath2, rename as rename4, unlink as unlink6 } from "node:fs/promises";
-import { randomUUID as randomUUID8, createHash as createHash4 } from "node:crypto";
+import { randomUUID as randomUUID8, createHash as createHash5 } from "node:crypto";
 import { isAbsolute as isAbsolute4, join as join6 } from "node:path";
 var TASK_CONTEXT_VERSION = 1;
 var MAX_TEXT_BYTES = 1500;
@@ -37602,7 +37650,7 @@ var updateTaskContextInputSchema = external_exports.strictObject({
   update: taskContextUpdateSchema
 });
 function digest2(value) {
-  return createHash4("sha256").update(value).digest("hex");
+  return createHash5("sha256").update(value).digest("hex");
 }
 function currentSecrets(env) {
   const fileSecret = env.JEV_API_KEY_FILE ? readCredentialFile(env.JEV_API_KEY_FILE) : null;
@@ -37794,13 +37842,13 @@ function sameProfile(left, right) {
 import { constants as constants8 } from "node:fs";
 import { mkdir as mkdir6, open as open8, lstat as lstat4, link as link4, rename as rename5, unlink as unlink7, readdir as readdir3 } from "node:fs/promises";
 import { join as join7, resolve } from "node:path";
-import { createHash as createHash5, randomUUID as randomUUID9 } from "node:crypto";
+import { createHash as createHash6, randomUUID as randomUUID9 } from "node:crypto";
 var DAY = 24 * 60 * 60 * 1e3;
 var FACT_RETENTION = 7 * DAY;
 var METADATA_RETENTION = 90 * DAY;
 var MAX_ROUTING_FILE_BYTES = 64 * 1024 * 1024;
 function hash2(value) {
-  return createHash5("sha256").update(value).digest("hex");
+  return createHash6("sha256").update(value).digest("hex");
 }
 function scopeKey(scope) {
   const values = [scope.hostId, scope.accountId, scope.workspaceId, scope.sessionId, scope.agentId];
@@ -38138,7 +38186,7 @@ function canonical2(value) {
   return value;
 }
 function digest3(value) {
-  return createHash6("sha256").update(JSON.stringify(canonical2(value))).digest("hex");
+  return createHash7("sha256").update(JSON.stringify(canonical2(value))).digest("hex");
 }
 function catalogDigest(record2) {
   const { expiresAt: _expiresAt, ...content } = record2;

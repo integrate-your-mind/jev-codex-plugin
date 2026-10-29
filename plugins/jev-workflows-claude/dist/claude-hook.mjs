@@ -4281,7 +4281,7 @@ var require_jpeg_js = __commonJS({
 // src/claude-hook.ts
 import { constants as constants10 } from "node:fs";
 import { mkdir as mkdir7, open as open10, realpath as realpath5, rename as rename6, unlink as unlink9, lstat as lstat7 } from "node:fs/promises";
-import { randomUUID as randomUUID8, createHash as createHash7 } from "node:crypto";
+import { randomUUID as randomUUID9, createHash as createHash8 } from "node:crypto";
 import { join as join8, isAbsolute as isAbsolute6 } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -4618,6 +4618,7 @@ var FileStore = class {
 // src/policy.ts
 import { constants as constants3 } from "node:fs";
 import { mkdir as mkdir3, open as open4, rename as rename3, lstat as lstat3, realpath, unlink as unlink3 } from "node:fs/promises";
+import { randomUUID as randomUUID3, createHash } from "node:crypto";
 import { isAbsolute as isAbsolute2, join as join3, sep } from "node:path";
 
 // node_modules/zod/v4/classic/external.js
@@ -24290,6 +24291,7 @@ function date4(params) {
 
 // src/policy.ts
 var POLICY_FILE = "policy.json";
+var POLICY_MODE_FILE = "policy-mode-v1.json";
 var MAX_POLICY_BYTES = 8 * 1024;
 var DEFAULT_CALL_CAP = null;
 var DEFAULT_CALLS_PER_DAY = null;
@@ -24297,7 +24299,7 @@ var DEFAULT_BYTES_PER_DAY = null;
 var MAX_WORKSPACES = 64;
 var automationPolicySchema = external_exports.strictObject({
   enabled: external_exports.boolean(),
-  consultationMode: external_exports.enum(["changed_state", "always"]).default("always"),
+  consultationMode: external_exports.enum(["changed_state", "always"]).optional(),
   scope: external_exports.enum(["all-workspaces", "workspaces"]).default("workspaces"),
   workspaces: external_exports.array(external_exports.string().min(1).max(4096).refine(validRoot, "workspace must be absolute")).max(MAX_WORKSPACES).default([]),
   // These are optional user-selected caps. Safe-integer validation protects
@@ -24323,24 +24325,46 @@ function policyPath(env) {
 function validRoot(value) {
   return typeof value === "string" && isAbsolute2(value) && !value.includes("\0") && value.length <= 4096;
 }
-function normalizePolicy(raw) {
-  const parsed = automationPolicySchema.safeParse(raw);
-  if (!parsed.success) throw new Error("invalid_policy");
-  if (parsed.data.scope === "workspaces" && parsed.data.workspaces.length === 0 && parsed.data.enabled) throw new Error("no_allowed_roots");
-  return parsed.data;
+var v1PolicySchema = automationPolicySchema.omit({ consultationMode: true });
+var policyModeSchema = external_exports.strictObject({
+  version: external_exports.literal(1),
+  policyDigest: external_exports.string().regex(/^[a-f0-9]{64}$/),
+  consultationMode: external_exports.enum(["changed_state", "always"])
+});
+function policyDigest(contents) {
+  return createHash("sha256").update(contents).digest("hex");
+}
+async function readMode(path, digest4) {
+  try {
+    const handle = await open4(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
+    try {
+      const info = await handle.stat();
+      if (!info.isFile() || info.size > 512) return "always";
+      const parsed = policyModeSchema.safeParse(JSON.parse(await handle.readFile("utf8")));
+      return parsed.success && parsed.data.policyDigest === digest4 ? parsed.data.consultationMode : "always";
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return "always";
+  }
 }
 async function readPolicy(env = process.env) {
   try {
     const path = policyPath(env);
     const handle = await open4(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
+    let contents;
     try {
       const info = await handle.stat();
       if (!info.isFile() || info.size > MAX_POLICY_BYTES) return { ...DEFAULT_POLICY };
-      const value = JSON.parse(await handle.readFile("utf8"));
-      return normalizePolicy(value);
+      contents = await handle.readFile("utf8");
     } finally {
       await handle.close();
     }
+    const policy = v1PolicySchema.parse(JSON.parse(contents));
+    if (policy.enabled && policy.scope === "workspaces" && policy.workspaces.length === 0) return { ...DEFAULT_POLICY };
+    const consultationMode = await readMode(join3(dataDirectory(env), POLICY_MODE_FILE), policyDigest(contents));
+    return { ...policy, consultationMode };
   } catch {
     return { ...DEFAULT_POLICY };
   }
@@ -24368,14 +24392,14 @@ async function workspaceAllowed(policy, cwd) {
 }
 
 // src/decision-hook.ts
-import { createHash as createHash5 } from "node:crypto";
+import { createHash as createHash6 } from "node:crypto";
 import { constants as constants7 } from "node:fs";
 import { mkdir as mkdir6, open as open7, realpath as realpath3, readdir as readdir3, unlink as unlink6, lstat as lstat4, rename as rename5 } from "node:fs/promises";
-import { randomUUID as randomUUID6 } from "node:crypto";
+import { randomUUID as randomUUID7 } from "node:crypto";
 import { isAbsolute as isAbsolute5, join as join6 } from "node:path";
 
 // src/routing-consultation.ts
-import { createHash, randomUUID as randomUUID3 } from "node:crypto";
+import { createHash as createHash2, randomUUID as randomUUID4 } from "node:crypto";
 import { constants as constants4 } from "node:fs";
 import { mkdir as mkdir4, open as open5, readdir as readdir2, unlink as unlink4, link as link2 } from "node:fs/promises";
 import { join as join4 } from "node:path";
@@ -24656,7 +24680,7 @@ var CONSULTATION_FACT_TTL_MS = 7 * 24 * 60 * 60 * 1e3;
 var PROVIDER_COOLDOWN_MS = 6e4;
 var CONSULTATION_METADATA_TTL_MS = 90 * 24 * 60 * 60 * 1e3;
 function digest(value) {
-  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+  return createHash2("sha256").update(JSON.stringify(value)).digest("hex");
 }
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
@@ -24798,7 +24822,7 @@ async function claimConsultation(directory, semanticId, now = Date.now()) {
     async complete() {
       if (released) throw new Error("consultation_claim_released");
       if (completed) return;
-      const temporary = join4(directory, `.consultation-${randomUUID3()}.tmp`);
+      const temporary = join4(directory, `.consultation-${randomUUID4()}.tmp`);
       try {
         const handle = await open5(temporary, constants4.O_CREAT | constants4.O_EXCL | constants4.O_WRONLY | constants4.O_NOFOLLOW, 384);
         try {
@@ -24832,7 +24856,7 @@ async function recordProviderOutage(directory, result, now = Date.now()) {
   const retryAt = outageRetryAt(result, now);
   if (retryAt === void 0) return;
   await mkdir4(directory, { recursive: true, mode: 448 });
-  const handle = await open5(join4(directory, `${retryAt}-${randomUUID3()}.json`), constants4.O_CREAT | constants4.O_EXCL | constants4.O_WRONLY | constants4.O_NOFOLLOW, 384);
+  const handle = await open5(join4(directory, `${retryAt}-${randomUUID4()}.json`), constants4.O_CREAT | constants4.O_EXCL | constants4.O_WRONLY | constants4.O_NOFOLLOW, 384);
   try {
     await handle.writeFile(JSON.stringify({ retryAt, reason: result.reasonCode }) + "\n");
   } finally {
@@ -24897,7 +24921,7 @@ async function pruneConsultationMetadata(directory, kind, now = Date.now()) {
 }
 
 // src/service.ts
-import { createHash as createHash3, randomUUID as randomUUID4 } from "node:crypto";
+import { createHash as createHash4, randomUUID as randomUUID5 } from "node:crypto";
 
 // src/redact.ts
 function redactText(value, explicitSecrets = []) {
@@ -24917,7 +24941,7 @@ function sanitize(value, secrets) {
 }
 
 // src/provider.ts
-import { createHash as createHash2 } from "node:crypto";
+import { createHash as createHash3 } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
@@ -26061,7 +26085,7 @@ var scoreAnswerSchema = external_exports.strictObject({
   confidence: number01
 });
 function fingerprintCredential(apiKey) {
-  return createHash2("sha256").update(apiKey).digest("hex");
+  return createHash3("sha256").update(apiKey).digest("hex");
 }
 function requestIdentifier(response, apiKey) {
   const names = ["x-typesafe-request-id", "x-request-id", "request-id"];
@@ -26345,7 +26369,7 @@ function mediaPreviewAssets(assets) {
   return Object.fromEntries(Object.entries(assets).map(([name, asset]) => [name, {
     format: asset.format,
     bytes: Buffer.byteLength(asset.data_base64, "base64"),
-    sha256: createHash3("sha256").update(Buffer.from(asset.data_base64, "base64")).digest("hex")
+    sha256: createHash4("sha256").update(Buffer.from(asset.data_base64, "base64")).digest("hex")
   }]));
 }
 function createService(options = {}) {
@@ -26367,7 +26391,7 @@ function createService(options = {}) {
   const confidenceFloor = options.confidenceFloor ?? 0.6;
   const cache = /* @__PURE__ */ new Map();
   const inFlight = /* @__PURE__ */ new Map();
-  const digestOf = (value) => createHash3("sha256").update(JSON.stringify(value)).digest("hex");
+  const digestOf = (value) => createHash4("sha256").update(JSON.stringify(value)).digest("hex");
   function status(policy = DEFAULT_POLICY) {
     const current = credential();
     return {
@@ -26456,7 +26480,7 @@ function createService(options = {}) {
     }
     async function run() {
       const start = Date.now();
-      const receiptId = randomUUID4();
+      const receiptId = randomUUID5();
       const meta3 = { receiptId, evidenceIds, inputDigest, rubricVersion, ...localMeta };
       let result;
       const limits = status(await readPolicy(env));
@@ -26608,7 +26632,7 @@ function createService(options = {}) {
     }
     async function run() {
       const start = Date.now();
-      const receiptId = randomUUID4();
+      const receiptId = randomUUID5();
       const meta3 = { receiptId, ...localMeta };
       let result;
       const limits = status(await readPolicy(env));
@@ -26711,7 +26735,7 @@ function createService(options = {}) {
 // src/task-context.ts
 import { constants as constants6 } from "node:fs";
 import { mkdir as mkdir5, open as open6, realpath as realpath2, rename as rename4, unlink as unlink5 } from "node:fs/promises";
-import { randomUUID as randomUUID5, createHash as createHash4 } from "node:crypto";
+import { randomUUID as randomUUID6, createHash as createHash5 } from "node:crypto";
 import { isAbsolute as isAbsolute4, join as join5 } from "node:path";
 var TASK_CONTEXT_VERSION = 1;
 var MAX_TEXT_BYTES = 1500;
@@ -26799,7 +26823,7 @@ var updateTaskContextInputSchema = external_exports.strictObject({
   update: taskContextUpdateSchema
 });
 function digest2(value) {
-  return createHash4("sha256").update(value).digest("hex");
+  return createHash5("sha256").update(value).digest("hex");
 }
 function currentSecrets(env) {
   const fileSecret = env.JEV_API_KEY_FILE ? readCredentialFile(env.JEV_API_KEY_FILE) : null;
@@ -26887,7 +26911,7 @@ function provenanceFor(update, scope, now, secrets) {
   };
 }
 async function writeRecord(path, directory, record2) {
-  const temporary = join5(directory, `.context-${randomUUID5()}.tmp`);
+  const temporary = join5(directory, `.context-${randomUUID6()}.tmp`);
   const handle = await open6(temporary, constants6.O_WRONLY | constants6.O_CREAT | constants6.O_EXCL | constants6.O_NOFOLLOW, 384);
   try {
     await handle.writeFile(JSON.stringify(record2) + "\n", "utf8");
@@ -27054,7 +27078,7 @@ function safeId(value) {
   return /^[a-zA-Z0-9._:-]{1,80}$/.test(value) ? value : `evidence-${hash2(value).slice(0, 20)}`;
 }
 function hash2(value) {
-  return createHash5("sha256").update(value).digest("hex");
+  return createHash6("sha256").update(value).digest("hex");
 }
 function normalizeDecisionEvent(raw) {
   if (!isRecord2(raw) || typeof raw.hook_event_name !== "string" || !SUPPORTED_EVENTS.has(raw.hook_event_name)) return void 0;
@@ -27073,7 +27097,7 @@ function normalizeDecisionEvent(raw) {
   if ((raw.hook_event_name === "Stop" || raw.hook_event_name === "SubagentStop") && raw.stop_hook_active === true) return void 0;
   return {
     name: raw.hook_event_name,
-    eventId: typeof raw.event_id === "string" ? raw.event_id : EVENTS_WITHOUT_STABLE_NATIVE_ID.has(raw.hook_event_name) ? randomUUID6() : "",
+    eventId: typeof raw.event_id === "string" ? raw.event_id : EVENTS_WITHOUT_STABLE_NATIVE_ID.has(raw.hook_event_name) ? randomUUID7() : "",
     cwd: raw.cwd,
     sessionId: raw.session_id,
     turnId,
@@ -27315,7 +27339,7 @@ async function updatePromptCache(event, env) {
       }
       return void 0;
     }
-    const temporary = join6(directory, `.prompt-${randomUUID6()}.tmp`);
+    const temporary = join6(directory, `.prompt-${randomUUID7()}.tmp`);
     const contents = JSON.stringify({ prompt, updatedAt: Date.now() }) + "\n";
     const handle = await open7(temporary, constants7.O_WRONLY | constants7.O_CREAT | constants7.O_EXCL | constants7.O_NOFOLLOW, 384);
     try {
@@ -27380,7 +27404,7 @@ async function updateTurnResultCache(event, response, env) {
     }
     results.push(cachedToolResult(event, response, env));
     results = results.slice(-MAX_TURN_RESULTS);
-    const temporary = join6(directory, `.${turnHash}-${randomUUID6()}.tmp`);
+    const temporary = join6(directory, `.${turnHash}-${randomUUID7()}.tmp`);
     const contents = JSON.stringify({ turnHash, updatedAt: Date.now(), results }) + "\n";
     const handle = await open7(temporary, constants7.O_WRONLY | constants7.O_CREAT | constants7.O_EXCL | constants7.O_NOFOLLOW, 384);
     try {
@@ -27525,7 +27549,7 @@ function factsProjectionCoverage(input2) {
     const context = JSON.parse(input2.context);
     const truncation = isRecord2(context.truncation) ? context.truncation : {};
     const argumentsView = isRecord2(context.argumentProjection) ? context.argumentProjection : {};
-    complete = context.contextTruncated !== true && argumentsView.truncated !== true && !Object.values(truncation).some((value) => value === true) && !input2.evidence.some((item2) => item2.text.includes("...[truncated]..."));
+    complete = !input2.context.includes("...[truncated]...") && !JSON.stringify(input2.candidates).includes("...[truncated]...") && context.contextTruncated !== true && argumentsView.truncated !== true && !Object.values(truncation).some((value) => value === true) && !input2.evidence.some((item2) => item2.text.includes("...[truncated]..."));
   } catch {
   }
   return { complete, omittedFacts: complete ? 0 : "unknown" };
@@ -28113,7 +28137,7 @@ async function runDecisionHook(raw, options = {}) {
 import { constants as constants9 } from "node:fs";
 import { link as link3, lstat as lstat6, open as open9, realpath as realpath4, unlink as unlink8 } from "node:fs/promises";
 import { dirname as dirname3 } from "node:path";
-import { createHash as createHash6, randomUUID as randomUUID7 } from "node:crypto";
+import { createHash as createHash7, randomUUID as randomUUID8 } from "node:crypto";
 
 // src/hosts/claude/config.mjs
 var BRIDGE_VERSION = "jev-claude-routing-v1";
@@ -28235,7 +28259,7 @@ async function prepareBatchClaim(path, now = Date.now()) {
 
 // src/hosts/claude/producer.ts
 var object4 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var digest3 = (v) => createHash6("sha256").update(JSON.stringify(v)).digest("hex");
+var digest3 = (v) => createHash7("sha256").update(JSON.stringify(v)).digest("hex");
 var scopeFor = (raw) => ({ cwd: raw.cwd, sessionId: `claude:${raw.session_id}`, ...typeof raw.agent_id === "string" ? { agentId: raw.agent_id } : {} });
 var facts = (value) => value ? { rootObjective: value.rootObjective?.value, latestStep: value.latestStep?.value, constraints: value.constraints.map((x) => x.value), criteria: value.criteria.map((x) => x.value), corrections: value.corrections.map((x) => x.value), evidence: value.evidenceRefs.map((x) => ({ id: x.id, summary: x.summary, source: x.source })) } : null;
 async function captureClaudeObjective(raw, env) {
@@ -28268,7 +28292,7 @@ async function readConfig(path) {
 async function publish(path, record2, signal) {
   const contents = JSON.stringify(record2) + "\n";
   if (Buffer.byteLength(contents) > MAX_RECORD_BYTES) throw new Error("record_packet_too_large");
-  const temporary = `${path}.${randomUUID7()}.partial`;
+  const temporary = `${path}.${randomUUID8()}.partial`;
   try {
     const handle = await open9(temporary, constants9.O_WRONLY | constants9.O_CREAT | constants9.O_EXCL | constants9.O_NOFOLLOW, 384);
     try {
@@ -28449,7 +28473,7 @@ function isRecord3(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function hash3(value) {
-  return createHash7("sha256").update(value).digest("hex");
+  return createHash8("sha256").update(value).digest("hex");
 }
 function validIdentity(raw) {
   return typeof raw.session_id === "string" && raw.session_id.length > 0 && typeof raw.cwd === "string" && isAbsolute6(raw.cwd) && typeof raw.hook_event_name === "string" && SUPPORTED_EVENTS2.has(raw.hook_event_name);
@@ -28513,7 +28537,7 @@ async function writeStoredTurn(path, turnId) {
     if (!await ensurePrivateDirectory(directory)) return false;
     const existing = await lstat7(path).catch(() => void 0);
     if (existing && (!existing.isFile() || existing.isSymbolicLink())) return false;
-    const temporary = join8(directory, `.turn-${randomUUID8()}.tmp`);
+    const temporary = join8(directory, `.turn-${randomUUID9()}.tmp`);
     const handle = await open10(temporary, constants10.O_WRONLY | constants10.O_CREAT | constants10.O_EXCL | constants10.O_NOFOLLOW, 384);
     try {
       await handle.writeFile(JSON.stringify({ turnId, updatedAt: Date.now() }) + "\n", "utf8");
@@ -28538,7 +28562,7 @@ async function resolveTurn(raw, env) {
   if (!path) return void 0;
   if (!await ensurePrivateDirectory(join8(path, ".."))) return void 0;
   if (eventName === "UserPromptSubmit") {
-    const turnId = randomUUID8();
+    const turnId = randomUUID9();
     return await writeStoredTurn(path, turnId) ? turnId : void 0;
   }
   if (!TURN_EVENTS.has(eventName)) return void 0;

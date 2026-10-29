@@ -4283,7 +4283,7 @@ import { pathToFileURL } from "node:url";
 import { realpath as realpath2 } from "node:fs/promises";
 
 // src/service.ts
-import { createHash as createHash2, randomUUID as randomUUID3 } from "node:crypto";
+import { createHash as createHash3, randomUUID as randomUUID4 } from "node:crypto";
 
 // node_modules/zod/v4/classic/external.js
 var external_exports = {};
@@ -25888,8 +25888,10 @@ var FileStore = class {
 // src/policy.ts
 import { constants as constants3 } from "node:fs";
 import { mkdir as mkdir3, open as open4, rename as rename3, lstat as lstat3, realpath, unlink as unlink3 } from "node:fs/promises";
+import { randomUUID as randomUUID3, createHash as createHash2 } from "node:crypto";
 import { isAbsolute as isAbsolute2, join as join3, sep } from "node:path";
 var POLICY_FILE = "policy.json";
+var POLICY_MODE_FILE = "policy-mode-v1.json";
 var MAX_POLICY_BYTES = 8 * 1024;
 var DEFAULT_CALL_CAP = null;
 var DEFAULT_CALLS_PER_DAY = null;
@@ -25897,7 +25899,7 @@ var DEFAULT_BYTES_PER_DAY = null;
 var MAX_WORKSPACES = 64;
 var automationPolicySchema = external_exports.strictObject({
   enabled: external_exports.boolean(),
-  consultationMode: external_exports.enum(["changed_state", "always"]).default("always"),
+  consultationMode: external_exports.enum(["changed_state", "always"]).optional(),
   scope: external_exports.enum(["all-workspaces", "workspaces"]).default("workspaces"),
   workspaces: external_exports.array(external_exports.string().min(1).max(4096).refine(validRoot, "workspace must be absolute")).max(MAX_WORKSPACES).default([]),
   // These are optional user-selected caps. Safe-integer validation protects
@@ -25923,24 +25925,46 @@ function policyPath(env) {
 function validRoot(value) {
   return typeof value === "string" && isAbsolute2(value) && !value.includes("\0") && value.length <= 4096;
 }
-function normalizePolicy(raw) {
-  const parsed = automationPolicySchema.safeParse(raw);
-  if (!parsed.success) throw new Error("invalid_policy");
-  if (parsed.data.scope === "workspaces" && parsed.data.workspaces.length === 0 && parsed.data.enabled) throw new Error("no_allowed_roots");
-  return parsed.data;
+var v1PolicySchema = automationPolicySchema.omit({ consultationMode: true });
+var policyModeSchema = external_exports.strictObject({
+  version: external_exports.literal(1),
+  policyDigest: external_exports.string().regex(/^[a-f0-9]{64}$/),
+  consultationMode: external_exports.enum(["changed_state", "always"])
+});
+function policyDigest(contents) {
+  return createHash2("sha256").update(contents).digest("hex");
+}
+async function readMode(path, digest) {
+  try {
+    const handle = await open4(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
+    try {
+      const info = await handle.stat();
+      if (!info.isFile() || info.size > 512) return "always";
+      const parsed = policyModeSchema.safeParse(JSON.parse(await handle.readFile("utf8")));
+      return parsed.success && parsed.data.policyDigest === digest ? parsed.data.consultationMode : "always";
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return "always";
+  }
 }
 async function readPolicy(env = process.env) {
   try {
     const path = policyPath(env);
     const handle = await open4(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
+    let contents;
     try {
       const info = await handle.stat();
       if (!info.isFile() || info.size > MAX_POLICY_BYTES) return { ...DEFAULT_POLICY };
-      const value = JSON.parse(await handle.readFile("utf8"));
-      return normalizePolicy(value);
+      contents = await handle.readFile("utf8");
     } finally {
       await handle.close();
     }
+    const policy = v1PolicySchema.parse(JSON.parse(contents));
+    if (policy.enabled && policy.scope === "workspaces" && policy.workspaces.length === 0) return { ...DEFAULT_POLICY };
+    const consultationMode = await readMode(join3(dataDirectory(env), POLICY_MODE_FILE), policyDigest(contents));
+    return { ...policy, consultationMode };
   } catch {
     return { ...DEFAULT_POLICY };
   }
@@ -26061,7 +26085,7 @@ function mediaPreviewAssets(assets) {
   return Object.fromEntries(Object.entries(assets).map(([name, asset]) => [name, {
     format: asset.format,
     bytes: Buffer.byteLength(asset.data_base64, "base64"),
-    sha256: createHash2("sha256").update(Buffer.from(asset.data_base64, "base64")).digest("hex")
+    sha256: createHash3("sha256").update(Buffer.from(asset.data_base64, "base64")).digest("hex")
   }]));
 }
 function createService(options = {}) {
@@ -26083,7 +26107,7 @@ function createService(options = {}) {
   const confidenceFloor = options.confidenceFloor ?? 0.6;
   const cache = /* @__PURE__ */ new Map();
   const inFlight = /* @__PURE__ */ new Map();
-  const digestOf = (value) => createHash2("sha256").update(JSON.stringify(value)).digest("hex");
+  const digestOf = (value) => createHash3("sha256").update(JSON.stringify(value)).digest("hex");
   function status(policy = DEFAULT_POLICY) {
     const current = credential();
     return {
@@ -26172,7 +26196,7 @@ function createService(options = {}) {
     }
     async function run() {
       const start = Date.now();
-      const receiptId = randomUUID3();
+      const receiptId = randomUUID4();
       const meta3 = { receiptId, evidenceIds, inputDigest, rubricVersion, ...localMeta };
       let result;
       const limits = status(await readPolicy(env));
@@ -26324,7 +26348,7 @@ function createService(options = {}) {
     }
     async function run() {
       const start = Date.now();
-      const receiptId = randomUUID3();
+      const receiptId = randomUUID4();
       const meta3 = { receiptId, ...localMeta };
       let result;
       const limits = status(await readPolicy(env));

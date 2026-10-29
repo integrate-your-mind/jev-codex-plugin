@@ -110,7 +110,7 @@ if (plugin && mcp) {
 }
 
 assert(plugin?.name === "jev-workflows", "plugin.json: name must be jev-workflows");
-assert(/^\d+\.\d+\.\d+(?:\+codex\.[a-z0-9-]+)?$/.test(plugin?.version ?? "") && plugin.version.split('+')[0] === packageMetadata?.version, "plugin.json: base version must match package.json with an optional Codex cachebuster");
+assert(/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*)?(?:\+codex\.[a-z0-9-]+)?$/.test(plugin?.version ?? "") && plugin.version.split('+')[0] === packageMetadata?.version, "plugin.json: base version must match package.json with an optional Codex cachebuster");
 assert(plugin?.extensions?.["com.openai"]?.hooks === undefined,
   "plugin.json: omit an explicit hooks override so hooks/hooks.json uses conventional discovery");
 assert(legacy?.hooks === undefined, ".codex-plugin/plugin.json: direct hooks field is unsupported by the local validator");
