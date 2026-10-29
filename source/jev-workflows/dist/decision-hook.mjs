@@ -26231,6 +26231,7 @@ import { randomUUID as randomUUID4, createHash as createHash3 } from "node:crypt
 import { isAbsolute as isAbsolute2, join as join4, sep } from "node:path";
 var POLICY_FILE = "policy.json";
 var POLICY_MODE_FILE = "policy-mode-v1.json";
+var NEXT_POLICY_MODE_FILE = "policy-mode-next-v1.json";
 var MAX_POLICY_BYTES = 8 * 1024;
 var DEFAULT_CALL_CAP = null;
 var DEFAULT_CALLS_PER_DAY = null;
@@ -26278,31 +26279,36 @@ async function readMode(path, digest3) {
     const handle = await open5(path, constants4.O_RDONLY | constants4.O_NOFOLLOW);
     try {
       const info = await handle.stat();
-      if (!info.isFile() || info.size > 512) return "always";
+      if (!info.isFile() || info.size > 512) return void 0;
       const parsed = policyModeSchema.safeParse(JSON.parse(await handle.readFile("utf8")));
-      return parsed.success && parsed.data.policyDigest === digest3 ? parsed.data.consultationMode : "always";
+      return parsed.success && parsed.data.policyDigest === digest3 ? parsed.data.consultationMode : void 0;
     } finally {
       await handle.close();
     }
   } catch {
-    return "always";
+    return void 0;
   }
+}
+async function readAuthority(path) {
+  const handle = await open5(path, constants4.O_RDONLY | constants4.O_NOFOLLOW);
+  let contents;
+  try {
+    const info = await handle.stat();
+    if (!info.isFile() || info.size > MAX_POLICY_BYTES) throw new Error("invalid_policy");
+    contents = await handle.readFile("utf8");
+  } finally {
+    await handle.close();
+  }
+  const policy = v1PolicySchema.parse(JSON.parse(contents));
+  if (policy.enabled && policy.scope === "workspaces" && policy.workspaces.length === 0) throw new Error("no_allowed_roots");
+  return { contents, policy };
 }
 async function readPolicy(env = process.env) {
   try {
-    const path = policyPath(env);
-    const handle = await open5(path, constants4.O_RDONLY | constants4.O_NOFOLLOW);
-    let contents;
-    try {
-      const info = await handle.stat();
-      if (!info.isFile() || info.size > MAX_POLICY_BYTES) return { ...DEFAULT_POLICY };
-      contents = await handle.readFile("utf8");
-    } finally {
-      await handle.close();
-    }
-    const policy = v1PolicySchema.parse(JSON.parse(contents));
-    if (policy.enabled && policy.scope === "workspaces" && policy.workspaces.length === 0) return { ...DEFAULT_POLICY };
-    const consultationMode = await readMode(join4(dataDirectory(env), POLICY_MODE_FILE), policyDigest(contents));
+    const { contents, policy } = await readAuthority(policyPath(env));
+    const digest3 = policyDigest(contents);
+    const directory = dataDirectory(env);
+    const consultationMode = await readMode(join4(directory, POLICY_MODE_FILE), digest3) ?? await readMode(join4(directory, NEXT_POLICY_MODE_FILE), digest3) ?? "always";
     return { ...policy, consultationMode };
   } catch {
     return { ...DEFAULT_POLICY };

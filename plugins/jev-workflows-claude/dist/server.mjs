@@ -36485,6 +36485,7 @@ import { randomUUID as randomUUID3, createHash as createHash2 } from "node:crypt
 import { isAbsolute as isAbsolute2, join as join3, sep } from "node:path";
 var POLICY_FILE = "policy.json";
 var POLICY_MODE_FILE = "policy-mode-v1.json";
+var NEXT_POLICY_MODE_FILE = "policy-mode-next-v1.json";
 var MAX_POLICY_BYTES = 8 * 1024;
 var DEFAULT_CALL_CAP = null;
 var DEFAULT_CALLS_PER_DAY = null;
@@ -36538,31 +36539,36 @@ async function readMode(path, digest4) {
     const handle = await open4(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
     try {
       const info = await handle.stat();
-      if (!info.isFile() || info.size > 512) return "always";
+      if (!info.isFile() || info.size > 512) return void 0;
       const parsed = policyModeSchema.safeParse(JSON.parse(await handle.readFile("utf8")));
-      return parsed.success && parsed.data.policyDigest === digest4 ? parsed.data.consultationMode : "always";
+      return parsed.success && parsed.data.policyDigest === digest4 ? parsed.data.consultationMode : void 0;
     } finally {
       await handle.close();
     }
   } catch {
-    return "always";
+    return void 0;
   }
+}
+async function readAuthority(path) {
+  const handle = await open4(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
+  let contents;
+  try {
+    const info = await handle.stat();
+    if (!info.isFile() || info.size > MAX_POLICY_BYTES) throw new Error("invalid_policy");
+    contents = await handle.readFile("utf8");
+  } finally {
+    await handle.close();
+  }
+  const policy = v1PolicySchema.parse(JSON.parse(contents));
+  if (policy.enabled && policy.scope === "workspaces" && policy.workspaces.length === 0) throw new Error("no_allowed_roots");
+  return { contents, policy };
 }
 async function readPolicy(env = process.env) {
   try {
-    const path = policyPath(env);
-    const handle = await open4(path, constants3.O_RDONLY | constants3.O_NOFOLLOW);
-    let contents;
-    try {
-      const info = await handle.stat();
-      if (!info.isFile() || info.size > MAX_POLICY_BYTES) return { ...DEFAULT_POLICY };
-      contents = await handle.readFile("utf8");
-    } finally {
-      await handle.close();
-    }
-    const policy = v1PolicySchema.parse(JSON.parse(contents));
-    if (policy.enabled && policy.scope === "workspaces" && policy.workspaces.length === 0) return { ...DEFAULT_POLICY };
-    const consultationMode = await readMode(join3(dataDirectory(env), POLICY_MODE_FILE), policyDigest(contents));
+    const { contents, policy } = await readAuthority(policyPath(env));
+    const digest4 = policyDigest(contents);
+    const directory = dataDirectory(env);
+    const consultationMode = await readMode(join3(directory, POLICY_MODE_FILE), digest4) ?? await readMode(join3(directory, NEXT_POLICY_MODE_FILE), digest4) ?? "always";
     return { ...policy, consultationMode };
   } catch {
     return { ...DEFAULT_POLICY };
@@ -36599,29 +36605,46 @@ async function configurePolicy(raw, env = process.env) {
   const directory = dataDirectory(env);
   await mkdir3(directory, { recursive: true, mode: 448 });
   const modePath = join3(directory, POLICY_MODE_FILE);
+  const nextModePath = join3(directory, NEXT_POLICY_MODE_FILE);
   const lockPath = join3(directory, "policy.lock");
   const lock = await acquireStateLock(lockPath);
   const token = randomUUID3();
   const temporary = join3(directory, `.policy-${token}.tmp`);
   const modeTemporary = join3(directory, `.policy-mode-${token}.tmp`);
+  const recoveryTemporary = join3(directory, `.policy-mode-recovery-${token}.tmp`);
   try {
     await assertPolicyTarget(path);
     await assertPolicyTarget(modePath);
-    const previous = await readPolicy(env);
-    const policy = { ...parsed, workspaces: canonicalWorkspaces, consultationMode: parsed.consultationMode ?? previous.consultationMode ?? "always" };
+    await assertPolicyTarget(nextModePath);
+    const current = await readAuthority(path).catch(() => void 0);
+    const currentDigest = current ? policyDigest(current.contents) : void 0;
+    const currentMode = currentDigest ? await readMode(modePath, currentDigest) : void 0;
+    const pendingMode = currentDigest ? await readMode(nextModePath, currentDigest) : void 0;
+    const previousMode = current ? currentMode ?? pendingMode ?? "always" : DEFAULT_POLICY.consultationMode;
+    if (currentDigest && currentMode === void 0 && pendingMode !== void 0) {
+      await stagePolicyFile(recoveryTemporary, JSON.stringify({ version: 1, policyDigest: currentDigest, consultationMode: pendingMode }) + "\n");
+      await rename3(recoveryTemporary, modePath);
+    }
+    const policy = { ...parsed, workspaces: canonicalWorkspaces, consultationMode: parsed.consultationMode ?? previousMode ?? "always" };
     const { consultationMode, ...v1Policy } = policy;
     const contents = JSON.stringify(v1Policy) + "\n";
     if (Buffer.byteLength(contents) > MAX_POLICY_BYTES) throw new Error("policy_too_large");
     const modeContents = JSON.stringify({ version: 1, policyDigest: policyDigest(contents), consultationMode }) + "\n";
     await stagePolicyFile(temporary, contents);
     await stagePolicyFile(modeTemporary, modeContents);
-    await rename3(modeTemporary, modePath);
+    await rename3(modeTemporary, nextModePath);
     await rename3(temporary, path);
+    await stagePolicyFile(modeTemporary, modeContents);
+    await rename3(modeTemporary, modePath);
+    await unlink3(nextModePath).catch(() => {
+    });
     return policy;
   } finally {
     await unlink3(temporary).catch(() => {
     });
     await unlink3(modeTemporary).catch(() => {
+    });
+    await unlink3(recoveryTemporary).catch(() => {
     });
     await releaseStateLock(lockPath, lock.handle, lock.token);
   }
