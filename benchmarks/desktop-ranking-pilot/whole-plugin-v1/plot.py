@@ -81,8 +81,9 @@ def plot_curves(report: dict[str, Any], output: Path) -> None:
             continue
         if points != sorted(points):
             raise ValueError("curve points must preserve observed cumulative order")
-        ax.step([p[0] for p in points], [p[1] for p in points], where="post", color=COLORS[i], linewidth=2, label=LABELS[i])
-        ax.scatter([p[0] for p in points], [p[1] for p in points], s=23, color=COLORS[i])
+        if points[0][0] > 0:
+            points.insert(0, (0, 0))
+        ax.step([p[0] for p in points], [p[1] for p in points], where="post", color=COLORS[i], linewidth=2, linestyle=("--", ":", "-")[i], marker=("s", "^", "o")[i], markersize=4, label=LABELS[i])
         plotted = True
     if plotted:
         ax.legend(frameon=False)
