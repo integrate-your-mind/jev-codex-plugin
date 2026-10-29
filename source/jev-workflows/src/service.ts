@@ -12,6 +12,7 @@ import {
 } from './batch.js';
 import type { Answer } from './provider.js';
 import { MediaValidationError, validateMediaAssets, type ImageAsset } from './media.js';
+import {sanitizeCandidateMetadata, sanitizeStructuredCandidateMetadata} from './candidate-metadata.js';
 
 export type BatchAnswerAssessment =
   | {type: 'choice'; domain?: DecisionDomain; providerChoice: string; bestCandidate?: string; probabilities: Record<string, number>; confidence: number; disposition: 'recommendation' | 'ranking' | 'abstained'; recommendation?: string; reasonCode?: 'insufficient_evidence' | 'low_confidence'; policy: DecisionPolicy}
@@ -151,7 +152,9 @@ export function createService(options: ServiceOptions = {}) {
       if (input.exitCode === null) return {status: 'abstained', reasonCode: 'command_not_completed'};
     }
     const selected = Object.fromEntries(Object.entries(input).filter(([key]) => !['mode', 'policy', 'origin', 'correlation'].includes(key)));
-    if ('candidates' in input) selected.candidates = input.candidates.filter(candidate => candidate.available);
+    if ('candidates' in input) selected.candidates = input.candidates.filter(candidate => candidate.available).map(candidate => ({...candidate,
+      ...(candidate.metadata ? {metadata: sanitizeCandidateMetadata(candidate.metadata, text => redactText(text, secrets))} : {}),
+    }));
     const state = sanitize(selected, secrets);
     // Sanitize caller-defined questions and criteria as well as state before any egress.
     const rawQuestions = 'candidates' in input ? decisionQuestions(input)
@@ -267,7 +270,12 @@ export function createService(options: ServiceOptions = {}) {
     }
 
     const state = sanitize(input.state, secrets);
-    const questions = sanitize(providerQuestions(input), secrets) as Record<string, Question>;
+    const selectedQuestions: typeof input.questions = Object.fromEntries(Object.entries(input.questions).map(([id, question]) => [id,
+      question.type === 'choice' ? {...question, candidates: question.candidates.map(candidate => ({...candidate,
+        ...(candidate.metadata !== undefined ? {metadata: sanitizeStructuredCandidateMetadata(candidate.metadata, text => redactText(text, secrets))} : {}),
+      }))} : question,
+    ]));
+    const questions = sanitize(providerQuestions({...input, questions: selectedQuestions}), secrets) as Record<string, Question>;
     const policies = policiesByQuestion(input, {minConfidence: confidenceFloor, minProbability: confidenceFloor});
     let selectedModel: ModelSelector;
     try { selectedModel = resolveModelSelector(input.model ?? (model ?? undefined)); }

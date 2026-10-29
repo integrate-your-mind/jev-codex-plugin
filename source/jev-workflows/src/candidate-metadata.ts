@@ -1,5 +1,14 @@
 export const SENSITIVE_ARGUMENT_KEY = /(?:token|password|secret|authorization|cookie|credential|private[_-]?key|api[_-]?key|base64|file[_-]?uri|download[_-]?url|(?:^|[_-])key$)/i;
 
+export function sanitizeStructuredCandidateMetadata<T>(value: T, redact: (text: string) => string): T {
+  if (typeof value === 'string') return redact(value) as T;
+  if (Array.isArray(value)) return value.map(item => sanitizeStructuredCandidateMetadata(item, redact)) as T;
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => !SENSITIVE_ARGUMENT_KEY.test(key) && redact(key) === key)
+    .map(([key, item]) => [key, sanitizeStructuredCandidateMetadata(item, redact)])) as T;
+  return value;
+}
+
 export function sanitizeCandidateMetadata(value: unknown, redact: (text: string, maxBytes: number) => string | undefined): Record<string, string | number | boolean> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   const entries: Array<[string, string | number | boolean]> = [];
