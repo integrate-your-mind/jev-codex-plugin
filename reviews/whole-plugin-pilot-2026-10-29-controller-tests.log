@@ -1,0 +1,23 @@
+✔ synthetic schedule keeps six tasks, eighteen slots and every counterbalanced order (3.593417ms)
+✔ start intent counts startup before chat identity and failed integration consumes one slot (11.981417ms)
+✔ actual loaded source, profile and exposure mismatch halts scoring without replacement (10.258ms)
+✔ coding and independent grading deadlines include startup and waits (2.818125ms)
+✔ wrong patch, grader, missing actual identity and missing cheap delivery cannot pass (6.976416ms)
+✔ normal ON consultation outages and multiple delivered decisions retain separate uptake (7.368542ms)
+✔ first real comparison artifacts must be retained before attempt four (4.416167ms)
+✔ reports retain unsuccessful elapsed, actual completed denominators and pending unknowns (1.911541ms)
+✔ public exports omit native private identities and retain unknown billing and observed usage (2.402542ms)
+✔ immutable native event replay rejects tampering, gaps and unpublished partial files (19.950125ms)
+✔ frozen source, retrieval parameters and private event fields cannot silently change (1.714625ms)
+✔ missing cheap packet remains an assigned graded result with missing coverage (2.606708ms)
+✔ exploratory extra-fix screen requires actual uptake and no increased approval burden (119.627833ms)
+✔ time screen sums all unsuccessful attempt time and never rewards zero fixes (70.667ms)
+✔ infrastructure-invalid data retains its assigned clock and cannot establish superiority (1.030208ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 341.211708
