@@ -10,6 +10,12 @@ const digest = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value
 const text = value => typeof value === 'string' && value.length > 0;
 const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
 const terminal = slot => ['COMPLETE', 'INFRASTRUCTURE_INVALID'].includes(slot.status);
+const continuationKeys=['schemaVersion','parentStudyId','parentManifestHash','parentStateHash','importedSlotsHash','importedSlotIds','humanApprovalEvidenceHash'];
+const sameProtocol=(first,second)=>{
+  const {studyId:firstId,continuation:firstLink,...firstPins}=first;
+  const {studyId:secondId,continuation:secondLink,...secondPins}=second;
+  return hash(firstPins)===hash(secondPins);
+};
 
 export function exposureValid(arm, value) {
   const enabled = arm === 'plugin-on';
@@ -41,6 +47,13 @@ export function validateManifest(manifest) {
     for (const key of ['inputHash', 'publicFailureHash', 'graderHash']) assert(digest(task[key]), `Pin ${task.id}.${key}`);
     assert(task.cheapPacketHash === null || digest(task.cheapPacketHash), 'Cheap packet identity is a hash or an explicitly deferred deterministic retrieval');
   }
+  if (manifest.continuation !== undefined) {
+    const link=manifest.continuation;
+    assert(link && Object.keys(link).length===continuationKeys.length && continuationKeys.every(key=>Object.hasOwn(link,key))
+      && link.schemaVersion==='whole-plugin-continuation-v1' && text(link.parentStudyId) && link.parentStudyId!==manifest.studyId
+      && ['parentManifestHash','parentStateHash','importedSlotsHash','humanApprovalEvidenceHash'].every(key=>digest(link[key]))
+      && hash(link.importedSlotIds)===hash([`${TASK_IDS[0]}.plugin-off`,`${TASK_IDS[0]}.cheap`]), 'Continuation requires exact parent joins, first-two slot IDs and explicit human approval evidence');
+  }
   return true;
 }
 
@@ -53,6 +66,28 @@ export function freezeStudy(manifest) {
     failedPublicCycles: 0, billing: {codingUsd: null, jevUsd: null, complete: false, subscriptionCapacity: null},
   })));
   return freeze({schemaVersion: 'whole-plugin-state-v1', manifest: structuredClone(manifest), manifestHash: hash(manifest), slots, events: [], lastAt: null, halted: null, interim: null});
+}
+
+export function validateContinuationParent(parent) {
+  assert(parent?.schemaVersion==='whole-plugin-state-v1' && !parent.manifest?.continuation && Array.isArray(parent.events), 'Continue the original retained parent only once, never a replacement or nested cohort');
+  let replay=freezeStudy(parent.manifest);
+  for (const event of parent.events) replay=reduceEvent(replay,event);
+  assert(hash(replay)===hash(parent), 'Retained parent snapshot does not match its immutable event replay');
+  assert(parent.halted?.reason==='untracked-native-launch' && parent.slots[0].status==='COMPLETE' && parent.slots[0].verdict==='verified-fix'
+    && parent.slots[1].status==='INFRASTRUCTURE_INVALID' && parent.slots[1].verdict==='infrastructure-invalid'
+    && parent.slots[1].startedAt===null && parent.slots[1].untrackedLaunch?.prelaunchStartedAt===null
+    && hash(parent.slots.slice(2))===hash(freezeStudy(parent.manifest).slots.slice(2)), 'Only the approved valid first result and invalid second launch may be imported; sixteen slots must remain untouched');
+  return true;
+}
+
+export function continuationManifest(parent, config) {
+  validateContinuationParent(parent);
+  assert(config && Object.keys(config).length===2 && text(config.studyId) && config.studyId!==parent.manifest.studyId
+    && digest(config.humanApprovalEvidenceHash), 'Continuation needs a new study ID and explicit human approval evidence hash');
+  const manifest={...structuredClone(parent.manifest),studyId:config.studyId,continuation:{schemaVersion:'whole-plugin-continuation-v1',parentStudyId:parent.manifest.studyId,
+    parentManifestHash:parent.manifestHash,parentStateHash:hash(parent),importedSlotsHash:hash(parent.slots.slice(0,2)),
+    importedSlotIds:parent.slots.slice(0,2).map(slot=>slot.id),humanApprovalEvidenceHash:config.humanApprovalEvidenceHash}};
+  validateManifest(manifest); return freeze(manifest);
 }
 
 const fields = {
@@ -70,6 +105,7 @@ const fields = {
   integration_failed: ['reason', 'evidenceHash'], identity_broken: ['reason', 'evidenceHash'], tick: [],
   recovery_untracked_launch: ['chatId', 'createdAt', 'completedAt', 'prelaunchStartedAt', 'evidenceHash'],
   native_launch_prepared: ['preparationHash', 'stateHash', 'evidenceHash'],
+  continuation_import: ['parentState','evidenceHash'],
   interim_report: ['reportHash', 'artifactsHash', 'evidenceHash'],
 };
 
@@ -82,13 +118,23 @@ export function reduceEvent(previous, event) {
   const now = Date.parse(event.at);
   assert(Number.isFinite(now) && (previous.lastAt === null || now >= Date.parse(previous.lastAt)), 'Observed event times must be monotonic');
   const state = structuredClone(previous);
-  if (event.type === 'interim_report') {
+  if (event.type === 'continuation_import') {
+    const link=state.manifest.continuation,parent=event.parentState;
+    assert(link && state.events.length===0 && !event.slotId && state.slots.every(slot=>slot.status==='NOTSTARTED') && digest(event.evidenceHash), 'Import consumed parent slots exactly once before any continuation start');
+    validateContinuationParent(parent);
+    assert(link.parentStudyId===parent.manifest.studyId && link.parentManifestHash===parent.manifestHash && link.parentStateHash===hash(parent)
+      && link.importedSlotsHash===hash(parent.slots.slice(0,2)) && hash(link.importedSlotIds)===hash(parent.slots.slice(0,2).map(slot=>slot.id))
+      && sameProtocol(state.manifest,parent.manifest) && now>=Date.parse(parent.lastAt), 'Continuation import parent digests, original protocol or observed timing changed');
+    state.slots.splice(0,2,...structuredClone(parent.slots.slice(0,2)));
+    state.continuationImport={parentManifestHash:link.parentManifestHash,parentStateHash:link.parentStateHash,importedSlotsHash:link.importedSlotsHash,evidenceHash:event.evidenceHash};
+  } else if (event.type === 'interim_report') {
     assert(state.slots.slice(0, 3).every(terminal) && state.slots.slice(3).every(slot => slot.status === 'NOTSTARTED') && !state.interim, 'Record one interim chart after the first three attempts');
     assert([event.reportHash, event.artifactsHash, event.evidenceHash].every(digest), 'Retain actual interim report/artifact evidence');
     state.interim = {reportHash: event.reportHash, artifactsHash: event.artifactsHash, evidenceHash: event.evidenceHash};
   } else {
     const slot = state.slots.find(row => row.id === event.slotId);
     assert(slot, 'Unknown slot; extra attempts are forbidden');
+    assert(!state.continuationImport || !state.manifest.continuation.importedSlotIds.includes(slot.id), 'Imported consumed slots are immutable; no retry, replacement or later mutation is permitted');
     const task = state.manifest.tasks.find(row => row.id === slot.taskId);
     const halt = reason => { state.halted = {reason, at: event.at, eventId: event.id}; if (!terminal(slot)) { slot.status = 'INFRASTRUCTURE_INVALID'; slot.endedAt = event.at; } };
     if (event.type === 'recovery_untracked_launch') {
@@ -103,6 +149,7 @@ export function reduceEvent(previous, event) {
       slot.integrationFailure = 'untracked-native-launch';
       state.halted = {reason:'untracked-native-launch', at:event.at, eventId:event.id};
     } else if (event.type === 'start') {
+      assert(!state.manifest.continuation || state.continuationImport, 'Import the consumed parent slots before starting this linked continuation');
       assert(slot.status === 'NOTSTARTED' && state.slots.find(row => row.status === 'NOTSTARTED')?.id === slot.id, 'Each assigned slot starts once in frozen order');
       assert(!state.slots.some(row => ['CODING', 'GRADING'].includes(row.status)), 'Attempts run serially');
       assert(state.slots.indexOf(slot) < 3 || state.interim, 'Generate and retain the first-three interim charts before attempt four');

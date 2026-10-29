@@ -60,7 +60,8 @@ export function summarizeStudy(state, asOf = state.lastAt) {
   const extraFix = on.verifiedFixes > cheap.verifiedFixes && on.verifiedFixes >= off.verifiedFixes;
   const approvalOkay = on.approvals <= off.approvals && on.approvals <= cheap.approvals;
   let verdict = 'inconclusive', reason = 'Pilot incomplete; pending attempts are not failures.';
-  if (state.halted || state.slots.some(slot => slot.status === 'INFRASTRUCTURE_INVALID')) reason = 'Measurement integrity or infrastructure is unresolved; retain partial outcomes without a superiority claim.';
+  if (state.manifest.continuation) reason = 'Linked continuation retains the invalid parent slot and incomplete timing; the original eighteen-slot exploratory screen remains inconclusive.';
+  else if (state.halted || state.slots.some(slot => slot.status === 'INFRASTRUCTURE_INVALID')) reason = 'Measurement integrity or infrastructure is unresolved; retain partial outcomes without a superiority claim.';
   else if (complete) {
     if (on.uptakeObserved > 0 && approvalOkay && (extraFix || lowerTime)) {
       verdict = 'helpful'; reason = 'Exploratory screen passed with observed advice use and no increased approval burden.';
@@ -75,6 +76,11 @@ export function summarizeStudy(state, asOf = state.lastAt) {
     asOf, plannedAttempts: state.slots.length, completedAttempts: state.slots.filter(slot => slot.status === 'COMPLETE').length,
     pendingAttempts: state.slots.filter(slot => !terminal(slot)).length, invalidAttempts: state.slots.filter(slot => slot.status === 'INFRASTRUCTURE_INVALID').length,
     halted: Boolean(state.halted), arms,
+    ...(state.manifest.continuation ? {continuation:{schemaVersion:'whole-plugin-continuation-report-v1',
+      parentStudyId:/^[a-zA-Z0-9._-]{1,96}$/.test(state.manifest.continuation.parentStudyId) ? state.manifest.continuation.parentStudyId : `study-${hash(state.manifest.continuation.parentStudyId).slice(0,16)}`,
+      parentManifestHash:state.manifest.continuation.parentManifestHash,parentStateHash:state.manifest.continuation.parentStateHash,importedSlotsHash:state.manifest.continuation.importedSlotsHash,
+      importedAttempts:state.continuationImport?2:0,continuationAttemptLimit:16,newAssignedAttempts:state.slots.slice(2).filter(slot=>slot.startedAt!==null||slot.untrackedLaunch).length,
+      parentHalted:true,independentStudy:false}} : {}),
     paired: state.manifest.tasks.map(task => ({taskId: task.id, conditions: Object.fromEntries(ARMS.map(id => {
       const slot = state.slots.find(row => row.taskId === task.id && row.arm === id);
       return [id, terminal(slot) ? slot.verdict ?? 'infrastructure-invalid' : 'pending'];
@@ -82,7 +88,8 @@ export function summarizeStudy(state, asOf = state.lastAt) {
     limitations: ['Six-bug exploratory pilot, not an official full SWE-bench score.', 'Provider requests count observed invocations, not successful responses.',
       'Elapsed time includes all assigned attempts, startup, consultations, waits and grading; pending elapsed does not extend fix curves.',
       'Unknown billing stays unknown. Subscription capacity is not cash savings.',
-      ...(arms.some(arm=>arm.elapsedTimeCoverage==='lower-bound') ? ['Elapsed time is a measured lower bound; pre-launch timing is unknown. The untracked native launch invalidated isolation and halted this study.'] : [])],
+      ...(arms.some(arm=>arm.elapsedTimeCoverage==='lower-bound') ? [`Elapsed time is a measured lower bound; pre-launch timing is unknown. The untracked native launch invalidated isolation and halted ${state.manifest.continuation?'the parent study':'this study'}.`] : []),
+      ...(state.manifest.continuation ? ['Linked continuation imports two consumed attempts once and permits only sixteen new attempts. It is not an independent full comparison or confirmation; the original screen remains inconclusive.'] : [])],
   };
 }
 

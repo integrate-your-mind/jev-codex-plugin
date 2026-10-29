@@ -1,7 +1,7 @@
 import {mkdir, readFile, readdir, writeFile} from 'node:fs/promises';
 import {join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {freezeStudy, hash, reduceEvent, deadlines} from './controller.mjs';
+import {freezeStudy, hash, reduceEvent, deadlines, continuationManifest} from './controller.mjs';
 import {summarizeStudy, exportCsv} from './report.mjs';
 import {prepareNativeLaunch, validateLaunchContract} from './launch.mjs';
 
@@ -19,9 +19,23 @@ export async function readStudy(directory) {
 }
 export async function main(args) {
   const [command, ...paths] = args;
+  if (command === 'freeze-continuation' && paths.length === 3) {
+    const parentDirectory=resolve(paths[0]),directory=resolve(paths[1]),config=await json(paths[2]);
+    if(parentDirectory===directory || !config || Object.keys(config).some(key=>!['studyId','humanApprovalEvidenceHash','at'].includes(key))) throw new Error('Use a new private continuation directory and the approved continuation config');
+    const parent=await readStudy(parentDirectory),manifest=continuationManifest(parent,{studyId:config.studyId,humanApprovalEvidenceHash:config.humanApprovalEvidenceHash});
+    const frozen=freezeStudy(manifest),event={id:'continuation-import',type:'continuation_import',at:config.at??new Date().toISOString(),manifestHash:frozen.manifestHash,
+      parentState:parent,evidenceHash:hash({parentStateHash:hash(parent),humanApprovalEvidenceHash:config.humanApprovalEvidenceHash})};
+    const expected=reduceEvent(frozen,event);
+    await mkdir(directory); await mkdir(join(directory,'events'));
+    await put(join(directory,'frozen.json'),frozen); await put(join(directory,'events','0001.json'),event);
+    const observed=await readStudy(directory); if(hash(observed)!==hash(expected)) throw new Error('Continuation import publication changed; reconcile without launching');
+    return {directory,manifestHash:observed.manifestHash,parentManifestHash:parent.manifestHash,parentStateHash:hash(parent),importedSlotsHash:manifest.continuation.importedSlotsHash,
+      importedSlots:observed.slots.slice(0,2).map(slot=>({id:slot.id,status:slot.status})),nextSlotId:observed.slots[2].id,remainingAttempts:16};
+  }
   if (command === 'freeze-launch-contract' && paths.length === 2) {
     const directory=resolve(paths[0]), state=await readStudy(directory), contract=await json(paths[1]);
-    if(state.events.length || state.halted) throw new Error('Freeze native launch pins before any attempt starts');
+    const soleImport=state.manifest.continuation && state.continuationImport && state.events.length===1 && state.events[0].type==='continuation_import';
+    if(state.halted || state.events.length && !soleImport) throw new Error('Freeze native launch pins before any new attempt starts');
     validateLaunchContract(state,contract); await put(join(directory,'launch-contract.json'),contract);
     return {contractHash:hash(contract)};
   }
@@ -89,7 +103,7 @@ export async function main(args) {
     for (const [name, content] of Object.entries(files)) { await writeFile(join(directory, name), content, {flag: 'wx'}); artifacts[name] = hash(content); }
     return {directory, reportHash: hash(report), artifactsHash: hash(artifacts), artifacts};
   }
-  throw new Error('Use template config.json manifest.json; freeze manifest.json private-run-dir; freeze-launch-contract private-run-dir contract.json; prepare-launch private-run-dir request.json; record private-run-dir event.json; status private-run-dir; export private-run-dir new-output-dir [as-of-ISO]');
+  throw new Error('Use template config.json manifest.json; freeze manifest.json private-run-dir; freeze-continuation parent-run new-run config.json; freeze-launch-contract private-run-dir contract.json; prepare-launch private-run-dir request.json; record private-run-dir event.json; status private-run-dir; export private-run-dir new-output-dir [as-of-ISO]');
 }
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) main(process.argv.slice(2))
   .then(result => process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)).catch(error => { process.stderr.write(`${error.message}\n`); process.exitCode = 1; });
