@@ -26,6 +26,9 @@ export function validateManifest(manifest) {
   for (const key of ['appVersion', 'backendVersion']) assert(manifest.host[key] === null || text(manifest.host[key]), 'Unknown host versions must be null');
   assert(manifest.policy?.codingMs === CODING_MS && manifest.policy.totalMs === TOTAL_MS && manifest.policy.gradingMs === 600000
     && manifest.policy.attempts === 18 && manifest.policy.interimAfter === 3, 'Use the approved eighteen-slot 35+10 minute policy');
+  assert(manifest.policy.retrieval?.method === 'bm25' && manifest.policy.retrieval.k1 === 1.2 && manifest.policy.retrieval.b === 0.75
+    && manifest.policy.retrieval.maxBytes === 16384 && manifest.policy.retrieval.maxCandidates === 254
+    && manifest.policy.retrieval.source === 'frozen-broken-base' && manifest.policy.retrieval.tieBreak === 'stable-id', 'Preserve the frozen BM25 retrieval policy');
   assert(ARMS.every(arm => exposureValid(arm, manifest.arms?.[arm])), 'Freeze OFF, cheap and changed-state ON exposure separately');
   checkCorpus(manifest.corpus, manifest.reservations);
   assert(hash(manifest.tasks?.map(task => task.id)) === hash(TASK_IDS), 'Keep the same six bugs in the frozen order');
@@ -56,6 +59,7 @@ const fields = {
   start: ['evidenceHash'],
   identity: ['chatId', 'workspaceId', 'model', 'effort', 'baseRevision', 'exposure', 'evidenceHash'],
   retrieval: ['packetHash', 'evidenceHash'],
+  retrieval_unavailable: ['reason', 'evidenceHash'],
   consultation: ['consultationId', 'status', 'providerInvoked', 'delivered', 'receiptHash', 'evidenceHash'],
   uptake: ['consultationId', 'value', 'evidenceHash'],
   approval: ['evidenceHash'], public_verification_failed: ['evidenceHash'],
@@ -112,6 +116,10 @@ export function reduceEvent(previous, event) {
         assert(slot.status === 'CODING' && slot.arm === 'cheap' && !slot.retrieval && digest(event.packetHash) && digest(event.evidenceHash), 'Record one actual timed cheap retrieval');
         if (task.cheapPacketHash !== null && event.packetHash !== task.cheapPacketHash) halt('cheap-packet-identity-broke');
         else slot.retrieval = {packetHash: event.packetHash, evidenceHash: event.evidenceHash};
+      } else if (event.type === 'retrieval_unavailable') {
+        assert(slot.status === 'CODING' && slot.arm === 'cheap' && !slot.retrieval && ['unavailable', 'error', 'missing'].includes(event.reason)
+          && digest(event.evidenceHash), 'Retain the actual cheap packet delivery failure without replacing the attempt');
+        slot.retrieval = {packetHash: null, reason: event.reason, evidenceHash: event.evidenceHash};
       } else if (event.type === 'consultation') {
         assert(slot.status === 'CODING' && text(event.consultationId) && ['assessed', 'abstained', 'unavailable', 'error'].includes(event.status)
           && [true, false, null].includes(event.providerInvoked) && typeof event.delivered === 'boolean'

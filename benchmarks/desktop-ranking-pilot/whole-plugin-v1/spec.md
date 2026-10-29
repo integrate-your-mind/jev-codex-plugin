@@ -21,6 +21,7 @@ Every event has unique `id`, ISO `at`, `manifestHash`, `type`, and a slot ID, ex
 | `start` | `evidenceHash` retained before native startup |
 | `identity` | `chatId`, `workspaceId`, `model`, `effort`, `baseRevision`, `exposure`, `evidenceHash` |
 | `retrieval` | `packetHash`, `evidenceHash` |
+| `retrieval_unavailable` | `reason` unavailable/error/missing, `evidenceHash`; preserves the assigned attempt and missing delivery |
 | `consultation` | `consultationId`, `status` assessed/abstained/unavailable/error, `providerInvoked` boolean or null, `delivered` boolean, `receiptHash` nullable, `evidenceHash` |
 | `uptake` | `consultationId`, `value` observed/ignored/unknown, `evidenceHash` |
 | `approval` | `evidenceHash` |

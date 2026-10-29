@@ -19,8 +19,9 @@ function manifest() {
       pluginEnabled: enabled, mode: enabled ? 'changed_state' : 'off', tools: enabled ? 'normal' : 'absent',
       hooks: enabled ? 'normal' : 'absent', guidance: enabled ? 'normal' : 'absent', adviceConnection: enabled,
       configurationHash: evidence, packageHash: enabled ? evidence : null,
-    }]; })), corpus, reservations, preflights, preflightHash: hash(preflights),
-    policy: {codingMs: 2100000, gradingMs: 600000, totalMs: 2700000, attempts: 18, interimAfter: 3},
+    }]; })), corpus:structuredClone(corpus), reservations:structuredClone(reservations), preflights:structuredClone(preflights), preflightHash: hash(preflights),
+    policy: {codingMs: 2100000, gradingMs: 600000, totalMs: 2700000, attempts: 18, interimAfter: 3,
+      retrieval: {method:'bm25',k1:1.2,b:0.75,maxBytes:16384,maxCandidates:254,source:'frozen-broken-base',tieBreak:'stable-id'}},
     tasks: corpus.tasks.map(task => ({...task, inputHash: evidence, publicFailureHash: evidence, cheapPacketHash: evidence,
       graderHash: preflights.find(row => row.taskId === task.id).graderHash})),
   };
@@ -168,4 +169,72 @@ test('immutable native event replay rejects tampering, gaps and unpublished part
     assert.equal(JSON.parse(await readFile(join(exportDirectory,'report.json'),'utf8')).pendingAttempts,18);
     await assert.rejects(main(['export',run,exportDirectory]),/EEXIST/);
   } finally { await rm(directory,{recursive:true,force:true}); }
+});
+
+test('frozen source, retrieval parameters and private event fields cannot silently change', () => {
+  for (const mutate of [value=>{value.tasks[0].baseRevision='changed';},value=>{value.policy.retrieval.b=0.9;},value=>{value.host.model='different';},value=>{value.preflights[0].controls.wrong.verdict='pass';}]) {
+    const input=manifest(); mutate(input); assert.throws(()=>freezeStudy(input));
+  }
+  const state=freezeStudy(manifest());
+  assert.throws(()=>apply(state,'start',0,{evidenceHash:evidence,transcript:'private material'}),/private event fields/);
+  assert.throws(()=>apply(state,'start',0,{evidenceHash:evidence,manifestHash:hash('changed')}),/manifest join/);
+  const tampered=structuredClone(state); tampered.manifest.studyId='changed';
+  assert.throws(()=>apply(tampered,'start',0,{evidenceHash:evidence}),/manifest changed/);
+});
+
+test('missing cheap packet remains an assigned graded result with missing coverage', () => {
+  let state=freezeStudy(manifest()); state=apply(state,'start',0,{evidenceHash:evidence}); state=finish(state,1);
+  state=apply(state,'start',100,{evidenceHash:evidence}); state=identify(state,101);
+  state=apply(state,'retrieval_unavailable',102,{reason:'unavailable',evidenceHash:evidence});
+  state=apply(state,'coding_ended',110,{patchHash:evidence,reason:'completed',evidenceHash:evidence});
+  state=apply(state,'graded',120,{patchHash:evidence,graderHash:manifest().tasks[0].graderHash,verdict:'verified-fix',healthy:true,evidenceHash:evidence});
+  const arm=summarizeStudy(state).arms[1];
+  assert.equal(arm.verifiedFixes,1); assert.equal(arm.packetDeliveries,0); assert.equal(arm.packetMissing,1); assert.equal(arm.elapsedMs,20);
+});
+
+function fullStudy(counts, {uptake=true, approval=false, durations={}}={}) {
+  let state=freezeStudy(manifest()); const seen=Object.fromEntries(ARMS.map(arm=>[arm,0]));
+  for(let index=0;index<18;index++) {
+    const start=index*1000; state=apply(state,'start',start,{evidenceHash:evidence}); const arm=state.slots[index].arm;
+    if(arm==='plugin-on'&&uptake) {
+      const id=`synthetic-advice-${index}`;
+      state=apply(state,'consultation',start+1,{consultationId:id,status:'assessed',providerInvoked:true,delivered:true,receiptHash:evidence,evidenceHash:evidence});
+      state=apply(state,'uptake',start+2,{consultationId:id,value:'observed',evidenceHash:evidence});
+    }
+    if(arm==='plugin-on'&&approval) state=apply(state,'approval',start+3,{evidenceHash:evidence});
+    const duration=durations[arm]??100;
+    state=finish(state,start+duration-20,seen[arm]++<counts[arm]?'verified-fix':'not-fixed');
+    if(index===2) state=apply(state,'interim_report',start+duration+1,{reportHash:evidence,artifactsHash:evidence,evidenceHash:evidence});
+  }
+  return summarizeStudy(state);
+}
+
+test('exploratory extra-fix screen requires actual uptake and no increased approval burden', () => {
+  const counts={'plugin-off':4,cheap:4,'plugin-on':5};
+  assert.equal(fullStudy(counts).interpretation.verdict,'helpful');
+  assert.equal(fullStudy(counts,{uptake:false}).interpretation.verdict,'neutral');
+  assert.equal(fullStudy(counts,{approval:true}).interpretation.verdict,'harmful');
+  assert.equal(fullStudy({'plugin-off':5,cheap:5,'plugin-on':4}).interpretation.verdict,'harmful');
+  assert.equal(fullStudy({'plugin-off':5,cheap:5,'plugin-on':5}).interpretation.verdict,'neutral');
+});
+
+test('time screen sums all unsuccessful attempt time and never rewards zero fixes', () => {
+  const counts={'plugin-off':4,cheap:4,'plugin-on':4};
+  const report=fullStudy(counts,{durations:{'plugin-off':100,cheap:100,'plugin-on':80}});
+  assert.equal(report.interpretation.verdict,'helpful');
+  assert.equal(report.arms[0].elapsedMs,600); assert.equal(report.arms[0].timePerVerifiedFixMs,150);
+  assert.equal(report.arms[2].elapsedMs,480); assert.equal(report.arms[2].timePerVerifiedFixMs,120);
+  assert.equal(fullStudy(counts,{durations:{'plugin-on':81}}).interpretation.verdict,'neutral');
+  const empty=fullStudy({'plugin-off':0,cheap:0,'plugin-on':0},{durations:{'plugin-on':40}});
+  assert.equal(empty.interpretation.verdict,'neutral'); assert.equal(empty.arms[2].timePerVerifiedFixMs,null);
+});
+
+test('infrastructure-invalid data retains its assigned clock and cannot establish superiority', () => {
+  let state=freezeStudy(manifest()); state=apply(state,'start',0,{evidenceHash:evidence});
+  state=apply(state,'identity_broken',100,{reason:'private diagnostic never exported',evidenceHash:evidence});
+  const report=summarizeStudy(state);
+  assert.equal(report.invalidAttempts,1); assert.equal(report.pendingAttempts,17); assert.equal(report.arms[0].elapsedMs,100);
+  assert.equal(report.arms[0].completed,0); assert.equal(report.arms[0].fixRate,null);
+  assert.equal(report.interpretation.verdict,'inconclusive');
+  assert.doesNotMatch(JSON.stringify(report),/private diagnostic/);
 });
