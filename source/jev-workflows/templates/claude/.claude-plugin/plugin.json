@@ -1,6 +1,6 @@
 {
   "name": "jev-workflows",
-  "version": "0.5.3",
+  "version": "0.6.0-rc.1",
   "displayName": "Jev Workflows",
   "description": "Jev classification for tools, models, tasks and arbitrary decisions, with evidence review and automatic Claude Code lifecycle consultation.",
   "author": {

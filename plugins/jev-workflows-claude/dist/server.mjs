@@ -36671,7 +36671,7 @@ function createService(options = {}) {
   function status(policy = DEFAULT_POLICY) {
     const current = credential();
     return {
-      version: "0.5.3",
+      version: "0.6.0-rc.1",
       provider: "TypeSafe",
       endpoint: ENDPOINT,
       model: model ?? env.JEV_MODEL ?? MODEL,
@@ -38427,7 +38427,7 @@ function createRoutingApi(options) {
 // src/server.ts
 var service = createService();
 var routing = createRoutingApi({ service });
-var server = new Server({ name: "jev-workflows", version: "0.5.3" }, { capabilities: { tools: {} } });
+var server = new Server({ name: "jev-workflows", version: "0.6.0-rc.1" }, { capabilities: { tools: {} } });
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [
   { name: "jev_status", description: "Read local Jev readiness, limits and receipts referenced by today's index without scanning historical files. Indexed counts have unknown coverage outside that index. Optional routingScope reads only its current routing metadata. Catalog coverage is caller scoped; automatic model application remains undelivered. Set fullReceiptScan=true only for an explicit, potentially slow local receipt audit. Never contacts TypeSafe, exposes credentials or establishes provider billing.", inputSchema: external_exports.toJSONSchema(routingStatusInputSchema, { io: "input" }), annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } },
   { name: "classify_failure", description: "Preview selected redacted command evidence locally, or evaluate an authorized payload with TypeSafe Jev. Evaluate sends data externally in a billable provider API request. Advisory failure classification; never edits files, approves permissions, or certifies a fix.", inputSchema: external_exports.toJSONSchema(failureSchema, { io: "input" }), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } },

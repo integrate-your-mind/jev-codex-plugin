@@ -13,7 +13,7 @@ import {createRoutingApi, routingDecisionSchema, routingStatusInputSchema, routi
 
 const service = createService();
 const routing = createRoutingApi({service});
-const server = new Server({name: 'jev-workflows', version: '0.5.3'}, {capabilities: {tools: {}}});
+const server = new Server({name: 'jev-workflows', version: '0.6.0-rc.1'}, {capabilities: {tools: {}}});
 server.setRequestHandler(ListToolsRequestSchema, async () => ({tools: [
   {name: 'jev_status', description: 'Read local Jev readiness, limits and receipts referenced by today\'s index without scanning historical files. Indexed counts have unknown coverage outside that index. Optional routingScope reads only its current routing metadata. Catalog coverage is caller scoped; automatic model application remains undelivered. Set fullReceiptScan=true only for an explicit, potentially slow local receipt audit. Never contacts TypeSafe, exposes credentials or establishes provider billing.', inputSchema: z.toJSONSchema(routingStatusInputSchema, {io: 'input'}) as any, annotations: {readOnlyHint: true, destructiveHint: false, openWorldHint: false}},
   {name: 'classify_failure', description: 'Preview selected redacted command evidence locally, or evaluate an authorized payload with TypeSafe Jev. Evaluate sends data externally in a billable provider API request. Advisory failure classification; never edits files, approves permissions, or certifies a fix.', inputSchema: z.toJSONSchema(failureSchema, {io: 'input'}) as any, annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: true}},
