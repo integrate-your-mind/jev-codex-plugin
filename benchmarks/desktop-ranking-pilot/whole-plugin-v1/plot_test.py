@@ -68,6 +68,21 @@ class PlotRenderingTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, error):
                     render(path, Path(temp) / "plots")
 
+    def test_lower_bound_timing_is_explicit_on_every_chart_and_invalid_only_has_no_curve(self):
+        report = synthetic_report()
+        report["arms"][1].update({"elapsedTimeCoverage": "lower-bound", "completed": 0, "invalid": 1})
+        report["curves"] = {"cheap": [{"elapsedMs": 100, "verifiedFixes": 0}]}
+        with tempfile.TemporaryDirectory(prefix="lower-bound-", dir=WORK) as temp:
+            path = Path(temp) / "synthetic.json"
+            path.write_text(json.dumps(report))
+            render(path, Path(temp) / "plots")
+            for name in ("verified-fixes", "cumulative-fixes", "paired-outcomes", "cost-approvals-uptake"):
+                svg = (Path(temp) / "plots" / f"{name}.svg").read_text()
+                self.assertIn("Elapsed time is a measured lower bound; pre-launch timing is unknown", svg)
+            curve = (Path(temp) / "plots" / "cumulative-fixes.svg").read_text()
+            self.assertIn("No scored observations; no performance curve", curve)
+            self.assertNotIn("Cheap retrieval", curve)
+
     def test_no_scored_curve_or_completed_result_is_invented(self):
         report = synthetic_report()
         report["curves"] = {}
