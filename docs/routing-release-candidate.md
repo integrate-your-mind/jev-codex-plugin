@@ -12,6 +12,10 @@ Prepared October 28, 2026. Stable promotion awaits the human review of valid pil
 
 The [feature map](routing-feature-map.md) connects these behaviors to public entrypoints and reproducible checks. [Privacy and retention](../source/jev-workflows/docs/privacy.md) describe the additive local records.
 
+## Noncoding provider check
+
+The built CLI made one authorized request to pinned Jev `jev-1.13.0` with sixty synthetic verification choices. TypeSafe returned HTTP 200, a validated response and provider request ID `req_01a1851d168c7e1aa33f7e857a8a3053`. Jev selected the relevant check at position sixty. Receipt `7ce5142d-d1de-4025-ac2d-df71a65b27c2` is retained privately. This checks the provider path and that supplied candidate, rather than coding quality, savings or native host application.
+
 ## Capabilities still unfinished
 
 Codex desktop automatic switching is **undelivered**. The installed app was inspected once through supported, read-only surfaces. No supported connection to the runtime owning the desktop task, ordered pre-dispatch application or actual next-request model evidence was established. No private IPC, billing change, alternate coding-model gateway or CLI substitution was used. See the [qualification receipt](../benchmarks/desktop-ranking-pilot/qualification-2026-10-28.json).
