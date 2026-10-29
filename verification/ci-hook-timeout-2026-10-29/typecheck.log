@@ -1,4 +1,3 @@
 
 > jev-workflows@0.6.0-rc.1 typecheck
 > node scripts/prepare-claude-types.mjs && tsc --noEmit
-

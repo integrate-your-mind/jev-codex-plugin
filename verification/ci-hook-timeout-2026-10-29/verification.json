@@ -9,8 +9,7 @@
   },
   "checks": [
     {
-      "command": "node --import tsx --test --test-name-pattern=reports-a-provider-that-ignores-abort tests/decision-hook.test.ts",
-      "description": "Actual command used quoted full test name",
+      "command": "node --import tsx --test --test-name-pattern='reports a provider that ignores abort' tests/decision-hook.test.ts",
       "exitCode": 0,
       "tests": 1,
       "passed": 1

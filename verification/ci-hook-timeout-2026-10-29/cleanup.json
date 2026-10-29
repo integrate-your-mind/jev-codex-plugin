@@ -1,0 +1,17 @@
+{
+  "observedAt": "2026-10-29T04:13:27.056692+00:00",
+  "owner": "ci_hook_timeout",
+  "removedOwnedRebuildablePaths": [
+    "source/jev-workflows/node_modules",
+    "source/jev-workflows/tests/fixtures/claude-code.d.ts",
+    "source/jev-workflows/work",
+    ".agent-work/ci-hook-timeout/repro-state",
+    ".agent-work/ci-hook-timeout/baseline-focused.log",
+    ".agent-work/ci-hook-timeout/focused-suites.log",
+    ".agent-work/ci-hook-timeout/typecheck.log",
+    ".agent-work/ci-hook-timeout/reproduction.jsonl",
+    ".agent-work/ci-hook-timeout/reproduce.mts"
+  ],
+  "sourceAndVerificationRetained": true,
+  "sharedDependenciesChanged": false
+}
