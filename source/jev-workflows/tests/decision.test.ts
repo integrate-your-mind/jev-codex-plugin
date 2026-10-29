@@ -69,6 +69,20 @@ function service(options: Partial<ServiceOptions> = {}): ReturnType<typeof creat
 }
 
 describe('decision input and preview boundaries', () => {
+  it('filters sensitive candidate metadata in direct preview and evaluation while preserving ordinary fields', async () => {
+    for (const mode of ['preview', 'evaluate'] as const) {
+      const calls: Array<Record<string, unknown>> = [];
+      const result = await service({fetchFn: fetchChoice('alpha', calls)}).classifyDecision(decision({mode, candidates: [{id: 'alpha', description: 'Available tool', metadata: {
+        apiKey: 'synthetic-direct-private-value', session_token: 'synthetic-session-private-value', safeNote: 'Bearer synthetic-bearer', count: 7, availableLocally: true,
+      }}]}));
+      assert.equal(result.status, mode === 'preview' ? 'preview' : 'assessed');
+      const payload = (mode === 'preview' ? result.preview : calls[0]) as {state: {candidates: Candidate[]}};
+      assert.deepEqual(payload.state.candidates[0]?.metadata, {safeNote: 'Bearer [REDACTED]', count: 7, availableLocally: true});
+      assert.equal(JSON.stringify(payload).includes('synthetic-direct-private-value'), false);
+      assert.equal(JSON.stringify(payload).includes('synthetic-session-private-value'), false);
+      if (mode === 'evaluate') assert.equal(result.choice, 'alpha');
+    }
+  });
   it('accepts all 254 real provider choices and rejects a 255th before egress', async () => {
     const candidates = Array.from({length: 254}, (_, index) => ({id: `option-${index}`, description: `Option ${index}`}));
     const calls: Array<Record<string, unknown>> = [];

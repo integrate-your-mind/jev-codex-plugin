@@ -68,6 +68,23 @@ function service(options: Partial<ServiceOptions> = {}) {
 }
 
 describe('evaluate_decisions mixed typed batch', () => {
+  it('filters sensitive structured candidate metadata in preview and fake-provider evaluation', async () => {
+    for (const mode of ['preview', 'evaluate']) {
+      const calls: Array<Record<string, unknown>> = [];
+      const result = await service({fetchFn: provider(calls)}).evaluateDecisions(input({mode, questions: {route: {
+        type: 'choice', instructions: 'Choose a tool.', candidates: [{id: 'inspect', description: 'Inspect', metadata: {
+          apiKey: 'synthetic-batch-private-value', details: {session_token: 'synthetic-nested-private-value', count: 7, labels: ['one', {available: true, cookie: 'synthetic-cookie'}]},
+          safeNote: 'Bearer synthetic-bearer',
+        }}],
+      }}}));
+      assert.equal(result.status, mode === 'preview' ? 'preview' : 'assessed');
+      const payload = (mode === 'preview' ? result.preview : calls[0]) as {questions: {route: {criteria: {inspect: {metadata: unknown}}}}};
+      assert.deepEqual(payload.questions.route.criteria.inspect.metadata, {details: {count: 7, labels: ['one', {available: true}]}, safeNote: 'Bearer [REDACTED]'});
+      assert.equal(JSON.stringify(payload).includes('synthetic-batch-private-value'), false);
+      assert.equal(JSON.stringify(payload).includes('synthetic-nested-private-value'), false);
+      assert.equal(JSON.stringify(payload).includes('synthetic-cookie'), false);
+    }
+  });
   it('keeps media opt-in local, redacts preview assets, and validates Box responses', async () => {
     const mediaInput = input({
       model: 'jev-preview',
