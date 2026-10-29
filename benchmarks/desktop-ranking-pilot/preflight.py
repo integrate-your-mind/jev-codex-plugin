@@ -6,9 +6,6 @@ import subprocess
 import time
 from pathlib import Path
 
-import pyarrow.parquet as parquet
-
-
 def sha(value):
     return hashlib.sha256(value.encode() if isinstance(value, str) else value).hexdigest()
 
@@ -36,7 +33,20 @@ def mutation(task):
     raise ValueError("Unknown reviewed task")
 
 
+def parse_grader_output(stdout, exit_code):
+    try:
+        result = json.loads(stdout.splitlines()[-1])
+        expected_exit = 0 if result.get("verdict") == "pass" else 1
+        if result.get("verdict") in ["pass", "fail"] and exit_code == expected_exit and isinstance(result.get("healthy"), bool):
+            return result
+    except (ValueError, IndexError, AttributeError):
+        pass
+    return {"verdict": "infrastructure-invalid", "healthy": False}
+
+
 def main():
+    import pyarrow.parquet as parquet
+
     parser = argparse.ArgumentParser()
     parser.add_argument("artifact", type=Path)
     parser.add_argument("--python", type=Path, required=True)
@@ -91,13 +101,7 @@ def main():
                                              text=True, capture_output=True, timeout=600,
                                              env={**os.environ, "PYTHONNOUSERSITE": "1"})
                     log = {"exitCode": process.returncode, "stdout": process.stdout, "stderr": process.stderr}
-                    try:
-                        result = json.loads(process.stdout.splitlines()[-1])
-                        expected_exit = 0 if result.get("verdict") == "pass" else 1
-                        if result.get("verdict") not in ["pass", "fail"] or process.returncode != expected_exit:
-                            result = {"verdict": "infrastructure-invalid", "healthy": False}
-                    except (ValueError, IndexError):
-                        result = {"verdict": "infrastructure-invalid", "healthy": False}
+                    result = parse_grader_output(process.stdout, process.returncode)
                 except subprocess.TimeoutExpired as error:
                     decode = lambda value: value.decode(errors="replace") if isinstance(value, bytes) else value or ""
                     log = {"exitCode": None, "stdout": decode(error.stdout), "stderr": decode(error.stderr), "timeout": True}

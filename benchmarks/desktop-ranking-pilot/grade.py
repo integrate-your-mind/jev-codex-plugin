@@ -1,6 +1,8 @@
 import importlib
 from importlib.machinery import PathFinder
+from contextlib import contextmanager
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -19,6 +21,24 @@ DEPENDENCIES = ("certifi", "chardet", "charset_normalizer", "idna", "mpmath", "u
 
 class GraderInfrastructureError(RuntimeError):
     pass
+
+
+@contextmanager
+def candidate_output():
+    stdout = sys.stdout
+    stdout.flush()
+    descriptor = stdout.fileno()
+    saved = os.dup(descriptor)
+    os.dup2(sys.stderr.fileno(), descriptor)
+    try:
+        yield
+    finally:
+        try:
+            stdout.flush()
+        finally:
+            os.dup2(saved, descriptor)
+            os.close(saved)
+            sys.stdout = stdout
 
 
 def validate_environment(task):
@@ -121,14 +141,15 @@ def grade(task):
 if __name__ == "__main__":
     try:
         validate_environment(sys.argv[1] if len(sys.argv) == 2 else None)
-        grade(sys.argv[1])
+        with candidate_output():
+            grade(sys.argv[1])
     except GraderInfrastructureError as error:
         print(json.dumps({"verdict": "infrastructure-invalid", "healthy": False, "exception": type(error).__name__, "reason": str(error)}))
         raise
     except AssertionError as error:
         print(json.dumps({"verdict": "fail", "healthy": True, "reason": str(error)}))
         sys.exit(1)
-    except Exception as error:
+    except (Exception, SystemExit) as error:
         print(json.dumps({"verdict": "fail", "healthy": True, "exception": type(error).__name__, "reason": str(error)}))
         sys.exit(1)
     else:

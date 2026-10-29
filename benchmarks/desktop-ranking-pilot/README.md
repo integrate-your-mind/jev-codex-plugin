@@ -26,8 +26,11 @@ All test fixtures are synthetic. They are not pilot outcomes. The qualification 
 | Interpreter resolution discarded the virtual environment | 10 | 7 | 70 | The initial controls reported missing urllib3 and mpmath. The runner now preserves the virtual-environment executable path. The current controls all pass their expected outcomes. |
 | Known bug exceptions counted as broken infrastructure | 10 | 7 | 70 | Binary decoding and Rational construction reproduced the reported exceptions. The grader now labels those known behavioral failures while preserving import/setup errors as infrastructure failures. |
 | Candidate syntax, import and runtime regressions counted as infrastructure failures | 8 | 8 | 64 | Independent review and the syntax-patch regression reproduced `infrastructure-invalid` instead of `fail`. Declared environment dependencies and task/source identity now qualify before candidate execution. Candidate exceptions then remain failed repairs. |
+| Candidate output and early exit counterfeited grader success | 5 | 10 | 50 | Independent review and synthetic regressions reproduced a forged pass followed by SystemExit or direct stdout and abrupt exit. Candidate output now goes to stderr at the file-descriptor boundary; only the restored grader output supplies a terminal result. SystemExit is a failed repair, and an absent terminal result cannot pass. |
 
 Outages remain in their assigned-arm denominator. An independently verified terminal patch can count as a fix when packet delivery is unavailable. The report records missing delivery and unknown uptake. Grading requires the frozen grader and observed treatment configuration.
+
+The grader's output separation enforces ordinary completion integrity. It is not a hostile-code sandbox. An abrupt process exit without a trusted terminal result remains unresolved with infrastructure-invalid bounds; it cannot establish a fix or authorize a retry or replacement.
 
 ## Current evidence
 

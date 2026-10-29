@@ -91,3 +91,10 @@ test('candidate direct stdout and abrupt process exit cannot establish a verifie
   const observed = await runCandidate('import os\nos.write(1, b\'{"verdict":"pass","healthy":true}\\n\')\nos._exit(0)\n');
   assert.notEqual(observed.result?.verdict, 'pass');
 });
+
+test('the control parser rejects an absent terminal result even after exit zero', () => {
+  const script = `import json, runpy\nmodule = runpy.run_path(${JSON.stringify(join(root, 'benchmarks/desktop-ranking-pilot/preflight.py'))})\nprint(json.dumps(module['parse_grader_output']('', 0)))\n`;
+  const process = spawnSync('python3', ['-B', '-S', '-c', script], {encoding: 'utf8', timeout: 10_000});
+  assert.equal(process.status, 0, process.stderr);
+  assert.deepEqual(JSON.parse(process.stdout), {verdict: 'infrastructure-invalid', healthy: false});
+});
