@@ -10,6 +10,7 @@ import {dataDirectory} from '../store.js';
 import {updateTaskContext, updateTaskContextInputSchema, type TaskContextRecord} from '../task-context.js';
 import {redactText} from '../redact.js';
 import {readCredentialFile} from '../credential.js';
+import {sanitizeCandidateMetadata} from '../candidate-metadata.js';
 import {ROUTING_SCHEMA_VERSION, sameProfile, type CatalogSnapshot, type DecisionProposal, type DeliveryObservation, type HostCapabilities, type ModelEffortProfile, type RoutingRecord, type RoutingScope, type TaskRevision} from './contracts.js';
 import {RoutingStateStore} from './state.js';
 
@@ -61,7 +62,7 @@ function catalogDigest(record: CatalogSnapshot): string {
 }
 function reasonFor(error: unknown): string {
   if (error instanceof z.ZodError) return 'invalid_catalog_record';
-  const codes = ['unsafe_routing_directory', 'unsafe_routing_metadata', 'duplicate_catalog_ids', 'catalog_ref_not_found', 'catalog_ref_expired', 'catalog_ref_digest_mismatch', 'catalog_ref_dependencies_unavailable', 'stale_task_revision'];
+  const codes = ['unsafe_routing_directory', 'unsafe_routing_metadata', 'unsafe_catalog_metadata', 'duplicate_catalog_ids', 'catalog_ref_not_found', 'catalog_ref_expired', 'catalog_ref_digest_mismatch', 'catalog_ref_dependencies_unavailable', 'stale_task_revision'];
   return error instanceof Error && codes.includes(error.message) ? error.message : 'routing_state_unavailable';
 }
 function profileFor(metadata: Readonly<Record<string, string | number | boolean>> | undefined): ModelEffortProfile | undefined {
@@ -163,6 +164,8 @@ export function createRoutingApi(options: {service: DecisionService; env?: NodeJ
     const catalog = catalogSnapshotSchema.parse(stored) as CatalogSnapshot;
     if (catalog.expiresAt && Date.parse(catalog.expiresAt) <= now().getTime()) throw new Error('catalog_ref_expired');
     if (catalogDigest(catalog) !== ref.digest) throw new Error('catalog_ref_digest_mismatch');
+    if (catalog.entries.some(entry => JSON.stringify(entry.metadata ?? {}) !== JSON.stringify(sanitizeCandidateMetadata(entry.metadata, value => value)))) throw new Error('unsafe_catalog_metadata');
+    safeMetadata(catalog.entries);
     const [current, task, capabilities] = await Promise.all([store.current(), store.read<TaskRevision>(ref.taskRevisionId), store.read<HostCapabilities>(ref.capabilityId)]);
     if (!task || !capabilities || task.kind !== 'task_revision' || capabilities.kind !== 'host_capabilities') throw new Error('catalog_ref_dependencies_unavailable');
     if (current.records.catalog !== ref.catalogId || current.records.task !== ref.taskRevisionId || current.records.capabilities !== ref.capabilityId || task.catalogId !== ref.catalogId) throw new Error('stale_task_revision');

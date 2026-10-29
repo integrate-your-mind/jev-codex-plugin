@@ -7,6 +7,7 @@ import {dataDirectory} from './store.js';
 import {redactText} from './redact.js';
 import {readCredentialFile} from './credential.js';
 import {acquireStateLock, releaseStateLock} from './state-lock.js';
+import {sanitizeCandidateMetadata} from './candidate-metadata.js';
 
 /** The on-disk record is deliberately versioned so callers can evolve it without
  * treating an old task summary as a current goal. */
@@ -190,7 +191,7 @@ function sanitizeCatalog(value: TaskContextUpdate['candidateCatalogs'], secrets:
       id: clip(candidate.id, 80, secrets),
       description: clip(candidate.description, MAX_TEXT_BYTES, secrets),
       available: candidate.available !== false,
-      ...(candidate.metadata ? {metadata: Object.fromEntries(Object.entries(candidate.metadata).slice(0, 16).map(([key, item]) => [clip(key, 40, secrets), typeof item === 'string' ? clip(item, 500, secrets) : item]))} : {}),
+      ...(candidate.metadata ? {metadata: sanitizeCandidateMetadata(candidate.metadata, (value, maxBytes) => clip(value, maxBytes, secrets))} : {}),
     }));
   }
   return output;
@@ -234,6 +235,7 @@ export async function loadTaskContext(scope: TaskContextScope, options: TaskCont
       const parsed = taskContextRecordSchema.safeParse(JSON.parse(await handle.readFile('utf8')));
       if (!parsed.success) return undefined;
       if (parsed.data.scope.workspaceHash !== target.scope!.workspaceHash || parsed.data.scope.sessionHash !== target.scope!.sessionHash || parsed.data.scope.agentHash !== target.scope!.agentHash) return undefined;
+      parsed.data.candidateCatalogs = sanitizeCatalog(parsed.data.candidateCatalogs, currentSecrets(options.env ?? process.env));
       return parsed.data;
     } finally { await handle.close(); }
   } catch { return undefined; }
