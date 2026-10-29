@@ -7,93 +7,82 @@ from pathlib import Path
 
 from plot import render
 
+WORK = Path(__file__).resolve().parents[3] / ".agent-work" / "whole-plugin-plot-tests"
+WORK.mkdir(parents=True, exist_ok=True)
+
 
 def synthetic_report():
-    arms = {}
-    for arm, fixes in (("plugin-off", 1), ("cheap", None), ("plugin-on", 2)):
-        arms[arm] = {
-            "assigned": 2,
-            "completed": 1,
-            "sourceValidCompleted": 1,
-            "verifiedFixes": fixes,
-            "elapsedMs": 42000,
-            "fullTimePerFixMs": None,
-            "fixBounds": {"lower": 1 if fixes is not None else 0, "upper": 2},
-            "codingUsd": None,
-            "jevUsd": None,
-            "costComplete": False,
-            "approvals": 1,
-            "consultations": 0,
-            "deliveries": 0,
-            "uptake": {"observed": 0, "ignored": 0, "unknown": 1},
-            "curve": None,
-        }
-    arms["plugin-off"]["curve"] = [{"elapsedMs": 10000, "fixes": 0}, {"elapsedMs": 42000, "fixes": 1}]
-    arms["plugin-on"]["curve"] = [{"elapsedMs": 42000, "fixes": 2}]
+    arms = []
+    for arm, fixes in (("plugin-off", 1), ("cheap", 0), ("plugin-on", 1)):
+        arms.append({
+            "id": arm, "assigned": 1, "completed": 1, "pending": 5,
+            "invalid": 0, "verifiedFixes": fixes, "fixRate": fixes,
+            "elapsedMs": 42000, "timePerVerifiedFixMs": 42000 if fixes else None,
+            "codingUsd": None, "jevUsd": 0.02 if arm == "plugin-on" else 0,
+            "billingComplete": False, "approvals": 0, "failedPublicCycles": 1,
+            "consultations": 1 if arm == "plugin-on" else 0,
+            "providerRequests": 1 if arm == "plugin-on" else 0,
+            "providerRequestUnknown": 0, "adviceDelivered": 1 if arm == "plugin-on" else 0,
+            "uptakeObserved": 0, "uptakeIgnored": 0, "uptakeUnknown": 1 if arm == "plugin-on" else 0,
+        })
     return {
-        "schemaVersion": "whole-plugin-report-v1",
-        "studyId": "SYNTHETIC-DO-NOT-REPORT",
-        "phase": "interim",
-        "attempted": 3,
-        "completed": 2,
-        "sourceValidCompleted": 2,
-        "pending": 1,
-        "byArm": arms,
-        "paired": [{
-            "taskId": "SYNTHETIC-task",
-            "arms": {
-                "plugin-off": {"status": "graded", "verdict": "verified-fix"},
-                "cheap": {"status": "pending", "verdict": None},
-                "plugin-on": {"status": "graded", "verdict": "not-fixed"},
-            },
-        }],
-        "limitations": ["Synthetic fixture only"],
+        "schemaVersion": "whole-plugin-report-v1", "studyId": "SYNTHETIC-DO-NOT-REPORT",
+        "asOf": "2026-10-28T00:00:00Z", "plannedAttempts": 18,
+        "completedAttempts": 3, "pendingAttempts": 15, "invalidAttempts": 0,
+        "halted": False, "arms": arms,
+        "curves": {arm: [{"elapsedMs": 42000, "verifiedFixes": 1 if arm != "cheap" else 0}] for arm in ("plugin-off", "cheap", "plugin-on")},
+        "paired": [{"taskId": "SYNTHETIC-task", "conditions": {"plugin-off": "verified-fix", "cheap": "not-fixed", "plugin-on": "pending"}}],
+        "interpretation": {"verdict": "inconclusive", "reason": "Synthetic fixture only"},
     }
 
 
 class PlotRenderingTest(unittest.TestCase):
-    def test_renders_four_svg_png_pairs_with_unknown_and_pending_context(self):
-        with tempfile.TemporaryDirectory(prefix="whole-plugin-plot-test-") as temp:
+    def test_renders_four_svg_png_pairs_with_percentages_and_unknown_billing(self):
+        with tempfile.TemporaryDirectory(prefix="render-", dir=WORK) as temp:
             root = Path(temp)
-            report_path = root / "synthetic-report.json"
-            report_path.write_text(json.dumps(synthetic_report()), encoding="utf-8")
-            output = root / "plots"
-            files = render(report_path, output)
+            path = root / "synthetic.json"
+            path.write_text(json.dumps(synthetic_report()), encoding="utf-8")
+            files = render(path, root / "plots")
             self.assertEqual(len(files), 8)
-            for path in files:
-                self.assertTrue(path.is_file())
-                self.assertGreater(path.stat().st_size, 500)
-            for path in output.glob("*.png"):
-                self.assertEqual(path.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
-            fixes_svg = (output / "verified-fixes.svg").read_text(encoding="utf-8")
-            self.assertIn("1 pending/invalid", fixes_svg)
-            self.assertIn("unknown/1", fixes_svg)
-            curves_svg = (output / "cumulative-fixes.svg").read_text(encoding="utf-8")
-            self.assertIn("Pending elapsed is unknown", curves_svg)
-            cost_svg = (output / "cost-approvals-uptake.svg").read_text(encoding="utf-8")
-            self.assertIn("unknown stays unknown", cost_svg)
-            self.assertIn("Subscription capacity is not dollars", cost_svg)
+            for file in files:
+                self.assertTrue(file.is_file())
+                self.assertGreater(file.stat().st_size, 500)
+                if file.suffix == ".png":
+                    self.assertEqual(file.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+            fixes = (root / "plots" / "verified-fixes.svg").read_text()
+            self.assertIn("1/1 (100%)", fixes)
+            self.assertIn("5 pending; 0 invalid", fixes)
+            self.assertIn("3/18 completed; 15 pending; 0 invalid", fixes)
+            paired = (root / "plots" / "paired-outcomes.svg").read_text()
+            self.assertIn("Pending", paired)
+            cost = (root / "plots" / "cost-approvals-uptake.svg").read_text()
+            self.assertIn("Coding unknown", cost)
+            self.assertIn("Subscription usage is not cash savings", cost)
+            self.assertIn("Repeated failed checks", cost)
 
-    def test_rejects_wrong_report_schema(self):
-        with tempfile.TemporaryDirectory(prefix="whole-plugin-plot-test-") as temp:
-            root = Path(temp)
-            report_path = root / "bad.json"
-            report_path.write_text("{}", encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "schemaVersion"):
-                render(report_path, root / "plots")
+    def test_rejects_wrong_schema_and_missing_arms(self):
+        with tempfile.TemporaryDirectory(prefix="invalid-", dir=WORK) as temp:
+            path = Path(temp) / "bad.json"
+            for report, error in (({}, "schemaVersion"), ({"schemaVersion": "whole-plugin-report-v1", "arms": []}, "arms")):
+                path.write_text(json.dumps(report))
+                with self.assertRaisesRegex(ValueError, error):
+                    render(path, Path(temp) / "plots")
 
-    def test_no_scored_curve_is_reported_without_inventing_a_plateau(self):
+    def test_no_scored_curve_or_completed_result_is_invented(self):
         report = synthetic_report()
-        for data in report["byArm"].values():
-            data["curve"] = None
-        with tempfile.TemporaryDirectory(prefix="whole-plugin-plot-test-") as temp:
-            root = Path(temp)
-            report_path = root / "synthetic-report.json"
-            report_path.write_text(json.dumps(report), encoding="utf-8")
-            output = root / "plots"
-            render(report_path, output)
-            svg = (output / "cumulative-fixes.svg").read_text(encoding="utf-8")
-            self.assertIn("No scored observations; no performance curve", svg)
+        report["curves"] = {}
+        for arm in report["arms"]:
+            arm["completed"] = 0
+            arm["verifiedFixes"] = 0
+        with tempfile.TemporaryDirectory(prefix="unscored-", dir=WORK) as temp:
+            path = Path(temp) / "synthetic.json"
+            path.write_text(json.dumps(report))
+            render(path, Path(temp) / "plots")
+            curve = (Path(temp) / "plots" / "cumulative-fixes.svg").read_text()
+            self.assertIn("No scored observations; no performance curve", curve)
+            fixes = (Path(temp) / "plots" / "verified-fixes.svg").read_text()
+            self.assertIn("No completed result", fixes)
+            self.assertNotIn("0/0", fixes)
 
 
 if __name__ == "__main__":
