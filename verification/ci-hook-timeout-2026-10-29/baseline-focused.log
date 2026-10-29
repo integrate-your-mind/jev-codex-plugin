@@ -16,7 +16,7 @@ test at tests/decision-hook.test.ts:5:6286
 ✖ reports a provider that ignores abort as an explicit hook timeout (3964.544459ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
   + actual - expected
-  
+
   + {
   +   hookSpecificOutput: {
   +     additionalContext: 'JEV advisory: status=unavailable; reason=hook_timeout; continue ordinary reasoning and gather authorized evidence if useful.',
@@ -24,7 +24,7 @@ test at tests/decision-hook.test.ts:5:6286
   +   }
   + }
   - {}
-  
+
       at TestContext.<anonymous> (<worktree>/source/jev-workflows/tests/decision-hook.test.ts:740:12)
       at async Test.run (node:internal/test_runner/test:1409:7)
       at async Promise.all (index 29)

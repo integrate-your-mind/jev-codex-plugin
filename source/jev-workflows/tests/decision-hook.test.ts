@@ -728,17 +728,33 @@ describe('decision hook', () => {
     assert.doesNotMatch(result.hookSpecificOutput?.additionalContext ?? '', /decision=proceed/);
   });
 
-  it('reports a provider that ignores abort as an explicit hook timeout', async () => {
+  it('reports a provider that ignores abort as an explicit hook timeout', async t => {
     const environment = env(join(root, 'timeout'));
     await enabledPolicy(environment);
     let calls = 0;
-    const service: DecisionService = {classifyDecision: async () => { calls++; return new Promise(() => {}); }};
-    const started = Date.now();
-    const result = await runDecisionHook(JSON.stringify(toolEvent()), {env: environment, service, hookTimeoutMs: 25});
-    assert.match(result.hookSpecificOutput?.additionalContext ?? '', /status=unavailable; reason=hook_timeout/);
-    assert.ok(Date.now() - started < 500);
-    assert.deepEqual(await runDecisionHook(toolEvent({tool_use_id: 'after-timeout'}), {env: environment, service}), {});
-    assert.equal(calls, 1);
+    let observedSignal: AbortSignal | undefined;
+    let enter!: () => void;
+    const entered = new Promise<void>(resolve => { enter = resolve; });
+    const service: DecisionService = {classifyDecision: async (_input, signal) => {
+      calls++;
+      observedSignal = signal;
+      enter();
+      return new Promise(() => {});
+    }};
+    t.mock.timers.enable({apis: ['Date', 'setTimeout'], now: Date.now()});
+    try {
+      const started = Date.now();
+      const pending = runDecisionHook(JSON.stringify(toolEvent()), {env: environment, service, hookTimeoutMs: 25});
+      await entered;
+      assert.equal(observedSignal?.aborted, false);
+      for (let elapsed = 0; !observedSignal?.aborted && elapsed < 25; elapsed++) t.mock.timers.tick(1);
+      assert.equal(observedSignal?.aborted, true);
+      const result = await pending;
+      assert.match(result.hookSpecificOutput?.additionalContext ?? '', /status=unavailable; reason=hook_timeout/);
+      assert.ok(Date.now() - started < 25);
+      assert.deepEqual(await runDecisionHook(toolEvent({tool_use_id: 'after-timeout'}), {env: environment, service}), {});
+      assert.equal(calls, 1);
+    } finally { t.mock.timers.reset(); }
   });
 
   it('clips hook context on UTF-8 boundaries while retaining the tail', async () => {
